@@ -20,7 +20,7 @@ use NaturalDocs::Languages::Simple;
 use NaturalDocs::Languages::Advanced;
 
 use NaturalDocs::Languages::Perl;
-puse NaturalDocs::Languages::CSharp;
+use NaturalDocs::Languages::CSharp;
 
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
@@ -35,6 +35,14 @@ package NaturalDocs::Languages;
 
 ###############################################################################
 # Group: Variables
+
+
+#
+#   handle: FH_LANGUAGES
+#
+#   The file handle used for writing to <Languages.txt>.
+#
+
 
 #
 #   hash: languages
@@ -93,10 +101,10 @@ my %shebangFiles;
 #
 #   Sections:
 #
-#       > Ignore Extension[s]: [extension] [extension] ...
+#       > Ignore[d] Extension[s]: [extension] [extension] ...
 #
 #       Causes the listed file extensions to be ignored, even if they were previously defined to be part of a language.  The list is
-#       space-separated.  ex.  “Ignore Extensions: cvs txt”
+#       space-separated.  ex. "Ignore Extensions: cvs txt"
 #
 #
 #       > Language: [name]
@@ -307,7 +315,7 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
                 @properties = ( );
                 };
 
-            if ($keyword =~ /^ignore extensions?$/)
+            if ($keyword =~ /^ignored? extensions?$/)
                 {
                 $value =~ tr/.*//d;
                 my @extensions = split(/ /, lc($value));
@@ -659,6 +667,7 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
 
                 if ($topicType)
                     {
+                    $value =~ s/\\n/\n/g;
                     my @symbols = split(/ /, $value);
                     $language->SetPrototypeEndersFor($topicType, \@symbols);
                     };
@@ -682,6 +691,514 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
             NaturalDocs::ConfigFile->AddError($keyword . ' is not a valid keyword.', $lineNumber);
             };
         };
+    };
+
+
+#
+#   Function: Save
+#
+#   Saves the main and user versions of <Languages.txt>.
+#
+sub Save
+    {
+    my $self = shift;
+
+    $self->SaveFile(1); # Main
+    $self->SaveFile(0); # User
+    };
+
+
+#
+#   Function: SaveFile
+#
+#   Saves a particular version of <Topics.txt>.
+#
+#   Parameters:
+#
+#       isMain - Whether the file is the main file or not.
+#
+sub SaveFile #(isMain)
+    {
+    my ($self, $isMain) = @_;
+
+    my $file;
+
+    if ($isMain)
+        {
+        if (NaturalDocs::Project->MainLanguagesFileStatus() == ::FILE_SAME())
+            {  return;  };
+        $file = NaturalDocs::Project->MainLanguagesFile();
+        }
+    else
+        {
+        if (NaturalDocs::Project->UserLanguagesFileStatus() == ::FILE_SAME())
+            {  return;  };
+        $file = NaturalDocs::Project->UserLanguagesFile();
+        };
+
+
+    # Array of segments, with each being groups of three consecutive entries.  The first is the keyword ('language', 'alter language',
+    # or 'ignore extensions'), the second is the value, and the third is a hashref of all the properties.
+    # - For properties that can accept a topic type, the property values are hashrefs mapping topic types to the values.
+    # - For properties that can accept 'add' or 'replace', there is an additional property ending in 'command' that stores it.
+    # - For properties that can accept both, the 'command' thing is applied to the topic types rather than the properties.
+    my @segments;
+
+    my $currentProperties;
+
+    if (NaturalDocs::ConfigFile->Open($file))
+        {
+        # We can assume the file is valid.
+
+        while (my ($keyword, $value, $comment) = NaturalDocs::ConfigFile->GetLine())
+            {
+            $value .= $comment;
+            $value =~ s/^ //;
+
+            if ($keyword eq 'language' || $keyword eq 'alter language')
+                {
+                $currentProperties = { };
+                push @segments, $keyword, $value, $currentProperties;
+                }
+
+            elsif ($keyword =~ /^ignored? extensions?$/)
+                {
+                push @segments, 'ignore extensions', $value, undef;
+                }
+
+            elsif ($keyword eq 'package separator' || $keyword eq 'full language support' || $keyword eq 'perl package' ||
+                    $keyword eq 'line extender')
+                {
+                $currentProperties->{$keyword} = $value;
+                }
+
+            elsif ($keyword =~ /^line comments?$/)
+                {
+                $currentProperties->{'line comments'} = $value;
+                }
+            elsif ($keyword =~ /^block comments?$/)
+                {
+                $currentProperties->{'block comments'} = $value;
+                }
+
+            elsif ($keyword =~ /^(?:(add|replace) )?extensions?$/)
+                {
+                my $command = $1;
+
+                if ($command eq 'add' && exists $currentProperties->{'extensions'})
+                    {  $currentProperties->{'extensions'} .= ' ' . $value;  }
+                else
+                    {
+                    $currentProperties->{'extensions'} = $value;
+                    $currentProperties->{'extensions command'} = $command;
+                    };
+                }
+
+            elsif ($keyword =~ /^(?:(add|replace) )?shebang strings?$/)
+                {
+                my $command = $1;
+
+                if ($command eq 'add' && exists $currentProperties->{'shebang strings'})
+                    {  $currentProperties->{'shebang strings'} .= ' ' . $value;  }
+                else
+                    {
+                    $currentProperties->{'shebang strings'} = $value;
+                    $currentProperties->{'shebang strings command'} = $command;
+                    };
+                }
+
+            elsif ($keyword =~ /^(?:(.+) )?prototype enders?$/)
+                {
+                my $topicName = $1;
+                my $topicType;
+
+                if ($topicName)
+                    {  ($topicType, undef) = NaturalDocs::Topics->NameInfo($topicName);  }
+                else
+                    {  $topicType = ::TOPIC_GENERAL();  };
+
+                my $currentTypeProperties = $currentProperties->{'prototype enders'};
+
+                if (!defined $currentTypeProperties)
+                    {
+                    $currentTypeProperties = { };
+                    $currentProperties->{'prototype enders'} = $currentTypeProperties;
+                    };
+
+                $currentTypeProperties->{$topicType} = $value;
+                }
+
+            elsif ($keyword =~ /^(?:(add|replace) )?ignored? (?:(.+) )?prefix(?:es)? in index$/)
+                {
+                my ($command, $topicName) = ($1, $2);
+                my $topicType;
+
+                if ($topicName)
+                    {  ($topicType, undef) = NaturalDocs::Topics->NameInfo($topicName);  }
+                else
+                    {  $topicType = ::TOPIC_GENERAL();  };
+
+                my $currentTypeProperties = $currentProperties->{'ignored prefixes in index'};
+
+                if (!defined $currentTypeProperties)
+                    {
+                    $currentTypeProperties = { };
+                    $currentProperties->{'ignored prefixes in index'} = $currentTypeProperties;
+                    };
+
+                if ($command eq 'add' && exists $currentTypeProperties->{$topicType})
+                    {  $currentTypeProperties->{$topicType} .= ' ' . $value;  }
+                else
+                    {
+                    $currentTypeProperties->{$topicType} = $value;
+                    $currentTypeProperties->{$topicType . ' command'} = $command;
+                    };
+                };
+            };
+
+        NaturalDocs::ConfigFile->Close();
+        };
+
+
+    open(FH_LANGUAGES, '>' . $file) or die "Couldn't save " . $file;
+
+    print FH_LANGUAGES 'Format: ' . NaturalDocs::Settings->TextAppVersion() . "\n\n";
+
+    # Remember the 80 character limit.
+
+    if ($isMain)
+        {
+        print FH_LANGUAGES
+"# This is the main Natural Docs languages file.  If you change anything here,
+# it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
+# change something for just one project, edit the Languages.txt in its project
+# directory instead.\n";
+        }
+    else
+        {
+        print FH_LANGUAGES
+"# This is the Natural Docs languages file for this project.  If you change
+# anything here, it will apply to THIS PROJECT ONLY.  If you'd like to change
+# something for all your projects, edit the Languages.txt in Natural Docs'
+# Config directory instead.\n";
+        };
+
+    print FH_LANGUAGES
+    "\n" .
+"# Also, if you add something that you think would be useful to other developers
+# and should be included in Natural Docs by default, please e-mail it to
+# languages [at] naturaldocs [dot] org.
+
+
+###############################################################################
+#
+#   Syntax
+#
+#   Unlike other Natural Docs configuration files, in this file all comments
+#   MUST be alone on a line.  Some languages deal with the # character, so you
+#   cannot put comments on the same line as content.
+#
+###############################################################################
+#
+#   Ignore Extensions: [extension] [extension] ...
+#
+#   Causes the listed file extensions to be ignored, even if they were
+#   previously defined to be part of a language.  The list is
+#   space-separated.  ex. \"Ignore Extensions: cvs txt\"
+#
+#
+#   Language: [name]
+#
+#   Defines a new language.  Its name can use any characters.
+#
+#   The languages \"Text File\" and \"Shebang Script\" have special meanings.
+#   Text files are treated like one big comment and don't have comment symbols.
+#   Shebang scripts have their language determined by the shebang string
+#   instead of the extension and include files with no extension.
+#
+#
+#   Alter Language: [name]
+#
+#   Alters an existing language so you can override its settings.  Note that if
+#   a property has an Add/Replace form and that property has already been
+#   defined, you have to specify whether you're adding to the list or replacing
+#   it.  Otherwise assume you're replacing the value.
+#
+#
+###############################################################################
+#
+#   Language Properties
+#
+###############################################################################
+#
+#   Extensions: [extension] [extension] ...
+#   [Add/Replace] Extensions: [extension] [extension] ...
+#
+#   Defines the file extensions for the language's source files.  The list is
+#   space-separated.  ex. \"Extensions: c cpp\".  You can use extensions that
+#   were previously used by another language to redefine them.
+#
+#
+#   Shebang Strings: [string] [string] ...
+#   [Add/Replace] Shebang Strings: [string] [string] ...
+#
+#   Defines a list of strings that can appear in the shebang (#!) line to
+#   designate that it's part of the language.  They can appear anywhere in the
+#   line, so \"php\" will work for \"#!/user/bin/php4\".  You can use strings
+#   that were previously used by another language to redefine them.
+#
+#
+#   Package Separator: [symbol]
+#
+#   Defines the default package separator symbol, such as . or ::.  This is
+#   for presentation only and will not affect how Natural Docs links are
+#   parsed.  The default is a dot.
+#
+#
+#   Ignore Prefixes in Index: [prefix] [prefix] ...
+#   [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...
+#
+#   Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...
+#   [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...
+#
+#   Specifies prefixes that should be ignored when sorting symbols in an
+#   index.  Can be specified in general or for a specific topic type.  The
+#   prefixes will still appear, the symbols will just be sorted as if they're
+#   not there.  For example, specifying \"ADO_\" for functions will mean that
+#   \"ADO_DoSomething\" will appear under D instead of A.
+#
+#
+###############################################################################
+#
+#   Basic Language Support Properties
+#
+#   These properties are only available for languages with basic language
+#   support.
+#
+###############################################################################
+#
+#   Line Comments: [symbol] [symbol] ...
+#
+#   Defines a space-separated list of symbols that are used for line comments,
+#   if any.  ex. \"Line Comments: //\".
+#
+#
+#   Block Comments: [opening sym] [closing sym] [opening sym] [closing sym] ...
+#
+#   Defines a space-separated list of symbol pairs that are used for block
+#   comments, if any.  ex. \"Block Comments: /* */\".
+#
+#
+#   [Topic Type] Prototype Enders: [symbol] [symbol] ...
+#
+#   When defined, Natural Docs will attempt to get a prototype from the code
+#   immediately following the specified topic type.  It grabs code until the
+#   first ender symbol or the next Natural Docs comment, and if it contains the
+#   topic name, it serves as its prototype.  Use \\n to specify a line break.
+#   ex. \"Function Prototype Enders: { ;\", \"Variable Prototype Enders: = ;\".
+#
+#
+#   Line Extender: [symbol]
+#
+#   Defines the symbol that allows a prototype to span multiple lines if
+#   normally a line break would end it.
+#
+#
+#   Perl Package: [perl package]
+#
+#   Specifies the Perl package used to fine-tune the language behavior in ways
+#   too complex to do in this file.
+#
+#
+###############################################################################
+#
+#   Full Language Support Properties:
+#
+#   These properties are only available for languages with full language
+#   support.
+#
+###############################################################################
+#
+#   Full Language Support: [perl package]
+#
+#   Specifies the Perl package that has the parsing routines necessary for full
+#   language support.
+#
+#
+###############################################################################\n";
+
+    if ($isMain)
+        {
+        print FH_LANGUAGES "\n"
+        . "# The language \"Shebang Script\" MUST be defined in this file.\n";
+        };
+
+    my @topicTypeOrder = ( ::TOPIC_GENERAL(), ::TOPIC_CLASS(), ::TOPIC_FUNCTION(), ::TOPIC_VARIABLE(),
+                                         ::TOPIC_PROPERTY(), ::TOPIC_TYPE(), ::TOPIC_CONSTANT() );
+
+    for (my $i = 0; $i < scalar @segments; $i += 3)
+        {
+        my ($keyword, $name, $properties) = @segments[$i..$i+2];
+
+        print FH_LANGUAGES "\n\n";
+
+        if ($keyword eq 'ignore extensions')
+            {
+            my @extensions = split(/ /, $name, 2);
+
+            if (scalar @extensions == 1)
+                {  print FH_LANGUAGES 'Ignore Extension: ';  }
+            else
+                {  print FH_LANGUAGES 'Ignore Extensions: ';  };
+
+            print FH_LANGUAGES $name . "\n";
+            }
+        else # 'language' or 'alter language'
+            {
+            if ($keyword eq 'language')
+                {  print FH_LANGUAGES 'Language: ' . $name . "\n\n";  }
+            else
+                {  print FH_LANGUAGES 'Alter Language: ' . $name . "\n\n";  };
+
+            if (exists $properties->{'extensions'})
+                {
+                print FH_LANGUAGES '   ';
+
+                if ($properties->{'extensions command'})
+                    {  print FH_LANGUAGES ucfirst($properties->{'extensions command'}) . ' ';  };
+
+                my @extensions = split(/ /, $properties->{'extensions'}, 2);
+
+                if (scalar @extensions == 1)
+                    {  print FH_LANGUAGES 'Extension: ';  }
+                else
+                    {  print FH_LANGUAGES 'Extensions: ';  };
+
+                print FH_LANGUAGES lc($properties->{'extensions'}) . "\n";
+                };
+
+            if (exists $properties->{'shebang strings'})
+                {
+                print FH_LANGUAGES '   ';
+
+                if ($properties->{'shebang strings command'})
+                    {  print FH_LANGUAGES ucfirst($properties->{'shebang strings command'}) . ' ';  };
+
+                my @shebangStrings = split(/ /, $properties->{'shebang strings'}, 2);
+
+                if (scalar @shebangStrings == 1)
+                    {  print FH_LANGUAGES 'Shebang String: ';  }
+                else
+                    {  print FH_LANGUAGES 'Shebang Strings: ';  };
+
+                print FH_LANGUAGES lc($properties->{'shebang strings'}) . "\n";
+                };
+
+            if (exists $properties->{'ignore prefixes in index'})
+                {
+                my $topicTypePrefixes = $properties->{'ignore prefixes in index'};
+
+                my %usedTopicTypes;
+                my @topicTypes = ( @topicTypeOrder, keys %$topicTypePrefixes );
+
+                foreach my $topicType (@topicTypes)
+                    {
+                    if (exists $topicTypePrefixes->{$topicType} && !exists $usedTopicTypes{$topicType})
+                        {
+                        print FH_LANGUAGES '   ';
+
+                        if ($topicTypePrefixes->{$topicType . ' command'})
+                            {  print FH_LANGUAGES ucfirst($topicTypePrefixes->{$topicType . ' command'}) . ' ';  };
+
+                        print FH_LANGUAGES 'Ignored ';
+
+                        if ($topicType ne ::TOPIC_GENERAL())
+                            {  print FH_LANGUAGES NaturalDocs::Topics->TypeInfo($topicType)->Name() . ' ';  };
+
+                        print FH_LANGUAGES 'Prefixes in Index: ' . $topicTypePrefixes->{$topicType} . "\n";
+
+                        $usedTopicTypes{$topicType} = 1;
+                        };
+                    };
+                };
+
+            if (exists $properties->{'line comments'})
+                {
+                my @comments = split(/ /, $properties->{'line comments'}, 2);
+
+                if (scalar @comments == 1)
+                    {  print FH_LANGUAGES '   Line Comment: ';  }
+                else
+                    {  print FH_LANGUAGES '   Line Comments: ';  };
+
+                print FH_LANGUAGES $properties->{'line comments'} . "\n";
+                };
+
+            if (exists $properties->{'block comments'})
+                {
+                my @comments = split(/ /, $properties->{'block comments'}, 3);
+
+                if (scalar @comments == 2)
+                    {  print FH_LANGUAGES '   Block Comment: ';  }
+                else
+                    {  print FH_LANGUAGES '   Block Comments: ';  };
+
+                print FH_LANGUAGES $properties->{'block comments'} . "\n";
+                };
+
+            if (exists $properties->{'package separator'})
+                {
+                print FH_LANGUAGES '   Package Separator: ' . $properties->{'package separator'} . "\n";
+                };
+
+            if (exists $properties->{'prototype enders'})
+                {
+                my $topicTypeEnders = $properties->{'prototype enders'};
+
+                my %usedTopicTypes;
+                my @topicTypes = ( @topicTypeOrder, keys %$topicTypeEnders );
+
+                foreach my $topicType (@topicTypes)
+                    {
+                    if (exists $topicTypeEnders->{$topicType} && !exists $usedTopicTypes{$topicType})
+                        {
+                        print FH_LANGUAGES '   ';
+
+                        if ($topicType ne ::TOPIC_GENERAL())
+                            {  print FH_LANGUAGES NaturalDocs::Topics->TypeInfo($topicType)->Name() . ' ';  };
+
+                        my @enders = split(/ /, $topicTypeEnders->{$topicType}, 2);
+
+                        if (scalar @enders == 1)
+                            {  print FH_LANGUAGES 'Prototype Ender: ';  }
+                        else
+                            {  print FH_LANGUAGES 'Prototype Enders: ';  };
+
+                        print FH_LANGUAGES $topicTypeEnders->{$topicType} . "\n";
+
+                        $usedTopicTypes{$topicType} = 1;
+                        };
+                    };
+                };
+
+            if (exists $properties->{'line extender'})
+                {
+                print FH_LANGUAGES '   Line Extender: ' . $properties->{'line extender'} . "\n";
+                };
+
+            if (exists $properties->{'perl package'})
+                {
+                print FH_LANGUAGES '   Perl Package: ' . $properties->{'perl package'} . "\n";
+                };
+
+            if (exists $properties->{'full language support'})
+                {
+                print FH_LANGUAGES '   Full Language Support: ' . $properties->{'full language support'} . "\n";
+                };
+            };
+        };
+
+    close(FH_LANGUAGES);
     };
 
 
