@@ -189,9 +189,9 @@ sub Load
 
         my $version = NaturalDocs::Version->FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
-        # The file format changed with 1.16.  Need to regenerate the symbol table.
+        # Fixed prototype detection bug in 1.21.  Need to regenerate the symbol table.
 
-        if ($version >= NaturalDocs::Version->FromString('1.16') && $version <= NaturalDocs::Settings->AppVersion())
+        if ($version >= NaturalDocs::Version->FromString('1.21') && $version <= NaturalDocs::Settings->AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close(SYMBOLTABLEFILEHANDLE);  };
