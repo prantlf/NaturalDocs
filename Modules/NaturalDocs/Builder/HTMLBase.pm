@@ -2102,7 +2102,6 @@ sub NDMarkupToHTML #(sourceFile, text, package, using)
             # Format non-code text.
 
             # Convert quotes to fancy quotes.
-            # DEPENDENCY: BuildTextLink and BuildURLLink need to be able to undo these.
             $text =~ s/^\'/&lsquo;/gm;
             $text =~ s/([\ \(\[\{])\'/$1&lsquo;/g;
             $text =~ s/\'/&rsquo;/g;
@@ -2185,13 +2184,9 @@ sub BuildTextLink #(text, package, using, sourceFile)
     {
     my ($self, $text, $package, $using, $sourceFile) = @_;
 
-    $text = NaturalDocs::NDMarkup->RestoreAmpChars($text);
+    my $plainText = $self->RestoreAmpChars($text);
 
-    # DEPENDENCY: This is undoing the fancy quotes from NDMarkupToHTML.
-    $text =~ s/&(?:[lr]dquo|quot);/\"/g;
-    $text =~ s/&[lr]squo;/\'/g;
-
-    my $symbol = NaturalDocs::SymbolString->FromText($text);
+    my $symbol = NaturalDocs::SymbolString->FromText($plainText);
     my $target = NaturalDocs::SymbolTable->References(::REFERENCE_TEXT(), $symbol, $package, $using, $sourceFile);
 
     if (defined $target)
@@ -2234,11 +2229,7 @@ sub BuildURLLink #(url)
     {
     my ($self, $url) = @_;
 
-    $url = NaturalDocs::NDMarkup->RestoreAmpChars($url);
-
-    # DEPENDENCY: This is undoing the fancy quotes from NDMarkupToHTML.
-    $url =~ s/&(?:[lr]dquo|quot);/\"/g;
-    $url =~ s/&[lr]squo;/\'/g;
+    $url = $self->RestoreAmpChars($url);
 
     if (length $url < 50)
         {  return '<a href="' . $url . '" class=LURL>' . $self->ConvertAmpChars($url) . '</a>';  };
@@ -2412,6 +2403,7 @@ sub AddDoubleSpaces #(text)
     return $text;
     };
 
+
 #
 #   Function: ConvertAmpChars
 #
@@ -2433,6 +2425,31 @@ sub ConvertAmpChars #(text)
     $text =~ s/\"/&quot;/g;
     $text =~ s/</&lt;/g;
     $text =~ s/>/&gt;/g;
+
+    return $text;
+    };
+
+
+#
+#   Function: RestoreAmpChars
+#
+#   Restores all amp characters to their original state.  This works with both <NDMarkup> amp chars and fancy quotes.
+#
+#   Parameters:
+#
+#       text - The text to convert.
+#
+#   Returns:
+#
+#       The converted text.
+#
+sub RestoreAmpChars #(text)
+    {
+    my ($self, $text) = @_;
+
+    $text = NaturalDocs::NDMarkup->RestoreAmpChars($text);
+    $text =~ s/&[lr]squo;/'/g;
+    $text =~ s/&[lr]dquo;/"/g;
 
     return $text;
     };
