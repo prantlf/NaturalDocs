@@ -137,7 +137,7 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   COMBINED_TYPE - The combined <TopicType> of the element.
 #   PACKAGE_SEPARATOR - The combined package separator symbol of the element.
 #   SORTABLE_SYMBOL - The sortable symbol as a text string.
-#   STRIPPED_PREFIX - The part of the symbol that was stripped off to make the sortable symbol.
+#   IGNORED_PREFIX - The part of the symbol that was stripped off to make the sortable symbol.
 #
 use NaturalDocs::DefineMembers 'SYMBOL', 'Symbol()',
                                                  'PACKAGE', 'Package()',
@@ -148,7 +148,7 @@ use NaturalDocs::DefineMembers 'SYMBOL', 'Symbol()',
                                                  'COMBINED_TYPE', 'CombinedType()',
                                                  'PACKAGE_SEPARATOR', 'PackageSeparator()',
                                                  'SORTABLE_SYMBOL', 'SortableSymbol()',
-                                                 'STRIPPED_PREFIX', 'StrippedPrefix()';
+                                                 'IGNORED_PREFIX', 'IgnoredPrefix()';
 # DEPENDENCY: New() depends on the order of these constants and that there is no inheritance..
 
 
@@ -312,7 +312,7 @@ sub Sort
 #
 #   Function: MakeSortableSymbol
 #
-#   Generates <SortableSymbol()> and <StrippedPrefix()>.  Should only be called after everything is merged.
+#   Generates <SortableSymbol()> and <IgnoredPrefix()>.  Should only be called after everything is merged.
 #
 sub MakeSortableSymbol
     {
@@ -399,15 +399,15 @@ sub MakeSortableSymbol
         {  $finalLanguage = NaturalDocs::Languages->LanguageOf($self->File());  };
 
     my $textSymbol = NaturalDocs::SymbolString->ToText($self->Symbol(), $self->PackageSeparator());
-    my $sortableSymbol = $finalLanguage->MakeSortableSymbol($textSymbol, $self->CombinedType());
+    my $ignoredPrefixLength = $finalLanguage->IgnoredPrefixLength($textSymbol, $self->CombinedType());
 
-    $self->[SORTABLE_SYMBOL] = $sortableSymbol;
-
-    if (length $textSymbol > length $sortableSymbol &&
-        substr($textSymbol, 0 - length $sortableSymbol) eq $sortableSymbol)
+    if ($ignoredPrefixLength)
         {
-        $self->[STRIPPED_PREFIX] = substr($textSymbol, 0, 0 - length $sortableSymbol);
-        };
+        $self->[IGNORED_PREFIX] = substr($textSymbol, 0, $ignoredPrefixLength);
+        $self->[SORTABLE_SYMBOL] = substr($textSymbol, $ignoredPrefixLength);
+        }
+    else
+        {  $self->[SORTABLE_SYMBOL] = $textSymbol;  };
     };
 
 
@@ -427,8 +427,8 @@ sub MakeSortableSymbol
 #   CombinedType - Returns the combined <TopicType> of the element.
 #   PackageSeparator - Returns the combined package separator symbol of the element.
 #   SortableSymbol - Returns the sortable symbol as a text string.  Only available after calling <MakeSortableSymbol()>.
-#   StrippedPrefix - Returns the part of the symbol that was stripped off to make the <SortableSymbol()>, or undef if none.
-#                           Only available after calling <MakeSortableSymbol()>.
+#   IgnoredPrefix - Returns the part of the symbol that was stripped off to make the <SortableSymbol()>, or undef if none.
+#                          Only available after calling <MakeSortableSymbol()>.
 #
 
 #   Function: HasMultiplePackages
