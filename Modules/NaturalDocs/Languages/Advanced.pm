@@ -618,7 +618,7 @@ sub StartScope #(closingSymbol, lineNumber, package)
     my ($self, $closingSymbol, $lineNumber, $package) = @_;
 
     push @{$self->[SCOPE_STACK]},
-            NaturalDocs::Languages::Advanced::Scope->New($closingSymbol, $package);
+            NaturalDocs::Languages::Advanced::Scope->New($closingSymbol, $package, $self->CurrentUsing());
 
     $self->AddToScopeRecord($self->CurrentScope(), $lineNumber);
     };
@@ -706,6 +706,30 @@ sub SetPackage #(package, lineNumber)
     $self->[SCOPE_STACK]->[-1]->SetPackage($package);
 
     $self->AddToScopeRecord($self->CurrentScope(), $lineNumber);
+    };
+
+
+#
+#   Function: CurrentUsing
+#
+#   Returns the current calculated arrayref of <SymbolStrings> from Using statements, or undef if none.
+#
+sub CurrentUsing
+    {
+    my ($self) = @_;
+    return $self->[SCOPE_STACK]->[-1]->Using();
+    };
+
+
+#
+#   Function: AddUsing
+#
+#   Adds a Using <SymbolString> to the current scope.
+#
+sub AddUsing #(using)
+    {
+    my ($self, $using) = @_;
+    $self->[SCOPE_STACK]->[-1]->AddUsing($using);
     };
 
 
