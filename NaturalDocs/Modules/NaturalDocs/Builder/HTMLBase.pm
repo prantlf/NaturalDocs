@@ -895,6 +895,7 @@ sub BuildPrototype #(type, prototype, file)
     my ($self, $type, $prototype, $file) = @_;
 
     my $language = NaturalDocs::Languages->LanguageOf($file);
+
     my ($pre, $open, $params, $close, $post) = $language->FormatPrototype($type, $prototype);
 
     my $output;
@@ -1195,7 +1196,7 @@ sub BuildClassHierarchyEntry #(file, symbol, style, link)
                 {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($file), $self->OutputFileOf($target->File()) );  };
             # else leave it undef
 
-            my $targetTooltipID = $self->BuildToolTip($symbol, $targetFile, $target->Type(),
+            my $targetTooltipID = $self->BuildToolTip($symbol, $target->File(), $target->Type(),
                                                                           $target->Prototype(), $target->Summary());
 
             my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
