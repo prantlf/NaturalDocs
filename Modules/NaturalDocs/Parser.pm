@@ -82,6 +82,7 @@ my %synonyms = (
                             'routine'      => ::TOPIC_FUNCTION(),
                             'subroutine' => ::TOPIC_FUNCTION(),
                             'sub'           => ::TOPIC_FUNCTION(),
+                            'method'     => ::TOPIC_FUNCTION(),
                             'callback'     => ::TOPIC_FUNCTION(),
 
                             'functions'     => ::TOPIC_FUNCTION_LIST(),
@@ -91,6 +92,7 @@ my %synonyms = (
                             'routines'      => ::TOPIC_FUNCTION_LIST(),
                             'subroutines' => ::TOPIC_FUNCTION_LIST(),
                             'subs'           => ::TOPIC_FUNCTION_LIST(),
+                            'methods'     => ::TOPIC_FUNCTION_LIST(),
                             'callbacks'     => ::TOPIC_FUNCTION_LIST(),
 
                             'variable'    => ::TOPIC_VARIABLE(),
@@ -121,6 +123,8 @@ my %synonyms = (
                             'char'         => ::TOPIC_VARIABLE(),
                             'string'       => ::TOPIC_VARIABLE(),
                             'str'           => ::TOPIC_VARIABLE(),
+                            'property'  => ::TOPIC_VARIABLE(),
+                            'prop'        => ::TOPIC_VARIABLE(),
 
                             'variables'   => ::TOPIC_VARIABLE_LIST(),
                             'vars'          => ::TOPIC_VARIABLE_LIST(),
@@ -150,6 +154,8 @@ my %synonyms = (
                             'chars'        => ::TOPIC_VARIABLE_LIST(),
                             'strings'      => ::TOPIC_VARIABLE_LIST(),
                             'strs'          => ::TOPIC_VARIABLE_LIST(),
+                            'properties' => ::TOPIC_VARIABLE_LIST(),
+                            'props'       => ::TOPIC_VARIABLE_LIST(),
 
                             'topic'        => ::TOPIC_GENERIC(),
                             'about'       => ::TOPIC_GENERIC(),
@@ -159,10 +165,6 @@ my %synonyms = (
                             'option'      => ::TOPIC_GENERIC(),
                             'symbol'     => ::TOPIC_GENERIC(),
                             'sym'         => ::TOPIC_GENERIC(),
-                            'type'         => ::TOPIC_GENERIC(),
-                            'typedef'    => ::TOPIC_GENERIC(),
-                            'constant'   => ::TOPIC_GENERIC(),
-                            'const'       => ::TOPIC_GENERIC(),
                             'definition'   => ::TOPIC_GENERIC(),
                             'define'       => ::TOPIC_GENERIC(),
                             'def'           => ::TOPIC_GENERIC(),
@@ -170,23 +172,30 @@ my %synonyms = (
                             'format'      => ::TOPIC_GENERIC(),
 
                             'list'                => ::TOPIC_GENERIC_LIST(),
-                            'enumeration'  => ::TOPIC_GENERIC_LIST(),
-                            'enum'            => ::TOPIC_GENERIC_LIST(),
 
                             'items'        => ::TOPIC_GENERIC_LIST(),
                             'options'      => ::TOPIC_GENERIC_LIST(),
                             'symbols'     => ::TOPIC_GENERIC_LIST(),
                             'syms'         => ::TOPIC_GENERIC_LIST(),
-                            'types'         => ::TOPIC_GENERIC_LIST(),
-                            'typedefs'    => ::TOPIC_GENERIC_LIST(),
-                            'constants'   => ::TOPIC_GENERIC_LIST(),
-                            'consts'       => ::TOPIC_GENERIC_LIST(),
                             'definitions'   => ::TOPIC_GENERIC_LIST(),
                             'defines'       => ::TOPIC_GENERIC_LIST(),
                             'defs'           => ::TOPIC_GENERIC_LIST(),
                             'macros'      => ::TOPIC_GENERIC_LIST(),
-                            'formats'      => ::TOPIC_GENERIC_LIST()
+                            'formats'      => ::TOPIC_GENERIC_LIST(),
 
+                            'constant'   => ::TOPIC_CONSTANT(),
+                            'const'       => ::TOPIC_CONSTANT(),
+
+                            'constants'   => ::TOPIC_CONSTANT_LIST(),
+                            'consts'       => ::TOPIC_CONSTANT_LIST(),
+                            'enumeration'  => ::TOPIC_CONSTANT_LIST(),
+                            'enum'            => ::TOPIC_CONSTANT_LIST(),
+
+                            'type'         => ::TOPIC_TYPE(),
+                            'typedef'    => ::TOPIC_TYPE(),
+
+                            'types'         => ::TOPIC_TYPE_LIST(),
+                            'typedefs'    => ::TOPIC_TYPE_LIST()
                             );
 
 #
