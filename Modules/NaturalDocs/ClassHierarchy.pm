@@ -171,7 +171,7 @@ sub Load
     my $fileIsOkay = 1;
     my $fileName = NaturalDocs::Project->ClassHierarchyFile();
 
-    if (NaturalDocs::Settings->RebuildData() || !open(CLASS_HIERARCHY_FILEHANDLE, '<' . $fileName))
+    if (!open(CLASS_HIERARCHY_FILEHANDLE, '<' . $fileName))
         {  $fileIsOkay = undef;  }
     else
         {

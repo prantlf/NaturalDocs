@@ -215,8 +215,7 @@ sub Load
 
     my $fileIsOkay;
 
-    if (!NaturalDocs::Settings->RebuildData() &&
-        open(SYMBOLTABLE_FILEHANDLE, '<' . NaturalDocs::Project->SymbolTableFile()))
+    if (open(SYMBOLTABLE_FILEHANDLE, '<' . NaturalDocs::Project->SymbolTableFile()))
         {
         # See if it's binary.
         binmode(SYMBOLTABLE_FILEHANDLE);
