@@ -222,17 +222,7 @@ sub MakeParsedTopic #(type, title, package, body, lineNumber, isList)
     my $summary;
 
     if (defined $body)
-        {
-        # Extract the first sentence from the leading paragraph, if any.  We'll tolerate a single header beforehand, but nothing else.
-
-        if ($body =~ /^(?:<h>[^<]*<\/h>)?<p>(.*?)(<\/p>|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/x)
-            {
-            $summary = $1;
-            if ($2 ne '</p>')
-                {  $summary .= $2;  };
-            };
-        };
-
+        {  $summary = NaturalDocs::Parser->GetSummaryFromBody($body);  };
 
     return NaturalDocs::Parser::ParsedTopic->New($type, $title, $package, undef, undef, $summary,
                                                                          $body, $lineNumber, $isList);
