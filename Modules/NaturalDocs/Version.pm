@@ -10,6 +10,9 @@
 #
 ###############################################################################
 
+# This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
+# Natural Docs is licensed under the GPL
+
 use strict;
 use integer;
 
