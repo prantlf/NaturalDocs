@@ -29,6 +29,23 @@ use integer;
 package NaturalDocs::File;
 
 
+#
+#   Function: CheckCompatibility
+#
+#   Checks if the standard packages required by this one are up to snuff and dies if they aren't.  This is done because I can't
+#   tell which versions of File::Spec have splitpath just by the version numbers.
+#
+sub CheckCompatibility
+    {
+    eval {
+        File::Spec->splitpath('');
+    };
+
+    if ($@)
+        {  die "Natural Docs requires a newer version of File::Spec than you have.\nYou must either upgrade it or upgrade Perl.\n";  };
+    };
+
+
 ###############################################################################
 # Group: Path String Functions
 
