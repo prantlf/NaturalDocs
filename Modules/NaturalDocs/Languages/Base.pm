@@ -441,6 +441,9 @@ sub ParseParameterLine #(line)
     $type = pop @parameterWords;
     $typePrefix = join(' ', @parameterWords);
 
+    if ($typePrefix)
+        {  $typePrefix .= ' ';  };
+
     if ($type =~ /^([a-z0-9_\:\.]+(?:\.|\:\:))[a-z0-9_]/i)
         {
         my $attachedTypePrefix = $1;
