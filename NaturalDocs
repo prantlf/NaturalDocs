@@ -106,16 +106,6 @@ use NaturalDocs::Extensions;
 #   <ReferenceType>.  This is done because if any of those parameters change, it needs to be treated as a completely separate
 #   reference.
 #
-#
-#   Types: Enum Types
-#
-#   Since Perl does not actually have an enum type, these are just scalar variables whose values should always be one of the
-#   specified constants or undef.  Undef and zero will never be used as a constant's value.
-#
-#       TopicType - One of the <NaturalDocs::Topics::Type Constants>.
-#       MenuEntryType - One of the <NaturalDocs::Constants::Menu Entry Type Constants>.
-#       FileStatus - One of the <NaturalDocs::Constants::File Status Constants>.
-#
 
 
 
