@@ -124,9 +124,9 @@ sub LoadAndDetectChanges
         # Check if the file is in the right format.
         my $version = NaturalDocs::Version::FromTextFile(\*PROJECTFILEHANDLE);
 
-        # The output needs to be rebuilt for 1.12 because there was a bug in the prototype detection.
+        # The output needs to be rebuilt for 1.13 because there were bugs in the prototype detection and changes to the output.
 
-        if ($version < NaturalDocs::Version::FromString('1.12'))
+        if ($version < NaturalDocs::Version::FromString('1.13'))
             {
             $fileIsOkay = 1;
             $rebuildOutput = 1;
