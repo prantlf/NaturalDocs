@@ -11,7 +11,7 @@ About: Top-Level Tags
    All content will be surrounded by one of the top-level tags.  These tags will not appear within each other.
 
    <p></p>         - Surrounds a paragraph.  Paragraph breaks will replace double line breaks, and single line breaks will
-                         be removed completely.
+                            be removed completely.
 
    <code></code>   - Surrounds code or text diagrams that should appear literally in the output.
 
@@ -27,35 +27,40 @@ About: List Item Tags
 
    <li></li>       - Surrounds a bulleted list item.
    <de></de>   - Surrounds a description list entry, which is the left side.  It will always be followed by a description list
-                     description.
+                         description.
    <ds></ds>   - Surrounds a description list symbol.  This is the same as a description list entry, except that the content
-                     is also a referenceable symbol.  This occurs when inside a list topic.  This tag will always
-                     be followed by a description list description.
+                         is also a referenceable symbol.  This occurs when inside a list topic.  This tag will always
+                         be followed by a description list description.
    <dd></dd>   - Surrounds a description list description, which is the right side.  It will always be preceded by a description
-                     list entry or symbol.
+                         list entry or symbol.
 
 About: Text Tags
 
    These tags will only appear in paragraphs, headings, or description list descriptions.
 
    <b></b>         - Bold
-   <i></i>         - Italics
+   <i></i>           - Italics
    <u></u>         - Underline
 
    <link></link>   - Surrounds a potential link to a symbol; potential because the target is not guaranteed to exist.  This
-                         tag merely designates an attempted link.  No other tags will appear between them.
+                             tag merely designates an attempted link.  No other tags will appear between them.
 
-   <url></url>  - Surrounds an external link.  No other tags will appear between them.
+   <url></url>          - Surrounds an external link.  No other tags will appear between them.
    <email></email>  - Surrounds an email address.  No other tags will appear between them.
 
 About: Amp Chars
 
    These are the only amp chars supported, and will appear everywhere.  Every other character will appear as is.
 
-   &amp;       - The ampersand &.
-   &quot;      - The double quote ".
+   &amp;    - The ampersand &.
+   &quot;    - The double quote ".
    &lt;        - The less than sign <.
-   &gt;        - The greater than sign >.
+   &gt;       - The greater than sign >.
+
+About: Tabs
+
+    NDMarkup will not contain tab characters, only spaces.  Any tab characters appearing in the source files will be
+    expanded/replaced as necessary.
 
 
 About: General Tag Properties
