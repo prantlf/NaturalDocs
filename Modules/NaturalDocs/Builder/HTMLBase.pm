@@ -888,7 +888,9 @@ sub BuildPrototype #(prototype)
         my $lastParam = pop @params;
 
         $output =
-        '<table border=0 cellspacing=0 cellpadding=0 class=CPrototype><tr>'
+        # Crappy hacky extra div and table because browsers interpret padding on tables differently.
+        '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
+        . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
             . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
             . '<td style="vertical-align: bottom">' . $openParen . '</td>'
@@ -915,7 +917,8 @@ sub BuildPrototype #(prototype)
             $output .=
             '<td style="vertical-align: top">' . $closeParen . '</td>'
             . '<td style="vertical-align: top">' . $post . '</td>'
-        . '</tr></table>';
+        . '</tr></table>'
+        . '</div></td></tr></table>';
         }
 
     else
