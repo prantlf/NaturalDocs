@@ -2141,8 +2141,10 @@ sub BuildEMailLink #(address)
     # Now put it back together again.  We'll use spans to split the text transparently and JavaScript to split and join the link.
 
     return
-    "<a href=\"#\" onClick=\"location.href='mailto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>"
-        . '<span>' . join('</span><span>', @splitAddress) . '</span>'
+    "<a href=\"#\" onClick=\"location.href='mai' + 'lto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>"
+        . $splitAddress[0] . '<span style="display: none">(delete this)</span>' . $splitAddress[1]
+        . '<span>@</span>'
+        . $splitAddress[3] . '<span style="display: none">(delete this)</span>' . $splitAddress[4]
     . '</a>';
     };
 
