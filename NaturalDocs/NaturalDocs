@@ -92,6 +92,7 @@ use NaturalDocs::ClassHierarchy;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
 use NaturalDocs::Error;
+use NaturalDocs::StatusMessage;
 
 
 ###############################################################################
@@ -332,13 +333,15 @@ eval {
     my $amount = scalar keys %$filesToParse;
 
     if ($amount > 0)
-      {
-      if (!NaturalDocs::Settings->IsQuiet())
-          {  print 'Parsing ' . $amount . ' file' . ($amount > 1 ? 's' : '') . "...\n";  };
+        {
+        NaturalDocs::StatusMessage->Start('Parsing ' . $amount . ' file' . ($amount > 1 ? 's' : '') . '...', $amount);
 
-      foreach my $file (keys %$filesToParse)
-          {  NaturalDocs::Parser->ParseForInformation($file);  };
-      };
+        foreach my $file (keys %$filesToParse)
+            {
+            NaturalDocs::Parser->ParseForInformation($file);
+            NaturalDocs::StatusMessage->CompletedItem();
+            };
+        };
 
 
     # The symbol table is now fully resolved, so we can reduce its memory footprint.

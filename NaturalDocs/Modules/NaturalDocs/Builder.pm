@@ -157,26 +157,33 @@ sub Run
 
     if ($numberToPurge)
         {
-        if (!NaturalDocs::Settings->IsQuiet())
-            {  print 'Purging ' . $numberToPurge . ' file' . ($numberToPurge > 1 ? 's' : '') . "...\n";  };
+        NaturalDocs::StatusMessage->Start('Purging ' . $numberToPurge . ' file' . ($numberToPurge > 1 ? 's' : '') . '...',
+                                                             $numberToPurge);
 
         foreach my $buildTarget (@$buildTargets)
-            {  $buildTarget->Builder()->PurgeFiles();  };
+            {
+            $buildTarget->Builder()->PurgeFiles();
+            NaturalDocs::StatusMessage->CompletedItem();
+            };
         };
 
     if ($numberOfIndexesToPurge)
         {
-        if (!NaturalDocs::Settings->IsQuiet())
-            {  print 'Purging ' . $numberOfIndexesToPurge . ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . "...\n";  };
+        NaturalDocs::StatusMessage->Start('Purging ' . $numberOfIndexesToPurge .
+                                                             ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . '...',
+                                                             $numberOfIndexesToPurge);
 
         foreach my $buildTarget (@$buildTargets)
-            {  $buildTarget->Builder()->PurgeIndexes(\%indexesToPurge);  };
+            {
+            $buildTarget->Builder()->PurgeIndexes(\%indexesToPurge);
+            NaturalDocs::StatusMessage->CompletedItem();
+            };
         };
 
     if ($numberToBuild)
         {
-        if (!NaturalDocs::Settings->IsQuiet())
-            {  print 'Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') . "...\n";  };
+        NaturalDocs::StatusMessage->Start('Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') . '...',
+                                                             $numberToBuild);
 
         foreach my $file (keys %$filesToBuild)
             {
@@ -185,7 +192,10 @@ sub Run
             NaturalDocs::Error->OnStartBuilding($file);
 
             foreach my $buildTarget (@$buildTargets)
-                {  $buildTarget->Builder()->BuildFile($file, $parsedFile);  };
+                {
+                $buildTarget->Builder()->BuildFile($file, $parsedFile);
+                NaturalDocs::StatusMessage->CompletedItem();
+                };
 
             NaturalDocs::Error->OnEndBuilding($file);
             };
@@ -193,13 +203,16 @@ sub Run
 
     if ($numberOfIndexesToBuild)
         {
-        if (!NaturalDocs::Settings->IsQuiet())
-            {  print 'Building ' . $numberOfIndexesToBuild . ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . "...\n";  };
+        NaturalDocs::StatusMessage->Start('Building ' . $numberOfIndexesToBuild .
+                                                             ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . '...', $numberOfIndexesToBuild);
 
         foreach my $index (keys %indexesToBuild)
             {
             foreach my $buildTarget (@$buildTargets)
-                {  $buildTarget->Builder()->BuildIndex($index);  };
+                {
+                $buildTarget->Builder()->BuildIndex($index);
+                NaturalDocs::StatusMessage->CompletedItem();
+                };
             };
         };
 
