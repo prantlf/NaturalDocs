@@ -558,13 +558,12 @@ sub LoadMenuFile
     my $afterGroupToken;
 
     my $lineNumber = 1;
-    my $menuFileHandle;
 
-    if (open($menuFileHandle, '<' . NaturalDocs::Project::MenuFile()))
+    if (open(MENUFILEHANDLE, '<' . NaturalDocs::Project::MenuFile()))
         {
         my $menuFileContent;
-        read($menuFileHandle, $menuFileContent, -s $menuFileHandle);
-        close($menuFileHandle);
+        read(MENUFILEHANDLE, $menuFileContent, -s MENUFILEHANDLE);
+        close(MENUFILEHANDLE);
 
         # We don't check if the menu file is from a future version because we can't just throw it out and regenerate it like we can
         # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
@@ -957,13 +956,11 @@ sub LoadMenuFile
 #
 sub SaveMenuFile
     {
-    my $menuFileHandle;
-
-    open($menuFileHandle, '>' . NaturalDocs::Project::MenuFile())
+    open(MENUFILEHANDLE, '>' . NaturalDocs::Project::MenuFile())
         or die "Couldn't save menu file " . NaturalDocs::Project::MenuFile() . "\n";
 
 
-    print $menuFileHandle
+    print MENUFILEHANDLE
 
     "# Do not change or remove this line.\n"
     . "Format: " . NaturalDocs::Settings::TextAppVersion() . "\n\n";
@@ -971,15 +968,15 @@ sub SaveMenuFile
 
     if (defined $title)
         {
-        print $menuFileHandle 'Title: ' . $title . "\n";
+        print MENUFILEHANDLE 'Title: ' . $title . "\n";
 
         if (defined $subTitle)
             {
-            print $menuFileHandle 'SubTitle: ' . $subTitle . "\n";
+            print MENUFILEHANDLE 'SubTitle: ' . $subTitle . "\n";
             }
         else
             {
-            print $menuFileHandle
+            print MENUFILEHANDLE
             "\n"
             . "# You can also add a sub-title to your menu by adding a\n"
             . "# \"SubTitle: [subtitle]\" line.\n";
@@ -987,26 +984,26 @@ sub SaveMenuFile
         }
     else
         {
-        print $menuFileHandle
+        print MENUFILEHANDLE
         "# You can add a title and sub-title to your menu.\n"
         . "# Just add \"Title: [project name]\" and \"SubTitle: [subtitle]\" lines here.\n";
         };
 
-    print $menuFileHandle "\n";
+    print MENUFILEHANDLE "\n";
 
     if (defined $footer)
         {
-        print $menuFileHandle 'Footer: ' . $footer . "\n";
+        print MENUFILEHANDLE 'Footer: ' . $footer . "\n";
         }
     else
         {
-        print $menuFileHandle
+        print MENUFILEHANDLE
         "# You can add a footer to your documentation.  Just add a\n"
         . "# \"Footer: [text]\" line here.  If you want to add a copyright notice,\n"
         . "# this would be the place to do it.\n";
         };
 
-    print $menuFileHandle
+    print MENUFILEHANDLE
 
     "\n"
 
@@ -1039,9 +1036,9 @@ sub SaveMenuFile
 
     . "\n";
 
-    WriteMenuEntries($menu->GroupContent(), $menuFileHandle, undef);
+    WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef);
 
-    close($menuFileHandle);
+    close(MENUFILEHANDLE);
     };
 
 
@@ -1120,49 +1117,48 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #
 sub LoadPreviousMenuStateFile
     {
-    my $fileHandle;
     my $fileIsOkay;
 
     my $menu;
     my $indexes;
     my $files;
 
-    my $fileName = NaturalDocs::Project::PreviousMenuStateFile();
+    my $previousStateFileName = NaturalDocs::Project::PreviousMenuStateFile();
 
     # We ignore NaturalDocs::Settings::RebuildData() because otherwise user changes can be lost.
-    if (open($fileHandle, '<' . $fileName))
+    if (open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName))
         {
         # See if it's binary.
-        binmode($fileHandle);
+        binmode(PREVIOUSSTATEFILEHANDLE);
 
         my $firstChar;
-        read($fileHandle, $firstChar, 1);
+        read(PREVIOUSSTATEFILEHANDLE, $firstChar, 1);
 
         if ($firstChar == ::BINARY_FORMAT())
             {
-            my $version = NaturalDocs::Version::FromBinaryFile($fileHandle);
+            my $version = NaturalDocs::Version::FromBinaryFile(\*PREVIOUSSTATEFILEHANDLE);
 
             # The file format has not changed since switching to binary.
 
             if ($version <= NaturalDocs::Settings::AppVersion())
                 {  $fileIsOkay = 1;  }
             else
-                {  close($fileHandle);  };
+                {  close(PREVIOUSSTATEFILEHANDLE);  };
             }
 
         else # it's not in binary
             {
             # Reopen it in text mode.
-            close($fileHandle);
-            open($fileHandle, '<' . $fileName);
+            close(PREVIOUSSTATEFILEHANDLE);
+            open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName);
 
             # Check the version.
-            my $version = NaturalDocs::Version::FromTextFile($fileHandle);
+            my $version = NaturalDocs::Version::FromTextFile(\*PREVIOUSSTATEFILEHANDLE);
 
             # We'll still read the pre-1.0 text file, since it's simple.
             if ($version <= NaturalDocs::Version::FromString('0.95'))
                 {
-                my $indexLine = <$fileHandle>;
+                my $indexLine = <PREVIOUSSTATEFILEHANDLE>;
                 chomp($indexLine);
 
                 $indexes = { };
@@ -1172,7 +1168,7 @@ sub LoadPreviousMenuStateFile
                     {  $indexes->{$indexInLine} = 1;  };
                 };
 
-            close($fileHandle);
+            close(PREVIOUSSTATEFILEHANDLE);
             };
         };
 
@@ -1188,7 +1184,7 @@ sub LoadPreviousMenuStateFile
 
         # [UInt8: type or 0 for end group]
 
-        while (read($fileHandle, $raw, 1))
+        while (read(PREVIOUSSTATEFILEHANDLE, $raw, 1))
             {
             my ($type, $flags, $title, $titleLength, $target, $targetLength);
             $type = unpack('C', $raw);
@@ -1200,39 +1196,39 @@ sub LoadPreviousMenuStateFile
                 {
                 # [UInt8: noAutoTitle] [AString16: title] [AString16: target]
 
-                read($fileHandle, $raw, 3);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 3);
                 (my $noAutoTitle, $titleLength) = unpack('Cn', $raw);
 
                 if ($noAutoTitle)
                     {  $flags = ::MENU_FILE_NOAUTOTITLE();  };
 
-                read($fileHandle, $title, $titleLength);
-                read($fileHandle, $raw, 2);
+                read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
 
                 $targetLength = unpack('n', $raw);
 
-                read($fileHandle, $target, $targetLength);
+                read(PREVIOUSSTATEFILEHANDLE, $target, $targetLength);
                 }
 
             elsif ($type == ::MENU_GROUP())
                 {
                 # [AString16: title]
 
-                read($fileHandle, $raw, 2);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
-                read($fileHandle, $title, $titleLength);
+                read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
                 }
 
             elsif ($type == ::MENU_INDEX())
                 {
                 # [AString16: title] [UInt8: type (0 for general)]
 
-                read($fileHandle, $raw, 2);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
-                read($fileHandle, $title, $titleLength);
-                read($fileHandle, $raw, 1);
+                read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 1);
                 $target = unpack('C', $raw);
 
                 if ($target == 0)
@@ -1243,24 +1239,24 @@ sub LoadPreviousMenuStateFile
                 {
                 # [AString16: title] [AString16: url]
 
-                read($fileHandle, $raw, 2);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
-                read($fileHandle, $title, $titleLength);
-                read($fileHandle, $raw, 2);
+                read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $targetLength = unpack('n', $raw);
 
-                read($fileHandle, $target, $targetLength);
+                read(PREVIOUSSTATEFILEHANDLE, $target, $targetLength);
                 }
 
             elsif ($type == ::MENU_TEXT())
                 {
                 # [AString16: text]
 
-                read($fileHandle, $raw, 2);
+                read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
-                read($fileHandle, $title, $titleLength);
+                read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
                 };
 
 
@@ -1286,6 +1282,8 @@ sub LoadPreviousMenuStateFile
                 };
 
             };
+
+        close(PREVIOUSSTATEFILEHANDLE);
         };
 
     return ($menu, $indexes, $files);
@@ -1299,19 +1297,18 @@ sub LoadPreviousMenuStateFile
 #
 sub SavePreviousMenuStateFile
     {
-    my $fileHandle;
-    open ($fileHandle, '>' . NaturalDocs::Project::PreviousMenuStateFile())
+    open (PREVIOUSSTATEFILEHANDLE, '>' . NaturalDocs::Project::PreviousMenuStateFile())
         or die "Couldn't save " . NaturalDocs::Project::PreviousMenuStateFile() . ".\n";
 
-    binmode($fileHandle);
+    binmode(PREVIOUSSTATEFILEHANDLE);
 
-    print $fileHandle '' . ::BINARY_FORMAT();
+    print PREVIOUSSTATEFILEHANDLE '' . ::BINARY_FORMAT();
 
-    NaturalDocs::Version::ToBinaryFile($fileHandle, NaturalDocs::Settings::AppVersion());
+    NaturalDocs::Version::ToBinaryFile(\*PREVIOUSSTATEFILEHANDLE, NaturalDocs::Settings::AppVersion());
 
-    WritePreviousMenuStateEntries($menu->GroupContent(), $fileHandle);
+    WritePreviousMenuStateEntries($menu->GroupContent(), \*PREVIOUSSTATEFILEHANDLE);
 
-    close($fileHandle);
+    close(PREVIOUSSTATEFILEHANDLE);
     };
 
 
@@ -1333,15 +1330,19 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
         {
         if ($entry->Type() == ::MENU_FILE())
             {
+            # We need to do length manually instead of using n/A in the template because it's not supported in earlier versions
+            # of Perl.
+
             # [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
-            print $fileHandle pack('CCn/A*n/A*', ::MENU_FILE(), ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 1 : 0),
-                                                                  $entry->Title(), $entry->Target());
+            print $fileHandle pack('CCnA*nA*', ::MENU_FILE(), ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 1 : 0),
+                                                                length($entry->Title()), $entry->Title(),
+                                                                length($entry->Target()), $entry->Target());
             }
 
         elsif ($entry->Type() == ::MENU_GROUP())
             {
             # [UInt8: MENU_GROUP] [AString16: title]
-            print $fileHandle pack('Cn/A*', ::MENU_GROUP(), $entry->Title());
+            print $fileHandle pack('CnA*', ::MENU_GROUP(), length($entry->Title()), $entry->Title());
             WritePreviousMenuStateEntries($entry->GroupContent(), $fileHandle);
             print $fileHandle pack('C', 0);
             }
@@ -1349,21 +1350,23 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
         elsif ($entry->Type() == ::MENU_INDEX())
             {
             # [UInt8: MENU_INDEX] [AString16: title] [UInt8: type (0 for general)]
-            print $fileHandle pack('Cn/A*C', ::MENU_INDEX(), $entry->Title(), $entry->Target());
+            print $fileHandle pack('CnA*C', ::MENU_INDEX(), length($entry->Title()), $entry->Title(), $entry->Target());
             }
 
         elsif ($entry->Type() == ::MENU_LINK())
             {
             # [UInt8: MENU_LINK] [AString16: title] [AString16: url]
-            print $fileHandle pack('Cn/A*n/A*', ::MENU_LINK(), $entry->Title(), $entry->Target());
+            print $fileHandle pack('CnA*nA*', ::MENU_LINK(), length($entry->Title()), $entry->Title(),
+                                                             length($entry->Target()), $entry->Target());
             }
 
         elsif ($entry->Type() == ::MENU_TEXT())
             {
             # [UInt8: MENU_TEXT] [AString16: hext]
-            print $fileHandle pack('Cn/A*', ::MENU_TEXT(), $entry->Title());
+            print $fileHandle pack('CnA*', ::MENU_TEXT(), length($entry->Title()), $entry->Title());
             };
         };
+
     };
 
 
@@ -1381,12 +1384,11 @@ sub HandleErrors #(errors)
     my $errors = shift;
 
     my $menuFile = NaturalDocs::Project::MenuFile();
-    my $menuFileHandle;
     my $menuFileContent;
 
-    open($menuFileHandle, '<' . $menuFile);
-    read($menuFileHandle, $menuFileContent, -s $menuFileHandle);
-    close($menuFileHandle);
+    open(MENUFILEHANDLE, '<' . $menuFile);
+    read(MENUFILEHANDLE, $menuFileContent, -s MENUFILEHANDLE);
+    close(MENUFILEHANDLE);
 
     my @lines = split(/\n/, $menuFileContent);
     $menuFileContent = undef;
@@ -1400,7 +1402,7 @@ sub HandleErrors #(errors)
     my $error = 0;
 
 
-    open($menuFileHandle, '>' . $menuFile);
+    open(MENUFILEHANDLE, '>' . $menuFile);
 
     if ($lines[0] =~ /^\# There (?:is an error|are \d+ errors) in this file\./)
         {
@@ -1415,9 +1417,9 @@ sub HandleErrors #(errors)
         };
 
     if (scalar @$errors == 1)
-        {  print $menuFileHandle "# There is an error in this file.  Search for ERROR to find it.\n\n";  }
+        {  print MENUFILEHANDLE "# There is an error in this file.  Search for ERROR to find it.\n\n";  }
     else
-        {  print $menuFileHandle "# There are " . (scalar @$errors) . " errors in this file.  Search for ERROR to find them.\n\n";  };
+        {  print MENUFILEHANDLE "# There are " . (scalar @$errors) . " errors in this file.  Search for ERROR to find them.\n\n";  };
 
     $lineNumber += 2;
 
@@ -1426,7 +1428,7 @@ sub HandleErrors #(errors)
         {
         while ($error < scalar @$errors && $originalLineNumber == $errors->[$error]->Line())
             {
-            print $menuFileHandle "# ERROR: " . $errors->[$error]->Description() . "\n";
+            print MENUFILEHANDLE "# ERROR: " . $errors->[$error]->Description() . "\n";
 
             # Use the GNU error format, which should make it easier to handle errors when Natural Docs is part of a build process.
             # See http://www.gnu.org/prep/standards_15.html
@@ -1443,14 +1445,14 @@ sub HandleErrors #(errors)
         # We want to remove error lines from previous runs.
         if (substr($line, 0, 9) ne '# ERROR: ')
             {
-            print $menuFileHandle $line . "\n";
+            print MENUFILEHANDLE $line . "\n";
             $lineNumber++;
             };
 
         $originalLineNumber++;
         };
 
-    close($menuFileHandle);
+    close(MENUFILEHANDLE);
 
     if (scalar @$errors == 1)
         {  die "There is an error in the menu file.\n";  }

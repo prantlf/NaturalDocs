@@ -110,35 +110,34 @@ sub Add #(name, extensions, shebangStrings, lineComment, startComment, endCommen
 #
 #   Parameters:
 #
-#       file - The source file to get the language of.
+#       sourceFile - The source file to get the language of.
 #
 #   Returns:
 #
 #       A <NaturalDocs::Languages::Language> object for the passed file, or undef if the file is not a recognized language.
 #
-sub LanguageOf #(file)
+sub LanguageOf #(sourceFile)
     {
-    my $file = shift;
+    my $sourceFile = shift;
 
     my $extension;
-    if ($file =~ /\.([^\.]+)$/)
+    if ($sourceFile =~ /\.([^\.]+)$/)
         {  $extension = lc($1);  };
 
     if (!defined $extension || $extension eq 'cgi')
         {
-        my $fileName = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $file);
-        my $fileHandle;
+        my $fullSourceFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $sourceFile);
         my $shebangLine;
 
-        open($fileHandle, '<' . $fileName) or die 'Could not open ' . $fileName;
+        open(SOURCEFILEHANDLE, '<' . $fullSourceFile) or die 'Could not open ' . $sourceFile;
 
-        read($fileHandle, $shebangLine, 2);
+        read(SOURCEFILEHANDLE, $shebangLine, 2);
         if ($shebangLine eq '#!')
-            {  $shebangLine = <$fileHandle>;  }
+            {  $shebangLine = <SOURCEFILEHANDLE>;  }
         else
             {  $shebangLine = undef;  };
 
-        close ($fileHandle);
+        close (SOURCEFILEHANDLE);
 
         if (!defined $shebangLine)
             {  return undef;  }

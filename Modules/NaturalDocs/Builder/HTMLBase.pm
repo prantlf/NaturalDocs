@@ -1175,8 +1175,8 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
 
     # Build the pages.
 
-    my $fileName;
-    my $fileHandle;
+    my $indexFileName;
+    $page = -1;
     my $oldPage = -1;
 
     for (my $i = 0; $i < scalar @$indexContent; $i++)
@@ -1190,26 +1190,26 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
 
         if ($page != $oldPage)
             {
-            if (defined $fileHandle)
+            if ($oldPage != -1)
                 {
-                print $fileHandle $endPage;
-                close($fileHandle);
+                print INDEXFILEHANDLE $endPage;
+                close(INDEXFILEHANDLE);
                 };
 
-            $fileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory($self),
-                                                                      $self->IndexFileOf($type, $page));
+            $indexFileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory($self),
+                                                                               $self->IndexFileOf($type, $page));
 
-            open($fileHandle, '>' . $fileName)
-                or die "Couldn't create output file " . $fileName . ".\n";
+            open(INDEXFILEHANDLE, '>' . $indexFileName)
+                or die "Couldn't create output file " . $indexFileName . ".\n";
 
-            print $fileHandle $beginPage;
+            print INDEXFILEHANDLE $beginPage;
 
-            print $fileHandle '' . $self->BuildIndexNavigationBar($type, $page, \@pageLocation);
+            print INDEXFILEHANDLE '' . $self->BuildIndexNavigationBar($type, $page, \@pageLocation);
 
             $oldPage = $page;
             };
 
-        print $fileHandle
+        print INDEXFILEHANDLE
         '<div class=ISection>'
 
             . '<div class=IHeading>'
@@ -1222,10 +1222,10 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
         . '</div>';
         };
 
-    if (defined $fileHandle)
+    if ($page != -1)
         {
-        print $fileHandle $endPage;
-        close($fileHandle);
+        print INDEXFILEHANDLE $endPage;
+        close(INDEXFILEHANDLE);
         };
 
 

@@ -77,19 +77,17 @@ sub BuildFile #(sourceFile, parsedFile)
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
 
 
-    my $outputFileHandle;
-
     # 99.99% of the time the output directory will already exist, so this will actually be more efficient.  It only won't exist
     # if a new file was added in a new subdirectory and this is the first time that file was ever parsed.
-    if (!open($outputFileHandle, '>' . $fullOutputFile))
+    if (!open(OUTPUTFILEHANDLE, '>' . $fullOutputFile))
         {
         NaturalDocs::File::CreatePath( NaturalDocs::File::NoFileName($fullOutputFile) );
 
-        open($outputFileHandle, '>' . $fullOutputFile)
+        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile)
             or die "Couldn't create output file " . $fullOutputFile . "\n";
         };
 
-    print $outputFileHandle
+    print OUTPUTFILEHANDLE
 
 
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" '
@@ -138,7 +136,7 @@ sub BuildFile #(sourceFile, parsedFile)
         . '</body></html>';
 
 
-    close($outputFileHandle);
+    close(OUTPUTFILEHANDLE);
     };
 
 
@@ -262,18 +260,17 @@ sub UpdateMenu
     my $firstMenuEntry = $self->FindFirstFile(NaturalDocs::Menu::Content());
 
     my $indexFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'index.html' );
-    my $indexFileHandle;
 
-    open($indexFileHandle, '>' . $indexFile)
+    open(INDEXFILEHANDLE, '>' . $indexFile)
         or die "Couldn't create output file " . $indexFile . ".\n";
 
-    print $indexFileHandle
+    print INDEXFILEHANDLE
     '<html><head>'
          . '<meta http-equiv="Refresh" CONTENT="0; URL='
              . $self->MakeRelativeURL( 'index.html', $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
     . '</head></html>';
 
-    close $indexFileHandle;
+    close INDEXFILEHANDLE;
     };
 
 
@@ -298,14 +295,13 @@ sub UpdateFile #(sourceFile)
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory($self);
     my $outputFile = $self->OutputFileOf($sourceFile);
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
-    my $outputFileHandle;
 
-    if (open($outputFileHandle, '<' . $fullOutputFile))
+    if (open(OUTPUTFILEHANDLE, '<' . $fullOutputFile))
         {
         my $content;
 
-        read($outputFileHandle, $content, -s $outputFileHandle);
-        close($outputFileHandle);
+        read(OUTPUTFILEHANDLE, $content, -s OUTPUTFILEHANDLE);
+        close(OUTPUTFILEHANDLE);
 
 
         $content =~ s{<title>[^<]*<\/title>}{'<title>' . $self->BuildTitle($sourceFile) . '</title>'}e;
@@ -315,9 +311,9 @@ sub UpdateFile #(sourceFile)
         $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $self->BuildFooter() . "<\/div>"/e;
 
 
-        open($outputFileHandle, '>' . $fullOutputFile);
-        print $outputFileHandle $content;
-        close($outputFileHandle);
+        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile);
+        print OUTPUTFILEHANDLE $content;
+        close(OUTPUTFILEHANDLE);
         };
     };
 
@@ -347,15 +343,13 @@ sub UpdateIndex #(type)
 
     while (-e $fullOutputFile)
         {
-        my $outputFileHandle;
-
-        open($outputFileHandle, '<' . $fullOutputFile)
+        open(OUTPUTFILEHANDLE, '<' . $fullOutputFile)
             or die "Couldn't open output file " . $fullOutputFile . ".\n";
 
         my $content;
 
-        read($outputFileHandle, $content, -s $outputFileHandle);
-        close($outputFileHandle);
+        read(OUTPUTFILEHANDLE, $content, -s OUTPUTFILEHANDLE);
+        close(OUTPUTFILEHANDLE);
 
 
         $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$newMenu/es;
@@ -363,11 +357,11 @@ sub UpdateIndex #(type)
         $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $newFooter . "<\/div>"/e;
 
 
-        open($outputFileHandle, '>' . $fullOutputFile)
+        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile)
             or die "Couldn't save output file " . $fullOutputFile . ".\n";
 
-        print $outputFileHandle $content;
-        close($outputFileHandle);
+        print OUTPUTFILEHANDLE $content;
+        close(OUTPUTFILEHANDLE);
 
         $page++;
         $outputFile = $self->IndexFileOf($type, $page);
