@@ -213,6 +213,10 @@ sub LoadAndPurge
             # [definition] tab [type] tab [prototype]
 
             my ($file, $type, $prototype) = split(/\t/, $line);
+
+            if (!$prototype)
+                {  $prototype = undef;  };
+
             $symbolObject->AddDefinition($file, $type, $prototype);
 
             if (!exists $files{$file})
