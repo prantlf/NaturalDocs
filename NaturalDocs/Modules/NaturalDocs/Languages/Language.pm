@@ -700,24 +700,23 @@ sub FalsePositivesForSemicolonsInParenthesis #(stringRef)
             {  last;  };
 
         my $closingParenIndex = index($$stringRef, ')', $openingParenIndex);
-
-        if ($closingParenIndex == -1)
-            {  last;  };
-
         my $startingSemicolonIndex = $openingParenIndex;
 
         for (;;)
             {
             my $semicolonIndex = index($$stringRef, ';', $startingSemicolonIndex);
 
-            if ($semicolonIndex == -1 || $semicolonIndex > $closingParenIndex)
+            if ($semicolonIndex == -1 || ($closingParenIndex != -1 && $semicolonIndex > $closingParenIndex))
                 {  last;  };
 
             $falsePositives->{$semicolonIndex} = 1;
             $startingSemicolonIndex = $semicolonIndex + 1;
             };
 
-        $startingParenIndex = $closingParenIndex + 1;
+        if ($closingParenIndex == -1)
+            {  last;  }
+        else
+            {  $startingParenIndex = $closingParenIndex + 1;  };
         };
 
     return $falsePositives;
