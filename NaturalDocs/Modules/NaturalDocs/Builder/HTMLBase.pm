@@ -1257,23 +1257,23 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
 
             # Create the link tags like first, next, previous, and last.
 
-            my $linkTags;
+            if ($pageLocation[-1] > 1)
+                {
+                my $linkTags;
 
-            if ($page > 1)
-                {
-                $linkTags .=
-                    '<link rel=First href="' . $self->IndexFileOf($type, 1) . '">'
-                    . '<link rel=Previous href="' . $self->IndexFileOf($type, $page - 1) . '">';
-                };
-            if ($page < $pageLocation[-1])
-                {
-                $linkTags .=
-                    '<link rel=Last href="' . $self->IndexFileOf($type, $pageLocation[-1]) . '">'
-                    . '<link rel=Next href="' . $self->IndexFileOf($type, $page + 1) . '">';
-                };
+                if ($page > 1)
+                    {
+                    $linkTags .=
+                        '<link rel=First href="' . $self->IndexFileOf($type, 1) . '">'
+                        . '<link rel=Previous href="' . $self->IndexFileOf($type, $page - 1) . '">';
+                    };
+                if ($page < $pageLocation[-1])
+                    {
+                    $linkTags .=
+                        '<link rel=Last href="' . $self->IndexFileOf($type, $pageLocation[-1]) . '">'
+                        . '<link rel=Next href="' . $self->IndexFileOf($type, $page + 1) . '">';
+                    };
 
-            if (defined $linkTags)
-                {
                 my $endOfHead = index($beginPage, '</head>');
 
                 print INDEXFILEHANDLE
