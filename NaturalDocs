@@ -344,11 +344,11 @@ eval {
     NaturalDocs::Languages::Add( 'PL/SQL', [ 'sql' ], undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ], [ ';', ':=', 'default', 'DEFAULT' ],
                                                   undef );
     NaturalDocs::Languages::Add( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, [ "\n" ], [ "\n", '=' ], '_' );
+    NaturalDocs::Languages::Add( 'Pascal', [ 'pas' ], undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'Assembly', [ 'asm' ], undef, ';', undef, undef, undef, [ "\n" ], "\\" );
     NaturalDocs::Languages::Add( 'Ada', [ 'ada' ], undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
     NaturalDocs::Languages::Add( 'Text', [ 'txt' ], undef, undef, undef, undef, undef, undef, undef );
 
-    # NaturalDocs::Languages::Add( 'Pascal', [ 'pas' ], undef, '//', '{', '}', [ ';' ], [ ';', '=' ], undef );
-    # Pascal still needs (* and *) comments
 
     # Almost everything requires Settings to be initialized.
 
