@@ -98,7 +98,7 @@ sub Add #(name, extensions, shebangStrings, lineComment, startComment, endCommen
     if (defined $endComment && !ref $endComment)
         {  $endComment = [ $endComment ];  };
 
-    my $language = NaturalDocs::Languages::Language::New($lineComment, $startComment, $endComment,
+    my $language = NaturalDocs::Languages::Language::New($name, $lineComment, $startComment, $endComment,
                                                                                           $functionEnders, $variableEnders, $lineExtender);
 
     my $languageIndex = scalar @languages;
