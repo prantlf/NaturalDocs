@@ -32,8 +32,10 @@ use integer;
 package NaturalDocs::Settings;
 
 
+
 ###############################################################################
 # Group: Variables
+
 
 # handle: SETTINGSFILEHANDLE
 # The file handle used with <Settings.txt>.
@@ -64,6 +66,10 @@ my $documentedOnly;
 # int: tabLength
 # The number of spaces in tabs.
 my $tabLength;
+
+# var: autoGroupLevel
+# The <AutoGroupLevel> to use.
+my $autoGroupLevel;
 
 # bool: rebuildData
 # Whether the script should rebuild all data files from scratch.
@@ -166,6 +172,7 @@ my $defaultStyle;
 #       > [UInt8: tab length]
 #       > [UInt8: headers only (0 or 1)]
 #       > [UInt8: documented only (0 or 1)]
+#       > [UInt8: auto-group level]
 #       >
 #       > [UInt8: number of input directories]
 #       > [AString16: input directory] [AString16: input directory name] ...
@@ -179,6 +186,10 @@ my $defaultStyle;
 #
 #
 #   Revisions:
+#
+#       1.22:
+#
+#           - Added auto-group level.
 #
 #       1.2:
 #
@@ -420,6 +431,11 @@ sub DocumentedOnly
 sub TabLength
     {  return $tabLength;  };
 
+# Function: AutoGroupLevel
+# Returns the <AutoGroupLevel> to use.
+sub AutoGroupLevel
+    {  return $autoGroupLevel;  };
+
 # Function: RebuildData
 # Returns whether the script should rebuild all data files from scratch.
 sub RebuildData
@@ -497,6 +513,7 @@ sub ParseCommandLine
                              '-t' => 'Natural Docs',
                              '-q' => 'Natural Docs',
                              '-ho' => 'Natural Docs',
+                             '-ag' => 'Natural Docs',
                              '-h' => 'Natural Docs',
                              '-?' => 'Natural Docs' );
 
@@ -511,7 +528,13 @@ sub ParseCommandLine
                                   '--tablength' => '-t',
                                   '--quiet'    => '-q',
                                   '--headersonly' => '-ho',
-                                  '--help'     => '-h' );
+                                  '--help'     => '-h',
+                                  '--autogroup' => '-ag' );
+
+    my %autoGroupOptions = ( 'none' => ::AUTOGROUP_NONE(),
+                                             'off' => ::AUTOGROUP_NONE(),
+                                             'basic' => ::AUTOGROUP_BASIC(),
+                                             'full' => ::AUTOGROUP_FULL() );
 
 
     # Get all the extension options and check for conflicts.
@@ -614,6 +637,10 @@ sub ParseCommandLine
             elsif ($option eq '-t')
                 {
                 $valueRef = \$tabLength;
+                }
+            elsif ($option eq '-ag')
+                {
+                $valueRef = \$autoGroupLevel;
                 }
             else
                 {
@@ -788,6 +815,19 @@ sub ParseCommandLine
         }
     else
         {  $tabLength = 4;  };
+
+
+    # Determine the auto-group level, and default to full if not specified.
+
+    if (defined $autoGroupLevel)
+        {
+        if (exists $autoGroupOptions{ lc($autoGroupLevel) })
+            {  $autoGroupLevel = $autoGroupOptions{ lc($autoGroupLevel) };  }
+        else
+            {  push @errorMessages, $autoGroupLevel . ' is not a valid value for -ag.';  };
+        }
+    else
+        {  $autoGroupLevel = ::AUTOGROUP_FULL();  };
 
 
     # Send the extensions their options.
@@ -1342,9 +1382,9 @@ sub LoadAndComparePreviousSettings
             {
             my $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUS_SETTINGS_FILEHANDLE);
 
-            # The file format has not changed since it was introduced.
+            # The file format changed in 1.22.
 
-            if ($version > NaturalDocs::Settings->AppVersion())
+            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.22'))
                 {
                 close(PREVIOUS_SETTINGS_FILEHANDLE);
                 $fileIsOkay = undef;
@@ -1366,10 +1406,12 @@ sub LoadAndComparePreviousSettings
         # [UInt8: tab expansion]
         # [UInt8: headers only (0 or 1)]
         # [UInt8: documented only (0 or 1)]
+        # [UInt8: auto-group level]
         # [UInt8: number of input directories]
 
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 4);
-        my ($prevTabLength, $prevHeadersOnly, $prevDocumentedOnly, $inputDirectoryCount) = unpack('CCCC', $raw);
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 5);
+        my ($prevTabLength, $prevHeadersOnly, $prevDocumentedOnly, $prevAutoGroupLevel, $inputDirectoryCount)
+            = unpack('CCCCC', $raw);
 
         if ($prevTabLength != $self->TabLength())
             {
@@ -1382,9 +1424,10 @@ sub LoadAndComparePreviousSettings
         if ($prevDocumentedOnly == 0)
             {  $prevDocumentedOnly = undef;  };
 
-        if ($prevDocumentedOnly != $self->DocumentedOnly())
+        if ($prevDocumentedOnly != $self->DocumentedOnly() ||
+            $prevAutoGroupLevel != $self->AutoGroupLevel())
             {
-            # This one is a biggie, since it affects the symbol table as well.  Nuke everything.
+            # These are biggies, since they affects the symbol table as well.  Nuke everything.
             $rebuildData = 1;
             $rebuildOutput = 1;
             };
@@ -1480,12 +1523,14 @@ sub SavePreviousSettings
     # [UInt8: tab length]
     # [UInt8: headers only (0 or 1)]
     # [UInt8: documented only (0 or 1)]
+    # [UInt8: auto-group level]
     # [UInt8: number of input directories]
 
     my $inputDirectories = $self->InputDirectories();
 
-    print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCC', $self->TabLength(), ($self->HeadersOnly() ? 1 : 0),
-                                                                                    ($self->DocumentedOnly() ? 1 : 0), scalar @$inputDirectories);
+    print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCCC', $self->TabLength(), ($self->HeadersOnly() ? 1 : 0),
+                                                                                     ($self->DocumentedOnly() ? 1 : 0),
+                                                                                     $self->AutoGroupLevel(), scalar @$inputDirectories);
 
     foreach my $inputDirectory (@$inputDirectories)
         {
