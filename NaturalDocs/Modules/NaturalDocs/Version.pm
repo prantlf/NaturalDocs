@@ -31,7 +31,7 @@ package NaturalDocs::Version;
 #
 #   Function: FromString
 #
-#   Converts a version string to a comparable integer.
+#   Converts a version string to a <VersionInt>.
 #
 sub FromString #(string)
     {
@@ -56,7 +56,7 @@ sub FromString #(string)
 #
 #   Function: FromBinaryFile
 #
-#   Retrieves a version number from a binary file.
+#   Retrieves a <VersionInt> from a binary file.
 #
 #   Parameters:
 #
@@ -64,7 +64,7 @@ sub FromString #(string)
 #
 #   Returns:
 #
-#       The version as a comparable integer.
+#       The <VersionInt>.
 #
 sub FromBinaryFile #(fileHandle)
     {
@@ -80,7 +80,7 @@ sub FromBinaryFile #(fileHandle)
 #
 #   Function: FromTextFile
 #
-#   Retrieves a version number from a text file.
+#   Retrieves a <VersionInt> from a text file.
 #
 #   Parameters:
 #
@@ -88,7 +88,7 @@ sub FromBinaryFile #(fileHandle)
 #
 #   Returns:
 #
-#       The version as a comparable integer.
+#       The <VersionInt>.
 #
 sub FromTextFile #(fileHandle)
     {
@@ -104,7 +104,7 @@ sub FromTextFile #(fileHandle)
 #
 #   Function: ToString
 #
-#   Converts a version integer to a string.
+#   Converts a <VersionInt> to a string.
 #
 sub ToString #(integer)
     {
@@ -125,12 +125,12 @@ sub ToString #(integer)
 #
 #   Function: ToTextFile
 #
-#   Writes a version string to a text file.
+#   Writes a <VersionInt> to a text file.
 #
 #   Parameters:
 #
 #       fileHandle - The handle of the file to write it to.  It should be at the correct location.
-#       version - The version integer to write.
+#       version - The <VersionInt> to write.
 #
 sub ToTextFile #(fileHandle, version)
     {
@@ -143,12 +143,12 @@ sub ToTextFile #(fileHandle, version)
 #
 #   Function: ToBinaryFile
 #
-#   Writes a version string to a binary file.
+#   Writes a <VersionInt> to a binary file.
 #
 #   Parameters:
 #
 #       fileHandle - The handle of the file to write it to.  It should be at the correct location.
-#       version - The version integer to write.
+#       version - The <VersionInt> to write.
 #
 sub ToBinaryFile #(fileHandle, version)
     {
@@ -180,7 +180,7 @@ sub ToBinaryFile #(fileHandle, version)
 #
 #   About: Integer Format
 #
-#   Version integers are 16-bit unsigned values.  The major version is the high-order byte, and the minor the low-order byte.
+#   <VersionInts> are 16-bit unsigned values.  The major version is the high-order byte, and the minor the low-order byte.
 #   The minor is always stored with two decimals, so 0.9 would be stored as 0 and 90.
 #
 

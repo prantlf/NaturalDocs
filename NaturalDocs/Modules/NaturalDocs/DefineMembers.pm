@@ -4,7 +4,7 @@
 #
 ###############################################################################
 #
-#   A custom Perl pragma to define member constants for use in Natural Docs objects.
+#   A custom Perl pragma to define member constants for use in Natural Docs objects while supporting inheritance.
 #
 #   Each parameter will be defined as a numeric constant which should be used as that variable's index into the object arrayref.
 #   They will be assigned sequentially from zero, and take into account any members defined this way in parent classes.  Note

@@ -105,20 +105,17 @@ my $dontRebuildFiles;
 #   Format:
 #
 #       > [BINARY_FORMAT]
+#       > [VersionInt: app version]
 #
-#       The firs byte is the <BINARY_FORMAT> constant.
-#
-#       > [app version]
-#
-#       Next is the binary application version it was generated with.  Manage with <NaturalDocs::Version>.
+#       The standard <BINARY_FORMAT> and <VersionInt> header.
 #
 #       > [SymbolString: class or undef to end]
 #
-#       Next we begin a class segment.  These continue until the end of the file.  Only defined classes are included.  The class
-#       segment starts of with the class' <SymbolString>.
+#       Next we begin a class segment with its <SymbolString>.  These continue until the end of the file.  Only defined classes are
+#       included.
 #
 #       > [UInt32: number of files]
-#       > [AString16: file] ...
+#       > [AString16: file] [AString16: file] ...
 #
 #       Next there is the number of files that define that class.  It's a UInt32, which seems like overkill, but I could imagine every
 #       file in a huge C++ project being under the same namespace, and thus contributing its own definition.  It's theoretically
@@ -128,7 +125,8 @@ my $dontRebuildFiles;
 #       Indexes start at one because zero has a special meaning.
 #
 #       > [UInt8: number of parents]
-#       > ( [ReferenceString (no type): parent] [UInt32: file index] ... [UInt32: 0] ) ...
+#       > ( [ReferenceString (no type): parent]
+#       >   [UInt32: file index] [UInt32: file index] ... [UInt32: 0] ) ...
 #
 #       Next there is the number of parents defined for this class.  For each one, we define a parent segment, which consists of
 #       its <ReferenceString>, and then a zero-terminated string of indexes of the files that define that parent as part of that class.
@@ -137,6 +135,10 @@ my $dontRebuildFiles;
 #       Note that we do store class segments for classes without parents, but not for undefined classes.
 #
 #       This concludes a class segment.  These segments continue until an undef <SymbolString>.
+#
+#   See Also:
+#
+#       <File Format Conventions>
 #
 #   Revisions:
 #
@@ -378,6 +380,8 @@ sub Purge
 #   Called by <NaturalDocs::SymbolTable> whenever a class hierarchy reference's intepretation changes, meaning it switched
 #   from one symbol to another.
 #
+#       reference - The <ReferenceString> whose current interpretation changed.
+#
 sub OnInterpretationChange #(reference)
     {
     my ($self, $reference) = @_;
@@ -431,12 +435,16 @@ sub OnInterpretationChange #(reference)
 
 
 #
-#   Function: OnTargetInformationChange
+#   Function: OnTargetSymbolChange
 #
-#   Called by <NaturalDocs::SymbolTable> whenever a class hierarchy reference's target symbol's information changes, such as
-#   its prototype or summary.  The reference still resolves to the same symbol.
+#   Called by <NaturalDocs::SymbolTable> whenever a class hierarchy reference's target symbol changes, but the reference
+#   still resolves to the same symbol.
 #
-sub OnTargetInformationChange #(reference)
+#   Parameters:
+#
+#       reference - The <ReferenceString> that was affected by the change.
+#
+sub OnTargetSymbolChange #(reference)
     {
     my ($self, $reference) = @_;
 
