@@ -22,6 +22,8 @@
 # This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
 # Natural Docs is licensed under the GPL
 
+use Tie::RefHash;
+
 use NaturalDocs::Menu::Entry;
 use NaturalDocs::Menu::Error;
 
@@ -31,6 +33,18 @@ use integer;
 package NaturalDocs::Menu;
 
 
+#
+#   Constants: Constants
+#
+#   MAXFILESINGROUP - The maximum number of file entries that can be present in a group before it becomes a candidate for
+#                                  sub-grouping.
+#   MINFILESINNEWGROUP - The minimum number of file entries that must be present in a group before it will be automatically
+#                                        created.  This is *not* the number of files that must be in a group before it's deleted.
+#
+use constant MAXFILESINGROUP => 6;
+use constant MINFILESINNEWGROUP => 3;
+
+
 ###############################################################################
 # Group: Variables
 
@@ -38,7 +52,7 @@ package NaturalDocs::Menu;
 #   hash: menuSynonyms
 #
 #   A hash of the text synonyms for the menu tokens.  The keys are the lowercase synonyms, and the values are one of
-#   the <Menu Item Types>.
+#   the <Menu Entry Types>.
 #
 my %menuSynonyms = (
                                         'title'        => ::MENU_TITLE(),
@@ -51,7 +65,8 @@ my %menuSynonyms = (
                                         'url'         => ::MENU_LINK(),
                                         'footer'    => ::MENU_FOOTER(),
                                         'copyright' => ::MENU_FOOTER(),
-                                        'index'     => ::MENU_INDEX()
+                                        'index'     => ::MENU_INDEX(),
+                                        'format'   => ::MENU_FORMAT()
                                     );
 
 #
@@ -91,11 +106,18 @@ my %indexNames = (
 my $hasChanged;
 
 #
+#   bool: fileChanged
+#
+#   Whether the menu file has changed, usually meaning the user edited it.
+#
+my $fileChanged;
+
+#
 #   Object: menu
 #
 #   The parsed menu file.  Is stored as a <MENU_GROUP> <NaturalDocs::Menu::Entry> object, with the top-level entries being
-#   stored as the group's content.  This is done because it makes <LoadAndUpdate()> simpler to implement.  However, it is
-#   exposed externally via <Content()> as an arrayref.
+#   stored as the group's content.  This is done because it makes a number of functions simpler to implement, plus it allows group
+#   flags to be set on the top-level.  However, it is exposed externally via <Content()> as an arrayref.
 #
 #   This structure will not contain objects for <MENU_TITLE>, <MENU_SUBTITLE>, or <MENU_FOOTER> entries.  Those will be
 #   stored in the <title>, <subTitle>, and <footer> variables instead.
@@ -105,8 +127,8 @@ my $menu;
 #
 #   hash: defaultTitlesChanged
 #
-#   A hash of default titles that have changed, since <OnDefaultTitleChange()> will be called before <LoadAndUpdate()>.
-#   Collects them to be applied later.
+#   An existence hash of default titles that have changed, since <OnDefaultTitleChange()> will be called before
+#   <LoadAndUpdate()>.  Collects them to be applied later.  The keys are the file names.
 #
 my %defaultTitlesChanged;
 
@@ -165,21 +187,24 @@ my %previousIndexes;
 #
 #       The file supports single-line comments via #.  They can appear alone on a line or after content.
 #
+#       > Format: [version]
 #       > Title: [title]
 #       > SubTitle: [subtitle]
 #       > Footer: [footer]
 #
-#       The menu title, subtitle, and footer are specified as above.  Each can only be specified once, with subsequent ones being
-#       ignored.  Subtitle is ignored if Title is not present.
+#       The file format version, menu title, subtitle, and footer are specified as above.  Each can only be specified once, with
+#       subsequent ones being ignored.  Subtitle is ignored if Title is not present.  Format must be the first entry in the file.  If it's
+#       not present, it's assumed the menu is from version 0.95 or earlier, since it was added with 1.0.
 #
-#       > File: [file title] ([file name])
-#       > File: [file title] (auto-title, [file name])
+#       > File: [title] ([file name])
+#       > File: [title] (auto-title, [file name])
+#       > File: [title] (no auto-title, [file name])
 #
-#       Files are specified as above.  If "auto-title," precedes the file name in the parenthesis, the file title is ignored and the default
-#       is used instead.  If not specified, the file title overrides the default title.
+#       Files are specified as above.  If "no auto-title" is specified, the title on the line is used.  If not, the title is ignored and the
+#       default file title is used instead.  Auto-title defaults to on, so specifying "auto-title" is for compatibility only.
 #
-#       > Group: [name]
-#       > Group: [name] { ... }
+#       > Group: [title]
+#       > Group: [title] { ... }
 #
 #       Groups are specified as above.  If no braces are specified, the group's content is everything that follows until the end of the
 #       file, the next group (braced or unbraced), or the closing brace of a parent group.  Group braces are the only things in this
@@ -205,6 +230,17 @@ my %previousIndexes;
 #       Indexes are specified with the types above.  Valid modifiers are defined in <indexSynonyms> and include Function and
 #       Class.  If no modifier is specified, the line specifies a general index.
 #
+#   Revisions:
+#
+#       Prior to 1.0, there was no Format line.  Use that to detect pre-1.0 files.
+#       Also:
+#
+#       - File lines defaulted to auto-title being off.  Specifying "auto-title" turned it on, but there was no "no auto-title" attribute.
+#       - Since there was no auto-organization, all groups were manually added.  The exception is a top-level Other group, where
+#         new files were automatically added if there were groups defined.
+#
+#       Prior to 0.9, there were no Index entries.
+#
 
 #
 #   File: NaturalDocs.m
@@ -213,17 +249,40 @@ my %previousIndexes;
 #   like NaturalDocs.menu to avoid confusion with <NaturalDocs_Menu.txt>.  This one is not user-editable so we don't want
 #   people opening it by accident.
 #
+#   > [BINARY_FORMAT]
+#
+#   The file is binary, so the first byte is the <BINARY_FORMAT> token.
+#
 #   > [app version]
 #
-#   The first line is the file version number from <NaturalDocs::Settings::AppVersion()>.
+#   Immediately after is the application version it was generated with.  Manage with the binary functions in
+#   <NaturalDocs::Version>.
 #
-#   > [index type] tab [index type] tab ...
+#   > [UInt8: 0 (end group)]
+#   > [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
+#   > [UInt8: MENU_GROUP] [AString16: title]
+#   > [UInt8: MENU_INDEX] [AString16: title] [UInt8: type (0 for general)]
+#   > [UInt8: MENU_LINK] [AString16: title] [AString16: url]
+#   > [UInt8: MENU_TEXT] [AString16: text]
 #
-#   The next line is a tab-separated list of all the index types present in the menu.  They are the values of the <Topic Types> or
-#   * for the general index.
+#   The first UInt8 of each following line is either zero or one of the <Menu Entry Types>.  What follows is contextual.  AString16s
+#   are big-endian UInt16's followed by that many ASCII characters.
 #
-#   That's all for now.  In the future this will store the entire previous state so auto-locking can be applied.  The file version will
-#   have to be incremented though.
+#   There are no entries for title, subtitle, or footer.  Only the entries present in <menu>.
+#
+#   Dependencies:
+#
+#       - Because the type is represented by a UInt8, the <Menu Entry Types> must all be <= 255.
+#       - Because the index target is represented by a UInt8, the <Topic Types> must all be <= 255.
+#
+#   Revisions:
+#
+#       Prior to 1.0, the file was a text file consisting of the app version and a line which was a tab-separated list of the indexes
+#       present in the menu.  * meant the general index.
+#
+#       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.
+#
+#       Prior to 0.9, this file didn't exist.
 #
 
 
@@ -233,46 +292,91 @@ my %previousIndexes;
 #
 #   Function: LoadAndUpdate
 #
-#   Loads the menu file from <NaturalDocs_Menu.txt> and updates it.  If a file is deleted or no longer has Natural Docs
-#   content, it is removed from the menu.  If files are added or get Natural Docs content, they are added to the end.  If
-#   there are groups defined, the new ones will be added in group Other.
+#   Loads the menu file from disk and updates it.  Will add, remove, rearrange, and remove auto-titling from entries as
+#   necessary.
 #
 sub LoadAndUpdate
     {
-    my ($hasGroups, $errors, $filesInMenu, $trashAlert) = ParseMenuFile();
+    my ($errors, $filesInMenu, $oldLockedTitles) = LoadMenuFile();
 
     if (defined $errors)
+        {  HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
+
+    my ($previousMenu, $previousIndexes, $previousFiles) = LoadPreviousMenuStateFile();
+
+    if (defined $previousIndexes)
+        {  %previousIndexes = %$previousIndexes;  };
+
+    if (defined $previousFiles)
+        {  LockUserTitleChanges($previousFiles);  };
+
+    # Don't need these anymore.  We keep this level of detail because it may be used more in the future.
+    $previousMenu = undef;
+    $previousFiles = undef;
+    $previousIndexes = undef;
+
+    # We flag title changes instead of actually performing them at this point for two reasons.  First, contents of groups are still
+    # subject to change, which would affect the generated titles.  Second, we haven't detected the sort order yet.  Changing titles
+    # could make groups appear unalphabetized when they were beforehand.
+
+    my $updateAllTitles;
+
+    # If the menu file changed, we can't be sure which groups changed and which didn't without a comparison, which really isn't
+    # worth the trouble.  So we regenerate all the titles instead.  Also, since LoadPreviousMenuStateFile() isn't affected by
+    # NaturalDocs::Settings::RebuildData(), we'll pick up some of the slack here.  We'll regenerate all the titles in this case too.
+    if ($fileChanged || NaturalDocs::Settings::RebuildData())
+        {  $updateAllTitles = 1;  }
+    else
+        {  FlagAutoTitleChanges();  };
+
+    # We add new files before deleting old files so their presence still affects the grouping.  If we deleted old files first, it could
+    # throw off where to place the new ones.
+
+    AutoPlaceNewFiles($filesInMenu);
+
+    my $numberRemoved = RemoveDeadFiles();
+
+    CheckForTrashedMenu(scalar keys %$filesInMenu, $numberRemoved);
+
+    # We wait until after new files are placed to remove dead groups because a new file may save a group.
+
+    RemoveDeadGroups();
+
+    CreateDirectorySubGroups();
+
+    # We detect the sort before regenerating the titles so it doesn't get thrown off by changes.  However, we do it after deleting
+    # dead entries and moving things into subgroups because their removal may bump it into a stronger sort category (i.e.
+    # SORTFILESANDGROUPS instead of just SORTFILES.)  New additions don't factor into the sort.
+
+    DetectOrder($updateAllTitles);
+
+    GenerateAutoFileTitles($updateAllTitles);
+
+    # Check if any of the generated titles are different from the old locked titles.  If so, restore the old locked titles and lock the
+    # entries.  We do this test because, due to the crappy auto-titling present pre-1.0, users may have edited the titles to do the
+    # exact same effect as the new auto-titling system.  If that's the case, we want to unlock those titles.
+
+    if (defined $oldLockedTitles)
         {
-        HandleErrors($errors);
-        # HandleErrors will end execution.
+        while (my ($file, $oldLockedTitle) = each %$oldLockedTitles)
+            {
+            my $fileEntry = $filesInMenu->{$file};
+
+            if (defined $fileEntry && $fileEntry->Title() ne $oldLockedTitle)
+                {
+                $fileEntry->SetTitle($oldLockedTitle);
+                $fileEntry->SetFlags( $fileEntry->Flags() | ::MENU_FILE_NOAUTOTITLE() );
+                };
+            };
         };
 
-    if ($trashAlert)
-        {
-        my $backupFile = NaturalDocs::Project::MenuBackupFile();
+    ResortGroups($updateAllTitles);
 
-        NaturalDocs::File::Copy( NaturalDocs::Project::MenuFile(), $backupFile );
-
-        print
-        "\n"
-        . "Trashed menu warning:\n"
-        . "   Natural Docs has detected that none of the file entries in the menu\n"
-        . "   resolved to actual files.  If you have significantly changed your source\n"
-        . "   tree, this is okay.  If not, this means you probably got the directories\n"
-        . "   wrong in the command line.  Since this essentially resets your menu, a\n"
-        . "   backup of your original menu file has been saved as\n"
-        . "   " . $backupFile . "\n"
-        . "\n";
-        };
-
-
-    ParsePreviousMenuStateFile();
-
-    AddMissingFiles($filesInMenu, $hasGroups);
 
     # Don't need this anymore.
     %defaultTitlesChanged = ( );
     };
+
 
 
 #
@@ -283,33 +387,10 @@ sub LoadAndUpdate
 #
 sub LoadUnchanged
     {
-    my ($hasGroups, $errors, $filesInMenu, $trashAlert) = ParseMenuFile();
+    my ($errors, $filesInMenu, $oldLockedTitles) = LoadMenuFile();
 
     if (defined $errors)
-        {
-        HandleErrors($errors);
-        # HandleErrors will end execution.
-        };
-
-    if ($trashAlert)
-        {
-        my $backupFile = NaturalDocs::Project::MenuBackupFile();
-
-        NaturalDocs::File::Copy( NaturalDocs::Project::MenuFile(), $backupFile );
-
-        print
-        "\n"
-        . "Trashed menu warning:\n"
-        . "   Natural Docs has detected that none of the file entries in the menu\n"
-        . "   resolved to actual files.  If you have significantly changed your source\n"
-        . "   tree, this is okay.  If not, this means you probably got the directories\n"
-        . "   wrong in the command line.  Since this essentially resets your menu, a\n"
-        . "   backup of your original menu file has been saved as\n"
-        . "   " . $backupFile . "\n"
-        . "\n";
-        };
-
-    %previousIndexes = %indexes;
+        {  HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
     };
 
 
@@ -320,8 +401,11 @@ sub LoadUnchanged
 #
 sub Save
     {
-    SaveMenuFile();
-    SavePreviousMenuStateFile();
+    if ($hasChanged)
+        {
+        SaveMenuFile();
+        SavePreviousMenuStateFile();
+        };
     };
 
 
@@ -405,6 +489,7 @@ sub PreviousIndexes
 #
 sub OnFileChange
     {
+    $fileChanged = 1;
     $hasChanged = 1;
     };
 
@@ -417,15 +502,12 @@ sub OnFileChange
 #   Parameters:
 #
 #       file    - The source file that had its default menu title changed.
-#       title   - The new title
 #
-sub OnDefaultTitleChange #(file, title)
+sub OnDefaultTitleChange #(file)
     {
     my $file = shift;
-    # We don't care about what it was changed to.  We keep the parameter because it may be useful if we ever switch to an
-    # auto-detecting title override system.
 
-    # Collect them for later.  We'll deal with them in LoadAndUpdateMenu().
+    # Collect them for later.  We'll deal with them in LoadAndUpdate().
 
     $defaultTitlesChanged{$file} = 1;
     };
@@ -436,34 +518,32 @@ sub OnDefaultTitleChange #(file, title)
 
 
 #
-#   Function: ParseMenuFile
+#   Function: LoadMenuFile
 #
-#   Loads and parses the menu file.
+#   Loads and parses the menu file <NaturalDocs_Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, and <indexes>.
 #
 #   Returns:
 #
-#       The array ( hasGroups, errors, filesInMenu, trashAlert ).
+#       The array ( errors, filesInMenu, oldLockedTitles ).
 #
-#       hasGroups - Whether the menu uses groups or not.
 #       errors - An arrayref of errors appearing in the file, each one being an <NaturalDocs::Menu::Error> object.  Undef if none.
-#       filesInMenu - An existence hashref of all the source files that appear in the menu.  This parameter will always exist.
-#       trashAlert - Will be true if the menu file had a significant number of file entries, but all of them resolved invalid.  Use to
-#                        protect against accidential menu file trashing due to mistakes in the command line.
+#       filesInMenu - A hashref of all the source files that appear in the menu.  The keys are the file names, and the values are
+#                          references to their entries in <menu>.  This parameter will always exist.
+#       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the file names, and the values are
+#                                the old locked titles.  Will be undef if none.  If a file entry from a pre-1.0 file was locked, it's
+#                                entry in <menu> is unlocked and its title is placed here instead, so that it can be compared with the
+#                                generated title and only locked again if absolutely necessary.
 #
-#       Yeah, this method isn't the best, but the alternatives would be to make them package variables (they aren't needed outside
-#       of <LoadAndUpdate()>) or to make <LoadAndUpdate()> a huge beast function (which it was before this was split off.)
-#
-sub ParseMenuFile
+sub LoadMenuFile
     {
-    my $hasGroups;
     my $errors = [ ];
     my $filesInMenu = { };
-    my $fileEntries = 0;
+    my $oldLockedTitles = { };
 
     # A stack of Menu::Entry object references as we move through the groups.
     my @groupStack;
 
-    $menu = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), undef, undef);
+    $menu = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), undef, undef, undef);
     my $currentGroup = $menu;
 
     # Whether we're currently in a braceless group, since we'd have to find the implied end rather than an explicit one.
@@ -480,6 +560,22 @@ sub ParseMenuFile
         my $menuFileContent;
         read($menuFileHandle, $menuFileContent, -s $menuFileHandle);
         close($menuFileHandle);
+
+        # We don't check if the menu file is from a future version because we can't just throw it out and regenerate it like we can
+        # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
+
+        my $version;
+
+        if ($menuFileContent =~ /^[^\#]*format:[ \t]([0-9\.]+)/mi)
+            {  $version = $1;  }
+        else
+            {
+            # If there's no format tag, the menu version is 0.95 or earlier.
+            $version = '0.95';
+            };
+
+        # Strip tabs.
+        $menuFileContent =~ tr/\t/ /s;
 
         my @segments = split(/([\n{}\#])/, $menuFileContent);
         my $segment;
@@ -522,9 +618,7 @@ sub ParseMenuFile
                     next;
                     }
                 else
-                    {
-                    $inBracelessGroup = 1;
-                    };
+                    {  $inBracelessGroup = 1;  };
                 };
 
 
@@ -539,46 +633,45 @@ sub ParseMenuFile
                 # End a braceless group, if we were in one.
                 if ($inBracelessGroup)
                     {
-                    my $isEmpty = $currentGroup->GroupIsEmpty();
-
                     $currentGroup = pop @groupStack;
                     $inBracelessGroup = undef;
-
-                    # Ignore this group if it was empty.
-                    if ($isEmpty)
-                        {  $currentGroup->PopFromGroup();  };
                     };
 
                 # End a braced group too.
                 if (scalar @groupStack)
-                    {
-                    my $isEmpty = $currentGroup->GroupIsEmpty();
-
-                    $currentGroup = pop @groupStack;
-
-                    # Ignore this group if it was empty.
-                    if ($isEmpty)
-                        {  $currentGroup->PopFromGroup();  };
-                    }
+                    {  $currentGroup = pop @groupStack;  }
                 else
-                    {
-                    push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Unmatched closing brace.');
-                    };
+                    {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Unmatched closing brace.');  };
                 }
 
             # If the segment is a segment of text...
             else
                 {
-                $segment =~ s/^[ \t]+//;
-                $segment =~ s/[ \t]+$//;
+                $segment =~ s/^ +//;
+                $segment =~ s/ +$//;
 
-                # If the segment is keyword: name...
-                if ($segment =~ /^([^:]+):\s+(.+)$/)
+                # If the segment is keyword: name or keyword: name (extras)...
+                if ($segment =~ /^([^:]+): +([^ ].*)$/)
                     {
                     my $type = lc($1);
                     my $name = $2;
+                    my @extras;
                     my $modifier;
 
+                    # Split off the extra.
+                    if ($name =~ /^(.+)\(([^\)]+)\)$/)
+                        {
+                        $name = $1;
+                        my $extraString = $2;
+
+                        $name =~ s/ +$//;
+                        $extraString =~ s/ +$//;
+                        $extraString =~ s/^ +//;
+
+                        @extras = split(/ *\, */, $extraString);
+                        };
+
+                    # Split off the modifier.
                     if ($type =~ / /)
                         {
                         ($modifier, $type) = split(/ +/, $type, 2);
@@ -594,26 +687,19 @@ sub ParseMenuFile
                             push @$errors, NaturalDocs::Menu::Error::New($lineNumber,
                                                                                                  $modifier . ' ' . $menuSynonyms{$type}
                                                                                                  . ' is not a valid keyword.');
+                            next;
                             };
 
                         if ($type == ::MENU_GROUP())
                             {
-                            $hasGroups = 1;
-
                             # End a braceless group, if we were in one.
                             if ($inBracelessGroup)
                                 {
-                                my $isEmpty = $currentGroup->GroupIsEmpty();
-
                                 $currentGroup = pop @groupStack;
                                 $inBracelessGroup = undef;
-
-                                # Ignore this group if it was empty.
-                                if ($isEmpty)
-                                    {  $currentGroup->PopFromGroup();  };
                                 };
 
-                            my $entry = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), $name, undef);
+                            my $entry = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), $name, undef, undef);
 
                             $currentGroup->PushToGroup($entry);
 
@@ -625,52 +711,53 @@ sub ParseMenuFile
 
                         elsif ($type == ::MENU_FILE())
                             {
-                            if ($name =~ /^(.*)\(\s*(.+?)\s*\)$/)
+                            my $flags = 0;
+
+                            no integer;
+
+                            if ($version >= 1.0)
                                 {
-                                my $fileTitle = $1;
-                                my $parenthSection = $2;
-
-                                $fileTitle =~ s/[ \t]+$//;
-
-                                my $file;
-
-                                if ($parenthSection =~ /^auto-title,\s*(.+)$/i)
+                                if (lc($extras[0]) eq 'no auto-title')
                                     {
-                                    # Clear the file title.  When creating the menu entry, having the title set to undef will make the entry use
-                                    # the default one.
-                                    $fileTitle = undef;
-                                    $file = $1;
-
-                                    # If the default title changed on this file, the menu changed.
-                                    if (exists $defaultTitlesChanged{$file})
-                                        {  $hasChanged = 1;  };
+                                    $flags |= ::MENU_FILE_NOAUTOTITLE();
+                                    shift @extras;
                                     }
-                                else
+                                elsif (lc($extras[0]) eq 'auto-title')
                                     {
-                                    $file = $parenthSection;
+                                    # It's already the default, but we want to accept the keyword anyway.
+                                    shift @extras;
                                     };
-
-                                if (NaturalDocs::Project::HasContent($file))  # This will also check if it exists.
-                                    {
-                                    $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_FILE(), $fileTitle, $file) );
-                                    $filesInMenu->{$file} = 1;
-                                    }
-                                else
-                                    {
-                                    # If the file doesn't exist or have Natural Docs content, leave it off.
-                                    $hasChanged = 1;
-                                    };
-
-                                # Regardless of whether it was okay or not.
-                                $fileEntries++;
                                 }
-                            else # $name doesn't have parenthesis
+                            else
                                 {
-                                push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'File entry is not in the proper format');
+                                # Prior to 1.0, the only extra was "auto-title" and the default was off instead of on.
+                                if (lc($extras[0]) eq 'auto-title')
+                                    {  shift @extras;  }
+                                else
+                                    {
+                                    # We deliberately leave it auto-titled, but save the original title.
+                                    $oldLockedTitles->{$extras[0]} = $name;
+                                    };
                                 };
+
+                            use integer;
+
+                            if (!scalar @extras)
+                                {
+                                push @$errors, NaturalDocs::Menu::Error::New($lineNumber,
+                                                                                                     'File entries need to be in format '
+                                                                                                     . '"File: [title] ([location])"');
+                                next;
+                                };
+
+                            my $entry = NaturalDocs::Menu::Entry::New(::MENU_FILE(), $name, $extras[0], $flags);
+
+                            $currentGroup->PushToGroup($entry);
+
+                            $filesInMenu->{$extras[0]} = $entry;
                             }
 
-                        # There can only be one title and sub-title.
+                        # There can only be one title, subtitle, and footer.
                         elsif ($type == ::MENU_TITLE())
                             {
                             if (!defined $title)
@@ -700,66 +787,66 @@ sub ParseMenuFile
 
                         elsif ($type == ::MENU_TEXT())
                             {
-                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_TEXT(), $name, undef) );
+                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_TEXT(), $name, undef, undef) );
                             }
 
                         elsif ($type == ::MENU_LINK())
                             {
                             my $target;
 
-                            if ($name =~ /^(.*)\(\s*([^\(\)]+)\s*\)$/)
+                            if (scalar @extras)
                                 {
-                                $name = $1;
-                                $target = $2;
-
-                                $name =~ s/[ \t]+$//;
+                                $target = $extras[0];
                                 }
+
                             # We need to support # appearing in urls.
-                            elsif (scalar @segments >= 2 && $segments[0] eq '#' && $segments[1] =~ /^[^ \t].*\)\s*$/ &&
-                                    $name =~ /^.*\(\s*[^\(\)]*[^\(\)\ \t]$/)
+                            elsif (scalar @segments >= 2 && $segments[0] eq '#' && $segments[1] =~ /^[^ ].*\) *$/ &&
+                                    $name =~ /^.*\( *[^\(\)]*[^\(\)\ ]$/)
                                 {
-                                $name =~ /^(.*)\(\s*([^\(\)]*[^\(\)\ \t])$/;
+                                $name =~ /^(.*)\(\s*([^\(\)]*[^\(\)\ ])$/;
 
                                 $name = $1;
                                 $target = $2;
 
-                                $name =~ s/[ \t]+$//;
+                                $name =~ s/ +$//;
 
-                                $segments[1] =~ /^([^ \t].*)\)\s*$/;
+                                $segments[1] =~ /^([^ ].*)\) *$/;
 
                                 $target .= '#' . $1;
 
                                 shift @segments;
                                 shift @segments;
                                 }
+
                             else
                                 {
                                 $target = $name;
-
-                                # Set the name to undef because that means use the URL when creating the menu entry.
-                                $name = undef;
                                 };
 
-                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_LINK(), $name, $target) );
+                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_LINK(), $name, $target, undef) );
                             }
+
                         elsif ($type == ::MENU_INDEX())
                             {
                             if (!defined $modifier)
                                 {
                                 $indexes{'*'} = 1;
-                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, undef) );
+                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, undef, undef) );
                                 }
                             elsif (exists $indexSynonyms{$modifier})
                                 {
                                 $modifier = $indexSynonyms{$modifier};
                                 $indexes{$modifier} = 1;
-                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, $modifier) );
+                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, $modifier, undef) );
                                 }
                             else
                                 {
                                 push @$errors, NaturalDocs::Menu::Error::New($lineNumber, $modifier . ' is not a valid index type.');
                                 };
                             };
+
+                        # There's also MENU_FORMAT, but that was already dealt with.  We don't need to parse it, just make sure it
+                        # doesn't cause an error.
 
                         }
 
@@ -787,28 +874,15 @@ sub ParseMenuFile
         # End a braceless group, if we were in one.
         if ($inBracelessGroup)
             {
-            my $isEmpty = $currentGroup->GroupIsEmpty();
-
             $currentGroup = pop @groupStack;
             $inBracelessGroup = undef;
-
-            # Ignore this group if it was empty.
-            if ($isEmpty)
-                {  $currentGroup->PopFromGroup();  };
             };
 
         # Close up all open groups.
         my $openGroups = 0;
         while (scalar @groupStack)
             {
-            my $isEmpty = $currentGroup->GroupIsEmpty();
-
             $currentGroup = pop @groupStack;
-
-            # Ignore this group if it was empty.
-            if ($isEmpty)
-                {  $currentGroup->DeleteLastGroupItem();  };
-
             $openGroups++;
             };
 
@@ -816,17 +890,58 @@ sub ParseMenuFile
             {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'There is an unclosed group.');  }
         elsif ($openGroups > 1)
             {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
+
+
+        no integer;
+
+        if ($version < 1.0)
+            {
+            # Prior to 1.0, there was no auto-placement.  New entries were either tacked onto the end of the menu, or if there were
+            # groups, added to a top-level group named "Other".  Since we have auto-placement now, delete "Other" so that its
+            # contents get placed.
+
+            my $index = scalar @{$menu->GroupContent()} - 1;
+            while ($index >= 0)
+                {
+                if ($menu->GroupContent()->[$index]->Type() == ::MENU_GROUP() &&
+                    lc($menu->GroupContent()->[$index]->Title()) eq 'other')
+                    {
+                    splice( @{$menu->GroupContent()}, $index, 1 );
+                    last;
+                    };
+
+                $index--;
+                };
+
+            # Also, prior to 1.0 there was no auto-grouping and crappy auto-titling.  We want to apply these the first time a post-1.0
+            # release is run.
+
+            my @groupStack = ( $menu );
+            while (scalar @groupStack)
+                {
+                my $groupEntry = pop @groupStack;
+
+                $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() | ::MENU_GROUP_UPDATEORDER() |
+                                                   ::MENU_GROUP_UPDATESTRUCTURE() );
+
+                foreach my $entry (@{$groupEntry->GroupContent()})
+                    {
+                    if ($entry->Type() == ::MENU_GROUP())
+                        {  push @groupStack, $entry;  };
+                    };
+                };
+            };
+
+        use integer;
         };
 
 
     if (!scalar @$errors)
         {  $errors = undef;  };
+    if (!scalar keys %$oldLockedTitles)
+        {  $oldLockedTitles = undef;  };
 
-    my $trashAlert;
-    if ($fileEntries > 5 && !scalar keys %$filesInMenu)
-        {  $trashAlert = 1;  };
-
-    return ($hasGroups, $errors, $filesInMenu, $trashAlert);
+    return ($errors, $filesInMenu, $oldLockedTitles);
     };
 
 
@@ -841,6 +956,12 @@ sub SaveMenuFile
 
     open($menuFileHandle, '>' . NaturalDocs::Project::MenuFile())
         or die "Couldn't save menu file " . NaturalDocs::Project::MenuFile() . "\n";
+
+
+    print $menuFileHandle
+
+    "# Do not change or remove this line.\n"
+    . "Format: " . NaturalDocs::Settings::TextAppVersion() . "\n\n";
 
 
     if (defined $title)
@@ -892,17 +1013,12 @@ sub SaveMenuFile
     . "# appear on the menu.  Don't worry about adding or removing files, Natural\n"
     . "# Docs will take care of that.\n"
     . "# \n"
-    . "# If you change the title of a file, make sure you remove \"auto-title,\"\n"
-    . "# from the parenthesis or it won't stick.  Add \"auto-title,\" to the\n"
-    . "# the parenthesis before the file name and Natural Docs will generate the\n"
-    . "# title from the source file and keep it updated automatically.\n"
-    . "# \n"
     . "# You can further organize the menu by grouping the entries.  Add a\n"
     . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.  Groups\n"
     . "# can appear within each other.\n"
     . "# \n"
     . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
-    . "# \"Link: [text] ([URL])\" lines, respectively.\n"
+    . "# \"Link: [name] ([URL])\" lines, respectively.\n"
     . "# \n"
     . "# You can add indexes to the menu by adding \"Index: [name]\" or\n"
     . "# \"[type] Index: [name]\" to the menu.  The types are Class, Function, and\n"
@@ -918,52 +1034,256 @@ sub SaveMenuFile
 
     . "\n";
 
-    WriteEntries($menu->GroupContent(), $menuFileHandle, undef);
+    WriteMenuEntries($menu->GroupContent(), $menuFileHandle, undef);
 
     close($menuFileHandle);
     };
 
 
 #
-#   Function: ParsePreviousMenuStateFile
+#   Function: WriteMenuEntries
+#
+#   A recursive function to write the contents of an arrayref of <NaturalDocs::Menu::Entry> objects to disk.
+#
+#   Parameters:
+#
+#       entries          - The arrayref of menu entries to write.
+#       fileHandle      - The handle to the output file.
+#       indentChars   - The indentation _characters_ to add before each line.  It is not the number of characters, it is the characters
+#                              themselves.  Use undef for none.
+#
+sub WriteMenuEntries #(entries, fileHandle, indentChars)
+    {
+    my ($entries, $fileHandle, $indentChars) = @_;
+
+    foreach my $entry (@$entries)
+        {
+        if ($entry->Type() == ::MENU_FILE())
+            {
+            print $fileHandle $indentChars . 'File: ' . $entry->Title()
+                                  . '  (' . ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 'no auto-title, ' : '') . $entry->Target() . ")\n";
+            }
+        elsif ($entry->Type() == ::MENU_GROUP())
+            {
+            print $fileHandle "\n" . $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
+            WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars);
+            print $fileHandle '   ' . $indentChars . '}  # Group: ' . $entry->Title() . "\n\n";
+            }
+        elsif ($entry->Type() == ::MENU_TEXT())
+            {
+            print $fileHandle $indentChars . 'Text: ' . $entry->Title() . "\n";
+            }
+        elsif ($entry->Type() == ::MENU_LINK())
+            {
+            print $fileHandle $indentChars . 'Link: ' . $entry->Title() . '  (' . $entry->Target() . ')' . "\n";
+            }
+        elsif ($entry->Type() == ::MENU_INDEX())
+            {
+            my $type;
+            if (defined $entry->Target())
+                {
+                $type = $indexNames{$entry->Target()} . ' ';
+                };
+
+            print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
+            };
+        };
+    };
+
+
+#
+#   Function: LoadPreviousMenuStateFile
 #
 #   Loads and parses the previous menu state file.
 #
-sub ParsePreviousMenuStateFile
+#   Note that this is not affected by <NaturalDocs::Settings::RebuildData()>.  Since this is used to detect user changes, the
+#   information here can't be ditched on a whim.
+#
+#   Returns:
+#
+#       The array ( previousMenu, previousIndexes, previousFiles ).
+#
+#       previousMenu - A <MENU_GROUP> <NaturalDocs::Menu::Entry> object, similar to <menu>, which contains the entire
+#                              previous menu.
+#       previousIndexes - An existence hashref of the indexes present in the previous menu.  The keys are the <Topic Types> or
+#                                  '*' for general.
+#       previousFiles - A hashref of the files present in the previous menu.  The keys are the file names, and the entries are
+#                             references to its object in previousMenu.
+#
+#       If there is no data available on a topic, it will be undef.  For example, if the file didn't exist, all three will be undef.  If the
+#       file was from 0.95 or earlier, previousIndexes will be set but the other two would be undef.
+#
+sub LoadPreviousMenuStateFile
     {
-    my $fileIsOkay;
     my $fileHandle;
+    my $fileIsOkay;
 
-    if (!NaturalDocs::Settings::RebuildData() && open($fileHandle, '<' . NaturalDocs::Project::PreviousMenuStateFile()))
+    my $menu;
+    my $indexes;
+    my $files;
+
+    my $fileName = NaturalDocs::Project::PreviousMenuStateFile();
+
+    # We ignore NaturalDocs::Settings::RebuildData() because otherwise user changes can be lost.
+    if (open($fileHandle, '<' . $fileName))
         {
-        my $fileVersion = <$fileHandle>;
-        chomp($fileVersion);
+        # See if it's binary.
+        binmode($fileHandle);
 
-        # Currently, the file format hasn't changed since it's been released publicly, so anything <= the current version is fine.
-        # If the version is "1" with no ".0", that means 0.91 and prior because we were using a separate FileVersion() function then.
+        my $firstChar;
+        read($fileHandle, $firstChar, 1);
 
-        no integer;
+        if ($firstChar == ::BINARY_FORMAT())
+            {
+            my $version = NaturalDocs::Version::FromBinaryFile($fileHandle);
 
-        if ($fileVersion <= NaturalDocs::Settings::AppVersion() || $fileVersion eq '1')
-            {  $fileIsOkay = 1;  }
-        else
-            {  close ($fileHandle);  };
+            # The file format has not changed since switching to binary.
 
-        use integer;
+            if ($version <= NaturalDocs::Settings::AppVersion())
+                {  $fileIsOkay = 1;  }
+            else
+                {  close($fileHandle);  };
+            }
+
+        else # it's not in binary
+            {
+            # Reopen it in text mode.
+            close($fileHandle);
+            open($fileHandle, '<' . $fileName);
+
+            # Check the version.
+            my $version = NaturalDocs::Version::FromTextFile($fileHandle);
+
+            # We'll still read the pre-1.0 text file, since it's simple.
+            if ($version <= NaturalDocs::Version::FromString('0.95'))
+                {
+                my $indexLine = <$fileHandle>;
+                chomp($indexLine);
+
+                $indexes = { };
+
+                my @indexesInLine = split(/\t/, $indexLine);
+                foreach my $indexInLine (@indexesInLine)
+                    {  $indexes->{$indexInLine} = 1;  };
+                };
+
+            close($fileHandle);
+            };
         };
 
     if ($fileIsOkay)
         {
-        # [index type] tab [index type] tab ...
+        $menu = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), undef, undef, undef);
+        $indexes = { };
+        $files = { };
 
-        my $indexLine = <$fileHandle>;
-        chomp($indexLine);
+        my @groupStack;
+        my $currentGroup = $menu;
+        my $raw;
 
-        my @indexValues = split(/\t/, $indexLine);
+        # [UInt8: type or 0 for end group]
 
-        foreach my $indexValue (@indexValues)
-            {  $previousIndexes{$indexValue} = 1;  };
+        while (read($fileHandle, $raw, 1))
+            {
+            my ($type, $flags, $title, $titleLength, $target, $targetLength);
+            $type = unpack('C', $raw);
+
+            if ($type == 0)
+                {  $currentGroup = pop @groupStack;  }
+
+            elsif ($type == ::MENU_FILE())
+                {
+                # [UInt8: noAutoTitle] [AString16: title] [AString16: target]
+
+                read($fileHandle, $raw, 3);
+                (my $noAutoTitle, $titleLength) = unpack('Cn', $raw);
+
+                if ($noAutoTitle)
+                    {  $flags = ::MENU_FILE_NOAUTOTITLE();  };
+
+                read($fileHandle, $title, $titleLength);
+                read($fileHandle, $raw, 2);
+
+                $targetLength = unpack('n', $raw);
+
+                read($fileHandle, $target, $targetLength);
+                }
+
+            elsif ($type == ::MENU_GROUP())
+                {
+                # [AString16: title]
+
+                read($fileHandle, $raw, 2);
+                $titleLength = unpack('n', $raw);
+
+                read($fileHandle, $title, $titleLength);
+                }
+
+            elsif ($type == ::MENU_INDEX())
+                {
+                # [AString16: title] [UInt8: type (0 for general)]
+
+                read($fileHandle, $raw, 2);
+                $titleLength = unpack('n', $raw);
+
+                read($fileHandle, $title, $titleLength);
+                read($fileHandle, $raw, 1);
+                $target = unpack('C', $raw);
+
+                if ($target == 0)
+                    {  $target = undef;  };
+                }
+
+            elsif ($type == ::MENU_LINK())
+                {
+                # [AString16: title] [AString16: url]
+
+                read($fileHandle, $raw, 2);
+                $titleLength = unpack('n', $raw);
+
+                read($fileHandle, $title, $titleLength);
+                read($fileHandle, $raw, 2);
+                $targetLength = unpack('n', $raw);
+
+                read($fileHandle, $target, $targetLength);
+                }
+
+            elsif ($type == ::MENU_TEXT())
+                {
+                # [AString16: text]
+
+                read($fileHandle, $raw, 2);
+                $titleLength = unpack('n', $raw);
+
+                read($fileHandle, $title, $titleLength);
+                };
+
+
+            my $entry = NaturalDocs::Menu::Entry::New($type, $title, $target, ($flags || 0));
+            $currentGroup->PushToGroup($entry);
+
+
+            if ($type == ::MENU_FILE())
+                {
+                $files->{$target} = $entry;
+                }
+            elsif ($type == ::MENU_GROUP())
+                {
+                push @groupStack, $currentGroup;
+                $currentGroup = $entry;
+                }
+            elsif ($type == ::MENU_INDEX())
+                {
+                if (!defined $target)
+                    {  $target = '*';  };
+
+                $indexes->{$target} = 1;
+                };
+
+            };
         };
+
+    return ($menu, $indexes, $files);
     };
 
 
@@ -978,73 +1298,67 @@ sub SavePreviousMenuStateFile
     open ($fileHandle, '>' . NaturalDocs::Project::PreviousMenuStateFile())
         or die "Couldn't save " . NaturalDocs::Project::PreviousMenuStateFile() . ".\n";
 
-    print $fileHandle
+    binmode($fileHandle);
 
-        '' . NaturalDocs::Settings::AppVersion() . "\n"
+    print $fileHandle '' . ::BINARY_FORMAT();
 
-        . join("\t", keys %indexes) . "\n";
+    NaturalDocs::Version::ToBinaryFile($fileHandle, NaturalDocs::Settings::AppVersion());
+
+    WritePreviousMenuStateEntries($menu->GroupContent(), $fileHandle);
+
+    close($fileHandle);
     };
 
 
 #
-#   Function: AddMissingFiles
+#   Function: WritePreviousMenuStateEntries
 #
-#   Adds all files with Natural Docs content to the menu that are not already on it.
+#   A recursive function to write the contents of an arrayref of <NaturalDocs::Menu::Entry> objects to disk.
 #
 #   Parameters:
 #
-#       filesInMenu - An existence hashref of all the files present in the menu.
-#       hasGroups - Whether the menu uses groups or not.  Determines whether new files will be added to the end or to a group
-#                          named Other.
+#       entries          - The arrayref of menu entries to write.
+#       fileHandle      - The handle to the output file.
 #
-sub AddMissingFiles #(filesInMenu, hasGroups)
+sub WritePreviousMenuStateEntries #(entries, fileHandle)
     {
-    my ($filesInMenu, $hasGroups) = @_;
+    my ($entries, $fileHandle) = @_;
 
-
-    # Determine where to put the new entries.
-
-    my $newFilesGroup;
-    my $createdGroup;
-
-    if ($hasGroups && !$menu->GroupIsEmpty())
+    foreach my $entry (@$entries)
         {
-        my $menuContent = $menu->GroupContent();
-
-        if ($menuContent->[-1]->Type() == ::MENU_GROUP() && lc( $menuContent->[-1]->Title() ) eq 'other')
+        if ($entry->Type() == ::MENU_FILE())
             {
-            $newFilesGroup = $menuContent->[-1];
+            # [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
+            print $fileHandle pack('CCn/A*n/A*', ::MENU_FILE(), ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 1 : 0),
+                                                                  $entry->Title(), $entry->Target());
             }
-        else
+
+        elsif ($entry->Type() == ::MENU_GROUP())
             {
-            $newFilesGroup = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), 'Other', undef);
-            $createdGroup = 1;
-            };
-        }
-    else
-        {
-        $newFilesGroup = $menu;
-        };
+            # [UInt8: MENU_GROUP] [AString16: title]
+            print $fileHandle pack('Cn/A*', ::MENU_GROUP(), $entry->Title());
+            WritePreviousMenuStateEntries($entry->GroupContent(), $fileHandle);
+            print $fileHandle pack('C', 0);
+            }
 
-
-    # Add the files.
-
-    my $filesWithContent = NaturalDocs::Project::FilesWithContent();
-
-    foreach my $file (keys %$filesWithContent)
-        {
-        if (!exists $filesInMenu->{$file})
+        elsif ($entry->Type() == ::MENU_INDEX())
             {
-            $newFilesGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_FILE(), undef, $file) );
-            $hasChanged = 1;
+            # [UInt8: MENU_INDEX] [AString16: title] [UInt8: type (0 for general)]
+            print $fileHandle pack('Cn/A*C', ::MENU_INDEX(), $entry->Title(), $entry->Target());
+            }
+
+        elsif ($entry->Type() == ::MENU_LINK())
+            {
+            # [UInt8: MENU_LINK] [AString16: title] [AString16: url]
+            print $fileHandle pack('Cn/A*n/A*', ::MENU_LINK(), $entry->Title(), $entry->Target());
+            }
+
+        elsif ($entry->Type() == ::MENU_TEXT())
+            {
+            # [UInt8: MENU_TEXT] [AString16: hext]
+            print $fileHandle pack('Cn/A*', ::MENU_TEXT(), $entry->Title());
             };
         };
-
-
-    # Add Other to the menu if necessary.
-
-    if ($createdGroup && !$newFilesGroup->GroupIsEmpty())
-        {  $menu->PushToGroup($newFilesGroup);  };
     };
 
 
@@ -1109,9 +1423,13 @@ sub HandleErrors #(errors)
             {
             print $menuFileHandle "# ERROR: " . $errors->[$error]->Description() . "\n";
 
-            # Use the GCC "[file]:[line]: [description]" format, which should make it easier to handle errors when Natural Docs is part
-            # of a build process.
-            print $menuFile . ':' . $lineNumber . ': ' . $errors->[$error]->Description() . "\n";
+            # Use the GNU error format, which should make it easier to handle errors when Natural Docs is part of a build process.
+            # See http://www.gnu.org/prep/standards_15.html
+
+            my $gnuError = lcfirst($errors->[$error]->Description());
+            $gnuError =~ s/\.$//;
+
+            print STDERR 'NaturalDocs:' . $menuFile . ':' . $lineNumber . ': ' . $gnuError . "\n";
 
             $lineNumber++;
             $error++;
@@ -1137,60 +1455,1434 @@ sub HandleErrors #(errors)
 
 
 #
-#   Function: WriteEntries
+#   Function: CheckForTrashedMenu
 #
-#   A recursive function to write the contents of an arrayref of <NaturalDocs::Menu::Entry> objects to disk.
+#   Checks the menu to see if a significant number of file entries didn't resolve to actual files, and if so, saves a backup of the
+#   menu and issues a warning.
 #
 #   Parameters:
 #
-#       entries          - The arrayref of menu entries to write.
-#       fileHandle      - The handle to the output file.
-#       indentChars   - The indentation _characters_ to add before each line.  It is not the number of characters, it is the characters
-#                              themselves.  Use undef for none.
+#       numberOriginallyInMenu - A count of how many file entries were in the menu orignally.
+#       numberRemoved - A count of how many file entries were removed from the menu.
 #
-sub WriteEntries #(entries, fileHandle, indentChars)
+sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
     {
-    my ($entries, $fileHandle, $indentChars) = @_;
+    my ($numberOriginallyInMenu, $numberRemoved) = @_;
 
-    foreach my $entry (@$entries)
+    no integer;
+
+    if ( ($numberOriginallyInMenu >= 6 && $numberRemoved == $numberOriginallyInMenu) ||
+         ($numberOriginallyInMenu >= 12 && ($numberRemoved / $numberOriginallyInMenu) >= 0.4) ||
+         ($numberRemoved >= 15) )
+        {
+        my $backupFile = NaturalDocs::Project::MenuBackupFile();
+
+        NaturalDocs::File::Copy( NaturalDocs::Project::MenuFile(), $backupFile );
+
+        print STDERR
+        "\n"
+        # GNU format.  See http://www.gnu.org/prep/standards_15.html
+        . "NaturalDocs: warning: possible trashed menu\n"
+        . "\n"
+        . "   Natural Docs has detected that a significant number file entries in the\n"
+        . "   menu did not resolve to actual files.  A backup of your original menu file\n"
+        . "   has been saved as\n"
+        . "\n"
+        . "   " . $backupFile . "\n"
+        . "\n"
+        . "   - If you recently rearranged your source tree, you may want to restore your\n"
+        . "     menu from the backup and do a search and replace to preserve your layout.\n"
+        . "     Otherwise the position of any moved files will be reset.\n"
+        . "   - If you recently deleted a lot of files from your project, you can safely\n"
+        . "     ignore this message.  They have been deleted from the menu as well.\n"
+        . "   - If neither of these is the case, you may have gotten the -i parameter\n"
+        . "     wrong in the command line.  You should definitely restore the backup and\n"
+        . "     try again, because otherwise every file in your menu will be reset.\n"
+        . "\n";
+        };
+
+    use integer;
+    };
+
+
+###############################################################################
+# Group: Auto-Adjustment Functions
+
+
+#
+#   Function: LockUserTitleChanges
+#
+#   Detects if the user manually changed any file titles, and if so, automatically locks them with <MENU_FILE_NOAUTOTITLE>.
+#
+#   Parameters:
+#
+#       previousMenuFiles - A hashref of the files from the previous menu state.  The keys are the file names, and the values are
+#                                    references to their <NaturalDocs::Menu::Entry> objects.
+#
+sub LockUserTitleChanges #(previousMenuFiles)
+    {
+    my $previousMenuFiles = shift;
+
+    my @groupStack = ( $menu );
+    my $groupEntry;
+
+    while (scalar @groupStack)
+        {
+        $groupEntry = pop @groupStack;
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+
+            # If it's an unlocked file entry
+            if ($entry->Type() == ::MENU_FILE() && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0)
+                {
+                my $previousEntry = $previousMenuFiles->{$entry->Target()};
+
+                # If the previous entry was also unlocked and the titles are different, the user changed the title.  Automatically lock it.
+                if (defined $previousEntry && ($previousEntry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0 &&
+                    $entry->Title() ne $previousEntry->Title())
+                    {
+                    $entry->SetFlags($entry->Flags() | ::MENU_FILE_NOAUTOTITLE());
+                    $hasChanged = 1;
+                    };
+                }
+
+            elsif ($entry->Type() == ::MENU_GROUP())
+                {
+                push @groupStack, $entry;
+                };
+
+            };
+        };
+    };
+
+
+#
+#   Function: FlagAutoTitleChanges
+#
+#   Finds which files have auto-titles that changed and flags their groups for updating with <MENU_GROUP_UPDATETITLES> and
+#   <MENU_GROUP_UPDATEORDER>.
+#
+sub FlagAutoTitleChanges
+    {
+    my @groupStack = ( $menu );
+    my $groupEntry;
+
+    while (scalar @groupStack)
+        {
+        $groupEntry = pop @groupStack;
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_FILE() && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0 &&
+                exists $defaultTitlesChanged{$entry->Target()})
+                {
+                $groupEntry->SetFlags($groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() | ::MENU_GROUP_UPDATEORDER());
+                $hasChanged = 1;
+                }
+            elsif ($entry->Type() == ::MENU_GROUP())
+                {
+                push @groupStack, $entry;
+                };
+            };
+        };
+    };
+
+
+#
+#   Function: AutoPlaceNewFiles
+#
+#   Adds files to the menu that aren't already on it, attempting to guess where they belong.
+#
+#   New files are placed after a dummy <MENU_ENDOFORIGINAL> entry so that they don't affect the detected order.  Also, the
+#   groups they're placed in get <MENU_GROUP_UPDATETITLES>, <MENU_GROUP_UPDATESTRUCTURE>, and
+#   <MENU_GROUP_UPDATEORDER> flags.
+#
+#   Parameters:
+#
+#       filesInMenu - An existence hash of all the files present in the menu.
+#
+sub AutoPlaceNewFiles #(fileInMenu)
+    {
+    my $filesInMenu = shift;
+    my $files = NaturalDocs::Project::FilesWithContent();
+
+    my $directories;
+
+    foreach my $file (keys %$files)
+        {
+        if (!exists $filesInMenu->{$file})
+            {
+            # This is done on demand because new files shouldn't be added very often, so this will save time.
+            if (!defined $directories)
+                {  $directories = MatchDirectoriesAndGroups();  };
+
+            my $targetGroup;
+            my $fileDirectoryString = (NaturalDocs::File::SplitPath($file))[1];
+
+            $targetGroup = $directories->{$fileDirectoryString};
+
+            if (!defined $targetGroup)
+                {
+                # Okay, if there's no exact match, work our way down.
+
+                my @fileDirectories = NaturalDocs::File::SplitDirectories($fileDirectoryString);
+
+                do
+                    {
+                    pop @fileDirectories;
+                    $targetGroup = $directories->{ NaturalDocs::File::JoinDirectories(@fileDirectories) };
+                    }
+                while (!defined $targetGroup && scalar @fileDirectories);
+
+                if (!defined $targetGroup)
+                    {  $targetGroup = $menu;  };
+                };
+
+            $targetGroup->MarkEndOfOriginal();
+            $targetGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_FILE(), undef, $file, undef) );
+
+            $targetGroup->SetFlags( $targetGroup->Flags() | ::MENU_GROUP_UPDATETITLES() |
+                                                 ::MENU_GROUP_UPDATESTRUCTURE() | ::MENU_GROUP_UPDATEORDER() );
+
+            $hasChanged = 1;
+            };
+        };
+    };
+
+
+#
+#   Function: MatchDirectoriesAndGroups
+#
+#   Determines which groups files in certain directories should be placed in.
+#
+#   Returns:
+#
+#   A hashref.  The keys are the directory names, and the values are references to the group objects they should be placed in.
+#
+#   This only repreesents directories that currently have files on the menu, so it shouldn't be assumed that every possible directory
+#   will exist.  To match, you should first try to match the directory, and then strip the deepest directories one by one until there's
+#   a match or there's none left.  If there's none left, use the root group <menu>.
+#
+sub MatchDirectoriesAndGroups
+    {
+    # The keys are the directory names, and the values are hashrefs.  For the hashrefs, the keys are the group objects, and the
+    # values are the number of files in them from that directory.  In other words,
+    # $directories{$directory}->{$groupEntry} = $count;
+    my %directories;
+    # Note that we need to use Tie::RefHash to use references as keys.  Won't work otherwise.  Also, not every Perl distro comes
+    # with Tie::RefHash::Nestable, so we can't rely on that.
+
+    # We're using an index instead of pushing and popping because we want to save a list of the groups in the order they appear
+    # to break ties.
+    my @groups = ( $menu );
+    my $groupIndex = 0;
+
+
+    # Count the number of files in each group that appear in each directory.
+
+    while ($groupIndex < scalar @groups)
+        {
+        my $groupEntry = $groups[$groupIndex];
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {
+                push @groups, $entry;
+                }
+            elsif ($entry->Type() == ::MENU_FILE())
+                {
+                my $directory = (NaturalDocs::File::SplitPath($entry->Target()))[1];
+
+                if (!exists $directories{$directory})
+                    {
+                    my $subHash = { };
+                    tie %$subHash, 'Tie::RefHash';
+                    $directories{$directory} = $subHash;
+                    };
+
+                if (!exists $directories{$directory}->{$groupEntry})
+                    {  $directories{$directory}->{$groupEntry} = 1;  }
+                else
+                    {  $directories{$directory}->{$groupEntry}++;  };
+                };
+            };
+
+        $groupIndex++;
+        };
+
+
+    # Determine which group goes with which directory, breaking ties by using whichever group appears first.
+
+    my $finalDirectories = { };
+
+    while (my ($directory, $directoryGroups) = each %directories)
+        {
+        my $bestGroup;
+        my $bestCount = 0;
+        my %tiedGroups;  # Existence hash
+
+        while (my ($group, $count) = each %$directoryGroups)
+            {
+            if ($count > $bestCount)
+                {
+                $bestGroup = $group;
+                $bestCount = $count;
+                %tiedGroups = ( );
+                }
+            elsif ($count == $bestCount)
+                {
+                $tiedGroups{$group} = 1;
+                };
+            };
+
+        # Break ties.
+        if (scalar keys %tiedGroups)
+            {
+            $tiedGroups{$bestGroup} = 1;
+
+            foreach my $group (@groups)
+                {
+                if (exists $tiedGroups{$group})
+                    {
+                    $bestGroup = $group;
+                    last;
+                    };
+                };
+            };
+
+
+        $finalDirectories->{$directory} = $bestGroup;
+        };
+
+
+    return $finalDirectories;
+    };
+
+
+#
+#   Function: RemoveDeadFiles
+#
+#   Removes files from the menu that no longer exist or no longer have Natural Docs content.
+#
+#   Returns:
+#
+#       The number of file entries removed.
+#
+sub RemoveDeadFiles
+    {
+    my @groupStack = ( $menu );
+    my $numberRemoved = 0;
+
+    my $filesWithContent = NaturalDocs::Project::FilesWithContent();
+
+    while (scalar @groupStack)
+        {
+        my $groupEntry = pop @groupStack;
+        my $groupContent = $groupEntry->GroupContent();
+
+        my $index = 0;
+        while ($index < scalar @$groupContent)
+            {
+            if ($groupContent->[$index]->Type() == ::MENU_FILE() &&
+                !exists $filesWithContent->{ $groupContent->[$index]->Target() } )
+                {
+                $groupEntry->DeleteFromGroup($index);
+
+                $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() |
+                                                   ::MENU_GROUP_UPDATESTRUCTURE() );
+                $numberRemoved++;
+                $hasChanged = 1;
+                }
+
+            elsif ($groupContent->[$index]->Type() == ::MENU_GROUP())
+                {
+                push @groupStack, $groupContent->[$index];
+                $index++;
+                }
+
+            else
+                {  $index++;  };
+            };
+        };
+
+    return $numberRemoved;
+    };
+
+
+#
+#   Function: RemoveDeadGroups
+#
+#   Removes groups with less than two entries.  It will always remove empty groups, and it will remove groups with one entry if it
+#   has the <MENU_GROUP_UPDATESTRUCTURE> flag.
+#
+sub RemoveDeadGroups
+    {
+    my $index = 0;
+
+    while ($index < scalar @{$menu->GroupContent()})
+        {
+        my $entry = $menu->GroupContent()->[$index];
+
+        if ($entry->Type() == ::MENU_GROUP())
+            {
+            my $removed = RemoveIfDead($entry, $menu, $index);
+
+            if (!$removed)
+                {  $index++;  };
+            }
+        else
+            {  $index++;  };
+        };
+    };
+
+
+#
+#   Function: RemoveIfDead
+#
+#   Checks a group and all its sub-groups for life and remove any that are dead.  Empty groups are removed, and groups with one
+#   entry and the <MENU_GROUP_UPDATESTRUCTURE> flag have their entry moved to the parent group.
+#
+#   Parameters:
+#
+#       groupEntry - The group to check for possible deletion.
+#       parentGroupEntry - The parent group to move the single entry to if necessary.
+#       parentGroupIndex - The index of the group in its parent.
+#
+#   Returns:
+#
+#       Whether the group was removed or not.
+#
+sub RemoveIfDead #(groupEntry, parentGroupEntry, parentGroupIndex)
+    {
+    my ($groupEntry, $parentGroupEntry, $parentGroupIndex) = @_;
+
+
+    # Do all sub-groups first, since their deletions will affect our UPDATESTRUCTURE flag and content count.
+
+    my $index = 0;
+    while ($index < scalar @{$groupEntry->GroupContent()})
+        {
+        my $entry = $groupEntry->GroupContent()->[$index];
+
+        if ($entry->Type() == ::MENU_GROUP())
+            {
+            my $removed = RemoveIfDead($entry, $groupEntry, $index);
+
+            if (!$removed)
+                {  $index++;  };
+            }
+        else
+            {  $index++;  };
+        };
+
+
+    # Now check ourself.
+
+    my $count = scalar @{$groupEntry->GroupContent()};
+    if ($groupEntry->Flags() & ::MENU_GROUP_HASENDOFORIGINAL())
+        {  $count--;  };
+
+    if ($count == 0)
+        {
+        $parentGroupEntry->DeleteFromGroup($parentGroupIndex);
+
+        $parentGroupEntry->SetFlags( $parentGroupEntry->Flags() | ::MENU_GROUP_UPDATESTRUCTURE() );
+
+        $hasChanged = 1;
+        return 1;
+        }
+    elsif ($count == 1 && ($groupEntry->Flags() & ::MENU_GROUP_UPDATESTRUCTURE()) )
+        {
+        my $onlyEntry = $groupEntry->GroupContent()->[0];
+        if ($onlyEntry->Type() == ::MENU_ENDOFORIGINAL())
+            {  $onlyEntry = $groupEntry->GroupContent()->[1];  };
+
+        $parentGroupEntry->DeleteFromGroup($parentGroupIndex);
+
+        $parentGroupEntry->MarkEndOfOriginal();
+        $parentGroupEntry->PushToGroup($onlyEntry);
+
+        $parentGroupEntry->SetFlags( $parentGroupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() |
+                                                     ::MENU_GROUP_UPDATEORDER() | ::MENU_GROUP_UPDATESTRUCTURE() );
+
+        $hasChanged = 1;
+        return 1;
+        }
+    else
+        {  return undef;  };
+    };
+
+
+#
+#   Function: CreateDirectorySubGroups
+#
+#   Where possible, creates sub-groups based on directories for any long groups that have <MENU_GROUP_UPDATESTRUCTURE>
+#   set.  Clears the flag afterwards on groups that are short enough to not need any more sub-groups, but leaves it for the rest.
+#
+sub CreateDirectorySubGroups
+    {
+    my @groupStack = ( $menu );
+
+    foreach my $groupEntry (@groupStack)
+        {
+        if ($groupEntry->Flags() & ::MENU_GROUP_UPDATESTRUCTURE())
+            {
+            # Count the number of files.
+
+            my $fileCount = 0;
+
+            foreach my $entry (@{$groupEntry->GroupContent()})
+                {
+                if ($entry->Type() == ::MENU_FILE())
+                    {  $fileCount++;  };
+                };
+
+
+            if ($fileCount > MAXFILESINGROUP)
+                {
+                my @sharedDirectories = SharedDirectoriesOf($groupEntry);
+                my $unsharedIndex = scalar @sharedDirectories;
+
+                # The keys are the first directory entries after the shared ones, and the values are the number of files that are in
+                # that directory.  Files that don't have subdirectories after the shared directories aren't included because they shouldn't
+                # be put in a subgroup.
+                my %directoryCounts;
+
+                foreach my $entry (@{$groupEntry->GroupContent()})
+                    {
+                    if ($entry->Type() == ::MENU_FILE())
+                        {
+                        my @entryDirectories = NaturalDocs::File::SplitDirectories( (NaturalDocs::File::SplitPath($entry->Target()))[1] );
+
+                        if (scalar @entryDirectories > $unsharedIndex)
+                            {
+                            my $unsharedDirectory = $entryDirectories[$unsharedIndex];
+
+                            if (!exists $directoryCounts{$unsharedDirectory})
+                                {  $directoryCounts{$unsharedDirectory} = 1;  }
+                            else
+                                {  $directoryCounts{$unsharedDirectory}++;  };
+                            };
+                        };
+                    };
+
+
+                # Now create the subgroups.
+
+                # The keys are the first directory entries after the shared ones, and the values are the groups for those files to be
+                # put in.  There will only be entries for the groups with at least MINFILESINNEWGROUP files.
+                my %directoryGroups;
+
+                while (my ($directory, $count) = each %directoryCounts)
+                    {
+                    if ($count >= MINFILESINNEWGROUP)
+                        {
+                        my $newGroup = NaturalDocs::Menu::Entry::New( ::MENU_GROUP(), ucfirst($directory), undef,
+                                                                                                  ::MENU_GROUP_UPDATETITLES() |
+                                                                                                  ::MENU_GROUP_UPDATEORDER() );
+
+                        if ($count > MAXFILESINGROUP)
+                            {  $newGroup->SetFlags( $newGroup->Flags() | ::MENU_GROUP_UPDATESTRUCTURE());  };
+
+                        $groupEntry->MarkEndOfOriginal();
+                        push @{$groupEntry->GroupContent()}, $newGroup;
+
+                        $directoryGroups{$directory} = $newGroup;
+                        $fileCount -= $count;
+                        };
+                    };
+
+
+                # Now fill the subgroups.
+
+                if (scalar keys %directoryGroups)
+                    {
+                    my $afterOriginal;
+                    my $index = 0;
+
+                    while ($index < scalar @{$groupEntry->GroupContent()})
+                        {
+                        my $entry = $groupEntry->GroupContent()->[$index];
+
+                        if ($entry->Type() == ::MENU_FILE())
+                            {
+                            my @entryDirectories = NaturalDocs::File::SplitDirectories( (NaturalDocs::File::SplitPath($entry->Target()))[1] );
+                            my $unsharedDirectory = $entryDirectories[$unsharedIndex];
+
+                            if (exists $directoryGroups{$unsharedDirectory})
+                                {
+                                my $targetGroup = $directoryGroups{$unsharedDirectory};
+
+                                if ($afterOriginal)
+                                    {  $targetGroup->MarkEndOfOriginal();  };
+                                $targetGroup->PushToGroup($entry);
+
+                                $groupEntry->DeleteFromGroup($index);
+                                }
+                            else
+                                {  $index++;  };
+                            }
+
+                        elsif ($entry->Type() == ::MENU_ENDOFORIGINAL())
+                            {
+                            $afterOriginal = 1;
+                            $index++;
+                            }
+
+                        elsif ($entry->Type() == ::MENU_GROUP())
+                            {
+                            # See if we need to relocate this group.
+
+                            my @groupDirectories = SharedDirectoriesOf($entry);
+
+                            # The group's shared directories must be at least two levels deeper than the current.  If the first level deeper
+                            # is a new group, move it there because it's a subdirectory of that one.
+                            if (scalar @groupDirectories - scalar @sharedDirectories >= 2)
+                                {
+                                my $unsharedDirectory = $groupDirectories[$unsharedIndex];
+
+                                if (exists $directoryGroups{$unsharedDirectory} &&
+                                    $directoryGroups{$unsharedDirectory} != $entry)
+                                    {
+                                    my $targetGroup = $directoryGroups{$unsharedDirectory};
+
+                                    if ($afterOriginal)
+                                        {  $targetGroup->MarkEndOfOriginal();  };
+                                    $targetGroup->PushToGroup($entry);
+
+                                    $groupEntry->DeleteFromGroup($index);
+
+                                    # We need to retitle the group if it has the name of the unshared directory.
+
+                                    my $oldTitle = $entry->Title();
+                                    $oldTitle =~ s/ +//g;
+                                    $unsharedDirectory =~ s/ +//g;
+
+                                    if (lc($oldTitle) eq lc($unsharedDirectory))
+                                        {
+                                        $entry->SetTitle($groupDirectories[$unsharedIndex + 1]);
+                                        };
+                                    }
+                                else
+                                    {  $index++;  };
+                                }
+                            else
+                                {  $index++;  };
+                            }
+
+                        else
+                            {  $index++;  };
+                        };
+
+                    $hasChanged = 1;
+
+                    if ($fileCount <= MAXFILESINGROUP)
+                        {  $groupEntry->SetFlags( $groupEntry->Flags() & ~::MENU_GROUP_UPDATESTRUCTURE() );  };
+
+                    $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() |
+                                                                                         ::MENU_GROUP_UPDATEORDER() );
+                    };
+
+                };  # If group has >MAXFILESINGROUP files
+            };  # If group has UPDATESTRUCTURE
+
+
+        # Okay, now go through all the subgroups.  We do this after the above so that newly created groups can get subgrouped
+        # further.
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @groupStack, $entry;  };
+            };
+
+        };  # For each group entry
+    };
+
+
+#
+#   Function: CreatePrefixSubGroups
+#
+#   Where possible, creates sub-groups based on name prefix for any long groups that have the
+#   <MENU_GROUP_UPDATESTRUCTURE> flag set.  Clears the flag for any group that becomes short enough to not need any more
+#   sub-groups, but leaves it for the rest.
+#
+#   Important:
+#
+#       This function isn't ready for prime time yet.  While it works somewhat on its own, it needs to be improved and to integrate
+#       better with the directory sub-groups.  Probably most importantly, <AutoPlaceNewFiles()> needs to be aware of it.
+#
+sub CreatePrefixSubGroups
+    {
+    # XXX This function hasn't been converted to use PushToGroup(), DeleteFromGroup(), MarkEndOfOriginal() etc. which would
+    # improve readability.
+    my @groupStack = ( $menu );
+
+    while (scalar @groupStack)
+        {
+        my $groupEntry = pop @groupStack;
+
+        if ($groupEntry->Flags() & ::MENU_GROUP_UPDATESTRUCTURE())
+            {
+            # Count the files and find the global prefixes, if any.
+
+            my $fileCount = 0;
+            my @globalPrefixes;
+            my $noGlobalPrefixes;
+
+            foreach my $entry (@{$groupEntry->GroupContent()})
+                {
+                if ($entry->Type() == ::MENU_FILE())
+                    {
+                    $fileCount++;
+
+                    # We want to ignore titles with spaces in them.  Otherwise we'll group on manual titles starting with "The" or
+                    # something.  This is meant for code only.
+                    if (!$noGlobalPrefixes &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) !~ / /)
+                        {
+                        my @tokens = NaturalDocs::Project::DefaultMenuTitleOf($entry->Target())
+#                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
+                                                                                                            =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
+
+                        if (!scalar @globalPrefixes)
+                            {  @globalPrefixes = @tokens;  }
+                        else
+                            {
+                            ::ShortenToMatchStrings(\@globalPrefixes, \@tokens);
+                            if (!scalar @globalPrefixes)
+                                {  $noGlobalPrefixes = 1;  };
+                            };
+                        };
+                    };
+                };
+
+
+            if ($fileCount > MAXFILESINGROUP)
+                {
+                # Count the number of files that start with each prefix.
+
+                # The keys are the first prefixes of the titles after the globally shared prefixes.  The values in %prefixCounts are the
+                # number of files that have it, and the values in %sharedPrefixes are arrayrefs of all the shared prefixes including that
+                # one.
+                my %prefixCounts;
+                my %sharedPrefixes;
+
+                foreach my $entry (@{$groupEntry->GroupContent()})
+                    {
+                    if ($entry->Type() == ::MENU_FILE() &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) !~ / /)
+                        {
+                        my @tokens = NaturalDocs::Project::DefaultMenuTitleOf($entry->Target())
+#                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
+                                                                                                            =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
+
+                        if (scalar @tokens > scalar @globalPrefixes)
+                            {
+                            my $leadToken = $tokens[scalar @globalPrefixes];
+
+                            if (!exists $prefixCounts{$leadToken})
+                                {
+                                $prefixCounts{$leadToken} = 1;
+                                $sharedPrefixes{$leadToken} = [ @tokens ];
+                                }
+                            else
+                                {
+                                $prefixCounts{$leadToken}++;
+                                ::ShortenToMatchStrings($sharedPrefixes{$leadToken}, \@tokens);
+                                };
+                            };
+                        };
+                    };
+
+
+                # Create the sub-groups if they have enough entries and if the shared prefix isn't merely a package prefix.  We don't
+                # want to deal with package prefixes here because combining it with directory grouping gets really messy and hard.
+
+                # The keys are the first prefixes of the titles after the globally shared prefixes.  The values are the groups they should
+                # go into.  There will only be entries for groups that have at least MINFILESINNEWGROUP entries.
+                my %prefixGroups;
+
+                while (my ($leadPrefix, $count) = each %prefixCounts)
+                    {
+                    if ($count >= MINFILESINNEWGROUP)# && $sharedPrefixes{$leadPrefix}->[-1] !~ /(?:\.|::)$/)
+                        {
+                        my @newTitle = @{$sharedPrefixes{$leadPrefix}};
+
+                        if (scalar @globalPrefixes)
+                            {
+                            # If the last section is text, we keep it as is because the following section is either distinctive text
+                            # (WindowText and WindowBorder) or symbols.  In that case, grouping with the word (Window) is appropriate.
+                            if ($newTitle[-1] =~ /[a-zA-Z0-9]$/)
+                                {
+                                splice(@newTitle, 0, scalar @globalPrefixes);
+                                }
+                            # However, if the last section is a symbol (PackageName::) we want to keep the leading word complete
+                            # (PackageName:: as opposed to Name::)  This could happen if you have PackageName and a number of
+                            # PackageName::X's being grouped this way.  You'd have one group for PackageName and a sub-group
+                            # Name:: for all the X's.
+                            else #if ($newTitle[scalar @globalPrefixes] !~ /[a-zA-Z0-9]$/)
+                                {
+                                my $index = scalar @globalPrefixes;
+
+                                while ($index > 0 && $newTitle[$index - 1] =~ /[a-zA-Z0-9]$/)
+                                    {  $index--;  };
+
+                                if ($index > 0)
+                                    {  splice(@newTitle, 0, $index);  };
+                                };
+                            };
+
+                        #$newTitle[-1] =~ s/[:\.]+$//;
+
+                        my $newGroup = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), join('', @newTitle),
+                                                                                                 undef, ::MENU_GROUP_UPDATETITLES());
+                        if ($count > MAXFILESINGROUP)
+                            {
+                            $newGroup->SetFlags( $newGroup->Flags() | ::MENU_GROUP_UPDATESTRUCTURE() );
+                            };
+
+                        if (($groupEntry->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
+                            {
+                            push @{$groupEntry->GroupContent()},
+                                    NaturalDocs::Menu::Entry::New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
+                            $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
+                            };
+
+                        push @{$groupEntry->GroupContent()}, $newGroup;
+                        $prefixGroups{$leadPrefix} = $newGroup;
+
+                        $fileCount -= $count;
+                        };
+                    };
+
+
+                # Fill the new sub-groups.
+
+                my $index = 0;
+                my $afterOriginal;
+
+                while ($index < scalar @{$groupEntry->GroupContent()})
+                    {
+                    my $entry = $groupEntry->GroupContent()->[$index];
+
+                    if ($entry->Type() == ::MENU_FILE() &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) !~ / /)
+                        {
+                        my @tokens =  NaturalDocs::Project::DefaultMenuTitleOf($entry->Target())
+#                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
+                                                                                                            =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
+
+                        my $leadToken = $tokens[scalar @globalPrefixes];
+
+                        if (defined $leadToken && exists $prefixGroups{$leadToken})
+                            {
+                            my $targetGroup = $prefixGroups{$leadToken};
+
+                            if ($afterOriginal && ($targetGroup->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
+                                {
+                                push @{$targetGroup->GroupContent()},
+                                        NaturalDocs::Menu::Entry::New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
+                                $targetGroup->SetFlags( $targetGroup->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
+                                };
+
+                            push @{$targetGroup->GroupContent()}, $entry;
+                            splice(@{$groupEntry->GroupContent()}, $index, 1);
+                            }
+                        else
+                            {  $index++;  };
+                        }
+
+                    elsif ($entry->Type() == ::MENU_ENDOFORIGINAL())
+                        {
+                        $afterOriginal = 1;
+                        $index++;
+                        }
+
+                    else
+                        {  $index++;  };
+                    };
+
+                if ($fileCount <= MAXFILESINGROUP)
+                    {
+                    $groupEntry->SetFlags( $groupEntry->Flags() & ~::MENU_GROUP_UPDATESTRUCTURE() );
+                    };
+
+                $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() | ::MENU_GROUP_UPDATEORDER() );
+
+                };  # if count >MAXFILESINGROUP
+            };  # if group has UPDATESTRUCTURE
+
+
+        # Check any sub-groups.
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @groupStack, $entry;  };
+            };
+        };
+    };
+
+
+#
+#   Function: DetectOrder
+#
+#   Detects the order of the entries in all groups that have the <MENU_GROUP_UPDATEORDER> flag set.  Will set one of the
+#   <MENU_GROUP_FILESSORTED>, <MENU_GROUP_FILESANDGROUPSSORTED>, <MENU_GROUP_EVERYTHINGSORTED>, or
+#   <MENU_GROUP_UNSORTED> flags.  It will always go for the most comprehensive sort possible, so if a group only has one entry,
+#   it will be flagged as <MENU_GROUP_EVERYTHINGSORTED>.
+#
+#   The sort detection stops if it reaches a <MENU_ENDOFORIGINAL> entry, so new entries can be added to the end while still
+#   allowing the original sort to be detected.
+#
+#   Parameters:
+#
+#       forceAll - If set, the order will be detected for all groups regardless of whether <MENU_GROUP_UPDATEORDER> is set.
+#
+sub DetectOrder #(forceAll)
+    {
+    my $forceAll = shift;
+    my @groupStack = ( $menu );
+
+    while (scalar @groupStack)
+        {
+        my $groupEntry = pop @groupStack;
+
+
+        # First detect the sort.
+
+        if ($forceAll || ($groupEntry->Flags() & ::MENU_GROUP_UPDATEORDER()) )
+            {
+            my $order = ::MENU_GROUP_EVERYTHINGSORTED();
+
+            my $index = 0;
+            my $lastFile;
+            my $lastFileOrGroup;
+
+            while ($index < scalar @{$groupEntry->GroupContent()} &&
+                     $groupEntry->GroupContent()->[$index]->Type() != ::MENU_ENDOFORIGINAL() &&
+                     $order != ::MENU_GROUP_UNSORTED())
+                {
+                my $entry = $groupEntry->GroupContent()->[$index];
+
+                if ($order == ::MENU_GROUP_EVERYTHINGSORTED() && $index > 0 &&
+                    ::StringCompare($entry->Title(), $groupEntry->GroupContent()->[$index - 1]->Title()) < 0)
+                    {  $order = ::MENU_GROUP_FILESANDGROUPSSORTED();  };
+
+                if ($order == ::MENU_GROUP_FILESANDGROUPSSORTED() &&
+                    ($entry->Type() == ::MENU_FILE() || $entry->Type() == ::MENU_GROUP()) &&
+                    defined $lastFileOrGroup && ::StringCompare($entry->Title(), $lastFileOrGroup->Title()) < 0)
+                    {  $order = ::MENU_GROUP_FILESSORTED();  };
+
+                if ($order == ::MENU_GROUP_FILESSORTED() &&
+                    $entry->Type() == ::MENU_FILE() && defined $lastFile &&
+                    ::StringCompare($entry->Title(), $lastFile->Title()) < 0)
+                    {  $order = ::MENU_GROUP_UNSORTED();  };
+
+                if ($entry->Type() == ::MENU_FILE())
+                    {
+                    $lastFile = $entry;
+                    $lastFileOrGroup = $entry;
+                    }
+                elsif ($entry->Type() == ::MENU_GROUP())
+                    {
+                    $lastFileOrGroup = $entry;
+                    };
+
+                $index++;
+                };
+
+            $groupEntry->SetFlags($groupEntry->Flags() | $order);
+            };
+
+
+        # Now find any subgroups.  We do this separately because we need to find them regardless of whether we needed to detect
+        # the sort for this group, and we can't stop it early due to the sort failing or reaching a MENU_ENDOFORIGINAL.
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @groupStack, $entry;  };
+            };
+        };
+    };
+
+
+#
+#   Function: GenerateAutoFileTitles
+#
+#   Creates titles for the unlocked file entries in all groups that have the <MENU_GROUP_UPDATETITLES> flag set.  It clears the
+#   flag afterwards so it can be used efficiently for multiple sweeps.
+#
+#   Parameters:
+#
+#       forceAll - If set, forces all the unlocked file titles to update regardless of whether the group has the
+#                     <MENU_GROUP_UPDATETITLES> flag set.
+#
+sub GenerateAutoFileTitles #(forceAll)
+    {
+    my $forceAll = shift;
+
+    my @groupStack = ( $menu );
+
+    while (scalar @groupStack)
+        {
+        my $groupEntry = pop @groupStack;
+
+        if ($forceAll || ($groupEntry->Flags() & ::MENU_GROUP_UPDATETITLES()) )
+            {
+            # Find common prefixes and paths to strip from the default menu titles.
+
+            my @sharedDirectories;
+            my $noSharedDirectories;
+
+            my @sharedPrefixes;
+            my $noSharedPrefixes;
+
+            foreach my $entry (@{$groupEntry->GroupContent()})
+                {
+                if ($entry->Type() == ::MENU_FILE())
+                    {
+                    # Find the common path among all file entries in this group.
+
+                    if (!$noSharedDirectories)
+                        {
+                        my ($volume, $directoryString, $file) = NaturalDocs::File::SplitPath($entry->Target());
+                        my @entryDirectories = NaturalDocs::File::SplitDirectories($directoryString);
+
+                        if (!scalar @entryDirectories)
+                            {  $noSharedDirectories = 1;  }
+                        elsif (!scalar @sharedDirectories)
+                            {  @sharedDirectories = @entryDirectories;  }
+                        elsif ($entryDirectories[0] ne $sharedDirectories[0])
+                            {  $noSharedDirectories = 1;  }
+
+                        # If both arrays have entries, and the first is shared...
+                        else
+                            {
+                            my $index = 1;
+
+                            while ($index < scalar @sharedDirectories && $index < scalar @entryDirectories &&
+                                     $entryDirectories[$index] eq $sharedDirectories[$index])
+                                {  $index++;  };
+
+                            if ($index < scalar @sharedDirectories)
+                                {  splice(@sharedDirectories, $index);  };
+                            };
+                        };
+
+
+                    # Find the common prefixes among all file entries that are unlocked and don't use the file name as their default title.
+
+                    if (!$noSharedPrefixes && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0 &&
+                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target())
+                        {
+                        my @entryPrefixes = split(/(\.|::|->)/, NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()));
+
+                        # Remove potential leading undef/empty string.
+                        if (!length $entryPrefixes[0])
+                            {  shift @entryPrefixes;  };
+
+                        # Remove last entry.  Something has to exist for the title.
+                        pop @entryPrefixes;
+
+                        if (!scalar @entryPrefixes)
+                            {  $noSharedPrefixes = 1;  }
+                        elsif (!scalar @sharedPrefixes)
+                            {  @sharedPrefixes = @entryPrefixes;  }
+                        elsif ($entryPrefixes[0] ne $sharedPrefixes[0])
+                            {  $noSharedPrefixes = 1;  }
+
+                        # If both arrays have entries, and the first is shared...
+                        else
+                            {
+                            my $index = 1;
+
+                            while ($index < scalar @sharedPrefixes && $entryPrefixes[$index] eq $sharedPrefixes[$index])
+                                {  $index++;  };
+
+                            if ($index < scalar @sharedPrefixes)
+                                {  splice(@sharedPrefixes, $index);  };
+                            };
+                        };
+
+                    };  # if entry is MENU_FILE
+                };  # foreach entry in group content.
+
+
+            if (!scalar @sharedDirectories)
+                {  $noSharedDirectories = 1;  };
+            if (!scalar @sharedPrefixes)
+                {  $noSharedPrefixes = 1;  };
+
+
+            # Update all the menu titles of unlocked file entries.
+
+            foreach my $entry (@{$groupEntry->GroupContent()})
+                {
+                if ($entry->Type() == ::MENU_FILE() && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0)
+                    {
+                    my $title = NaturalDocs::Project::DefaultMenuTitleOf($entry->Target());
+
+                    if ($title eq $entry->Target())
+                        {
+                        my ($volume, $directoryString, $file) = NaturalDocs::File::SplitPath($title);
+                        my @directories = NaturalDocs::File::SplitDirectories($directoryString);
+
+                        if (!$noSharedDirectories)
+                            {  splice(@directories, 0, scalar @sharedDirectories);  };
+
+                        # directory\...\directory\file.ext
+
+                        if (scalar @directories > 2)
+                            {  @directories = ( $directories[0], '...', $directories[-1] );  };
+
+                        $directoryString = NaturalDocs::File::JoinDirectories(@directories);
+                        $title = NaturalDocs::File::JoinPath($directoryString, $file);
+                        }
+                    else
+                        {
+                        my @segments = split(/(::|\.|->)/, $title);
+                        if (!length $segments[0])
+                            {  shift @segments;  };
+
+                        if (!$noSharedPrefixes)
+                            {  splice(@segments, 0, scalar @sharedPrefixes);  };
+
+                        # package...package::target
+
+                        if (scalar @segments > 5)
+                            {  splice(@segments, 1, scalar @segments - 4, '...');  };
+
+                        $title = join('', @segments);
+                        };
+
+                    $entry->SetTitle($title);
+                    };  # If entry is an unlocked file
+                };  # Foreach entry
+
+            $groupEntry->SetFlags( $groupEntry->Flags() & ~::MENU_GROUP_UPDATETITLES() );
+
+            };  # If updating group titles
+
+        # Now find any subgroups.
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @groupStack, $entry;  };
+            };
+        };
+
+    };
+
+
+#
+#   Function: ResortGroups
+#
+#   Resorts all groups that have <MENU_GROUP_UPDATEORDER> set.  Assumes <DetectOrder()> and <GenerateAutoFileTitles()>
+#   have already been called.  Will clear the flag and any <MENU_ENDOFORIGINAL> entries on reordered groups.
+#
+#   Parameters:
+#
+#       forceAll - If set, resorts all groups regardless of whether <MENU_GROUP_UPDATEORDER> is set.
+#
+sub ResortGroups #(forceAll)
+    {
+    my $forceAll = shift;
+    my @groupStack = ( $menu );
+
+    while (scalar @groupStack)
+        {
+        my $groupEntry = pop @groupStack;
+
+        if ($forceAll || ($groupEntry->Flags() & ::MENU_GROUP_UPDATEORDER()) )
+            {
+            my $newEntriesIndex;
+
+
+            # Strip the ENDOFORIGINAL.
+
+            if ($groupEntry->Flags() & ::MENU_GROUP_HASENDOFORIGINAL())
+                {
+                $newEntriesIndex = 0;
+
+                while ($newEntriesIndex < scalar @{$groupEntry->GroupContent()} &&
+                         $groupEntry->GroupContent()->[$newEntriesIndex]->Type() != ::MENU_ENDOFORIGINAL() )
+                    {  $newEntriesIndex++;  };
+
+                $groupEntry->DeleteFromGroup($newEntriesIndex);
+
+                $groupEntry->SetFlags( $groupEntry->Flags() & ~::MENU_GROUP_HASENDOFORIGINAL() );
+                }
+            else
+                {  $newEntriesIndex = -1;  };
+
+
+            # If there's no order, we still want to sort the new additions.
+
+            if ($groupEntry->Flags() & ::MENU_GROUP_UNSORTED())
+                {
+                if ($newEntriesIndex != -1)
+                    {
+                    my @newEntries =
+                        @{$groupEntry->GroupContent()}[$newEntriesIndex..scalar @{$groupEntry->GroupContent()} - 1];
+
+                    @newEntries = sort { CompareEntries($a, $b) } @newEntries;
+
+                    foreach my $newEntry (@newEntries)
+                        {
+                        $groupEntry->GroupContent()->[$newEntriesIndex] = $newEntry;
+                        $newEntriesIndex++;
+                        };
+                    };
+                }
+
+            elsif ($groupEntry->Flags() & ::MENU_GROUP_EVERYTHINGSORTED())
+                {
+                @{$groupEntry->GroupContent()} = sort { CompareEntries($a, $b) } @{$groupEntry->GroupContent()};
+                }
+
+            elsif ( ($groupEntry->Flags() & ::MENU_GROUP_FILESSORTED()) ||
+                     ($groupEntry->Flags() & ::MENU_GROUP_FILESANDGROUPSSORTED()) )
+                {
+                my $groupContent = $groupEntry->GroupContent();
+                my @newEntries;
+
+                if ($newEntriesIndex != -1)
+                    {  @newEntries = splice( @$groupContent, $newEntriesIndex );  };
+
+
+                # First resort the existing entries.
+
+                # A couple of support functions.  They're defined here instead of spun off into their own functions because they're only
+                # used here and to make them general we would need to add support for the other sort options.
+
+                sub IsIncludedInSort #(groupEntry, entry)
+                    {
+                    my ($groupEntry, $entry) = @_;
+
+                    return ($entry->Type() == ::MENU_FILE() ||
+                                ( $entry->Type() == ::MENU_GROUP() &&
+                                    ($groupEntry->Flags() & ::MENU_GROUP_FILESANDGROUPSSORTED()) ) );
+                    };
+
+                sub IsSorted #(groupEntry)
+                    {
+                    my $groupEntry = shift;
+                    my $lastApplicable;
+
+                    foreach my $entry (@{$groupEntry->GroupContent()})
+                        {
+                        # If the entry is applicable to the sort order...
+                        if (IsIncludedInSort($groupEntry, $entry))
+                            {
+                            if (defined $lastApplicable)
+                                {
+                                if (CompareEntries($entry, $lastApplicable) < 0)
+                                    {  return undef;  };
+                                };
+
+                            $lastApplicable = $entry;
+                            };
+                        };
+
+                    return 1;
+                    };
+
+
+                # There's a good chance it's still sorted.  They should only become unsorted if an auto-title changes.
+                if (!IsSorted($groupEntry))
+                    {
+                    # Crap.  Okay, method one is to sort each group of continuous sortable elements.  There's a possibility that doing
+                    # this will cause the whole to become sorted again.  We try this first, even though it isn't guaranteed to succeed,
+                    # because it will restore the sort without moving any unsortable entries.
+
+                    # Copy it because we'll need the original if this fails.
+                    my @originalGroupContent = @$groupContent;
+
+                    my $index = 0;
+                    my $startSortable = 0;
+
+                    while (1)
+                        {
+                        # If index is on an unsortable entry or the end of the array...
+                        if ($index == scalar @$groupContent || !IsIncludedInSort($groupEntry, $groupContent->[$index]))
+                            {
+                            # If we have at least two sortable entries...
+                            if ($index - $startSortable >= 2)
+                                {
+                                # Sort them.
+                                my @sortableEntries = @{$groupContent}[$startSortable .. $index - 1];
+                                @sortableEntries = sort { CompareEntries($a, $b) } @sortableEntries;
+                                foreach my $sortableEntry (@sortableEntries)
+                                    {
+                                    $groupContent->[$startSortable] = $sortableEntry;
+                                    $startSortable++;
+                                    };
+                                };
+
+                            if ($index == scalar @$groupContent)
+                                {  last;  };
+
+                            $startSortable = $index + 1;
+                            };
+
+                        $index++;
+                        };
+
+                    if (!IsSorted($groupEntry))
+                        {
+                        # Crap crap.  Okay, now we do a full sort but with potential damage to the original structure.  Each unsortable
+                        # element is locked to the next sortable element.  We sort the sortable elements, bringing all the unsortable
+                        # pieces with them.
+
+                        my @pieces = ( [ ] );
+                        my $currentPiece = $pieces[0];
+
+                        foreach my $entry (@originalGroupContent)
+                            {
+                            push @$currentPiece, $entry;
+
+                            # If the entry is sortable...
+                            if (IsIncludedInSort($groupEntry, $entry))
+                                {
+                                $currentPiece = [ ];
+                                push @pieces, $currentPiece;
+                                };
+                            };
+
+                        my $lastUnsortablePiece;
+
+                        # If the last entry was sortable, we'll have an empty piece at the end.  Drop it.
+                        if (scalar @{$pieces[-1]} == 0)
+                            {  pop @pieces;  }
+
+                        # If the last entry wasn't sortable, the last piece won't end with a sortable element.  Save it, but remove it
+                        # from the list.
+                        else
+                            {  $lastUnsortablePiece = pop @pieces;  };
+
+                        # Sort the list.
+                        @pieces = sort { CompareEntries( $a->[-1], $b->[-1] ) } @pieces;
+
+                        # Copy it back to the original.
+                        if (defined $lastUnsortablePiece)
+                            {  push @pieces, $lastUnsortablePiece;  };
+
+                        my $index = 0;
+
+                        foreach my $piece (@pieces)
+                            {
+                            foreach my $entry (@{$piece})
+                                {
+                                $groupEntry->GroupContent()->[$index] = $entry;
+                                $index++;
+                                };
+                            };
+                        };
+                    };
+
+
+                # Okay, the orginal entries are sorted now.  Sort the new entries and apply.
+
+                if (scalar @newEntries)
+                    {
+                    @newEntries = sort { CompareEntries($a, $b) } @newEntries;
+                    my @originalEntries = @$groupContent;
+                    @$groupContent = ( );
+
+                    while (1)
+                        {
+                        while (scalar @originalEntries && !IsIncludedInSort($groupEntry, $originalEntries[0]))
+                            {  push @$groupContent, (shift @originalEntries);  };
+
+                        if (!scalar @originalEntries || !scalar @newEntries)
+                            {  last;  };
+
+                        while (scalar @newEntries && CompareEntries($newEntries[0], $originalEntries[0]) < 0)
+                            {  push @$groupContent, (shift @newEntries);  };
+
+                        push @$groupContent, (shift @originalEntries);
+
+                        if (!scalar @originalEntries || !scalar @newEntries)
+                            {  last;  };
+                        };
+
+                    if (scalar @originalEntries)
+                        {  push @$groupContent, @originalEntries;  }
+                    elsif (scalar @newEntries)
+                        {  push @$groupContent, @newEntries;  };
+                    };
+                };
+
+            };
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @groupStack, $entry;  };
+            };
+        };
+    };
+
+
+#
+#   Function: CompareEntries
+#
+#   A comparison function for use in sorting.  Compares the two entries by their titles with <StringCompare()>, but in the case
+#   of a tie, puts <MENU_FILE> entries above <MENU_GROUP> entries.
+#
+sub CompareEntries #(a, b)
+    {
+    my ($a, $b) = @_;
+
+    my $result = ::StringCompare($a->Title(), $b->Title());
+
+    if ($result == 0)
+        {
+        if ($a->Type() == ::MENU_FILE() && $b->Type() == ::MENU_GROUP())
+            {  $result = -1;  }
+        elsif ($a->Type() == ::MENU_GROUP() && $b->Type() == ::MENU_FILE())
+            {  $result = 1;  };
+        };
+
+    return $result;
+    };
+
+
+#
+#   Function: SharedDirectoriesOf
+#
+#   Returns an array of all the directories shared by the files in the group.  If none, returns an empty array.
+#
+sub SharedDirectoriesOf #(group)
+    {
+    my $groupEntry = shift;
+    my @sharedDirectories;
+
+    foreach my $entry (@{$groupEntry->GroupContent()})
         {
         if ($entry->Type() == ::MENU_FILE())
             {
-            print $fileHandle $indentChars . 'File: ' . $entry->Title()
-                                  . '  (' . ($entry->SpecifiesTitle() ? '' : 'auto-title, ') . $entry->Target() . ")\n";
-            }
-        elsif ($entry->Type() == ::MENU_GROUP())
-            {
-            print $fileHandle "\n" . $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
-            WriteEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars);
-            print $fileHandle '   ' . $indentChars . '}  # Group: ' . $entry->Title() . "\n\n";
-            }
-        elsif ($entry->Type() == ::MENU_TEXT())
-            {
-            print $fileHandle $indentChars . 'Text: ' . $entry->Title() . "\n";
-            }
-        elsif ($entry->Type() == ::MENU_LINK())
-            {
-            if ($entry->SpecifiesTitle())
-                {
-                print $fileHandle $indentChars . 'Link: ' . $entry->Title() . '  (' . $entry->Target() . ')' . "\n";
-                }
-            else
-                {
-                print $fileHandle $indentChars . 'Link: ' . $entry->Target() . "\n";
-                };
-             }
-        elsif ($entry->Type() == ::MENU_INDEX())
-            {
-            my $type;
-            if (defined $entry->Target())
-                {
-                $type = $indexNames{$entry->Target()} . ' ';
-                };
+            my @entryDirectories = NaturalDocs::File::SplitDirectories( (NaturalDocs::File::SplitPath($entry->Target()))[1] );
 
-            print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
+            if (!scalar @sharedDirectories)
+                {  @sharedDirectories = @entryDirectories;  }
+            else
+                {  ::ShortenToMatchStrings(\@sharedDirectories, \@entryDirectories);  };
+
+            if (!scalar @sharedDirectories)
+                {  last;  };
             };
         };
+
+    return @sharedDirectories;
     };
 
 
