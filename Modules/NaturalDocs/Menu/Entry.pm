@@ -30,7 +30,7 @@ package NaturalDocs::Menu::Entry;
 #       TARGET  - The target of the entry.  If the type is <MENU_FILE>, it will be the source <FileName>.  If the type is
 #                       <MENU_LINK>, it will be the URL.  If the type is <MENU_GROUP>, it will be an arrayref of
 #                       <NaturalDocs::Menu::Entry> objects representing the group's content.  If the type is <MENU_INDEX>, it will be
-#                       a <TopicType> or undef for the general index.
+#                       a <TopicType>.
 #       FLAGS    - Any <Menu Entry Flags> that apply.
 #
 use constant TYPE => 0;
@@ -53,8 +53,7 @@ use constant FLAGS => 3;
 #       type     - The <MenuEntryType>.
 #       title      - The title of the entry.
 #       target   - The target of the entry, if applicable.  If the type is <MENU_FILE>, use the source <FileName>.  If the type is
-#                     <MENU_LINK>, use the URL.  If the type is <MENU_INDEX>, use the <TopicType> or undef for general.
-#                     Otherwise set it to undef.
+#                     <MENU_LINK>, use the URL.  If the type is <MENU_INDEX>, use the <TopicType>.  Otherwise set it to undef.
 #       flags     - Any <Menu Entry Flags> that apply.
 #
 sub New #(type, title, target, flags)
@@ -94,8 +93,7 @@ sub SetTitle #(title)
 #   Function: Target
 #
 #   Returns the target of the entry, if applicable.  If the type is <MENU_FILE>, it returns the source <FileName>.  If the type is
-#   <MENU_LINK>, it returns the URL.  If the type is <MENU_INDEX>, it returns the <TopicType> or undef for the
-#   general index.  Otherwise it returns undef.
+#   <MENU_LINK>, it returns the URL.  If the type is <MENU_INDEX>, it returns the <TopicType>.  Otherwise it returns undef.
 #
 sub Target
     {
