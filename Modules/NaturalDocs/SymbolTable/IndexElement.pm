@@ -104,7 +104,7 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   CLASS  - The class of the symbol.  Will be that class name, undef for global, or an arrayref of
 #                 <NaturalDocs::SymbolTable::IndexElement> objects if multiple classes define the symbol.
 #   FILE  - The file the class/symbol is defined in.  Will be the file name or an arrayref of
-#             <NaturalDocs::SymbolTable::IndexElement>s if multiple files define the class/symbol.
+#             <NaturalDocs::SymbolTable::IndexElements> if multiple files define the class/symbol.
 #   TYPE  - The class/symbol/file type.  Will be one of the <Topic Types>.
 #   PROTOTYPE  - The class/symbol/file prototype, or undef if not applicable.
 #   SUMMARY     - The class/symbol/file summary, or undef if not applicable.
