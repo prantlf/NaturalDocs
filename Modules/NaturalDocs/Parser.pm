@@ -1008,9 +1008,9 @@ sub InterpretTopic #(name, class, type, body, functionPrototype, variablePrototy
 
     if (defined $body)
         {
-        # Extract the first sentence from the leading paragraph, if any.  We'll tolerate a header beforehand, but nothing else.
+        # Extract the first sentence from the leading paragraph, if any.  We'll tolerate a single header beforehand, but nothing else.
 
-        if ($body =~ /^(?:<h>.*?<\/h>)?<p>(.*?)(<\/p>|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/x)
+        if ($body =~ /^(?:<h>[^<]*<\/h>)?<p>(.*?)(<\/p>|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/x)
             {
             $summary = $1;
             if ($2 ne '</p>')
