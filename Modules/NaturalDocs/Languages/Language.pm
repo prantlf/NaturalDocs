@@ -34,6 +34,15 @@ package NaturalDocs::Languages::Language;
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
 #
+#
+#   Constant: LAST_MEMBER
+#
+#   The last index in the arrayref used by this package.  When deriving from this package, start your constants at
+#
+#   > __PACKAGE__->SUPER::LAST_MEMBER() + 1
+#
+#   and continue incrementing.  Remember to define your own LAST_MEMBER to be the same as the last one.
+#
 
 # DEPENDENCY: New() depends on its parameter list being in the same order as these constants.  If the order changes, New()
 # needs to be changed.
@@ -44,6 +53,8 @@ use constant CLOSING_COMMENT_SYMBOLS => 3;
 use constant FUNCTION_ENDERS => 4;
 use constant VARIABLE_ENDERS => 5;
 use constant LINE_EXTENDER => 6;
+
+use constant LAST_MEMBER => 6;
 
 
 #############################################################################

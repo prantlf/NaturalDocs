@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Package: NaturalDocs::Builder::Base
+#   Class: NaturalDocs::Builder::Base
 #
 ###############################################################################
 #
@@ -19,6 +19,29 @@ package NaturalDocs::Builder::Base;
 
 ###############################################################################
 # Group: Notes
+
+
+#
+#   Topic: Implementation
+#
+#   Builder packages are implemented as blessed arrayrefs, not hashrefs.  This is done for all objects in Natural Docs for
+#   efficiency reasons.  You create members by defining constants to use as indexes into the array.
+#
+#   Since we're using inheritance, each package must define a <LAST_MEMBER> constant to be the same as the highest index it
+#   uses, and each subpackage must increment off it for its own member indexes.  Note that the first one must use +1, not
+#   <LAST_MEMBER> itself.
+#
+
+#
+#   Constant: LAST_MEMBER
+#
+#   The last index in the arrayref used by this package.  When deriving from this package, start your constants at
+#
+#   > __PACKAGE__->SUPER::LAST_MEMBER() + 1
+#
+#   and continue incrementing.  Remember to define your own LAST_MEMBER to be the same as the last one.
+#
+use constant LAST_MEMBER => -1;  # No members, so zero is free to use.
 
 #
 #   Topic: Function Order
@@ -145,8 +168,6 @@ package NaturalDocs::Builder::Base;
 #
 #   All Builder classes *must* define these functions.
 #
-#   All interface functions will be called with package->Function() notation, so remember to account for the $self parameter.
-#
 
 
 #
@@ -195,8 +216,24 @@ sub BuildFile #(sourceFile, parsedFile)
 #
 #   These functions can be implemented but packages are not required to do so.
 #
-#   All interface functios will be called with package->Function() notation, so remember to account for the $self parameter.
+
+
 #
+#   Function: New
+#
+#   Creates and returns a new object.
+#
+#   Note that this is the only function where the first parameter will be the package name, not the object itself.
+#
+sub New
+    {
+    my $package = shift;
+
+    my $object = [ ];
+    bless $object, $package;
+
+    return $object;
+    };
 
 
 #
@@ -238,7 +275,8 @@ sub EndBuild #(hasChanged)
 #
 #   Function: BuildIndex
 #
-#   Define this function to create an index for the passed topic.  You can get the index from <NaturalDocs::SymbolTable->Index()>.
+#   Define this function to create an index for the passed topic.  You can get the index from
+#   <NaturalDocs::SymbolTable->Index()>.
 #
 #   The reason it's not passed directly to this function is because indexes may be time-consuming to create.  As such, they're
 #   generated on demand because some output packages may choose not to implement them.

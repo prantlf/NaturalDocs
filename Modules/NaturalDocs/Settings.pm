@@ -19,6 +19,9 @@
 # This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
 # Natural Docs is licensed under the GPL
 
+
+use NaturalDocs::Settings::BuildTarget;
+
 use strict;
 use integer;
 
@@ -36,10 +39,9 @@ my $inputDirectory;
 # The project directory.
 my $projectDirectory;
 
-# hash: outputFormats
-# A hash of the output formats and directories being used.  The keys are the package names, and the values are their
-# corresponding directories.
-my %outputFormats;
+# array: buildTargets
+# An array of <NaturalDocs::Settings::BuildTargets>.
+my @buildTargets;
 
 # int: tabLength
 # The number of spaces in tabs.
@@ -61,14 +63,10 @@ my $isQuiet;
 # Whether only the header files in C/C++ should be used.
 my $headersOnly;
 
-# string: defaultOutputStyle
+# string: defaultStyle
 # The style to be used if an output format doesn't have its own style specified.
-my $defaultOutputStyle;
+my $defaultStyle;
 
-# hash: outputStyles
-# A hash of the output format styles.  The keys are the package names, and the values are the style strings.  If a package does
-# not have an entry in this hash, it uses <defaultOutputStyle>.
-my %outputStyles;
 
 ###############################################################################
 # Group: Functions
@@ -151,8 +149,9 @@ sub ParseCommandLine
     my $valueRef;
     my $option;
 
-    my $styleString;
+    my @outputStrings;
     my %extensionOptions;
+
 
     # Sometimes $valueRef is set to $ignored instead of undef because we don't want certain errors to cause other,
     # unnecessary errors.  For example, if they set the input directory twice, we want to show that error and swallow the
@@ -200,14 +199,15 @@ sub ParseCommandLine
                 else
                     {  $valueRef = \$projectDirectory;  };
                 }
+            elsif ($option eq '-o')
+                {
+                push @outputStrings, undef;
+                $valueRef = \$outputStrings[-1];
+                }
             elsif ($option eq '-s')
                 {
                 # We'll allow -s to be specified multiple times and just concatinate it.
-
-                if (defined $styleString)
-                    {  $styleString .= ' ';  };
-
-                $valueRef = \$styleString;
+                $valueRef = \$defaultStyle;
                 }
             elsif ($option eq '-t')
                 {
@@ -228,12 +228,12 @@ sub ParseCommandLine
                     {  $isQuiet = 1;  }
                 elsif ($option eq '-ho')
                     {  $headersOnly = 1;  }
-                elsif ($option eq '-h' || $option eq '-?')
+                elsif ($option eq '-?' || $option eq '-h')
                     {
                     $self->PrintSyntax();
                     exit;
                     }
-                elsif ($option ne '-o')
+                else
                     {
                     if (exists $options{$option})
                         {
@@ -243,6 +243,7 @@ sub ParseCommandLine
                     else
                         {  push @errorMessages, 'Unrecognized option ' . $option;  };
                     };
+
                 };
 
             }
@@ -259,27 +260,6 @@ sub ParseCommandLine
                 $$valueRef .= $arg;
                 }
 
-            elsif ($option eq '-o')
-                {
-                my $format = NaturalDocs::Builder->OutputPackageOf($arg);
-
-                if (!defined $format)
-                    {
-                    push @errorMessages, 'The output format ' . $arg . ' doesn\'t exist or is not installed.';
-                    $valueRef = \$ignored;
-                    }
-                elsif (exists $outputFormats{$format})
-                    {
-                    push @errorMessages, 'You can only have one output directory for each output format.';
-                    $valueRef = \$ignored;
-                    }
-                else
-                    {
-                    $outputFormats{$format} = undef;
-                    $valueRef = \$outputFormats{$format};
-                    };
-                }
-
             else
                 {
                 push @errorMessages, 'Unrecognized element ' . $arg;
@@ -290,7 +270,53 @@ sub ParseCommandLine
         };
 
 
-    # Make sure all the required directories are specified, canonized, and exist.
+    # Validate the style, if specified.
+
+    if (defined $defaultStyle)
+        {
+        if (lc($defaultStyle) ne 'custom')
+            {
+            my $cssFile = NaturalDocs::File->JoinPath( $self->StyleDirectory(), $defaultStyle . '.css' );
+            if (! -e $cssFile)
+                {  push @errorMessages, 'The style ' . $defaultStyle . ' does not exist.';  };
+            };
+        }
+    else
+        {  $defaultStyle = 'Default';  };
+
+
+    # Decode and validate the output strings.
+
+    my %outputDirectories;
+
+    foreach my $outputString (@outputStrings)
+        {
+        my ($format, $directory) = split(/ /, $outputString, 2);
+        my $builderPackage = NaturalDocs::Builder->OutputPackageOf($format);
+
+        if (!defined $builderPackage)
+            {
+            push @errorMessages, 'The output format ' . $format . ' doesn\'t exist or is not installed.';
+            $valueRef = \$ignored;
+            };
+
+        $directory = NaturalDocs::File->CanonizePath($directory);
+
+        if (! -e $directory || ! -d $directory)
+            {  push @errorMessages, 'The output directory ' . $directory . ' does not exist.';  };
+
+        if (exists $outputDirectories{$directory})
+            {  push @errorMessages, 'You cannot specify the output directory ' . $directory . ' more than once.';  };
+
+        push @buildTargets, NaturalDocs::Settings::BuildTarget->New(undef, $builderPackage->New(), $directory, $defaultStyle);
+        $outputDirectories{$directory} = 1;
+        };
+
+    if (!scalar @buildTargets)
+        {  push @errorMessages, 'You did not specify an output directory.';  };
+
+
+    # Make sure the input and project directories are specified, canonized, and exist.
 
     if (defined $inputDirectory)
         {
@@ -312,56 +338,12 @@ sub ParseCommandLine
     else
         {  push @errorMessages, 'You did not specify a project directory.';  };
 
-    if (scalar keys %outputFormats)
-        {
-        while (my ($format, $dir) = each %outputFormats)
-            {
-            $outputFormats{$format} = NaturalDocs::File->CanonizePath($dir);
-
-            if (! -e $dir || ! -d $dir)
-                {  push @errorMessages, 'The output directory ' . $dir . ' does not exist.';  };
-            };
-        }
-    else
-        {  push @errorMessages, 'You did not specify an output directory.';  };
-
-
-    # Decode the style string.  Apparently @ARGV splits not only on spaces, but also on = automatically.  Of course this was plainly
-    # documentented and would never cause any problems.
-
-    my @styles = split(/ +/, $styleString);
-
-    if (scalar @styles == 1)
-        {  $defaultOutputStyle = $styles[0];  }
-    else
-        {
-        $defaultOutputStyle = 'Default';
-
-        while (scalar @styles)
-            {
-            my $outputFormat = shift @styles;
-            my $outputStyle = shift @styles;
-
-            my $outputPackage = NaturalDocs::Builder->OutputPackageOf($outputFormat);
-
-            # We don't care if the output format is actually being used, just that it exists.
-            if (defined $outputPackage)
-                {  $outputStyles{$outputPackage} = $outputStyle;  }
-
-            # We only add an error message if the format wasn't already specified as an output format to avoid duplicating it.
-            elsif (!defined $outputFormats{$outputFormat})
-                {  push @errorMessages, 'The output format ' . $outputFormat . ' doesn\'t exist or is not installed.';  };
-            };
-        };
-
 
     # Determine the tab length, and default to four if not specified.
 
     if (defined $tabLength)
         {
-        if ($tabLength =~ /^ *([0-9]+) *$/)
-            {  $tabLength = $1;  }
-        else
+        if ($tabLength !~ /^[0-9]+$/)
             {  push @errorMessages, 'The tab length must be a number.';  };
         }
     else
@@ -397,7 +379,6 @@ sub PrintSyntax
     {
     my ($self) = @_;
 
-
     # Make sure all line lengths are under 80 characters.
 
     my $output =
@@ -432,7 +413,7 @@ sub PrintSyntax
     . "     Can be specified multiple times, but only once per output format.\n"
     . "     Possible output formats:\n";
 
-    my $outputPackages = NaturalDocs::Builder->OutputPackages();
+    my $outputPackages = NaturalDocs::Builder::OutputPackages();
 
     foreach my $outputPackage (@$outputPackages)
         {
@@ -481,52 +462,62 @@ sub PrintSyntax
 sub InputDirectory
     {  return $inputDirectory;  };
 
+# Function: BuildTargets
+# Returns an arrayref of <NaturalDocs::Settings::BuildTargets>.
+sub BuildTargets
+    {  return \@buildTargets;  };
+
 #
-#   Function: OutputDirectory
+#   Function: OutputDirectoryOf
 #
-#   Returns the output directory of an output format.
+#   Returns the output directory of a builder object.
 #
 #   Parameters:
 #
-#       package - The output package.
+#       object - The builder object.
 #
 #   Returns:
 #
-#       The output format directory, or undef if the format wasn't specified.
+#       The builder directory, or undef if the object wasn't found..
 #
-sub OutputDirectory #(package)
+sub OutputDirectoryOf #(object)
     {
-    my ($self, $package) = @_;
-    return $outputFormats{$package};
+    my ($self, $object) = @_;
+
+    foreach my $buildTarget (@buildTargets)
+        {
+        if ($buildTarget->Builder() == $object)
+            {  return $buildTarget->Directory();  };
+        };
+
+    return undef;
     };
 
-# Function: OutputFormats
-# Returns a hashref of the output formats and their directories.  The keys are the package names, and the values are their
-# directories.  The hashref is not a copy of the data, so don't change it.
-sub OutputFormats
-    {  return \%outputFormats;  };
 
 #
-#   Function: OutputStyle
+#   Function: OutputStyleOf
 #
-#   Returns the style associated with an output format.
+#   Returns the style associated with a builder object.
 #
 #   Parameters:
 #
-#       package - The output package.
+#       object - The builder object.
 #
 #   Returns:
 #
-#       The style string.
+#       The style string, or undef if the object wasn't found.
 #
-sub OutputStyle #(package)
+sub OutputStyleOf #(object)
     {
-    my ($self, $package) = @_;
+    my ($self, $object) = @_;
 
-    if (exists $outputStyles{$package})
-        {  return $outputStyles{$package};  }
-    else
-        {  return $defaultOutputStyle;  };
+    foreach my $buildTarget (@buildTargets)
+        {
+        if ($buildTarget->Builder() == $object)
+            {  return $buildTarget->Style();  };
+        };
+
+    return undef;
     };
 
 # Function: ProjectDirectory

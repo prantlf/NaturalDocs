@@ -110,7 +110,7 @@ sub Run
 
     # Determine what we're doing.
 
-    my @outputFormats = keys %{NaturalDocs::Settings->OutputFormats()};
+    my $buildTargets = NaturalDocs::Settings->BuildTargets();
     my $filesToBuild = NaturalDocs::Project->FilesToBuild();
 
     my $numberToPurge = scalar keys %{NaturalDocs::Project->FilesToPurge()};
@@ -146,10 +146,10 @@ sub Run
 
     # Start the build process
 
-    foreach my $format (@outputFormats)
+    foreach my $buildTarget (@$buildTargets)
         {
-        $format->BeginBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
-                                       NaturalDocs::Menu->HasChanged());
+        $buildTarget->Builder()->BeginBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild ||
+                                                             $numberOfIndexesToPurge || NaturalDocs::Menu->HasChanged());
         };
 
     if ($numberToPurge)
@@ -157,8 +157,8 @@ sub Run
         if (!NaturalDocs::Settings->IsQuiet())
             {  print 'Purging ' . $numberToPurge . ' file' . ($numberToPurge > 1 ? 's' : '') . "...\n";  };
 
-        foreach my $format (@outputFormats)
-            {  $format->PurgeFiles();  };
+        foreach my $buildTarget (@$buildTargets)
+            {  $buildTarget->Builder()->PurgeFiles();  };
         };
 
     if ($numberOfIndexesToPurge)
@@ -166,8 +166,8 @@ sub Run
         if (!NaturalDocs::Settings->IsQuiet())
             {  print 'Purging ' . $numberOfIndexesToPurge . ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . "...\n";  };
 
-        foreach my $format (@outputFormats)
-            {  $format->PurgeIndexes(\%indexesToPurge);  };
+        foreach my $buildTarget (@$buildTargets)
+            {  $buildTarget->Builder()->PurgeIndexes(\%indexesToPurge);  };
         };
 
     if ($numberToBuild)
@@ -179,8 +179,8 @@ sub Run
             {
             my $parsedFile = NaturalDocs::Parser->ParseForBuild($file);
 
-            foreach my $format (@outputFormats)
-                {  $format->BuildFile($file, $parsedFile);  };
+            foreach my $buildTarget (@$buildTargets)
+                {  $buildTarget->Builder()->BuildFile($file, $parsedFile);  };
             };
         };
 
@@ -191,8 +191,8 @@ sub Run
 
         foreach my $index (keys %indexesToBuild)
             {
-            foreach my $format (@outputFormats)
-                {  $format->BuildIndex($index eq '*' ? undef : $index);  };
+            foreach my $buildTarget (@$buildTargets)
+                {  $buildTarget->Builder()->BuildIndex($index eq '*' ? undef : $index);  };
             };
         };
 
@@ -201,14 +201,14 @@ sub Run
         if (!NaturalDocs::Settings->IsQuiet())
             {  print "Updating menu...\n";  };
 
-        foreach my $format (@outputFormats)
-            {  $format->UpdateMenu();  };
+        foreach my $buildTarget (@$buildTargets)
+            {  $buildTarget->Builder()->UpdateMenu();  };
         };
 
-    foreach my $format (@outputFormats)
+    foreach my $buildTarget (@$buildTargets)
         {
-        $format->EndBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
-                                       NaturalDocs::Menu->HasChanged());
+        $buildTarget->Builder()->EndBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild ||
+                                                           $numberOfIndexesToPurge || NaturalDocs::Menu->HasChanged());
         };
     };
 
