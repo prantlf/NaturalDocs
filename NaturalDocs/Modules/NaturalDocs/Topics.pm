@@ -22,10 +22,10 @@ require Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = ('TOPIC_CLASS', 'TOPIC_SECTION', 'TOPIC_FILE', 'TOPIC_GROUP', 'TOPIC_FUNCTION', 'TOPIC_VARIABLE',
-                   'TOPIC_GENERIC', 'TOPIC_TYPE', 'TOPIC_CONSTANT',
+                   'TOPIC_GENERIC', 'TOPIC_TYPE', 'TOPIC_CONSTANT', 'TOPIC_PROPERTY',
 
                    'TOPIC_CLASS_LIST', 'TOPIC_FILE_LIST', 'TOPIC_FUNCTION_LIST', 'TOPIC_VARIABLE_LIST',
-                   'TOPIC_GENERIC_LIST', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT_LIST');
+                   'TOPIC_GENERIC_LIST', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT_LIST', 'TOPIC_PROPERTY_LIST');
 
 
 
@@ -51,6 +51,7 @@ require Exporter;
 #       TOPIC_GROUP      - A subdivider for long lists.
 #       TOPIC_FUNCTION - A function.  The code immediately afterwards will be used as the prototype if it matches the name.
 #       TOPIC_VARIABLE  - A variable.  The code immediately afterwards will be used as the prototype if it matches the name.
+#       TOPIC_PROPERTY - A property.  The code immediately afterwards will be used as the prototype if it matches the name.
 #       TOPIC_GENERIC   - A generic topic.
 #
 #       TOPIC_CONSTANT - A constant.  Same as generic, but distinguished for indexing.
@@ -60,6 +61,7 @@ require Exporter;
 #       TOPIC_FILE_LIST            - A list of files.
 #       TOPIC_FUNCTION_LIST  - A list of functions.  Will not have prototypes.
 #       TOPIC_VARIABLE_LIST   - A list of variables.  Will not have prototypes.
+#       TOPIC_PROPERTY_LIST  - A list of properties.  Will not have prototypes.
 #       TOPIC_GENERIC_LIST    - A list of generic topics.
 #
 #       TOPIC_CONSTANT_LIST - A list of constants.
@@ -78,6 +80,7 @@ use constant TOPIC_VARIABLE => 6;
 use constant TOPIC_GENERIC => 7;
 use constant TOPIC_TYPE => 8;
 use constant TOPIC_CONSTANT => 9;
+use constant TOPIC_PROPERTY => 10;
 
 use constant TOPIC_LIST_BASE => 100;  # To accomodate for future expansion without changing the actual values.
 
@@ -88,6 +91,7 @@ use constant TOPIC_VARIABLE_LIST => (TOPIC_VARIABLE + TOPIC_LIST_BASE);
 use constant TOPIC_GENERIC_LIST => (TOPIC_GENERIC + TOPIC_LIST_BASE);
 use constant TOPIC_TYPE_LIST => (TOPIC_TYPE + TOPIC_LIST_BASE);
 use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
+use constant TOPIC_PROPERTY_LIST => (TOPIC_PROPERTY + TOPIC_LIST_BASE);
 
 
 ###############################################################################
@@ -98,7 +102,7 @@ use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
 #
 #   An array of the topic names.  Use the <Topic Types> as an index into it, except for list types.
 #
-my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant' );
+my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant', 'Property' );
 # The string order must match the constant values.
 
 #
@@ -106,7 +110,8 @@ my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable'
 #
 #   An array of the topic names, but plural.  Use the <Topic Types> as an index into it, except for list types.
 #
-my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions', 'Variables', 'Generics', 'Types', 'Constants' );
+my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions', 'Variables', 'Generics', 'Types', 'Constants',
+                                'Properties' );
 # The string order must match the constant values.  "Generics" is wierd, I know.
 
 #
@@ -198,8 +203,6 @@ my %constants = (
                             'char'         => TOPIC_VARIABLE,
                             'string'       => TOPIC_VARIABLE,
                             'str'           => TOPIC_VARIABLE,
-                            'property'  => TOPIC_VARIABLE,
-                            'prop'        => TOPIC_VARIABLE,
                             'handle'     => TOPIC_VARIABLE,
 
                             'variables'   => TOPIC_VARIABLE_LIST,
@@ -230,9 +233,13 @@ my %constants = (
                             'chars'        => TOPIC_VARIABLE_LIST,
                             'strings'      => TOPIC_VARIABLE_LIST,
                             'strs'          => TOPIC_VARIABLE_LIST,
-                            'properties' => TOPIC_VARIABLE_LIST,
-                            'props'       => TOPIC_VARIABLE_LIST,
                             'handles'    => TOPIC_VARIABLE_LIST,
+
+                            'property'  => TOPIC_PROPERTY,
+                            'prop'        => TOPIC_PROPERTY,
+
+                            'properties' => TOPIC_PROPERTY_LIST,
+                            'props'       => TOPIC_PROPERTY_LIST,
 
                             'topic'        => TOPIC_GENERIC,
                             'about'       => TOPIC_GENERIC,
@@ -285,6 +292,7 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_CLASS() => 1,
                              TOPIC_FILE() => 1,
                              TOPIC_VARIABLE() => 1,
+                             TOPIC_PROPERTY() => 1,
                              TOPIC_TYPE() => 1,
                              TOPIC_CONSTANT() => 1 );
 
@@ -295,6 +303,7 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
 #
 my %autoGroupable = ( TOPIC_FUNCTION() => 1,
                                     TOPIC_VARIABLE() => 1,
+                                    TOPIC_PROPERTY() => 1,
                                     TOPIC_FILE() => 1,
                                     TOPIC_TYPE() => 1,
                                     TOPIC_CONSTANT() => 1 );
