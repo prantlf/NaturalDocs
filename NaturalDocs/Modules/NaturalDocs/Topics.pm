@@ -183,13 +183,16 @@ my @legacyTypes = ( TOPIC_GENERAL, TOPIC_CLASS, TOPIC_SECTION, TOPIC_FILE, TOPIC
 #       Alter Topic Type is used to override existing topic type settings.  It's done so that users cannot accidentally override
 #       existing topic types.
 #
-#       The name General is reserved.  The following default types must be defined in the main file: Generic, Group, Class, File,
-#       Section, Function, Variable, Property, Type, and Constant.  The default types can have their keywords or behaviors
-#       changed, though, either by editing the default file or by overriding them in the user file.
+#       The names General and Ignored are reserved.  The following default types must be defined in the main file: Generic, Group,
+#       Class, File, Section, Function, Variable, Property, Type, and Constant.  The default types can have their keywords or
+#       behaviors changed, though, either by editing the default file or by overriding them in the user file.
 #
 #       > Keywords: [topic type]
 #
-#       Starts a topic keyword section.  The name must correspond to a previously defined topic type.  It cannot be General.
+#       Starts a topic keyword section.  The name must correspond to a previously defined topic type or Ignored.  It cannot be
+#       General.
+#
+#       If Ignore or Ignored, all keywords following will be deleted from the list.
 #
 #
 #   Topic Type Sections:
@@ -365,6 +368,10 @@ sub LoadFile #(isMain)
                     elsif ($topicType eq ::TOPIC_GENERAL())
                         {
                         NaturalDocs::ConfigFile->AddError('You cannot define a General topic type.');
+                        }
+                    elsif ($lcTopicTypeName =~ /^ignored?$/)
+                        {
+                        NaturalDocs::ConfigFile->AddError('You cannot define an ' . $topicTypeName . ' topic type.');
                         }
                     elsif (defined $types{$topicType} || defined $names{$lcTopicTypeName} || defined $names{$lcTopicTypeAName})
                         {
@@ -571,20 +578,28 @@ sub LoadFile #(isMain)
             elsif ($keyword eq 'keywords')
                 {
                 my $topicTypeName = $value;
-                my $topicType = $names{lc($topicTypeName)};
+                my $ignored;
+                my $topicType;
 
-                if (!defined $topicType)
-                    {  NaturalDocs::ConfigFile->AddError($topicTypeName . ' is not a defined topic type.');  }
-                elsif ($topicType eq ::TOPIC_GENERAL())
+                if ($topicTypeName =~ /^ignored?$/i)
+                    {  $ignored = 1;  }
+                else
                     {
-                    NaturalDocs::ConfigFile->AddError('You cannot define keywords for the General topic type.');
-                    $topicType = undef;
+                    $topicType = $names{lc($topicTypeName)};
+
+                    if (!defined $topicType)
+                        {  NaturalDocs::ConfigFile->AddError($topicTypeName . ' is not a defined topic type.');  }
+                    elsif ($topicType eq ::TOPIC_GENERAL())
+                        {
+                        NaturalDocs::ConfigFile->AddError('You cannot define keywords for the General topic type.');
+                        $topicType = undef;
+                        };
                     };
 
-                # We continue even if the type doesn't exist so that we can find any other errors in the file as well.  We'd rather them
-                # all show up at once instead of them showing up one at a time between Natural Docs runs.  So we just ignore the
-                # settings if $topicType is undef.
 
+                # If the type doesn't exist and ignored isn't set, it means it's for an invalid topic type name.  We continue anyway
+                # so we can find any other errors in the file as well.  We'd rather them all show up at once instead of them showing up
+                # one at a time between Natural Docs runs.
 
                 while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
                           $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
@@ -604,6 +619,13 @@ sub LoadFile #(isMain)
 
                             $pluralKeywords{$2} = $topicType;
                             delete $keywords{$2};
+                            }
+                        elsif ($ignored)
+                            {
+                            delete $keywords{$1};
+                            delete $keywords{$2};
+                            delete $pluralKeywords{$1};
+                            delete $pluralKeywords{$2};
                             };
                         }
                     elsif ($value =~ /^[a-z0-9]+$/)
@@ -611,6 +633,11 @@ sub LoadFile #(isMain)
                         if (defined $topicType)
                             {
                             $keywords{$value} = $topicType;
+                            delete $pluralKeywords{$value};
+                            }
+                        elsif ($ignored)
+                            {
+                            delete $keywords{$value};
                             delete $pluralKeywords{$value};
                             };
                         }
@@ -742,7 +769,11 @@ sub SaveFile #(isMain)
 
             elsif ($keyword eq 'keywords')
                 {
-                my $topicTypeName = $types{ $names{lc($value)} }->Name();
+                my $topicTypeName;
+                if ($value =~ /^ignored?$/i)
+                    {  $topicTypeName = 'Ignored';  }
+                else
+                    {  $topicTypeName = $types{ $names{lc($value)} }->Name();  };
 
                 if (!defined $keywords{$topicTypeName})
                     {  $keywords{$topicTypeName} = [ ];  };
@@ -810,7 +841,7 @@ sub SaveFile #(isMain)
     . "#   Topic Type: [name]\n"
     . "#\n"
     . "#   Creates a new topic type.  Its name can have letters, numbers, spaces, and\n"
-    . "#   these charaters: - / . '  You cannot use the name General.\n"
+    . "#   these charaters: - / . '  You cannot use the name General or Ignored.\n"
     . "#\n"
     . "#\n"
     . "#   Alter Topic Type: [name]\n"
@@ -926,12 +957,18 @@ sub SaveFile #(isMain)
     . "#   Starts a list of keywords for the specified topic type.\n"
     . "#\n"
     . "#\n"
+    . "#   Keywords: Ignored\n"
+    . "#\n"
+    . "#   Starts a list of keywords that Natural Docs will skip if they were\n"
+    . "#   previously defined.\n"
+    . "#\n"
+    . "#\n"
     . "#   [keyword]\n"
     . "#   [keyword], [plural keyword]\n"
     . "#\n"
-    . "#   Each line until the next Topic Keyword line is the keyword and optionally\n"
-    . "#   its plural form.  The plural form is needed if you want to document topics\n"
-    . "#   as a list.\n"
+    . "#   Each line until the next Keyword line is the keyword and optionally its\n"
+    . "#   plural form.  The plural form is needed if you want to document topics as a\n"
+    . "#   list.\n"
     . "#\n"
     . "#   Keywords can only have letters and numbers, and are not case-sensitive.\n"
     . "#   You can include keywords that were previously used by a different type to\n"
