@@ -38,12 +38,14 @@ use base 'NaturalDocs::Languages::Base';
 #   FUNCTION_ENDERS        - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #   PROPERTY_ENDERS        - An arrayref of symbols that can end a property declaration.  Undef if not applicable.
+#   PACKAGE_SEPARATOR   - The symbol that separate packages.
 #   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
 #
 
 use NaturalDocs::DefineMembers 'NAME', 'EXTENSIONS', 'SHEBANG_STRINGS',
                                                  'LINE_COMMENT_SYMBOLS', 'OPENING_COMMENT_SYMBOLS', 'CLOSING_COMMENT_SYMBOLS',
-                                                 'FUNCTION_ENDERS', 'VARIABLE_ENDERS', 'PROPERTY_ENDERS', 'LINE_EXTENDER';
+                                                 'FUNCTION_ENDERS', 'VARIABLE_ENDERS', 'PROPERTY_ENDERS', 'PACKAGE_SEPARATOR',
+                                                 'LINE_EXTENDER';
 
 
 #############################################################################
@@ -67,18 +69,24 @@ use NaturalDocs::DefineMembers 'NAME', 'EXTENSIONS', 'SHEBANG_STRINGS',
 #       variableEnders   - The symbols that can end a variable declaration.  A string, an arrayref of strings, or undef if not applicable.
 #       lineExtender      - The symbel to extend a line of code past a line break.  A string or undef if not applicable.
 #
+#       The following two parameters are optional to keep compatibility with pre-1.22 lines.  They will be assigned default values
+#       if not specified.
+#
+#       packageSeparator - The symbol that separates packages.
+#       propertyEnders - The symbols that can end a property prototype.  A string, an arrayref of strings, or undef.
+#
 #       Note that if neither opening/closingCommentSymbols or lineCommentSymbols are specified, the file will be interpreted
 #       as one big comment.
 #
-sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSymbols, closingCommentSymbols, functionEnders, variableEnders, lineExtender)
+sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSymbols, closingCommentSymbols, functionEnders, variableEnders, lineExtender, packageSeparator, propertyEnders)
     {
     my ($self, $name, $extensions, $shebangStrings, $lineCommentSymbols, $openingCommentSymbols,
-           $closingCommentSymbols, $functionEnders, $variableEnders, $lineExtender) = @_;
+           $closingCommentSymbols, $functionEnders, $variableEnders, $lineExtender, $packageSeparator, $propertyEnders) = @_;
 
     # Since these function calls are the most likely piece of code to be changed by people unfamiliar with Perl, do some extra
     # checking.
 
-    if (scalar @_ != 10)
+    if (scalar @_ < 10 || scalar @_ > 12)
         {
         die "You didn't pass the correct number of parameters to " . $self . "->New().  "
            . "Check your code against the documentation and try again.\n";
@@ -88,7 +96,7 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
     # Convert everything to arrayrefs.
 
     foreach my $parameterRef (\$extensions, \$shebangStrings, \$lineCommentSymbols, \$openingCommentSymbols,
-                                             \$closingCommentSymbols, \$functionEnders, \$variableEnders)
+                                             \$closingCommentSymbols, \$functionEnders, \$variableEnders, \$propertyEnders)
         {
         if (!ref($$parameterRef) && defined $$parameterRef)
             {  $$parameterRef = [ $$parameterRef ];  };
@@ -112,14 +120,19 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
 
     # Generate property symbols.
 
-    my $propertyEnders;
+    if (!defined $propertyEnders)
+        {
+        if (defined $functionEnders && defined $variableEnders)
+            {  $propertyEnders = [ @$functionEnders, @$variableEnders ];  }
+        elsif (defined $functionEnders)
+            {  $propertyEnders = $functionEnders;  }
+        else
+            {  $propertyEnders = $variableEnders;  }  # May be undef.
+        };
 
-    if (defined $functionEnders && defined $variableEnders)
-        {  $propertyEnders = [ @$functionEnders, @$variableEnders ];  }
-    elsif (defined $functionEnders)
-        {  $propertyEnders = $functionEnders;  }
-    else
-        {  $propertyEnders = $variableEnders;  }  # May be undef.
+
+    if (!defined $packageSeparator)
+        {  $packageSeparator = '.';  };
 
 
     my $object = $self->SUPER::New();
@@ -134,6 +147,7 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
     $object->[VARIABLE_ENDERS] = $variableEnders;
     $object->[PROPERTY_ENDERS] = $propertyEnders;
     $object->[LINE_EXTENDER] = $lineExtender;
+    $object->[PACKAGE_SEPARATOR] = $packageSeparator;
 
     NaturalDocs::Languages->Add($object);
 
@@ -200,6 +214,11 @@ sub VariableEnders
 sub PropertyEnders
     {  return $_[0]->[PROPERTY_ENDERS];  };
 
+# Function: PackageSeparator
+# Returns the symbol that separates packages.
+sub PackageSeparator
+    {  return $_[0]->[PACKAGE_SEPARATOR];  };
+
 # Function: LineExtender
 # Returns the symbol used to extend a line of code past a line break, or undef if not applicable.
 sub LineExtender
@@ -219,7 +238,7 @@ sub LineExtender
 #
 #   Parameters:
 #
-#       sourceFile - The name of the source file to parse.
+#       sourceFile - The <FileName> of the source file to parse.
 #       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
 #
 #   Returns:
@@ -413,7 +432,7 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
 
                 # Try to match the title to the prototype.
 
-                my $titleInPrototype = $topicList->[-1]->Name();
+                my $titleInPrototype = $topicList->[-1]->Title();
 
                 # Strip parenthesis so Function(2) and Function(int, int) will still match Function(anything).
                 $titleInPrototype =~ s/[\t ]*\(.*$//;
@@ -440,7 +459,7 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
 #
 #   Function: HasPrototype
 #
-#   Returns whether the language accepts prototypes from the passed <Topic Types>.
+#   Returns whether the language accepts prototypes from the passed <TopicType>.
 #
 sub HasPrototype #(type)
     {
@@ -483,7 +502,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
     elsif ($type == ::TOPIC_VARIABLE() && defined $self->VariableEnders())
         {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
     elsif ($type == ::TOPIC_PROPERTY() && defined $self->PropertyEnders())
-        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
+        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->PropertyEnders());  }
     else
         {  return -1;  };
     };
