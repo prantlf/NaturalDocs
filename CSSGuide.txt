@@ -233,7 +233,7 @@ List: Content Styles
                         and <CFunction>.
 
     CType - A placeholder for all type-specific styles.  The actual styles will be C followed by the alphanumeric-only topic type name.
-                 So the CType of a <TOPIC_FUNCTION> topic will actually be CFunction.
+                So the CType of a "PL/SQL Function" topic will actually be CPLSQLFunction.
 
 
 Topic: Menu Structure
@@ -433,7 +433,7 @@ List: Summary Styles
                      SIndent1, SIndent2, etc.
 
     SType - A placeholder for all topic-specific styles.  The actual styles will be S followed by the alphanumeric-only topic type name.
-                So the SType of a <TOPIC_FUNCTION> topic will actually be SFunction.
+                So the SType of a "PL/SQL Function" topic will actually be SPLSQLFunction.
 
 
 
@@ -453,7 +453,7 @@ Topic: Link Structure
 List: Link Styles
 
     LType - A placeholder for all topic-specific styles.  The actual styles will be L followed by the alphanumeric-only topic type name.
-                So the LType of a <TOPIC_FUNCTION> topic will actually be LFunction.
+                So the LType of a "PL/SQL Function" topic will actually be LPLSQLFunction.
 
 
 
