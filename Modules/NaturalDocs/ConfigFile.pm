@@ -277,6 +277,15 @@ sub GetLine
     };
 
 
+#
+#   Function: LineNumber
+#
+#   Returns the line number for the line last returned by <GetLine()>.
+#
+sub LineNumber
+    {  return $lineNumber;  };
+
+
 
 ###############################################################################
 # Group: Error Functions
@@ -290,11 +299,16 @@ sub GetLine
 #   Parameters:
 #
 #       message - The error message.
+#       lineNumber - The line number to use.  If not specified, it will use the line number from the last call to <GetLine()>.
 #
-sub AddError #(message)
+sub AddError #(message, lineNumber)
     {
-    my ($self, $message) = @_;
-    push @errors, $lineNumber, $message;
+    my ($self, $message, $messageLineNumber) = @_;
+
+    if (!defined $messageLineNumber)
+        {  $messageLineNumber = $lineNumber;  };
+
+    push @errors, $messageLineNumber, $message;
     };
 
 
