@@ -450,8 +450,8 @@ eval {
     NaturalDocs::Languages::Language->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
 
     # Doesn't detect escapement yet.
-    NaturalDocs::Languages::Language->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
-                                                                    [ '//', '#' ], '/*', '*/', [ '{', ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::PHP->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
+                                                          [ '//', '#' ], '/*', '*/', [ '{', ';' ], [ ';', '=' ], undef );
 
     NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
                                                               [ ';', ':=', 'default', 'DEFAULT' ], undef );
