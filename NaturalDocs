@@ -186,7 +186,7 @@ use integer;
 #
 ###############################################################################
 #
-#   Topic: How to Add Source Formats
+#   Topic: How to Add Languages
 #
 #       In the main script add a call to <NaturalDocs::Languages::Add()> after all the rest.  See
 #       <NaturalDocs::Languages::Add()>'s documentation for an explanation of the parameters.
