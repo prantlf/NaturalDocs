@@ -12,10 +12,9 @@
 #       - <OutputPackages()> and <OutputPackageOf()> can be called once all sub-packages have been registered via <Add()>.
 #         Since this is normally done in their INIT functions, they should be available to all normal functions immediately.
 #
-#       - Prior to calling <Run()>, <NaturalDocs::Settings>, <NaturalDocs::Project>, and <NaturalDocs::Menu> must be initialized.
-#         <NaturalDocs::Settings->GenerateDirectoryNames()> must be called.  If files need to be built
-#         (i.e. <NaturalDocs::Project->FilesToBuild()> returns something) <NaturalDocs::Parser> must be initialized and
-#         <NaturalDocs::SymbolTable> must be initialized and fully resolved.
+#       - Prior to calling <Run()>, <NaturalDocs::Settings>, <NaturalDocs::Project>, <NaturalDocs::Menu>, and
+#         <NaturalDocs::Parser> must be initialized.  <NaturalDocs::Settings->GenerateDirectoryNames()> must be called.
+#         <NaturalDocs::SymbolTable> and <NaturalDocs::ClassHierarchy> must be initialized and fully resolved.
 #
 ###############################################################################
 
