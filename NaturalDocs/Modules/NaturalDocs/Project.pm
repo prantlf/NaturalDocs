@@ -118,22 +118,29 @@ sub LoadAndDetectChanges
     my $fileIsOkay;
     my $rebuildOutput = NaturalDocs::Settings::RebuildOutput();
 
+    my $hasChanged = $rebuildOutput;
+
     if (!NaturalDocs::Settings::RebuildData() && open($indexFile, '<' . ProjectFile()))
         {
         # Check if the file is in the right format.
         my $version = NaturalDocs::Version::FromTextFile($indexFile);
 
-        # The output needs to be rebuilt for 1.0, but the data format hasn't changed.
+        # The output needs to be rebuilt for 1.01, but the data format hasn't changed.
 
-        if ($version < NaturalDocs::Version::FromString('1.0'))
+        if ($version < NaturalDocs::Version::FromString('1.01'))
             {
             $fileIsOkay = 1;
             $rebuildOutput = 1;
             }
         elsif ($version <= NaturalDocs::Settings::AppVersion())
-            {  $fileIsOkay = 1;  }
+            {
+            $fileIsOkay = 1;
+            }
         else
-            {  close($indexFile);  };
+            {
+            close($indexFile);
+            $hasChanged = 1;
+            };
         };
 
 
@@ -148,13 +155,19 @@ sub LoadAndDetectChanges
         $line = <$indexFile>;
 
         if (! -e MenuFile())
-            {  NaturalDocs::Menu::OnFileChange();  }
+            {
+            NaturalDocs::Menu::OnFileChange();
+            $hasChanged = 1;
+            }
         else
             {
             chomp($line);
 
             if ((stat(MenuFile()))[9] != $line)
-                {  NaturalDocs::Menu::OnFileChange();  };
+                {
+                NaturalDocs::Menu::OnFileChange();
+                $hasChanged = 1;
+                };
             };
 
 
@@ -170,6 +183,8 @@ sub LoadAndDetectChanges
                 {
                 if ($hasContent)
                     {  $filesToPurge{$file} = 1;  };
+
+                $hasChanged = 1;
                 }
 
             # If the file still exists...
@@ -185,6 +200,8 @@ sub LoadAndDetectChanges
 
                     if ($hasContent)
                         {  $filesToBuild{$file} = 1;  };
+
+                    $hasChanged = 1;
                     }
 
                 # If the file hasn't changed...
@@ -194,6 +211,7 @@ sub LoadAndDetectChanges
                         {
                         $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
                         $filesToBuild{$file} = 1;
+                        $hasChanged = 1;
                         }
                     else
                         {
@@ -225,6 +243,7 @@ sub LoadAndDetectChanges
                     $supportedFiles{$file}->SetHasContent(undef);
                     $filesToParse{$file} = 1;
                     # It will be added to filesToBuild if HasContent gets set to true when it's parsed.
+                    $hasChanged = 1;
                     };
                 };
             };
@@ -243,9 +262,11 @@ sub LoadAndDetectChanges
             $filesToParse{$file} = 1;
             # It will be added to filesToBuild if HasContent gets set to true when it's parsed.
             };
+
+        $hasChanged = 1;
         };
 
-    return (scalar keys %filesToParse != 0 || NaturalDocs::Menu::HasChanged() || scalar keys %filesToPurge != 0);
+    return $hasChanged;
     };
 
 
