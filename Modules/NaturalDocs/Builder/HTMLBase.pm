@@ -41,11 +41,15 @@ my %topicNames = ( ::TOPIC_CLASS() => 'Class',
                                 ::TOPIC_FUNCTION() => 'Function',
                                 ::TOPIC_VARIABLE() => 'Variable',
                                 ::TOPIC_GENERIC() => 'Generic',
+                                ::TOPIC_TYPE() => 'Type',
+                                ::TOPIC_CONSTANT() => 'Constant',
                                 ::TOPIC_CLASS_LIST() => 'ClassList',
                                 ::TOPIC_FILE_LIST() => 'FileList',
                                 ::TOPIC_FUNCTION_LIST() => 'FunctionList',
                                 ::TOPIC_VARIABLE_LIST() => 'VariableList',
-                                ::TOPIC_GENERIC_LIST() => 'GenericList' );
+                                ::TOPIC_GENERIC_LIST() => 'GenericList',
+                                ::TOPIC_TYPE_LIST() => 'TypeList',
+                                ::TOPIC_CONSTANT_LIST() => 'ConstantList' );
 
 #
 #   Hash: abbreviations
