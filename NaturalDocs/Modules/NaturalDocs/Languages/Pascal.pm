@@ -128,29 +128,15 @@ sub OnPrototypeEnd #(type, prototypeRef, ender)
     };
 
 
-#
-#   Function: FormatPrototype
-#
-#   Pascal's syntax allows directives after the prototype, separated by semicolons.
-#
-#   > function MyFunction ( param1: type); virtual;
-#
-#   The default formatter would put the first semicolon with the post parameter section.  It will format better if it's part of the
-#   closing parameter symbol.
-#
-sub FormatPrototype #(type, prototype)
+sub ParseParameterLine #(...)
     {
-    my ($self, $type, $prototype) = @_;
+    my ($self, @params) = @_;
+    return $self->SUPER::ParsePascalParameterLine(@params);
+    };
 
-    my ($pre, $open, $params, $close, $post) = $self->SUPER::FormatPrototype($type, $prototype);
-
-    if ($type eq ::TOPIC_FUNCTION() && $post =~ /^[ \t\n]*;/)
-        {
-        $close .= '; ';
-        $post =~ s/[ \t\n]*;[ \t\n]*//;
-        };
-
-    return ($pre, $open, $params, $close, $post);
+sub TypeBeforeParameter
+    {
+    return 0;
     };
 
 
