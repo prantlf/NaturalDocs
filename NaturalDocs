@@ -1,62 +1,61 @@
 #!/usr/bin/perl
 
-###############################################################################
-#
-#   Script: NaturalDocs
-#
-###############################################################################
-#
-#       Version 1.3
-#
-#       Copyright © 2003-2004 Greg Valure
-#
-#       http://www.naturaldocs.org
-#
-#
-#   About: License
-#
-#       Licensed under the GNU General Public License
-#
-#       This program is free software; you can redistribute it and/or modify
-#       it under the terms of the GNU General Public License as published by
-#       the Free Software Foundation; either version 2 of the License, or
-#       (at your option) any later version.
-#
-#       This program is distributed in the hope that it will be useful,
-#       but WITHOUT ANY WARRANTY; without even the implied warranty of
-#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#       GNU General Public License for more details.
-#
-#       You should have received a copy of the GNU General Public License
-#       along with this program; if not, visit http://www.gnu.org/licenses/gpl.txt
-#       or write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
-#       Boston, MA  02111-1307  USA.
-#
-#
-#   Topic: Code Conventions
-#
-#       - Every package function is called with an arrow operator.  It's needed for inheritance in some places, and consistency
-#         when it's not.
-#
-#       - No constant will ever be zero or undef.  Those are reserved so any piece of code can allow a "none of the above" option
-#         and not worry about conflicts with an existing value.
-#
-#       - Existence hashes are hashes where the value doesn't matter.  It acts more as a set, where the existence of the key is
-#         the significant part.
-#
-#
-#   Topic: File Format Conventions
-#
-#       - All integers appear in big-endian format.  So a UInt16 should be handled with a 'n' in pack and unpack, not with a 'S'.
-#
-#       - AString16's are a big-endian UInt16 followed by that many ASCII characters.  A null-terminator is not stored.
-#
-#       - If a higher-level type is described in a file format, that means the loading and saving format is handled by that package.
-#         For example, if you see <SymbolString> in the format, that means <NaturalDocs::SymbolString->ToBinaryFile()> and
-#         <NaturalDocs::SymbolString->FromBinaryFile()> are used to manipulate it, and the underlying format should be treated
-#         as opaque.
-#
-#
+=pod begin nd
+
+    Script: NaturalDocs
+    ___________________________________________________________________________
+
+    Version 1.3
+
+    Copyright © 2003-2004 Greg Valure
+
+    http://www.naturaldocs.org
+
+
+    About: License
+
+        Licensed under the GNU General Public License
+
+        This program is free software; you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation; either version 2 of the License, or
+        (at your option) any later version.
+
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+
+        You should have received a copy of the GNU General Public License
+        along with this program; if not, visit http://www.gnu.org/licenses/gpl.txt
+        or write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+        Boston, MA  02111-1307  USA.
+
+
+    Topic: Code Conventions
+
+        - Every package function is called with an arrow operator.  It's needed for inheritance in some places, and consistency
+         when it's not.
+
+        - No constant will ever be zero or undef.  Those are reserved so any piece of code can allow a "none of the above" option
+         and not worry about conflicts with an existing value.
+
+        - Existence hashes are hashes where the value doesn't matter.  It acts more as a set, where the existence of the key is
+         the significant part.
+
+
+    Topic: File Format Conventions
+
+        - All integers appear in big-endian format.  So a UInt16 should be handled with a 'n' in pack and unpack, not with a 'S'.
+
+        - AString16's are a big-endian UInt16 followed by that many ASCII characters.  A null-terminator is not stored.
+
+        - If a higher-level type is described in a file format, that means the loading and saving format is handled by that package.
+         For example, if you see <SymbolString> in the format, that means <NaturalDocs::SymbolString->ToBinaryFile()> and
+         <NaturalDocs::SymbolString->FromBinaryFile()> are used to manipulate it, and the underlying format should be treated
+         as opaque.
+
+=cut
 
 
 use strict;
@@ -74,6 +73,7 @@ sub INIT
     # This function is just here so that when I start the debugger, it doesn't open a new file.  Normally it would jump to an INIT
     # function in some other file since that's the first piece of code to execute.
     };
+
 
 use NaturalDocs::Constants;
 use NaturalDocs::SymbolString;
