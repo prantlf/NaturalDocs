@@ -461,76 +461,84 @@ Topic: Index Structure
 
     Everything is enclosed in a <IndexSection> or an <FramedIndexPage>.  All other index styles are prefixed with an I.
 
-    >   <Index>
-    >
-    >       <IPageTitle>
-    >           Page Title
-    >       </IPageTitle>
-    >
-    >       <INavigationBar>
-    >           A - <a href>B</a href> - C ...
-    >       </INavigationBar>
-    >
-    >       <ISection>
-    >
-    >           <IHeading>
-    >               Heading (A, B, etc.)
-    >           </IHeading>
-    >
-    >           <IEntry>
-    >               <ISymbol>
-    >                   <a href>Symbol</a href>
-    >               </ISymbol>,
-    >               <IParent>
-    >                   Class
-    >               </IParent>
-    >           </IEntry>
-    >
-    >           <IEntry>
-    >               <ISymbol>
-    >                   Symbol
-    >               </ISymbol>
-    >               <ISubIndex>
-    >                   <IEntry>
-    >                       <IParent>
-    >                           <a href>Class</a href>
-    >                       </IParent>
-    >                   </IEntry>
-    >                   ...
-    >               </ISubIndex>
-    >           </IEntry>
-    >
-    >           <IEntry>
-    >               <ISymbol>
-    >                   Symbol
-    >               </ISymbol>
-    >               <ISubIndex>
-    >                   <IEntry>
-    >                       <IParent>
-    >                           Class
-    >                       </IParent>
-    >                       <ISubIndex>
-    >                           <IEntry>
-    >                               <IFile>
-    >                                   <a href>File</a href>
-    >                               </IFile>
-    >                           </IEntry>
-    >                           ...
-    >                       </ISubIndex>
-    >                   </IEntry>
-    >                   ...
-    >               </ISubIndex>
-    >           </IEntry>
-    >
-    >       </ISection>
-    >
-    >   </Index>
+    (start diagram)
 
-    Every index entry is an <IEntry> followed by a type.  If there's only one class and definition file for a symbol, it gets the link.
-    However, if there's more of either, they get broken out into <ISubIndex> entries.  A <IParent> subindex can be broken out
-    yet again into an <IFile> subindex.
+    <Index>
 
-    It's called <IParent> instead of <IClass> because class entries are <ISymbols>. <IParents> are only used when the symbol
+        <IPageTitle>
+            Page Title
+        </IPageTitle>
+
+        <INavigationBar>
+            A - <a href>B</a href> - C ...
+        </INavigationBar>
+
+        <table>
+
+            <IHeading>
+                Heading (A, B, etc.)
+            </IHeading>
+
+            <td ISymbolPrefix>
+                Prefix, if any
+            </td ISymbolPrefix>
+
+            <td IEntry>
+                Entry
+            </td IEntry>
+
+            ...
+
+        </table>
+
+    </Index>
+
+    (end diagram)
+
+    Every index entry, including headings, are rows in a table.  The first column of a non-heading are <ISymbolPrefixes> so that
+    the non-prefix portions align correctly.  The other column are <IEntries>, of which there are multiple formats, described below.
+
+    (start diagram)
+
+    <a href ISymbol>
+        Symbol
+    </a href ISymbol>,
+    <IParent>
+        Class
+    </IParent>
+
+    <ISymbol>
+        Symbol
+    </ISymbol>
+    <ISubIndex>
+        <a href IParent>
+            Class
+        </a href IParent>
+        ...
+    </ISubIndex>
+
+    <ISymbol>
+        Symbol
+    </ISymbol>
+    <ISubIndex>
+        <IParent>
+            Class
+        </IParent>
+        <ISubIndex>
+            <a href IFile>
+                File
+            </a href IFile>
+            ...
+        </ISubIndex>
+        ...
+    </ISubIndex>
+
+    (end diagram)
+
+    Each part of the entry is surrounded by its type, which may or may not be a link.  If an entry has more than one defining class
+    or file,  they're broken out into <ISubIndexes>.
+
+    It's called <IParent> instead of <IClass> because class entries are <ISymbols>.  <IParents> are only used when the symbol
     has a class.  If the symbol _is_ a class, the symbol is global.
 
 List: Index Styles
@@ -540,16 +548,22 @@ List: Index Styles
     IPageTitle - The page title.
     INavigationBar - The navigation bar.
 
-    ISection - A section of entries.
-    IHeading - A heading for a section of entries.
+    IHeading - An index heading, such as the letter for the group.
 
     IEntry - An entry in the index.
+    ISymbolPrefix - The stripped prefix of the entry.
     ISymbol - The entry symbol.
     IParent - The entry parent class.  If the entry _is_ a class, this isn't defined because classes are global and don't have parent
-                 classes.  This is why it's called IParent instead of IClass; hopefully it's less confusing.
+                  classes.  This is why it's called IParent instead of IClass; hopefully it's less confusing.
     IFile - The file the entry is defined in.
 
-    ISubIndex - Surrounds all <IEntry>'s in a sub-index.
+    ISubIndex - The surrounding block if an entry needs to be broken out into a sub-index.
+
+    #IFirstHeading - The ID of the first <IHeading> to appear in the file.
+
+    #IFirstSymbolPrefix - The ID for the first <ISymbolPrefix> to appear under an <IHeading>.
+    #ILastSymbolPrefix - The ID for the last <ISymbolPrefix> to appear under an <IHeading>.
+    #IOnlySymbolPrefix - The ID if there is only one <ISymbolPrefix> for an <IHeading>.
 
 
 Topic: Tool Tip Structure
@@ -595,6 +609,10 @@ Topic: Revisions
         - Removed SInGroup, SInClass, and SInSection in favor of more general <SIndent#>.
         - <CTypes>, <STypes>, and <LTypes> are now completely determined by <Topics.txt> configuration files.
         - <CTypes>, <STypes>, and <LTypes> no longer have separate list types.  A CFunctionList is now just a CFunction.
+        - Indexes are now done with tables.
+        - ISection was removed.
+        - <IEntries> are only used for the entry cell, not for each entry in an <ISubIndex>.
+        - Added <ISymbolPrefix>, related IDs, and <#IFirstHeading>.
 
     1.21:
 
