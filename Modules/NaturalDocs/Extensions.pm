@@ -8,7 +8,7 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
+# This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
 use strict;
@@ -50,9 +50,9 @@ my %requireErrors;
 #   All extension packages *must* call this function from BEGIN if they need to use external packages other than what is included
 #   in all Perl distributions by default.  You can find a list of them at <http://www.perldoc.com/perl5.005_03/lib.html>.
 #
-#   Using this function instead of a direct 'use [package]' lets Natural Docs degrade gracefully if those packages aren't there.  If you just
-#   used 'use [package]' instead, Natural Docs would always quit with an error if that package wasn't there, whether the user
-#   was trying to use your extension or not.  Using this function instead only gives that error message if the packages aren't
+#   Using this function instead of a direct 'use [package]' lets Natural Docs degrade gracefully if those packages aren't there.  If
+#   you just used 'use [package]' instead, Natural Docs would always quit with an error if that package wasn't there, whether the
+#   user was trying to use your extension or not.  Using this function instead only gives that error message if the packages aren't
 #   installed and the user tried to use your extension anyway.
 #
 #   Parameters:
