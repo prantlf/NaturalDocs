@@ -88,14 +88,6 @@ sub ParseCommandLine
                                   '--headersonly' => '-ho',
                                   '--help'     => '-h' );
 
-    my %outputOptions;
-    my $outputPackages = NaturalDocs::Builder::OutputPackages();
-
-    foreach my $outputPackage (@$outputPackages)
-        {
-        $outputOptions{ lc($outputPackage->CommandLineOption()) } = $outputPackage;
-        };
-
 
     my @errorMessages;
     my $valueRef;
@@ -188,11 +180,11 @@ sub ParseCommandLine
 
             elsif ($option eq '-o')
                 {
-                my $format = $outputOptions{lc($arg)};
+                my $format = NaturalDocs::Builder::OutputPackageOf($arg);
 
                 if (!defined $format)
                     {
-                    push @errorMessages, 'The output format ' . $format . ' doesn\'t exist or is not installed.';
+                    push @errorMessages, 'The output format ' . $arg . ' doesn\'t exist or is not installed.';
                     $valueRef = \$ignored;
                     }
                 elsif (exists $outputFormats{$format})
@@ -267,7 +259,7 @@ sub ParseCommandLine
             my $outputFormat = shift @styles;
             my $outputStyle = shift @styles;
 
-            my $outputPackage = $outputOptions{ lc($outputFormat) };
+            my $outputPackage = NaturalDocs::Builder::OutputPackageOf($outputFormat);
 
             # We don't care if the output format is actually being used, just that it exists.
             if (defined $outputPackage)
