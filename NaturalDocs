@@ -117,6 +117,7 @@ use integer;
 #       - JavaScript (.js files only)
 #       - Perl (.pl and .pm files, plus .cgi and extensionless files if "perl" is in the #! line)
 #       - Python (.py files, plus .cgi and extensionless files if "python" is in the #! line)
+#       - PHP  (support isn't flawless because escapement isn't handled yet)
 #       - PL/SQL
 #       - Visual Basic
 #       - Pascal (which includes Delphi)
@@ -447,6 +448,11 @@ eval {
     NaturalDocs::Languages::Language->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
+
+    # Doesn't detect escapement yet.
+    NaturalDocs::Languages::Language->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
+                                                                    [ '//', '#' ], '/*', '*/', [ '{', ';' ], [ ';', '=' ], undef );
+                                                                    
     NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
                                                               [ ';', ':=', 'default', 'DEFAULT' ], undef );
     NaturalDocs::Languages::Language->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
