@@ -638,10 +638,11 @@ sub TryToGetListOfStrings #(indexRef, lineNumberRef)
 #
 #       indexRef - A reference to the current index.
 #       lineNumberRef - A reference to the current line number.
+#       noRegExps - If set, does not test for regular expressions.
 #
-sub GenericSkip #(indexRef, lineNumberRef)
+sub GenericSkip #(indexRef, lineNumberRef, noRegExps)
     {
-    my ($self, $indexRef, $lineNumberRef) = @_;
+    my ($self, $indexRef, $lineNumberRef, $noRegExps) = @_;
     my $tokens = $self->Tokens();
 
     if ($tokens->[$$indexRef] eq "\\" && $$indexRef + 1 < scalar @$tokens && $tokens->[$$indexRef+1] ne "\n")
@@ -654,14 +655,14 @@ sub GenericSkip #(indexRef, lineNumberRef)
     elsif ($tokens->[$$indexRef] eq '{' && !$self->IsBackslashed($$indexRef))
         {
         $$indexRef++;
-        $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}');
+        $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}', $noRegExps);
         }
     elsif ($tokens->[$$indexRef] eq '(' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
         {
         $$indexRef++;
 
         do
-            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ')');  }
+            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ')', $noRegExps);  }
         while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1));
         }
     elsif ($tokens->[$$indexRef] eq '[' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
@@ -669,13 +670,13 @@ sub GenericSkip #(indexRef, lineNumberRef)
         $$indexRef++;
 
         do
-            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ']');  }
+            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ']', $noRegExps);  }
         while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1));
         }
 
     elsif ($self->TryToSkipWhitespace($indexRef, $lineNumberRef) ||
             $self->TryToSkipString($indexRef, $lineNumberRef) ||
-            $self->TryToSkipRegexp($indexRef, $lineNumberRef) )
+            (!$noRegExps && $self->TryToSkipRegexp($indexRef, $lineNumberRef) ) )
         {
         }
 
@@ -689,13 +690,13 @@ sub GenericSkip #(indexRef, lineNumberRef)
 #
 #   Advances the position via <GenericSkip()> until a specific token is reached and passed.
 #
-sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token)
+sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token, noRegExps)
     {
-    my ($self, $indexRef, $lineNumberRef, $token) = @_;
+    my ($self, $indexRef, $lineNumberRef, $token, $noRegExps) = @_;
     my $tokens = $self->Tokens();
 
     while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] ne $token)
-        {  $self->GenericSkip($indexRef, $lineNumberRef);  };
+        {  $self->GenericSkip($indexRef, $lineNumberRef, $noRegExps);  };
 
     if ($tokens->[$$indexRef] eq "\n")
         {  $$lineNumberRef++;  };
@@ -991,7 +992,7 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
     my $isRegexp;
 
     if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y|)$/i &&
-         ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*]$/) )
+         ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*\-]$/) )
         {  $isRegexp = 1;  }
     elsif ($tokens->[$$indexRef] eq '/' || $tokens->[$$indexRef] eq '?')
         {
@@ -1000,7 +1001,7 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
         while ($index >= 0 && $tokens->[$index] =~ /^(?: |\t|\n)/)
             {  $index--;  };
 
-        if ($index < 0 || $tokens->[$index] !~ /^[a-zA-Z0-9_\)\]]/)
+        if ($index < 0 || $tokens->[$index] !~ /^[a-zA-Z0-9_\)\]\}\'\"\`]/)
             {  $isRegexp = 1;  };
         };
 
@@ -1066,7 +1067,7 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
 
             if ($operator eq 's')
                 {
-                $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, $closingSymbol);
+                $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, $closingSymbol, 1);
                 }
             else # ($operator eq 'tr' || $operator eq 'y')
                 {
