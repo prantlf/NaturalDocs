@@ -28,7 +28,7 @@ Format: 1.3
 #   Alter Topic Type: [name]
 #
 #   Alters an existing topic type so you can override its settings.
-#
+# 
 #
 #------------------------------------------------------------------------------
 #   Properties
@@ -84,7 +84,7 @@ Format: 1.3
 
 # The following topics MUST be defined in this file:
 #
-#    Generic, Class, Section, File, Group, Function, Variable, Property, Type, 
+#    Generic, Class, Section, File, Group, Function, Variable, Property, Type,
 #    Constant
 
 
