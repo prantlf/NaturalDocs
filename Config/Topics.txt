@@ -50,6 +50,9 @@ Format: 1.3
 #    Whether list topics should be broken into individual topics in the output.
 #    Defaults to no.
 #
+# Can Group With: [type], [type], ...
+#    Defines a list of topic types that this one can possibly be grouped with.
+#    Defaults to none.
 #-------------------------------------------------------------------------------
 
 # The following topics MUST be defined in this file:
@@ -154,6 +157,8 @@ Topic Type: Function
 Topic Type: Variable
 
    Plural: Variables
+   Can Group With: Types, Constants, Macros
+
    Keywords:
       variable, variables
       var, vars
@@ -202,6 +207,8 @@ Topic Type: Variable
 Topic Type: Property
 
    Plural: Properties
+   Can Group With: Functions
+
    Keywords:
       property, properties
       prop, props
@@ -210,6 +217,8 @@ Topic Type: Property
 Topic Type: Type
 
    Plural: Types
+   Can Group With: Variables, Constants, Macros
+
    Keywords:
       type, types
       typedef, typedefs
@@ -220,6 +229,8 @@ Topic Type: Type
 Topic Type: Constant
 
    Plural: Constants
+   Can Group With: Variables, Types, Macros
+
    Keywords:
       constant, constants
       const, consts
@@ -242,6 +253,8 @@ Topic Type: Delegate
 Topic Type: Macro
 
    Plural: Macros
+   Can Group With: Variables, Types, Constants
+
    Keywords:
       define, defines
       def, defs
