@@ -23,7 +23,10 @@ require Exporter;
 @EXPORT = ('TOPIC_CLASS', 'TOPIC_SECTION', 'TOPIC_FILE', 'TOPIC_GROUP', 'TOPIC_FUNCTION', 'TOPIC_VARIABLE',
                    'TOPIC_GENERIC', 'TOPIC_CLASS_LIST', 'TOPIC_FILE_LIST', 'TOPIC_FUNCTION_LIST', 'TOPIC_VARIABLE_LIST',
                    'TOPIC_GENERIC_LIST', 'TopicIsList', 'TopicIsListOf',
+
                    'MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
+                   'MENU_INDEX',
+
                    'FILE_NEW', 'FILE_CHANGED', 'FILE_SAME', 'FILE_DOESNTEXIST');
 
 #
@@ -97,6 +100,7 @@ sub TopicIsListOf #(topic)
 #       MENU_TEXT          - Arbitrary text.
 #       MENU_LINK           - A web link.
 #       MENU_FOOTER      - Footer text.
+#       MENU_INDEX         - An index.
 #
 use constant MENU_TITLE => 1;
 use constant MENU_SUBTITLE => 2;
@@ -105,6 +109,7 @@ use constant MENU_GROUP => 4;
 use constant MENU_TEXT => 5;
 use constant MENU_LINK => 6;
 use constant MENU_FOOTER => 7;
+use constant MENU_INDEX => 8;
 
 #
 #   Constants: File Status Constants
