@@ -91,10 +91,20 @@ sub Name
 sub Class
     {  return $_[0]->[CLASS];  };
 
+# Function: SetClass
+# Replaces the topic's class.
+sub SetClass #(class)
+    {  $_[0]->[CLASS] = $_[1];  };
+
 # Function: Scope
 # Returns the scope the topic appears in.  Applies to <Body()> only.  Will be undef if global.
 sub Scope
     {  return $_[0]->[SCOPE];  };
+
+# Function: SetScope
+# Replaces the topic's scope.
+sub SetScope #(scope)
+    {  $_[0]->[SCOPE] = $_[1];  };
 
 # Function: Prototype
 # Returns the prototype if <Type()> is <TOPIC_FUNCTION> or <TOPIC_VARIABLE> and one is defined.  Will be undef otherwise.
