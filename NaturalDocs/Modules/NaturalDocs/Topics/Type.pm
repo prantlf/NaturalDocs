@@ -20,13 +20,13 @@ use NaturalDocs::DefineMembers 'NAME',                         'Name()',
                                                  'SCOPE',                       'Scope()',              'SetScope()',
                                                  'PAGE_TITLE_IF_FIRST', 'PageTitleIfFirst()', 'SetPageTitleIfFirst()',
                                                  'BREAK_LISTS',             'BreakLists()',        'SetBreakLists()',
-                                                 'CLASS_HIERARCHY', 'ClassHierarchy()', 'SetClassHierarchy()';
+                                                 'CLASS_HIERARCHY',    'ClassHierarchy()',  'SetClassHierarchy()',
+                                                 'CAN_GROUP_WITH';
 
 # Dependency: New() depends on the order of these and that there are no parent classes.
 
 use base 'Exporter';
-our @EXPORT = ('AUTO_GROUP_YES', 'AUTO_GROUP_NO', 'AUTO_GROUP_FULL_ONLY',
-                         'SCOPE_NORMAL', 'SCOPE_START', 'SCOPE_END', 'SCOPE_ALWAYS_GLOBAL');
+our @EXPORT = ('SCOPE_NORMAL', 'SCOPE_START', 'SCOPE_END', 'SCOPE_ALWAYS_GLOBAL');
 
 #
 #   Constants: Members
@@ -40,6 +40,7 @@ our @EXPORT = ('AUTO_GROUP_YES', 'AUTO_GROUP_NO', 'AUTO_GROUP_FULL_ONLY',
 #   PAGE_TITLE_IF_FIRST - Whether the topic becomes the page title if it's first in a file.
 #   BREAK_LISTS - Whether list topics should be broken into individual topics in the output.
 #   CLASS_HIERARCHY - Whether the topic is part of the class hierarchy.
+#   CAN_GROUP_WITH - The existence hashref of <TopicTypes> the type can be grouped with.
 #
 
 
@@ -113,6 +114,35 @@ sub New #(name, pluralName, index, scope, pageTitleIfFirst, breakLists)
 #   ClassHierarchy - Returns whether the topic is part of the class hierarchy.
 #   SetClassHierarchy - Sets whether the topic is part of the class hierarchy.
 #
+
+
+#
+#   Function: CanGroupWith
+#
+#   Returns whether the type can be grouped with the passed <TopicType>.
+#
+sub CanGroupWith #(TopicType type) -> bool
+    {
+    my ($self, $type) = @_;
+    return ( defined $self->[CAN_GROUP_WITH] && exists $self->[CAN_GROUP_WITH]->{$type} );
+    };
+
+
+#
+#   Function: SetCanGroupWith
+#
+#   Sets the list of <TopicTypes> the type can be grouped with.
+#
+sub SetCanGroupWith #(TopicType[] types)
+    {
+    my ($self, $types) = @_;
+
+    $self->[CAN_GROUP_WITH] = { };
+
+    foreach my $type (@$types)
+        {  $self->[CAN_GROUP_WITH]->{$type} = 1;  };
+    };
+
 
 
 1;
