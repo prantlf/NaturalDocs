@@ -69,6 +69,43 @@ sub StartingParseOf #(file)
 
 
 #
+#   Function: Obscure
+#
+#   Obscures the passed text so that it is not user editable and returns it.  The encoding method is not secure; it is just designed
+#   to be fast and to discourage user editing.
+#
+sub Obscure #(text)
+    {
+    my ($self, $text) = @_;
+
+    # ` is specifically chosen to encode to space because of its rarity.  We don't want a trailing one to get cut off before decoding.
+    $text =~ tr{a-zA-Z0-9\ \\\/\.\:\_\-\`}
+                    {pY9fGc\`R8lAoE\\uIdH6tN\/7sQjKx0B5mW\.vZ41PyFg\:CrLaO\_eUi2DhT\-nSqJkXb3MwVz\ };
+
+    return $text;
+    };
+
+
+#
+#   Function: Unobscure
+#
+#   Restores text encoded with <Obscure()> and returns it.
+#
+sub Unobscure #(text)
+    {
+    my ($self, $text) = @_;
+
+    $text =~ tr{pY9fGc\`R8lAoE\\uIdH6tN\/7sQjKx0B5mW\.vZ41PyFg\:CrLaO\_eUi2DhT\-nSqJkXb3MwVz\ }
+                    {a-zA-Z0-9\ \\\/\.\:\_\-\`};
+
+    return $text;
+    };
+
+###############################################################################
+# Group: Error Functions
+
+
+#
 #   Function: AddError
 #
 #   Stores an error for the current configuration file.
