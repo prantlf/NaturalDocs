@@ -48,27 +48,6 @@ use constant MINFILESINNEWGROUP => 3;
 ###############################################################################
 # Group: Variables
 
-#
-#   hash: menuSynonyms
-#
-#   A hash of the text synonyms for the menu tokens.  The keys are the lowercase synonyms, and the values are
-#   <MenuEntryTypes>.
-#
-my %menuSynonyms = (
-                                        'title'        => ::MENU_TITLE(),
-                                        'subtitle'   => ::MENU_SUBTITLE(),
-                                        'sub-title'  => ::MENU_SUBTITLE(),
-                                        'group'     => ::MENU_GROUP(),
-                                        'file'         => ::MENU_FILE(),
-                                        'text'        => ::MENU_TEXT(),
-                                        'link'        => ::MENU_LINK(),
-                                        'url'         => ::MENU_LINK(),
-                                        'footer'    => ::MENU_FOOTER(),
-                                        'copyright' => ::MENU_FOOTER(),
-                                        'index'     => ::MENU_INDEX(),
-                                        'format'   => ::MENU_FORMAT(),
-                                        'data'      => ::MENU_DATA()
-                                    );
 
 #
 #   bool: hasChanged
@@ -226,6 +205,13 @@ my %bannedIndexes;
 #
 #   Revisions:
 #
+#       1.3:
+#
+#           The file spec is still the same, but the parsers are now more strict about it.
+#
+#           - Can't use synonyms like "copyright" for "footer" or "sub-title" for "subtitle".
+#           - "Don't Index" line now requires commas to separate them, whereas it tolerated only spaces before.
+#
 #       1.16:
 #
 #           - File names are now absolute instead of relative.  Prior to 1.16 only one input directory was allowed, so they could be
@@ -252,6 +238,15 @@ my %bannedIndexes;
 #           This is also the point where auto-organization and better auto-titles were introduced.  All groups in prior revisions were
 #           manually added, with the exception of a top-level Other group where new files were automatically added if there were
 #           groups defined.
+#
+#       Break in support:
+#
+#           Releases prior to 1.0 are no longer supported.  Why?
+#
+#           - They don't have a Format: line, which is required by <NaturalDocs::ConfigFile>, although I could work around this
+#             if I needed to.
+#           - No significant number of downloads for pre-1.0 releases.
+#           - Code simplification.  I don't have to bridge the conversion from manual-only menu organization to automatic.
 #
 #       0.9:
 #
@@ -306,6 +301,11 @@ my %bannedIndexes;
 #           - The file's format was completely redone.  Prior to 1.0, the file was a text file consisting of the app version and a line
 #             which was a tab-separated list of the indexes present in the menu.  * meant the general index.
 #
+#       Break in support:
+#
+#           Pre-1.0 files are no longer supported.  There was no significant number of downloads for pre-1.0 releases, and this
+#           eliminates a separate code path for them.
+#
 #       0.95:
 #
 #           - Change the file version to match the app version.  Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to
@@ -330,12 +330,12 @@ sub LoadAndUpdate
     {
     my ($self) = @_;
 
-    my ($inputDirectoryNames, $oldLockedTitles, $relativeFiles) = $self->LoadMenuFile();
+    my ($inputDirectoryNames, $relativeFiles) = $self->LoadMenuFile();
 
     my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
     if ($errorCount)
         {
-        NaturalDocs::ConfigFile->HandleErrors();
+        NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
 
         if ($errorCount == 1)
             {  die "There is an error in the menu file.\n";  }
@@ -409,24 +409,6 @@ sub LoadAndUpdate
     $self->DetectOrder($updateAllTitles);
 
     $self->GenerateAutoFileTitles($updateAllTitles);
-
-    # Check if any of the generated titles are different from the old locked titles.  If so, restore the old locked titles and lock the
-    # entries.  We do this test because, due to the crappy auto-titling present pre-1.0, users may have edited the titles to do the
-    # exact same effect as the new auto-titling system.  If that's the case, we want to unlock those titles.
-
-    if (defined $oldLockedTitles)
-        {
-        while (my ($file, $oldLockedTitle) = each %$oldLockedTitles)
-            {
-            my $fileEntry = $filesInMenu->{$file};
-
-            if (defined $fileEntry && $fileEntry->Title() ne $oldLockedTitle)
-                {
-                $fileEntry->SetTitle($oldLockedTitle);
-                $fileEntry->SetFlags( $fileEntry->Flags() | ::MENU_FILE_NOAUTOTITLE() );
-                };
-            };
-        };
 
     $self->ResortGroups($updateAllTitles);
 
@@ -602,21 +584,16 @@ sub OnDefaultTitleChange #(file)
 #
 #   Returns:
 #
-#       The array ( inputDirectories, oldLockedTitles, relativeFiles ).
+#       The array ( inputDirectories, relativeFiles ) or an empty array if the file doesn't exist.
 #
 #       inputDirectories - A hashref of all the input directories and their names stored in the menu file.  The keys are the directories,
 #                                 and the values are their names.  Undef if none.
-#       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the <FileNames>, and the values are
-#                                the old locked titles.  Will be undef if none.  If a file entry from a pre-1.0 file was locked, it's
-#                                entry in <menu> is unlocked and its title is placed here instead, so that it can be compared with the
-#                                generated title and only locked again if absolutely necessary.
 #       relativeFiles - Whether the menu is in a pre-1.16 format that uses relative file names.
 #
 sub LoadMenuFile
     {
     my ($self) = @_;
 
-    my $oldLockedTitles = { };
     my $inputDirectories = { };
     my $relativeFiles;
 
@@ -632,71 +609,25 @@ sub LoadMenuFile
     # Whether we're right after a group token, which is the only place there can be an opening brace.
     my $afterGroupToken;
 
-    my $lineNumber = 1;
+    my $version;
 
-    if (open(MENUFILEHANDLE, '<' . NaturalDocs::Project->MenuFile()))
+    if ($version = NaturalDocs::ConfigFile->Open(NaturalDocs::Project->MenuFile(), 1))
         {
-        my $menuFileContent;
-        read(MENUFILEHANDLE, $menuFileContent, -s MENUFILEHANDLE);
-        close(MENUFILEHANDLE);
-
-        NaturalDocs::ConfigFile->StartingParseOf(NaturalDocs::Project->MenuFile());
-
         # We don't check if the menu file is from a future version because we can't just throw it out and regenerate it like we can
         # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
-
-        my $version;
-
-        if ($menuFileContent =~ /^[ \t]*format:[ \t]+([0-9\.]+)/mi)
-            {  $version = NaturalDocs::Version->FromString($1);  }
-        else
-            {
-            # If there's no format tag, the menu version is 0.95 or earlier.
-            $version = NaturalDocs::Version->FromString('0.95');
-            };
 
         if ($version < NaturalDocs::Version->FromString('1.16'))
             {  $relativeFiles = 1;  };
 
-        # Strip tabs.
-        $menuFileContent =~ tr/\t/ /;
-
-        my @segments = split(/(\r\n|[\r\n{}\#])/, $menuFileContent);
-        my $segment;
-        $menuFileContent = undef;
-
-        while (scalar @segments)
+        while (my ($keyword, $value, $comment) = NaturalDocs::ConfigFile->GetLine())
             {
-            $segment = shift @segments;
-
-            # Ignore empty segments caused by splitting.
-            if (!length $segment)
-                {  next;  };
-
-            # Ignore line breaks.
-            if ($segment =~ /[\r\n]/)
-                {
-                $lineNumber++;
-                next;
-                };
-
-            # Ignore comments.
-            if ($segment eq '#')
-                {
-                while (scalar @segments && $segments[0] !~ /[\r\n]/)
-                    {  shift @segments;  };
-
-                next;
-                };
-
-
             # Check for an opening brace after a group token.  This has to be separate from the rest of the code because the flag
-            # needs to be reset after every non-ignored segment.
+            # needs to be reset after every line.
             if ($afterGroupToken)
                 {
                 $afterGroupToken = undef;
 
-                if ($segment eq '{')
+                if ($keyword eq '{')
                     {
                     $inBracelessGroup = undef;
                     next;
@@ -708,11 +639,60 @@ sub LoadMenuFile
 
             # Now on to the real code.
 
-            if ($segment eq '{')
+            if ($keyword eq 'file')
                 {
-                NaturalDocs::ConfigFile->AddError($lineNumber, 'Opening braces are only allowed after Group tags.');
+                my $flags = 0;
+
+                if ($value =~ /^([^\(\)]+?) ?\(([^\)]+)\)$/)
+                    {
+                    my ($title, $file) = ($1, $2);
+
+                    # Check for auto-title modifier.
+                    if ($file =~ /^((?:no )?auto-title, ?)(.+)$/i)
+                        {
+                        my $modifier;
+                        ($modifier, $file) = ($1, $2);
+
+                        if ($modifier =~ /^no/i)
+                            {  $flags |= ::MENU_FILE_NOAUTOTITLE();  };
+                        };
+
+                    my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $title, $file, $flags);
+
+                    $currentGroup->PushToGroup($entry);
+                    }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('File lines must be in the format "File: [title] ([location])"');  };
                 }
-            elsif ($segment eq '}')
+
+
+            elsif ($keyword eq 'group')
+                {
+                # End a braceless group, if we were in one.
+                if ($inBracelessGroup)
+                    {
+                    $currentGroup = pop @groupStack;
+                    $inBracelessGroup = undef;
+                    };
+
+                my $entry = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), $value, undef, undef);
+
+                $currentGroup->PushToGroup($entry);
+
+                push @groupStack, $currentGroup;
+                $currentGroup = $entry;
+
+                $afterGroupToken = 1;
+                }
+
+
+            elsif ($keyword eq '{')
+                {
+                NaturalDocs::ConfigFile->AddError('Opening braces are only allowed after Group tags.');
+                }
+
+
+            elsif ($keyword eq '}')
                 {
                 # End a braceless group, if we were in one.
                 if ($inBracelessGroup)
@@ -725,263 +705,139 @@ sub LoadMenuFile
                 if (scalar @groupStack)
                     {  $currentGroup = pop @groupStack;  }
                 else
-                    {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Unmatched closing brace.');  };
+                    {  NaturalDocs::ConfigFile->AddError('Unmatched closing brace.');  };
                 }
 
-            # If the segment is a segment of text...
-            else
+
+            elsif ($keyword eq 'title')
                 {
-                $segment =~ s/^ +//;
-                $segment =~ s/ +$//;
+                if (!defined $title)
+                    {  $title = $value;  }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('Title can only be defined once.');  };
+                }
 
-                # If the segment is keyword: name or keyword: name (extras)...
-                if ($segment =~ /^([^:]+): +([^ ].*)$/)
+
+            elsif ($keyword eq 'subtitle')
+                {
+                if (defined $title)
                     {
-                    my $type = lc($1);
-                    my $name = $2;
-                    my @extras;
-                    my $modifier;
-
-                    # Split off the extra.
-                    if ($name =~ /^(.+)\(([^\)]+)\)$/)
-                        {
-                        $name = $1;
-                        my $extraString = $2;
-
-                        $name =~ s/ +$//;
-                        $extraString =~ s/ +$//;
-                        $extraString =~ s/^ +//;
-
-                        @extras = split(/ *\, */, $extraString);
-                        };
-
-                    # Split off the modifier.
-                    if ($type =~ / /)
-                        {
-                        ($modifier, $type) = split(/ +/, $type, 2);
-                        };
-
-                    if (exists $menuSynonyms{$type})
-                        {
-                        $type = $menuSynonyms{$type};
-
-                        # Currently index is the only type allowed modifiers.
-                        if (defined $modifier && $type != ::MENU_INDEX())
-                            {
-                            NaturalDocs::ConfigFile->AddError($lineNumber,
-                                                                               $modifier . ' ' . $menuSynonyms{$type} . ' is not a valid keyword.');
-                            next;
-                            };
-
-                        if ($type == ::MENU_GROUP())
-                            {
-                            # End a braceless group, if we were in one.
-                            if ($inBracelessGroup)
-                                {
-                                $currentGroup = pop @groupStack;
-                                $inBracelessGroup = undef;
-                                };
-
-                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), $name, undef, undef);
-
-                            $currentGroup->PushToGroup($entry);
-
-                            push @groupStack, $currentGroup;
-                            $currentGroup = $entry;
-
-                            $afterGroupToken = 1;
-                            }
-
-                        elsif ($type == ::MENU_FILE())
-                            {
-                            my $flags = 0;
-
-                            if ($version >= NaturalDocs::Version->FromString('1.0'))
-                                {
-                                if (lc($extras[0]) eq 'no auto-title')
-                                    {
-                                    $flags |= ::MENU_FILE_NOAUTOTITLE();
-                                    shift @extras;
-                                    }
-                                elsif (lc($extras[0]) eq 'auto-title')
-                                    {
-                                    # It's already the default, but we want to accept the keyword anyway.
-                                    shift @extras;
-                                    };
-                                }
-                            else
-                                {
-                                # Prior to 1.0, the only extra was "auto-title" and the default was off instead of on.
-                                if (lc($extras[0]) eq 'auto-title')
-                                    {  shift @extras;  }
-                                else
-                                    {
-                                    # We deliberately leave it auto-titled, but save the original title.
-                                    $oldLockedTitles->{$extras[0]} = $name;
-                                    };
-                                };
-
-                            if (!scalar @extras)
-                                {
-                                NaturalDocs::ConfigFile->AddError($lineNumber,
-                                                                                   'File entries need to be in format "File: [title] ([location])"');
-                                next;
-                                };
-
-                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $name, join(',', @extras), $flags);
-
-                            $currentGroup->PushToGroup($entry);
-                            }
-
-                        # There can only be one title, subtitle, and footer.
-                        elsif ($type == ::MENU_TITLE())
-                            {
-                            if (!defined $title)
-                                {  $title = $name;  }
-                            else
-                                {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Title can only be defined once.');  };
-                            }
-                        elsif ($type == ::MENU_SUBTITLE())
-                            {
-                            if (defined $title)
-                                {
-                                if (!defined $subTitle)
-                                    {  $subTitle = $name;  }
-                                else
-                                    {  NaturalDocs::ConfigFile->AddError($lineNumber, 'SubTitle can only be defined once.');  };
-                                }
-                            else
-                                {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Title must be defined before SubTitle.');  };
-                            }
-                        elsif ($type == ::MENU_FOOTER())
-                            {
-                            if (!defined $footer)
-                                {  $footer = $name;  }
-                            else
-                                {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Copyright can only be defined once.');  };
-                            }
-
-                        elsif ($type == ::MENU_TEXT())
-                            {
-                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_TEXT(), $name, undef, undef) );
-                            }
-
-                        elsif ($type == ::MENU_LINK())
-                            {
-                            my $target;
-
-                            if (scalar @extras)
-                                {
-                                $target = $extras[0];
-                                }
-
-                            # We need to support # appearing in urls.
-                            elsif (scalar @segments >= 2 && $segments[0] eq '#' && $segments[1] =~ /^[^ ].*\) *$/ &&
-                                    $name =~ /^.*\( *[^\(\)]*[^\(\)\ ]$/)
-                                {
-                                $name =~ /^(.*)\(\s*([^\(\)]*[^\(\)\ ])$/;
-
-                                $name = $1;
-                                $target = $2;
-
-                                $name =~ s/ +$//;
-
-                                $segments[1] =~ /^([^ ].*)\) *$/;
-
-                                $target .= '#' . $1;
-
-                                shift @segments;
-                                shift @segments;
-                                }
-
-                            else
-                                {
-                                $target = $name;
-                                };
-
-                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_LINK(), $name, $target, undef) );
-                            }
-
-                        elsif ($type == ::MENU_INDEX())
-                            {
-                            if (!defined $modifier || $modifier eq 'general')
-                                {
-                                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, undef, undef);
-                                $currentGroup->PushToGroup($entry);
-
-                                $indexes{'*'} = 1;
-                                }
-                            elsif ($modifier eq 'don\'t')
-                                {
-                                # We'll tolerate splits by spaces as well as commas.
-                                my @splitLine = split(/ +|, */, lc($name));
-
-                                foreach my $bannedIndex (@splitLine)
-                                    {
-                                    if ($bannedIndex eq 'general')
-                                        {  $bannedIndex = '*';  }
-                                    else
-                                        {  $bannedIndex = NaturalDocs::Topics->BaseConstantOf($bannedIndex);  };
-
-                                    if (defined $bannedIndex)
-                                        {  $bannedIndexes{$bannedIndex} = 1;  };
-                                    };
-                                }
-                            else
-                                {
-                                my $modifierType = NaturalDocs::Topics->BaseConstantOf($modifier);
-
-                                if (defined $modifierType && NaturalDocs::Topics->IsIndexable($modifierType))
-                                    {
-                                    $indexes{$modifierType} = 1;
-                                    $currentGroup->PushToGroup(
-                                        NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, $modifierType, undef) );
-                                    }
-                                else
-                                    {
-                                    NaturalDocs::ConfigFile->AddError($lineNumber, $modifier . ' is not a valid index type.');
-                                    };
-                                };
-                            }
-
-                        elsif ($type == ::MENU_DATA())
-                            {
-                            $name =~ /^(\d)\((.*)\)$/;
-                            my ($number, $data) = ($1, $2);
-
-                            $data = NaturalDocs::ConfigFile->Unobscure($data);
-
-                            if ($number == 1)
-                                {
-                                my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
-                                $inputDirectories->{$inputDir} = $dirName;
-                                };
-                            };
-
-                        # There's also MENU_FORMAT, but that was already dealt with.  We don't need to parse it, just make sure it
-                        # doesn't cause an error.
-
-                        }
-
-                    # If the keyword doesn't exist...
+                    if (!defined $subTitle)
+                        {  $subTitle = $value;  }
                     else
-                        {
-                        NaturalDocs::ConfigFile->AddError($lineNumber, $type . ' is not a valid keyword.');
-                        };
-
+                        {  NaturalDocs::ConfigFile->AddError('SubTitle can only be defined once.');  };
                     }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('Title must be defined before SubTitle.');  };
+                }
 
-                # If the text is not keyword: name or whitespace...
-                elsif (length $segment)
+
+            elsif ($keyword eq 'footer')
+                {
+                if (!defined $footer)
+                    {  $footer = $value;  }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('Footer can only be defined once.');  };
+                }
+
+
+            elsif ($keyword eq 'text')
+                {
+                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_TEXT(), $value, undef, undef) );
+                }
+
+
+            elsif ($keyword eq 'link')
+                {
+                my ($title, $url);
+
+                if ($value =~ /^([^\(\)]+?) ?\(([^\)]+)\)$/)
                     {
-                    # We check the length because the segment may just have been whitespace between symbols (i.e. "\n  {" or
-                    # "} #")  If that's the case, the segment content would have been erased when we clipped the leading and trailing
-                    # whitespace from the line.
-                    NaturalDocs::ConfigFile->AddError($lineNumber, 'Every line must start with a keyword.');
+                    ($title, $url) = ($1, $2);
+                    }
+                elsif (defined $comment)
+                    {
+                    $value .= $comment;
+
+                    if ($value =~ /^([^\(\)]+?) ?\(([^\)]+)\) ?(?:#.*)?$/)
+                        {
+                        ($title, $url) = ($1, $2);
+                        };
                     };
 
-                }; # segment of text
-            }; #while segments
+                if ($title)
+                    {
+                    $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_LINK(), $title, $url, undef) );
+                    }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('Link lines must be in the format "Link: [title] ([url])"');  };
+                }
+
+
+            elsif ($keyword eq 'data')
+                {
+                $value =~ /^(\d)\((.*)\)$/;
+                my ($number, $data) = ($1, $2);
+
+                $data = NaturalDocs::ConfigFile->Unobscure($data);
+
+                if ($number == 1)
+                    {
+                    my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
+                    $inputDirectories->{$inputDir} = $dirName;
+                    }
+                # Otherwise just ignore it, because it may be from a future format and we don't want to make the user delete it
+                # manually.
+                }
+
+            elsif ($keyword eq "don't index")
+                {
+                my @indexes = split(/, ?/, $value);
+
+                foreach my $bannedIndex (@indexes)
+                    {
+                    if ($bannedIndex eq 'general')
+                        {  $bannedIndex = '*';  }
+                    else
+                        {  $bannedIndex = NaturalDocs::Topics->BaseConstantOf($bannedIndex);  };
+
+                    if (defined $bannedIndex)
+                        {  $bannedIndexes{$bannedIndex} = 1;  };
+                    };
+                }
+
+            elsif ($keyword eq 'index' || $keyword eq 'general index')
+                {
+                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, undef, undef);
+                $currentGroup->PushToGroup($entry);
+
+                $indexes{'*'} = 1;
+                }
+
+            elsif (substr($keyword, -6) eq ' index')
+                {
+                my $index = NaturalDocs::Topics->BaseConstantOf( substr($keyword, 0, -6) );
+
+                if (defined $index)
+                    {
+                    if (NaturalDocs::Topics->IsIndexable($index))
+                        {
+                        $indexes{$index} = 1;
+                        $currentGroup->PushToGroup(
+                            NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, $index, undef) );
+                        };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError(ucfirst($index) . ' is not a valid index type.');
+                    };
+                }
+
+            else
+                {
+                NaturalDocs::ConfigFile->AddError(ucfirst($keyword) . ' is not a valid keyword.');
+                };
+            };
 
 
         # End a braceless group, if we were in one.
@@ -1000,57 +856,21 @@ sub LoadMenuFile
             };
 
         if ($openGroups == 1)
-            {  NaturalDocs::ConfigFile->AddError($lineNumber, 'There is an unclosed group.');  }
+            {  NaturalDocs::ConfigFile->AddError('There is an unclosed group.');  }
         elsif ($openGroups > 1)
-            {  NaturalDocs::ConfigFile->AddError($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
+            {  NaturalDocs::ConfigFile->AddError('There are ' . $openGroups . ' unclosed groups.');  };
 
 
-        if ($version < NaturalDocs::Version->FromString('1.0'))
-            {
-            # Prior to 1.0, there was no auto-placement.  New entries were either tacked onto the end of the menu, or if there were
-            # groups, added to a top-level group named "Other".  Since we have auto-placement now, delete "Other" so that its
-            # contents get placed.
+        if (!scalar keys %$inputDirectories)
+            {  $inputDirectories = undef;  };
 
-            my $index = scalar @{$menu->GroupContent()} - 1;
-            while ($index >= 0)
-                {
-                if ($menu->GroupContent()->[$index]->Type() == ::MENU_GROUP() &&
-                    lc($menu->GroupContent()->[$index]->Title()) eq 'other')
-                    {
-                    splice( @{$menu->GroupContent()}, $index, 1 );
-                    last;
-                    };
+        NaturalDocs::ConfigFile->Close();
 
-                $index--;
-                };
+        return ($inputDirectories, $relativeFiles);
+        }
 
-            # Also, prior to 1.0 there was no auto-grouping and crappy auto-titling.  We want to apply these the first time a post-1.0
-            # release is run.
-
-            my @groupStack = ( $menu );
-            while (scalar @groupStack)
-                {
-                my $groupEntry = pop @groupStack;
-
-                $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() | ::MENU_GROUP_UPDATEORDER() |
-                                                   ::MENU_GROUP_UPDATESTRUCTURE() );
-
-                foreach my $entry (@{$groupEntry->GroupContent()})
-                    {
-                    if ($entry->Type() == ::MENU_GROUP())
-                        {  push @groupStack, $entry;  };
-                    };
-                };
-            };
-        };
-
-
-    if (!scalar keys %$oldLockedTitles)
-        {  $oldLockedTitles = undef;  };
-    if (!scalar keys %$inputDirectories)
-        {  $inputDirectories = undef;  };
-
-    return ($inputDirectories, $oldLockedTitles, $relativeFiles);
+    else
+        {  return ( );  };
     };
 
 
@@ -1255,7 +1075,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #
 #   Returns:
 #
-#       The array ( previousMenu, previousIndexes, previousFiles ).
+#       The array ( previousMenu, previousIndexes, previousFiles ), or an empty array if the file doesn't exist.
 #
 #       previousMenu - A <MENU_GROUP> <NaturalDocs::Menu::Entry> object, similar to <menu>, which contains the entire
 #                              previous menu.
@@ -1263,9 +1083,6 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #                                  '*' for general.
 #       previousFiles - A hashref of the files present in the previous menu.  The keys are the <FileNames>, and the entries are
 #                             references to its object in previousMenu.
-#
-#       If there is no data available on a topic, it will be undef.  For example, if the file didn't exist, all three will be undef.  If the
-#       file was from 0.95 or earlier, previousIndexes will be set but the other two would be undef.
 #
 sub LoadPreviousMenuStateFile
     {
@@ -1301,29 +1118,7 @@ sub LoadPreviousMenuStateFile
             }
 
         else # it's not in binary
-            {
-            # Reopen it in text mode.
-            close(PREVIOUSSTATEFILEHANDLE);
-            open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName);
-
-            # Check the version.
-            my $version = NaturalDocs::Version->FromTextFile(\*PREVIOUSSTATEFILEHANDLE);
-
-            # We'll still read the pre-1.0 text file, since it's simple.
-            if ($version <= NaturalDocs::Version->FromString('0.95'))
-                {
-                my $indexLine = <PREVIOUSSTATEFILEHANDLE>;
-                ::XChomp(\$indexLine);
-
-                $indexes = { };
-
-                my @indexesInLine = split(/\t/, $indexLine);
-                foreach my $indexInLine (@indexesInLine)
-                    {  $indexes->{$indexInLine} = 1;  };
-                };
-
-            close(PREVIOUSSTATEFILEHANDLE);
-            };
+            {  close(PREVIOUSSTATEFILEHANDLE);  };
         };
 
     if ($fileIsOkay)
