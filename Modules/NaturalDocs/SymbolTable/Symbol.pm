@@ -26,8 +26,8 @@ package NaturalDocs::SymbolTable::Symbol;
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
 #       DEFINITIONS             - A hashref of all the files which define this symbol.  The keys are the file names, and the values are
-#                                         ( type, prototype) arrayrefs with types being one of the <Topic Types>.  If no files define this
-#                                         symbol, this item will be undef.
+#                                         <NaturalDocs::SymbolTable::SymbolDefinition> objects.  If no files define this symbol, this item will
+#                                          be undef.
 #       GLOBAL_DEFINITION  - The name of the file which defines the global version of the symbol, which is what is used if
 #                                          a file references the symbol but does not have its own definition.  If there are no definitions, this
 #                                          item will be undef.
@@ -82,7 +82,7 @@ sub AddDefinition #(file, type, prototype)
         $self->[GLOBAL_DEFINITION] = $file;
         };
 
-    $self->[DEFINITIONS]{$file} = [ $type, $prototype ];
+    $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype);
     };
 
 
@@ -247,7 +247,7 @@ sub TypeDefinedIn #(file)
     my ($self, $file) = @_;
 
     if ($self->IsDefined())
-        {  return $self->[DEFINITIONS]{$file}[0];  }
+        {  return $self->[DEFINITIONS]{$file}->Type();  }
     else
         {  return undef;  };
     };
@@ -267,7 +267,7 @@ sub GlobalType
     if (!defined $globalDefinition)
         {  return undef;  }
     else
-        {  return $self->[DEFINITIONS]{$globalDefinition}[0];  };
+        {  return $self->[DEFINITIONS]{$globalDefinition}->Type();  };
     };
 
 
@@ -281,7 +281,7 @@ sub PrototypeDefinedIn #(file)
     my ($self, $file) = @_;
 
     if ($self->IsDefined())
-        {  return $self->[DEFINITIONS]{$file}[1];  }
+        {  return $self->[DEFINITIONS]{$file}->Prototype();  }
     else
         {  return undef;  };
     };
@@ -301,7 +301,7 @@ sub GlobalPrototype
     if (!defined $globalDefinition)
         {  return undef;  }
     else
-        {  return $self->[DEFINITIONS]{$globalDefinition}[1];  };
+        {  return $self->[DEFINITIONS]{$globalDefinition}->Prototype();  };
     };
 
 
