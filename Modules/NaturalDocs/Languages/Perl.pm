@@ -1193,6 +1193,8 @@ sub TryToSkipHereDocContent #(indexRef, lineNumberRef)
 #
 #       - Supports //, ??, m//, qr//, s///, tr///, and y///.
 #       - All symbols are supported for the letter forms.
+#       - ?? is *not* supported because it could cause problems with ?: statements.  The generic parser has a good chance of
+#         successfully stumbling through a regex, whereas the regex code will almost certainly see the rest of the file as part of it.
 #
 sub TryToSkipRegexp #(indexRef, lineNumberRef)
     {
@@ -1204,7 +1206,7 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
     if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y|)$/i &&
          ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*\-]$/) )
         {  $isRegexp = 1;  }
-    elsif ( ($tokens->[$$indexRef] eq '/' || $tokens->[$$indexRef] eq '?') && !$self->IsStringed($$indexRef) )
+    elsif ($tokens->[$$indexRef] eq '/' && !$self->IsStringed($$indexRef))
         {
         my $index = $$indexRef - 1;
 
