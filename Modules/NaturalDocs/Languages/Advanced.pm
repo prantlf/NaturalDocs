@@ -168,6 +168,8 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
     while (defined $line)
         {
         ::XChomp(\$line);
+        $self->PreprocessLine(\$line);
+
         my $originalLine = $line;
         my $closingSymbol;
 
@@ -186,6 +188,7 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
                     {  goto EndDo;  };
 
                 ::XChomp(\$line);
+                $self->PreprocessLine(\$line);
                 }
             while ($self->StripOpeningSymbols(\$line, $lineCommentSymbols));
 
@@ -225,6 +228,7 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
                     {  last;  };
 
                 ::XChomp(\$line);
+                $self->PreprocessLine(\$line);
                 };
 
             if ($lineRemainder !~ /^[ \t]*$/)
@@ -276,6 +280,20 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
 
     close(SOURCEFILEHANDLE);
     }
+
+
+#
+#   Function: PreprocessLine
+#
+#   An overridable function if you'd like to preprocess a text line before it goes into <ParseForCommentsAndTokens()>.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line.  Already has the line break stripped off, but is otherwise untouched.
+#
+sub PreprocessLine #(lineRef)
+    {
+    };
 
 
 #
