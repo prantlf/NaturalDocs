@@ -112,20 +112,19 @@ my %watchedFileSymbolDefinitions;
 #
 #   hash: indexes
 #
-#   An array of generated symbol indexes.  The indexes are <TopicTypes> or zero for the general index.  The values are
-#   sorted arrayrefs of <NaturalDocs::SymbolTable::IndexElements>, undef if it has not been generated yet, or -1 if it is known
-#   to be empty.
+#   A hash of generated symbol indexes.  The keys are <TopicTypes> and the values are sorted arrayrefs of
+#   <NaturalDocs::SymbolTable::IndexElements>, or undef if its empty.
 #
-my @indexes;
+my %indexes;
 
 
 #
 #   hash: indexChanges
 #
-#   An array of all the indexes that have changed.  The indexes are <TopicTypes> or zero for the general index.  The entries
-#   are undef if they have not changed, or 1 if they have.
+#   A hash of all the indexes that have changed.  The keys are the <TopicTypes> and the entries are undef if they have not
+#   changed, or 1 if they have.  The key will not exist if the <TopicType> has not been checked.
 #
-my @indexChanges;
+my %indexChanges;
 
 
 ###############################################################################
@@ -149,7 +148,7 @@ my @indexChanges;
 #       >
 #       > [UInt16: number of definitions]
 #       >
-#       >    [AString16: global definition file] [UInt8: TopicType]
+#       >    [AString16: global definition file] [AString16: TopicType]
 #       >       [AString16: prototype] [AString16: summary]
 #       >
 #       >    [AString16: definition file] ...
@@ -176,6 +175,11 @@ my @indexChanges;
 #       <File Format Conventions>
 #
 #   Revisions:
+#
+#       1.3:
+#
+#           - Symbol <TopicTypes> were changed from UInt8s to AString16s, now that <TopicTypes> are strings instead of
+#             integer constants.
 #
 #       1.22:
 #
@@ -212,9 +216,9 @@ sub Load
             {
             my $version = NaturalDocs::Version->FromBinaryFile(\*SYMBOLTABLE_FILEHANDLE);
 
-            # The file format has not changed since switching to binary.
+            # 1.3 is incompatible with previous versions.
 
-            if ($version <= NaturalDocs::Settings->AppVersion())
+            if ($version >= NaturalDocs::Version->FromString('1.3') && $version <= NaturalDocs::Settings->AppVersion())
                 {  $fileIsOkay = 1;  }
             else
                 {  close(PREVIOUSSTATEFILEHANDLE);  };
@@ -263,10 +267,13 @@ sub Load
             my $file;
             read(SYMBOLTABLE_FILEHANDLE, $file, $fileLength);
 
-            # [UInt8: TopicType]
+            # [AString16: TopicType]
 
-            read(SYMBOLTABLE_FILEHANDLE, $raw, 1);
-            my $type = unpack('C', $raw);
+            read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
+            my $typeLength = unpack('n', $raw);
+
+            my $type;
+            read(SYMBOLTABLE_FILEHANDLE, $type, $typeLength);
 
             # [AString16: prototype]
 
@@ -429,11 +436,12 @@ sub Save
             my @definitions = $symbolObject->Definitions();
             print SYMBOLTABLE_FILEHANDLE pack('n', scalar @definitions);
 
-            # [AString16: global definition file] [UInt8: TopicType]
+            # [AString16: global definition file] [AString16: TopicType]
 
-            print SYMBOLTABLE_FILEHANDLE pack('nA*C', length $symbolObject->GlobalDefinition(),
-                                                                                $symbolObject->GlobalDefinition(),
-                                                                                $symbolObject->GlobalType());
+            print SYMBOLTABLE_FILEHANDLE pack('nA*nA*', length $symbolObject->GlobalDefinition(),
+                                                                                   $symbolObject->GlobalDefinition(),
+                                                                                   length $symbolObject->GlobalType(),
+                                                                                   $symbolObject->GlobalType());
 
             # [AString16: prototype]
 
@@ -458,10 +466,11 @@ sub Save
                 {
                 if ($definition ne $symbolObject->GlobalDefinition())
                     {
-                    # [AString16: definition file] [UInt8: TopicType]
+                    # [AString16: definition file] [AString16: TopicType]
 
-                    print SYMBOLTABLE_FILEHANDLE pack('nA*C', length $definition, $definition,
-                                                                                        $symbolObject->TypeDefinedIn($definition));
+                    print SYMBOLTABLE_FILEHANDLE pack('nA*nA*', length $definition, $definition,
+                                                                                           length $symbolObject->TypeDefinedIn($definition),
+                                                                                           $symbolObject->TypeDefinedIn($definition));
 
                     # [AString16: prototype]
 
@@ -772,7 +781,7 @@ sub AnalyzeChanges
 
                 # Update symbols that changed.
 
-                if ( $symbolObject->TypeDefinedIn($watchedFileName) != $newSymbolDef->Type() ||
+                if ( $symbolObject->TypeDefinedIn($watchedFileName) ne $newSymbolDef->Type() ||
                      $symbolObject->PrototypeDefinedIn($watchedFileName) ne $newSymbolDef->Prototype() ||
                      $symbolObject->SummaryDefinedIn($watchedFileName) ne $newSymbolDef->Summary() )
                     {
@@ -909,7 +918,7 @@ sub PurgeResolvingInfo
 sub PurgeIndexes
     {
     my ($self) = @_;
-    @indexes = ( );
+    %indexes = ( );
     };
 
 
@@ -1063,10 +1072,10 @@ sub Index #(type)
     {
     my ($self, $type) = @_;
 
-    if (!defined $indexes[$type])
-        {  $indexes[$type] = $self->MakeIndex($type);  };
+    if (!exists $indexes{$type})
+        {  $indexes{$type} = $self->MakeIndex($type);  };
 
-    return $indexes[$type];
+    return $indexes{$type};
     };
 
 
@@ -1077,7 +1086,7 @@ sub Index #(type)
 #
 #   Parameters:
 #
-#       types  - An existence hashref of the symbols to check for indexes.  The keys are the <TopicTypes> or * for general.
+#       types  - An existence hashref of the <TopicTypes> to check for indexes.
 #
 #   Returns:
 #
@@ -1087,6 +1096,9 @@ sub HasIndexes #(types)
     {
     my ($self, $types) = @_;
 
+    # EliminationHash is a copy of all the types, and the types will be deleted as they are found.  This allows us to quit early if
+    # we've found all the types because the hash will be empty.  We'll later return the original hash minus what was left over
+    # in here, which are the ones that weren't found.
     my %eliminationHash = %$types;
 
     finddefs:
@@ -1095,7 +1107,7 @@ sub HasIndexes #(types)
         foreach my $definition ($symbolObject->Definitions())
             {
             delete $eliminationHash{ $symbolObject->TypeDefinedIn($definition) };
-            delete $eliminationHash{ '*' };
+            delete $eliminationHash{ ::TOPIC_GENERAL() };
 
             if (!scalar keys %eliminationHash)
                 {  last finddefs;  };
@@ -1117,12 +1129,12 @@ sub HasIndexes #(types)
 #
 #   Parameters:
 #
-#       type  - The <TopicType> to limit the index to, or undef if none.
+#       type  - The <TopicType> to limit the index to.
 #
 sub IndexChanged #(type)
     {
     my ($self, $type) = @_;
-    return defined $indexChanges[$type];
+    return defined $indexChanges{$type};
     };
 
 
@@ -1144,8 +1156,8 @@ sub OnIndexChange #(type)
     {
     my ($self, $type) = @_;
 
-    $indexChanges[$type] = 1;
-    $indexChanges[0] = 1;
+    $indexChanges{$type} = 1;
+    $indexChanges{::TOPIC_GENERAL()} = 1;
     };
 
 
@@ -1644,7 +1656,7 @@ sub InterpretReference #(referenceString)
 #
 #   Parameters:
 #
-#       type  - The <TopicType> to limit the index to, or undef if none.
+#       type  - The <TopicType> to limit the index to.
 #
 #   Returns:
 #
@@ -1668,7 +1680,7 @@ sub MakeIndex #(type)
             {
             my $definitionType = $object->TypeDefinedIn($definition);
 
-            if (!defined $type || $type == $definitionType)
+            if ($type eq ::TOPIC_GENERAL() || $type eq $definitionType)
                 {
                 my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($symbol);
                 my $sortableSymbol = join('.', @identifiers);
@@ -1755,7 +1767,9 @@ sub SplitSymbolForIndex #(symbol, type)
     {
     my ($self, $symbol, $type) = @_;
 
-    if (NaturalDocs::Topics->IsAlwaysGlobal($type) || NaturalDocs::Topics->HasScope($type))
+    my $scope = NaturalDocs::Topics->TypeInfo($type)->Scope();
+
+    if ($scope == ::SCOPE_START() || $scope == ::SCOPE_ALWAYS_GLOBAL())
         {  return ( $symbol, undef );  }
     else
         {
