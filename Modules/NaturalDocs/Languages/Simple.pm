@@ -37,12 +37,13 @@ use base 'NaturalDocs::Languages::Base';
 #   CLOSING_COMMENT_SYMBOLS  - An arrayref of symbols that ends a multi-line comment.  Undef if none.
 #   FUNCTION_ENDERS        - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
+#   PROPERTY_ENDERS        - An arrayref of symbols that can end a property declaration.  Undef if not applicable.
 #   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
 #
 
 use NaturalDocs::DefineMembers 'NAME', 'EXTENSIONS', 'SHEBANG_STRINGS',
                                                  'LINE_COMMENT_SYMBOLS', 'OPENING_COMMENT_SYMBOLS', 'CLOSING_COMMENT_SYMBOLS',
-                                                 'FUNCTION_ENDERS', 'VARIABLE_ENDERS', 'LINE_EXTENDER';
+                                                 'FUNCTION_ENDERS', 'VARIABLE_ENDERS', 'PROPERTY_ENDERS', 'LINE_EXTENDER';
 
 
 #############################################################################
@@ -109,6 +110,18 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
         };
 
 
+    # Generate property symbols.
+
+    my $propertyEnders;
+
+    if (defined $functionEnders && defined $variableEnders)
+        {  $propertyEnders = [ @$functionEnders, @$variableEnders ];  }
+    elsif (defined $functionEnders)
+        {  $propertyEnders = $functionEnders;  }
+    else
+        {  $propertyEnders = $variableEnders;  }  # May be undef.
+
+
     my $object = $self->SUPER::New();
 
     $object->[NAME] = $name;
@@ -119,6 +132,7 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
     $object->[CLOSING_COMMENT_SYMBOLS] = $closingCommentSymbols;
     $object->[FUNCTION_ENDERS] = $functionEnders;
     $object->[VARIABLE_ENDERS] = $variableEnders;
+    $object->[PROPERTY_ENDERS] = $propertyEnders;
     $object->[LINE_EXTENDER] = $lineExtender;
 
     NaturalDocs::Languages->Add($object);
@@ -180,6 +194,11 @@ sub FunctionEnders
 # Returns an arrayref of the symbols that end a variable declaration, or undef if not applicable.
 sub VariableEnders
     {  return $_[0]->[VARIABLE_ENDERS];  };
+
+# Function: PropertyEnders
+# Returns an arrayref of the symbols that end a property declaration, or undef if not applicable.
+sub PropertyEnders
+    {  return $_[0]->[PROPERTY_ENDERS];  };
 
 # Function: LineExtender
 # Returns the symbol used to extend a line of code past a line break, or undef if not applicable.
@@ -425,6 +444,8 @@ sub HasPrototype #(type)
         {  return defined $self->FunctionEnders();  }
     elsif ($type == ::TOPIC_VARIABLE())
         {  return defined $self->VariableEnders();  }
+    elsif ($type == ::TOPIC_PROPERTY())
+        {  return defined $self->PropertyEnders();  }
     else
         {  return undef;  };
     };
@@ -454,6 +475,8 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
     if ($type == ::TOPIC_FUNCTION() && defined $self->FunctionEnders())
         {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->FunctionEnders());  }
     elsif ($type == ::TOPIC_VARIABLE() && defined $self->VariableEnders())
+        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
+    elsif ($type == ::TOPIC_PROPERTY() && defined $self->PropertyEnders())
         {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
     else
         {  return -1;  };
