@@ -1254,9 +1254,39 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
             open(INDEXFILEHANDLE, '>' . $indexFileName)
                 or die "Couldn't create output file " . $indexFileName . ".\n";
 
-            print INDEXFILEHANDLE $beginPage;
+
+            # Create the link tags like first, next, previous, and last.
+
+            my $linkTags;
+
+            if ($page > 1)
+                {
+                $linkTags .=
+                    '<link rel=First href="' . $self->IndexFileOf($type, 1) . '">'
+                    . '<link rel=Previous href="' . $self->IndexFileOf($type, $page - 1) . '">';
+                };
+            if ($page < $pageLocation[-1])
+                {
+                $linkTags .=
+                    '<link rel=Last href="' . $self->IndexFileOf($type, $pageLocation[-1]) . '">'
+                    . '<link rel=Next href="' . $self->IndexFileOf($type, $page + 1) . '">';
+                };
+
+            if (defined $linkTags)
+                {
+                my $endOfHead = index($beginPage, '</head>');
+
+                print INDEXFILEHANDLE
+
+                    substr($beginPage, 0, $endOfHead)
+                    . $linkTags
+                    . substr($beginPage, $endOfHead);
+                }
+            else
+                {  print INDEXFILEHANDLE $beginPage;  };
 
             print INDEXFILEHANDLE '' . $self->BuildIndexNavigationBar($type, $page, \@pageLocation);
+
 
             $oldPage = $page;
             };
