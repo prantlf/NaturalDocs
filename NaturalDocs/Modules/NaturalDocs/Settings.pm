@@ -234,16 +234,21 @@ sub ParseCommandLine
         {  push @errorMessages, 'You did not specify an output directory.';  };
 
 
-    # Decode the style string.
+    # Decode the style string.  Apparently @ARGV splits not only on spaces, but also on = automatically.  Of course this was plainly
+    # documentented and would never cause any problems.
 
     my @styles = split(/ +/, $styleString);
 
-    foreach my $style (@styles)
+    if (scalar @styles == 1)
+        {  $defaultOutputStyle = $styles[0];  }
+    else
         {
-        if ($style =~ /^([^=]+)=(.+)$/)
+        $defaultOutputStyle = 'Default';
+
+        while (scalar @styles)
             {
-            my $outputFormat = $1;
-            my $outputStyle = $2;
+            my $outputFormat = shift @styles;
+            my $outputStyle = shift @styles;
 
             my $outputPackage = $outputOptions{ lc($outputFormat) };
 
@@ -254,18 +259,8 @@ sub ParseCommandLine
             # We only add an error message if the format wasn't already specified as an output format to avoid duplicating it.
             elsif (!defined $outputFormats{$outputFormat})
                 {  push @errorMessages, 'The output format ' . $outputFormat . ' doesn\'t exist or is not installed.';  };
-            }
-        else
-            {
-            if (!defined $defaultOutputStyle)
-                {  $defaultOutputStyle = $style;  }
-            else
-                {  push @errorMessages, 'You cannot specify more than one default style.';  };
             };
         };
-
-    if (!defined $defaultOutputStyle)
-        {  $defaultOutputStyle = 'Default';  };
 
 
     # Exit with the error message if there was one.
