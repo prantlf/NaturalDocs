@@ -430,7 +430,7 @@ sub ExtractComments
 
             # Retrieve single line comments.  This leaves $line at the next line.
 
-            if ($language->StripLineComment(\$line))
+            if ($language->StripLineCommentSymbol(\$line))
                 {
                 # If we couldn't find a prototype ender, we couldn't find a prototype.
                 $prototype = undef;
@@ -446,12 +446,12 @@ sub ExtractComments
 
                     chomp($line);
                     }
-                while ($language->StripLineComment(\$line));
+                while ($language->StripLineCommentSymbol(\$line));
                 }
 
             # Retrieve multiline comments.  This leaves $line with whatever followed the closing comment symbol.
 
-            elsif ($language->StripStartComment(\$line))
+            elsif ($language->StripOpeningCommentSymbol(\$line))
                 {
                 # If we couldn't find a prototype ender, we couldn't find a prototype.
                 $prototype = undef;
@@ -461,7 +461,7 @@ sub ExtractComments
 
                 for (;;)
                     {
-                    ($symbol, $lineRemainder) = $language->StripEndComment(\$line);
+                    ($symbol, $lineRemainder) = $language->StripClosingCommentSymbol(\$line);
 
                     push @commentLines, $line;
 

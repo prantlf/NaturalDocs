@@ -8,7 +8,8 @@
 #
 #   Usage and Dependencies:
 #
-#       - Prior to use, <NaturalDocs::Settings> must be initialized and all supported languages need to be added via <Add()>.
+#       - Prior to use, <NaturalDocs::Settings> must be initialized and all supported languages need to be registered via
+#         <Register()>.
 #
 ###############################################################################
 
@@ -52,71 +53,6 @@ my %shebangs;
 
 ###############################################################################
 # Group: Functions
-
-
-
-#
-#   Function: Add
-#
-#   Adds a language to the package.
-#
-#   Parameters:
-#
-#       name                      - The name of the language.
-#       extensions              - An arrayref of the extensions of the language's files.
-#       shebangStrings       - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
-#                                       has a .cgi extension or no extension at all.  Undef if not applicable.
-#       lineComment          - The symbol or arrayref of symbols that start a single line comment.  Undef if none.
-#       startComment         - The symbol or arrayref of symbols that start a multi-line comment.  Undef if none.
-#       endComment          - The symbol or arrayref of symbols that end a multi-line comment.  Undef if none.
-#       functionEnders         - An arrayref of symbols that end a function prototype.  Include "\n" if necessary.  Undef if the language
-#                                       doesn't have functions.
-#       variableEnders        - An arrayref of symbols that end a variable declaration.  Include "\n" if necessary.  Undef if the
-#                                       doesn't have variables.
-#       lineExtender            - The symbol which extends a line of code past a line break.  Undef if not applicable.
-#
-#       Note that if neither of the comment styles are specified, it is assumed that the entire file should be treated as a comment.
-#
-#   Revisions:
-#
-#       Starting with 1.1, the comment parameters accept arrayrefs in addition to single symbols.  We don't force arrayrefs so
-#       that custom lines added beforehand don't break.
-#
-#       1.1 also added the lineExtender parameter.  Since it accepts undef, it doesn't matter if it's not specified by older lines.
-#
-sub Add #(name, extensions, shebangStrings, lineComment, startComment, endComment, functionEnders, variableEnders, lineEnder)
-    {
-    my ($name, $extensions, $shebangStrings, $lineComment, $startComment, $endComment, $functionEnders,
-           $variableEnders, $lineExtender) = @_;
-
-    # Convert old parameter styles.
-
-    if (defined $lineComment && !ref $lineComment)
-        {  $lineComment = [ $lineComment ];  };
-    if (defined $startComment && !ref $startComment)
-        {  $startComment = [ $startComment ];  };
-    if (defined $endComment && !ref $endComment)
-        {  $endComment = [ $endComment ];  };
-
-    my $language = NaturalDocs::Languages::Language->New($name, $lineComment, $startComment, $endComment,
-                                                                                          $functionEnders, $variableEnders, $lineExtender);
-
-    my $languageIndex = scalar @languages;
-    push @languages, $language;
-
-    foreach my $extension (@$extensions)
-        {
-        $extensions{ lc($extension) } = $languageIndex;
-        };
-
-    if (defined $shebangStrings)
-        {
-        foreach my $shebangString (@$shebangStrings)
-            {
-            $shebangs{ lc($shebangString) } = $languageIndex;
-            };
-        };
-    };
 
 
 #
@@ -231,5 +167,57 @@ sub SeparateMember #(string)
         {  return $string;  };
     };
 
+
+###############################################################################
+# Group: Interface Functions
+# These functions are not for general use.  They're interfaces between specific packages and should only be used where noted.
+
+
+#
+#   Function: Register
+#
+#   Registers a <NaturalDocs::Languages::Language> object with the package.
+#
+#   Usage:
+#
+#       This function is *only* to be called by <NaturalDocs::Languages::Language::New()>.  Languages self-register when
+#       created, so there is no need to call anywhere else.
+#
+#   Parameters:
+#
+#       languageObject  - A reference to the <NaturalDocs::Languages::Language> object.
+#       extensions         - An arrayref of the extensions of the language's files.
+#       shebangStrings  - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
+#                                 has a .cgi extension or no extension at all.  Undef if not applicable.
+#
+sub Register #(languageObject, extensions, shebangStrings)
+    {
+    my ($languageObject, $extensions, $shebangStrings) = @_;
+
+    my $languageIndex = scalar @languages;
+    push @languages, $languageObject;
+
+    foreach my $extension (@$extensions)
+        {
+        $extensions{ lc($extension) } = $languageIndex;
+        };
+
+    if (defined $shebangStrings)
+        {
+        foreach my $shebangString (@$shebangStrings)
+            {
+            $shebangs{ lc($shebangString) } = $languageIndex;
+            };
+        };
+    };
+
+
+# Undocumented legacy function.  Add() was the old way of addding languages.  We want to throw a more specific error message
+# when people call it because they may just be cutting and pasting their old code into new versions and not be aware of the
+# changes.
+sub Add
+    {
+    die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Languages->New().\n";
+    };
 
 1;

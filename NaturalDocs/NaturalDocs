@@ -191,8 +191,8 @@ use integer;
 #
 #   Topic: How to Add Languages
 #
-#       In the main script add a call to <NaturalDocs::Languages::Add()> after all the rest.  See
-#       <NaturalDocs::Languages::Add()>'s documentation for an explanation of the parameters.
+#       In the main script add a call to <NaturalDocs::Languages::Language->New()> after all the rest.  See its documentation for
+#       an explanation of the parameters.
 #
 #
 #   Topic: How to Add Output Formats
@@ -356,19 +356,26 @@ eval {
     if (!NaturalDocs::Settings::HeadersOnly())
         {  push @$cExtensions, 'c', 'cpp';  };
 
-    NaturalDocs::Languages::Add( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Add( 'C#', [ 'cs' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Add( 'Java', [ 'java' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Add( 'JavaScript', [ 'js' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Add( 'Perl', [ 'pl', 'pm' ], [ 'perl' ], '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Add( 'Python', [ 'py' ], [ 'python' ], '#', undef, undef, [ ':' ], [ '=' ], "\\" );
-    NaturalDocs::Languages::Add( 'PL/SQL', [ 'sql' ], undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ], [ ';', ':=', 'default', 'DEFAULT' ],
-                                                  undef );
-    NaturalDocs::Languages::Add( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, [ "\n" ], [ "\n", '=' ], '_' );
-    NaturalDocs::Languages::Add( 'Pascal', [ 'pas' ], undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Add( 'Assembly', [ 'asm' ], undef, ';', undef, undef, undef, [ "\n" ], "\\" );
-    NaturalDocs::Languages::Add( 'Ada', [ 'ada' ], undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
-    NaturalDocs::Languages::Add( 'Text', [ 'txt' ], undef, undef, undef, undef, undef, undef, undef );
+    # Notes for people unfamiliar with Perl:
+    # - Use single values as follows: 'value'
+    # - Use multiple values as follows: [  'value1', 'value2', 'value3' ].  You MUST include the brackets.
+    # - Specify line breaks as follows: "\n".  You MUST use quotes instead of apostrophes.  You don't have to worry about \r.
+    # - Specify backslashes as follows: "\\".  You MUST use quotes instead of apostrophes.
+    # - Follow the documentation on the parameters closely.  You don't want to skip one or put them in the wrong order.
+
+    NaturalDocs::Languages::Language->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Language->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Language->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
+    NaturalDocs::Languages::Language->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
+    NaturalDocs::Languages::Language->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Language->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
+    NaturalDocs::Languages::Language->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
+                                                                   [ ';', ':=', 'default', 'DEFAULT' ], undef );
+    NaturalDocs::Languages::Language->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
+    NaturalDocs::Languages::Language->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Language->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
+    NaturalDocs::Languages::Language->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
+    NaturalDocs::Languages::Language->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
 
 
     if (!NaturalDocs::Settings::IsQuiet())
