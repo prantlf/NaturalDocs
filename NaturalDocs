@@ -101,7 +101,7 @@ use integer;
 #
 #   About: Supported Languages
 #
-#       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Output Formats>.
+#       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Languages>.
 #
 #       - C++ (.h and .hpp files only)
 #       - C#
@@ -126,6 +126,9 @@ use integer;
 #       FramedHTML - Creates framed HTML output.  A directory tree will be created to mirror the source tree, and each source file
 #                             will have a corresponding HTML file of the same name, only with .html appended.  The menu has its own
 #                             file, so changes to it will be done much quicker.
+#
+#       Natural Docs is designed to be extended with more output formats, but it requires familiarity with Perl.  See <How to Add
+#       Output Formats> for details.
 #
 #
 #   About: HTML Styles
