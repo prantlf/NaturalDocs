@@ -402,6 +402,22 @@ sub UseDirectory #(directory, directory, directory ...)
     };
 
 
+#
+#   Function: XChomp
+#
+#   A cross-platform chomp function.  Regular chomp fails when parsing Windows-format line breaks on a Unix platform.  It
+#   leaves the /r on, which screws everything up.  This does not.
+#
+#   Parameters:
+#
+#       lineRef - A *reference* to the line to chomp.
+#
+sub XChomp #(lineRef)
+    {
+    my $lineRef = shift;
+    $$lineRef =~ s/[\n\r]+$//;
+    };
+
 
 ###############################################################################
 #
