@@ -53,6 +53,10 @@ my $rebuildOutput;
 # Whether the script should be run in quiet mode or not.
 my $isQuiet;
 
+# bool: headersOnly
+# Whether only the header files in C/C++ should be used.
+my $headersOnly;
+
 # string: defaultOutputStyle
 # The style to be used if an output format doesn't have its own style specified.
 my $defaultOutputStyle;
@@ -81,6 +85,7 @@ sub ParseCommandLine
                                   '--rebuild' => '-r',
                                   '--rebuildoutput' => '-ro',
                                   '--quiet'    => '-q',
+                                  '--headersonly' => '-ho',
                                   '--help'     => '-h' );
 
     my %outputOptions;
@@ -154,6 +159,8 @@ sub ParseCommandLine
                     {  $rebuildOutput = 1;  }
                 elsif ($option eq '-q')
                     {  $isQuiet = 1;  }
+                elsif ($option eq '-ho')
+                    {  $headersOnly = 1;  }
                 elsif ($option eq '-h')
                     {
                     PrintSyntax();
@@ -353,6 +360,9 @@ sub PrintSyntax
     . "-q, --quiet\n"
     . "     Suppresses all non-error output.\n"
     . "\n"
+    . "-ho, --headersonly\n"
+    . "     For C/C++, only check the headers and not the source files.\n"
+    . "\n"
     . "-h, --help\n"
     . "     Displays this syntax reference.\n";
 
@@ -434,6 +444,11 @@ sub RebuildOutput
 # Returns whether the script should be run in quiet mode or not.
 sub IsQuiet
     {  return $isQuiet;  };
+
+# Function: HeadersOnly
+# Returns whether to only check the header files in C/C++;
+sub HeadersOnly
+    {  return $headersOnly;  };
 
 
 ###############################################################################
