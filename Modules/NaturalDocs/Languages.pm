@@ -1100,28 +1100,37 @@ sub SaveFile #(isMain)
                 print FH_LANGUAGES lc($properties->{'shebang strings'}) . "\n";
                 };
 
-            if (exists $properties->{'ignore prefixes in index'})
+            if (exists $properties->{'ignored prefixes in index'})
                 {
-                my $topicTypePrefixes = $properties->{'ignore prefixes in index'};
+                my $topicTypePrefixes = $properties->{'ignored prefixes in index'};
 
                 my %usedTopicTypes;
                 my @topicTypes = ( @topicTypeOrder, keys %$topicTypePrefixes );
 
                 foreach my $topicType (@topicTypes)
                     {
-                    if (exists $topicTypePrefixes->{$topicType} && !exists $usedTopicTypes{$topicType})
+                    if ($topicType !~ / command$/ &&
+                        exists $topicTypePrefixes->{$topicType} &&
+                        !exists $usedTopicTypes{$topicType})
                         {
                         print FH_LANGUAGES '   ';
 
                         if ($topicTypePrefixes->{$topicType . ' command'})
-                            {  print FH_LANGUAGES ucfirst($topicTypePrefixes->{$topicType . ' command'}) . ' ';  };
-
-                        print FH_LANGUAGES 'Ignored ';
+                            {  print FH_LANGUAGES ucfirst($topicTypePrefixes->{$topicType . ' command'}) . ' Ignored ';  }
+                        else
+                            {  print FH_LANGUAGES 'Ignore ';  };
 
                         if ($topicType ne ::TOPIC_GENERAL())
                             {  print FH_LANGUAGES NaturalDocs::Topics->TypeInfo($topicType)->Name() . ' ';  };
 
-                        print FH_LANGUAGES 'Prefixes in Index: ' . $topicTypePrefixes->{$topicType} . "\n";
+                        my @prefixes = split(/ /, $topicTypePrefixes->{$topicType}, 2);
+
+                        if (scalar @prefixes == 1)
+                            {  print FH_LANGUAGES 'Prefix in Index: ';  }
+                        else
+                            {  print FH_LANGUAGES 'Prefixes in Index: ';  };
+
+                        print FH_LANGUAGES $topicTypePrefixes->{$topicType} . "\n";
 
                         $usedTopicTypes{$topicType} = 1;
                         };
@@ -1166,7 +1175,9 @@ sub SaveFile #(isMain)
 
                 foreach my $topicType (@topicTypes)
                     {
-                    if (exists $topicTypeEnders->{$topicType} && !exists $usedTopicTypes{$topicType})
+                    if ($topicType !~ / command$/ &&
+                        exists $topicTypeEnders->{$topicType} &&
+                        !exists $usedTopicTypes{$topicType})
                         {
                         print FH_LANGUAGES '   ';
 
