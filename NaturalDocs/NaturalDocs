@@ -12,6 +12,7 @@ sub INIT
     };
 
 use NaturalDocs::Constants;
+use NaturalDocs::StringSort;
 use NaturalDocs::File;
 use NaturalDocs::NDMarkup;
 use NaturalDocs::Languages;
@@ -28,7 +29,7 @@ use integer;
 #
 #   Script: Natural Docs
 #
-#       Version 0.85
+#       Version 0.9
 #
 #       Copyright © 2003 Greg Valure
 #
@@ -289,6 +290,10 @@ eval {
         }
     else
         {
+        # We need to load the menu file anyway, because Builder may need it.  However, we have an optimized version for this
+        # occasion.
+        NaturalDocs::Menu::LoadUnchanged();
+
         # Builder needs to be run anyway.  Since there were no changes to the source tree, we don't need to worry about
         # parsing or NaturalDocs::SymbolTable.
 
