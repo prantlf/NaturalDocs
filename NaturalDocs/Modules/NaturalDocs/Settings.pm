@@ -51,6 +51,10 @@ my @inputDirectories;
 # An array of the input directory names.  Each name corresponds to the directory of the same index in <inputDirectories>.
 my @inputDirectoryNames;
 
+# array: excludedInputDirectories
+# An array of input directories to exclude.
+my @excludedInputDirectories;
+
 # var: projectDirectory
 # The project directory.
 my $projectDirectory;
@@ -180,9 +184,6 @@ my $defaultStyle;
 #
 #       A count of output targets, then that number of directory/format pairs.
 #
-#   See Also:
-#
-#       <File Format Conventions>
 #
 #   Dependencies:
 #
@@ -352,6 +353,11 @@ sub SplitFromInputDirectory #(file)
     return ( );
     };
 
+# Function: ExcludedInputDirectories
+# Returns an arrayref of input directories to exclude.  Do not change.
+sub ExcludedInputDirectories
+    {  return \@excludedInputDirectories;  };
+
 # Function: BuildTargets
 # Returns an arrayref of <NaturalDocs::Settings::BuildTarget>s.  Do not change.
 sub BuildTargets
@@ -497,6 +503,7 @@ sub AppURL
     {  return 'http://www.naturaldocs.org';  };
 
 
+
 ###############################################################################
 # Group: Support Functions
 
@@ -513,6 +520,7 @@ sub ParseCommandLine
 
     # The values are the package names or 'Natural Docs' for the buit in ones.
     my %options = ( '-i' => 'Natural Docs',
+                             '-xi' => 'Natural Docs',
                              '-o' => 'Natural Docs',
                              '-p' => 'Natural Docs',
                              '-s' => 'Natural Docs',
@@ -528,16 +536,25 @@ sub ParseCommandLine
 
     my %synonyms = ( '--input'    => '-i',
                                   '--source' => '-i',
+                                  '--exclude-input' => '-xi',
+                                  '--excludeinput' => '-xi',
+                                  '--exclude-source' => '-xi',
+                                  '--excludesource' => '-xi',
                                   '--output'  => '-o',
                                   '--project' => '-p',
+                                  '--documented-only' => '-do',
                                   '--documentedonly' => '-do',
                                   '--style'    => '-s',
                                   '--rebuild' => '-r',
+                                  '--rebuild-output' => '-ro',
                                   '--rebuildoutput' => '-ro',
+                                  '--tab-length' => '-t',
                                   '--tablength' => '-t',
                                   '--quiet'    => '-q',
+                                  '--headers-only' => '-ho',
                                   '--headersonly' => '-ho',
                                   '--help'     => '-h',
+                                  '--auto-group' => '-ag',
                                   '--autogroup' => '-ag' );
 
     my %autoGroupOptions = ( 'none' => ::AUTOGROUP_NONE(),
@@ -622,6 +639,11 @@ sub ParseCommandLine
                 {
                 push @inputDirectories, undef;
                 $valueRef = \$inputDirectories[-1];
+                }
+            elsif ($option eq '-xi')
+                {
+                push @excludedInputDirectories, undef;
+                $valueRef = \$excludedInputDirectories[-1];
                 }
             elsif ($option eq '-p')
                 {
@@ -815,6 +837,24 @@ sub ParseCommandLine
         {  push @errorMessages, 'You did not specify a project directory.';  };
 
 
+    # Make sure the excluded input directories are canonized, and add the project and output directories to the list.
+
+    for (my $i = 0; $i < scalar @excludedInputDirectories; $i++)
+        {
+        if (!NaturalDocs::File->PathIsAbsolute($excludedInputDirectories[$i]))
+            {  $excludedInputDirectories[$i] = NaturalDocs::File->JoinPaths(Cwd::cwd(), $excludedInputDirectories[$i]);  };
+
+        $excludedInputDirectories[$i] = NaturalDocs::File->CanonizePath($excludedInputDirectories[$i]);
+        };
+
+    push @excludedInputDirectories, $projectDirectory;
+
+    foreach my $buildTarget (@buildTargets)
+        {
+        push @excludedInputDirectories, $buildTarget->Directory();
+        };
+
+
     # Determine the tab length, and default to four if not specified.
 
     if (defined $tabLength)
@@ -893,7 +933,7 @@ sub PrintSyntax
     . "    NaturalDocs -i /src/project -o HTML /doc/project\n"
     . "                -p /etc/naturaldocs/project -s Small -q\n"
     . "\n"
-    . "Parameters:\n"
+    . "Required Parameters:\n"
     . "\n"
     . " -i [dir]\n--input [dir]\n--source [dir]\n"
     . "     Specifies the input (source) directory.  Required.\n"
@@ -912,19 +952,26 @@ sub PrintSyntax
     . "    Specifies the project directory.  Required.\n"
     . "    There needs to be a unique project directory for every source directory.\n"
     . "\n"
+    . "Optional Parameters:\n"
+    . "\n"
     . " -s [style]\n--style [style]\n"
     . "    Specifies the CSS style when building HTML output.  If set to \"Custom\",\n"
     . "    Natural Docs will not sync the output's CSS file with one from its style\n"
     . "    directory.\n"
     . "\n"
-    . " -do\n--documentedonly\n"
+    . " -do\n--documented-only\n"
     . "    Specifies only documented code aspects should be included in the output.\n"
     . "\n"
-    . " -t [len]\n--tablength [len]\n"
+    . " -t [len]\n--tab-length [len]\n"
     . "    Specifies the number of spaces tabs should be expanded to.  This only needs\n"
     . "    to be set if you use tabs in example code and text diagrams.  Defaults to 4.\n"
     . "\n"
-    . " -ag [level]\n--autogroup [level]\n"
+    . " -xi [dir]\n--exclude-input [dir]\n--exclude-source [dir]\n"
+    . "     Excludes an input (source) directory from the documentation.\n"
+    . "     Automatically done for the project and output directories.  Can\n"
+    . "     be specified multiple times.\n"
+    . "\n"
+    . " -ag [level]\n--auto-group [level]\n"
     . "    Specifies the level of auto-grouping to apply.  Defaults to full.\n"
     . "    Possible levels:\n"
     . "    - full\n"
@@ -935,13 +982,13 @@ sub PrintSyntax
     . "    Rebuilds all output and data files from scratch.\n"
     . "    Does not affect the menu file.\n"
     . "\n"
-    . " -ro\n--rebuildoutput\n"
+    . " -ro\n--rebuild-output\n"
     . "    Rebuilds all output files from scratch.\n"
     . "\n"
     . " -q\n--quiet\n"
     . "    Suppresses all non-error output.\n"
     . "\n"
-    . " -ho\n--headersonly\n"
+    . " -ho\n--headers-only\n"
     . "    For C/C++, only check the headers and not the source files.\n"
     . "\n"
     . " -?\n -h\n--help\n"
