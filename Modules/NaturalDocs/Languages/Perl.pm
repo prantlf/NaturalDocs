@@ -412,7 +412,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
                 }
 
             else
-                {  $self->GenericSkip(\$prototypeEnd, \$prototypeEndLine);  };
+                {  $self->GenericSkip(\$prototypeEnd, \$prototypeEndLine, 0, 1);  };
             };
         }
     else
@@ -712,10 +712,11 @@ sub TryToGetListOfStrings #(indexRef, lineNumberRef)
 #       indexRef - A reference to the current index.
 #       lineNumberRef - A reference to the current line number.
 #       noRegExps - If set, does not test for regular expressions.
+#       allowStringedClosingParens - If set, allows $) to end a parenthesis set.
 #
-sub GenericSkip #(indexRef, lineNumberRef, noRegExps)
+sub GenericSkip #(indexRef, lineNumberRef, noRegExps, allowStringedClosingParens)
     {
-    my ($self, $indexRef, $lineNumberRef, $noRegExps) = @_;
+    my ($self, $indexRef, $lineNumberRef, $noRegExps, $allowStringedClosingParens) = @_;
     my $tokens = $self->Tokens();
 
     if ($tokens->[$$indexRef] eq "\\" && $$indexRef + 1 < scalar @$tokens && $tokens->[$$indexRef+1] ne "\n")
@@ -728,22 +729,22 @@ sub GenericSkip #(indexRef, lineNumberRef, noRegExps)
     elsif ($tokens->[$$indexRef] eq '{' && !$self->IsBackslashed($$indexRef))
         {
         $$indexRef++;
-        $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}', $noRegExps);
+        $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}', $noRegExps, $allowStringedClosingParens);
         }
     elsif ($tokens->[$$indexRef] eq '(' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
         {
         $$indexRef++;
 
         do
-            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ')', $noRegExps);  }
-        while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1));
+            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ')', $noRegExps, $allowStringedClosingParens);  }
+        while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1) && !$allowStringedClosingParens);
         }
     elsif ($tokens->[$$indexRef] eq '[' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
         {
         $$indexRef++;
 
         do
-            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ']', $noRegExps);  }
+            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ']', $noRegExps, $allowStringedClosingParens);  }
         while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1));
         }
 
@@ -763,13 +764,13 @@ sub GenericSkip #(indexRef, lineNumberRef, noRegExps)
 #
 #   Advances the position via <GenericSkip()> until a specific token is reached and passed.
 #
-sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token, noRegExps)
+sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token, noRegExps, allowStringedClosingParens)
     {
-    my ($self, $indexRef, $lineNumberRef, $token, $noRegExps) = @_;
+    my ($self, $indexRef, $lineNumberRef, $token, $noRegExps, $allowStringedClosingParens) = @_;
     my $tokens = $self->Tokens();
 
     while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] ne $token)
-        {  $self->GenericSkip($indexRef, $lineNumberRef, $noRegExps);  };
+        {  $self->GenericSkip($indexRef, $lineNumberRef, $noRegExps, $allowStringedClosingParens);  };
 
     if ($tokens->[$$indexRef] eq "\n")
         {  $$lineNumberRef++;  };
