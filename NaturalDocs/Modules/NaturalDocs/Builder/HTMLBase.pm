@@ -2301,7 +2301,7 @@ sub BuildTextLink #(text, package, using, sourceFile)
         my $targetFile;
 
         if ($target->File() ne $sourceFile)
-            {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()) );  };
+            {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()), 1 );  };
         # else leave it undef
 
         my $targetTooltipID = $self->BuildToolTip($target->Symbol(), $sourceFile, $target->Type(),
