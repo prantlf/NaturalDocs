@@ -580,9 +580,7 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
         if (NaturalDocs::Topics->IsList($type))
             {  $type = NaturalDocs::Topics->IsListOf($type);  };
 
-        if ( ( $type == ::TOPIC_FUNCTION() || $type == ::TOPIC_VARIABLE() ||
-               $type == ::TOPIC_FILE() || $type == ::TOPIC_TYPE() ) &&
-             $type != $currentType)
+        if ($type != $currentType && NaturalDocs::Topics->IsAutoGroupable($type))
             {
             splice(@parsedFile, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
                                                                                                                           NaturalDocs::Topics->PluralNameOf($type),
