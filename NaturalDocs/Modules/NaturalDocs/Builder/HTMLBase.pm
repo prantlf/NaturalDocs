@@ -72,21 +72,40 @@ my @indexHeadings = ( '$#!', '0-9', 'A' .. 'Z' );
 #
 my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
 
+
+###############################################################################
+# Group: ToolTip Variables
+#
+#   These variables are for the tooltip generation functions only.
+#
+
 #
 #   int: tooltipLinkNumber
 #
-#   A number used as part of the ID for each link that has a tooltip.  Should be incremented whenever one is made, and reset
-#   for every new page.
+#   A number used as part of the ID for each link that has a tooltip.  Should be incremented whenever one is made.
 #
 my $tooltipLinkNumber;
 
 #
-#   hash: tooltips
+#   int: tooltipNumber
 #
-#   A hash of all the tooltips necessary for each link in the page.  The keys are the tooltip IDs as returned by
-#   <BuildToolTip()>, and the values are the tooltip's HTML.  Should be reset for every new page.
+#   A number used as part of the ID for each tooltip.  Should be incremented whenever one is made.
 #
-my %tooltips;
+my $tooltipNumber;
+
+#
+#   hash: tooltipSymbolsToNumbers
+#
+#   A hash that maps the tooltip symbols to their assigned numbers.
+#
+my %tooltipSymbolsToNumbers;
+
+#
+#   string: tooltipHTML
+#
+#   The generated tooltip HTML.
+#
+my $tooltipHTML;
 
 
 ###############################################################################
@@ -575,8 +594,7 @@ sub BuildContent #(sourceFile, parsedFile)
     {
     my ($self, $sourceFile, $parsedFile) = @_;
 
-    $tooltipLinkNumber = 1;
-    %tooltips = ( );
+    $self->ResetToolTips();
 
     my $output;
     my $i = 0;
@@ -782,15 +800,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
                 {
                 my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $topic->Type(),
                                                                      $topic->Prototype(), $topic->Summary());
-                if (defined $tooltipID)
-                    {
-                    my $linkNumber = $tooltipLinkNumber;
-                    $tooltipLinkNumber++;
-
-                    $toolTipProperties = 'id=link' . $linkNumber . ' '
-                                                . 'onMouseOver="ShowTip(\'' . $tooltipID . '\', \'link' . $linkNumber . '\')" '
-                                                . 'onMouseOut="HideTip(\'' . $tooltipID . '\')"';
-                    };
+                $toolTipProperties = $self->BuildToolTipLinkProperties($tooltipID);
                 };
 
             $output .=
@@ -1056,8 +1066,7 @@ sub BuildIndexContent #(index, outputFile)
     {
     my ($self, $index, $outputFile) = @_;
 
-    $tooltipLinkNumber = 1;
-    %tooltips = ( );
+    $self->ResetToolTips();
 
     my $content = [ ];
     my $contentIndex;
@@ -1082,7 +1091,7 @@ sub BuildIndexContent #(index, outputFile)
             {
             $content->[$contentIndex] .=
                 $self->BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
-                                                $entry->File(), $entry->Type(), $entry->Prototype(), $outputFile);
+                                                $entry->File(), $entry->Type(), $entry->Prototype(), $entry->Summary(), $outputFile);
             }
 
 
@@ -1122,7 +1131,8 @@ sub BuildIndexContent #(index, outputFile)
                             {
                             $content->[$contentIndex] .=
                                 $self->BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
-                                                                 $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                                                                 $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(),
+                                                                 $fileEntry->Summary(), $outputFile);
                             };
 
                         $content->[$contentIndex] .= '</div></div>';
@@ -1132,7 +1142,8 @@ sub BuildIndexContent #(index, outputFile)
                         {
                         $content->[$contentIndex] .=
                             $self->BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
-                                                              $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(), $outputFile);
+                                                              $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(),
+                                                              $classEntry->Summary(), $outputFile);
                         };
                     };
                 }
@@ -1146,12 +1157,18 @@ sub BuildIndexContent #(index, outputFile)
                     {
                     $content->[$contentIndex] .=
                         $self->BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
-                                                         $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                                                         $fileEntry->Type(), $fileEntry->Prototype(), $fileEntry->Summary(), $outputFile);
                     };
                 };
 
             $content->[$contentIndex] .= '</div></div>'; # Symbol IEntry and ISubIndex
             };
+
+
+        # Add the tooltips to each section.
+
+        $content->[$contentIndex] .= $self->BuildToolTips();
+        $self->ResetToolTips(1);
         };
 
 
@@ -1174,26 +1191,27 @@ sub BuildIndexContent #(index, outputFile)
 #       file  - The source file the symbol appears in.
 #       type  - The type of the symbol.  One of the <Topic Types>.
 #       prototype  - The prototype of the symbol, if any.
+#       summary  - The summary of the symbol, if any.
 #       outputFile  - The output file the link is appearing in.
 #
 #   Returns:
 #
 #       The link entry, including <IEntry> tags.
 #
-sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype, outputFile)
+sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype, summary, outputFile)
     {
-    my ($self, $name, $tag, $class, $showClass, $symbol, $file, $type, $prototype, $outputFile) = @_;
+    my ($self, $name, $tag, $class, $showClass, $symbol, $file, $type, $prototype, $summary, $outputFile) = @_;
 
     my $output =
     '<div class=IEntry>'
         . '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file) )
             . '#' . $self->SymbolToHTMLSymbol($class, $symbol) . '" '
-            . 'class=' . $tag;
+            . 'class=' . $tag . ' ';
 
-    if (defined $prototype)
-        {  $output .= ' title="' . $self->ConvertAmpChars($prototype) . '"';  };
+    my $tooltipID = $self->BuildToolTip($class, $symbol, $type, $prototype, $summary);
+    my $tooltipProperties = $self->BuildToolTipLinkProperties($tooltipID);
 
-    $output .= '>' . $self->AddHiddenBreaks($self->StringToHTML($name)) . '</a>';
+    $output .= $tooltipProperties . '>' . $self->AddHiddenBreaks($self->StringToHTML($name)) . '</a>';
 
     if ($showClass && defined $class)
         {  $output .= ', <span class=IParent>' . $class . '</span>';  };
@@ -1231,7 +1249,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
 
     # The maximum page size acceptable before starting a new page.  Note that this doesn't include beginPage and endPage,
     # because we don't want something like a large menu screwing up the calculations.
-    use constant PAGESIZE_LIMIT => 35000;
+    use constant PAGESIZE_LIMIT => 40000;
 
 
     # File the pages.
@@ -1397,17 +1415,23 @@ sub BuildToolTip #(class, symbol, type, prototype, summary)
 
     if (defined $prototype || defined $summary)
         {
-        my $id = 'tt' . $self->SymbolToHTMLSymbol($class, $symbol);
+        my $fullSym = $self->SymbolToHTMLSymbol($class, $symbol);
+        my $number = $tooltipSymbolsToNumbers{$fullSym};
 
-        if (!exists $tooltips{$id})
+        if (!defined $number)
             {
-            $tooltips{$id} =
-            '<div class=CToolTip id="' . $id . '">'
+            $number = $tooltipNumber;
+            $tooltipNumber++;
+
+            $tooltipSymbolsToNumbers{$fullSym} = $number;
+
+            $tooltipHTML .=
+            '<div class=CToolTip id="tt' . $number . '">'
                 . '<div class=C' . $topicNames{$type} . '>';
 
             if (defined $prototype)
                 {
-                $tooltips{$id} .= $self->BuildPrototype($prototype);
+                $tooltipHTML .= $self->BuildPrototype($prototype);
                 };
 
             if (defined $summary)
@@ -1423,15 +1447,15 @@ sub BuildToolTip #(class, symbol, type, prototype, summary)
 
                 $summary =~ s/<\/?a[^>]+>//g;
 
-                $tooltips{$id} .= $summary;
+                $tooltipHTML .= $summary;
                 };
 
-            $tooltips{$id} .=
+            $tooltipHTML .=
                 '</div>'
             . '</div>';
             };
 
-        return $id;
+        return 'tt' . $number;
         }
     else
         {  return undef;  };
@@ -1445,8 +1469,7 @@ sub BuildToolTip #(class, symbol, type, prototype, summary)
 sub BuildToolTips
     {
     my $self = shift;
-
-    return join('', values %tooltips);
+    return $tooltipHTML;
     };
 
 #
@@ -1557,15 +1580,25 @@ sub ToolTipsJavaScript
 
     . 'var tooltipTimer = 0;'
 
-    . 'function ShowTip(tooltipID, linkID)'
+    . 'function ShowTip(event, tooltipID, linkID)'
         . '{'
         . 'if (tooltipTimer)'
             . '{  clearTimeout(tooltipTimer);  };'
 
-        . 'tooltipTimer = setTimeout("ReallyShowTip(\'" + tooltipID + "\', \'" + linkID + "\')", 1000);'
+        . 'var docX = event.clientX + window.pageXOffset;'
+        . 'var docY = event.clientY + window.pageYOffset;'
+
+        . 'var showCommand = "ReallyShowTip(\'" + tooltipID + "\', \'" + linkID + "\', " + docX + ", " + docY + ")";'
+
+        # KHTML can't handle showing on a timer right now.
+
+        . 'if (browserType != "KHTML")'
+            . '{  tooltipTimer = setTimeout(showCommand, 1000);  }'
+        . 'else'
+            . '{  eval(showCommand);  };'
         . '}'
 
-    . 'function ReallyShowTip(tooltipID, linkID)'
+    . 'function ReallyShowTip(tooltipID, linkID, docX, docY)'
         . '{'
         . 'tooltipTimer = 0;'
 
@@ -1586,9 +1619,11 @@ sub ToolTipsJavaScript
         . 'if (tooltip)'
             . '{'
             . 'var left = 0;'
-            . 'var top = 10;'
+            . 'var top = 0;'
 
-            . 'if (link && link.offsetWidth != null)'
+            # Not everything supports offsetTop/Left/Width, and some, like Konqueror and Opera 5, think they do but do it badly.
+
+            . 'if (link && link.offsetWidth != null && browserType != "KHTML" && browserVer != "Opera5")'
                 . '{'
                 . 'var item = link;'
                 . 'while (item != document.body)'
@@ -1604,7 +1639,26 @@ sub ToolTipsJavaScript
                     . 'item = item.offsetParent;'
                     . '}'
                 . 'top += link.offsetHeight;'
+                . '}'
 
+            # The fallback method is to use the mouse X and Y relative to the document.  We use a separate if and test if its a number
+            # in case some browser snuck through the above if statement but didn't support everything.
+
+            . 'if (!isFinite(top) || top == 0)'
+                . '{'
+                . 'left = docX;'
+                . 'top = docY;'
+                . '}'
+
+            # Some spacing to get it out from under the cursor.
+
+            . 'top += 10;'
+
+            # Make sure the tooltip doesn't get smushed by being too close to the edge, or in some browsers, go off the edge of the
+            # page.  We do it here because Konqueror does get offsetWidth right even if it doesn't get the positioning right.
+
+            . 'if (tooltip.offsetWidth != null)'
+                . '{'
                 . 'var width = tooltip.offsetWidth;'
                 . 'var docWidth = document.body.clientWidth;'
 
@@ -1612,15 +1666,17 @@ sub ToolTipsJavaScript
                     . '{  left = docWidth - width - 1;  }'
                 . '}'
 
-            . 'if (tooltip.style.left != null)'
+            # Opera 5 chokes on the px extension, so it can use the Microsoft one instead.
+
+            . 'if (tooltip.style.left != null && browserVer != "Opera5")'
                 . '{'
                 . 'tooltip.style.left = left + "px";'
                 . 'tooltip.style.top = top + "px";'
                 . '}'
             . 'else if (tooltip.style.pixelLeft != null)'
                 . '{'
-                . 'tooltip.style.pixelLeft = left + "px";'
-                . 'tooltip.style.pixelTop = top + "px";'
+                . 'tooltip.style.pixelLeft = left;'
+                . 'tooltip.style.pixelTop = top;'
                 . '}'
 
             . 'tooltip.style.visibility = "visible";'
@@ -2023,17 +2079,8 @@ sub BuildLink #(scope, text, sourceFile)
 
         my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $target->Type(),
                                                                       $target->Prototype(), $target->Summary());
-        my $toolTipProperties;
 
-        if (defined $targetTooltipID)
-            {
-            my $targetLinkNumber = $tooltipLinkNumber;
-            $tooltipLinkNumber++;
-
-            $toolTipProperties = 'id=link' . $targetLinkNumber . ' '
-                                        . 'onMouseOver="ShowTip(\'' . $targetTooltipID . '\', \'link' . $targetLinkNumber . '\')" '
-                                        . 'onMouseOut="HideTip(\'' . $targetTooltipID . '\')"';
-            };
+        my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
         return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '" '
                     . 'class=L' . $topicNames{$target->Type()} . ' ' . $toolTipProperties . '>' . $text . '</a>';
@@ -2087,6 +2134,38 @@ sub BuildEMailLink #(address)
     "<a href=\"#\" onClick=\"location.href='mailto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>"
         . '<span>' . join('</span><span>', @splitAddress) . '</span>'
     . '</a>';
+    };
+
+
+#
+#   Function: BuildToolTipLinkProperties
+#
+#   Returns the properties that should go in the link tag to add a tooltip to it.  Because the function accepts undef, you can
+#   call it without checking if <BuildToolTip()> returned undef or not.
+#
+#   Parameters:
+#
+#       toolTipID - The ID of the tooltip.  If undef, the function will return undef.
+#
+#   Returns:
+#
+#       The properties that should be put in the link tag, or undef if toolTipID wasn't specified.
+#
+sub BuildToolTipLinkProperties #(toolTipID)
+    {
+    my ($self, $toolTipID) = @_;
+
+    if (defined $toolTipID)
+        {
+        my $currentNumber = $tooltipLinkNumber;
+        $tooltipLinkNumber++;
+
+        return 'id=link' . $currentNumber . ' '
+                . 'onMouseOver="ShowTip(event, \'' . $toolTipID . '\', \'link' . $currentNumber . '\')" '
+                . 'onMouseOut="HideTip(\'' . $toolTipID . '\')"';
+        }
+    else
+        {  return undef;  };
     };
 
 
@@ -2184,7 +2263,7 @@ sub ConvertAmpChars #(text)
 sub HiddenBreak
     {
     my $self = shift;
-    return '<span class=HiddenBreak> </span>';
+    return '<span class=HB> </span>';
     };
 
 
@@ -2398,5 +2477,27 @@ sub ExpandMenu #(outputFile, rootLength)
     return $toExpand;
     };
 
+#
+#   Function: ResetToolTips
+#
+#   Resets the <ToolTip Variables> for a new page.
+#
+#   Parameters:
+#
+#       samePage  - Set this flag if there's the possibility that the next batch of tooltips may be on the same page as the last.
+#
+sub ResetToolTips #(samePage)
+    {
+    my ($self, $samePage) = @_;
+
+    if (!$samePage)
+        {
+        $tooltipLinkNumber = 1;
+        $tooltipNumber = 1;
+        };
+
+    $tooltipHTML = undef;
+    %tooltipSymbolsToNumbers = ( );
+    };
 
 1;
