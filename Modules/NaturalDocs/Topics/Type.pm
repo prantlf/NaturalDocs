@@ -8,6 +8,9 @@
 #
 ###############################################################################
 
+# This file is part of Natural Docs, which is Copyright (C) 2003-2005 Greg Valure
+# Natural Docs is licensed under the GPL
+
 use strict;
 use integer;
 
