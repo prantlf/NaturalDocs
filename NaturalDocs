@@ -216,6 +216,9 @@
 #       If you ever change the CSS file in the Natural Docs styles directory, each project that uses it will get an updated copy
 #       automatically the next time Natural Docs is run on it.
 #
+#       Also make sure that whenever you upgrade Natural Docs, you check the Revisions section of the <CSS Guide> to see if
+#       there have been any changes to the generated HTML.  It may require you to update your CSS file.
+#
 #
 #   Topic: Code Conventions
 #
