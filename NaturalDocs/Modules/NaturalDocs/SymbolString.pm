@@ -92,6 +92,20 @@ sub FromText #(textSymbol)
 
 
 #
+#   Function: ToText
+#
+#   Converts a <SymbolString> to text, using the passed separator.
+#
+sub ToText #(symbolString, separator)
+    {
+    my ($self, $symbolString, $separator) = @_;
+
+    my @identifiers = $self->IdentifiersOf($symbolString);
+    return join($separator, @identifiers);
+    };
+
+
+#
 #   Function: ToBinaryFile
 #
 #   Writes a <SymbolString> to the passed filehandle.  Can also encode an undef.
