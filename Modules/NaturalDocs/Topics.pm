@@ -40,7 +40,7 @@ require Exporter;
 #
 
 #
-#   Constants: Topic Types
+#   Constants: Type Constants
 #
 #   Constants representing all the types of Natural Docs sections.
 #
@@ -69,7 +69,7 @@ require Exporter;
 #
 #   Dependency:
 #
-#       <PreviousMenuState.nd> depends on these values all being able to fit into a UInt8, i.e. <= 255.
+#       <PreviousMenuState.nd> and <SymbolTable.nd> depend on these values all being able to fit into a UInt8, i.e. <= 255.
 #
 use constant TOPIC_CLASS => 1;
 use constant TOPIC_SECTION => 2;
@@ -100,7 +100,7 @@ use constant TOPIC_PROPERTY_LIST => (TOPIC_PROPERTY + TOPIC_LIST_BASE);
 #
 #   array: names
 #
-#   An array of the topic names.  Use the <Topic Types> as an index into it, except for list types.
+#   An array of the topic names.  Use the <Type Constants> as indexes, except for list types.
 #
 my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant', 'Property' );
 # The string order must match the constant values.
@@ -108,7 +108,7 @@ my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable'
 #
 #   array: pluralNames
 #
-#   An array of the topic names, but plural.  Use the <Topic Types> as an index into it, except for list types.
+#   An array of the topic names, but plural.  Use the <Type Constants> as indexes, except for list types.
 #
 my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions', 'Variables', 'Generics', 'Types', 'Constants',
                                 'Properties' );
@@ -117,7 +117,7 @@ my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions'
 #
 #   hash: constants
 #
-#   A hash where the keys are the names in all lowercase, and the values are the <Topic Types>.  Note that this contains
+#   A hash where the keys are the names in all lowercase, and the values are the <Type Constants>.  Note that this contains
 #   every synonym used in the parser.  If the name is plural, it will be a list type.
 #
 my %constants = (
@@ -164,6 +164,8 @@ my %constants = (
                             'sub'           => TOPIC_FUNCTION,
                             'method'     => TOPIC_FUNCTION,
                             'callback'     => TOPIC_FUNCTION,
+                            'constructor' => TOPIC_FUNCTION,
+                            'destructor'  => TOPIC_FUNCTION,
 
                             'functions'     => TOPIC_FUNCTION_LIST,
                             'funcs'          => TOPIC_FUNCTION_LIST,
@@ -174,6 +176,8 @@ my %constants = (
                             'subs'           => TOPIC_FUNCTION_LIST,
                             'methods'     => TOPIC_FUNCTION_LIST,
                             'callbacks'     => TOPIC_FUNCTION_LIST,
+                            'constructors' => TOPIC_FUNCTION_LIST,
+                            'destructors'  => TOPIC_FUNCTION_LIST,
 
                             'variable'    => TOPIC_VARIABLE,
                             'var'           => TOPIC_VARIABLE,
@@ -286,7 +290,7 @@ my %constants = (
 #
 #   hash: indexable
 #
-#   An existence hash of the <Topic Types> that should be indexed.
+#   An existence hash of the <Type Constants> that should be indexed.
 #
 my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_CLASS() => 1,
@@ -299,14 +303,11 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
 #
 #   hash: autoGroupable
 #
-#   An existence hash of the <Topic Types> that auto-groups should be created for.
+#   An existence hash of the <Type Constants> that auto-groups should be created for.
 #
 my %autoGroupable = ( TOPIC_FUNCTION() => 1,
                                     TOPIC_VARIABLE() => 1,
-                                    TOPIC_PROPERTY() => 1,
-                                    TOPIC_FILE() => 1,
-                                    TOPIC_TYPE() => 1,
-                                    TOPIC_CONSTANT() => 1 );
+                                    TOPIC_PROPERTY() => 1 );
 
 
 
@@ -316,7 +317,7 @@ my %autoGroupable = ( TOPIC_FUNCTION() => 1,
 #
 #   Function: IsList
 #
-#   Returns whether the topic is a list topic.
+#   Returns whether the <TopicType> is a list topic.
 #
 sub IsList #(topic)
     {
@@ -324,10 +325,11 @@ sub IsList #(topic)
     return ($topic >= TOPIC_LIST_BASE);
     };
 
+
 #
 #   Function: IsListOf
 #
-#   Returns what type the list topic is a list of.  Assumes the topic is a list topic.
+#   Returns what <TopicType> the list <TopicType> is of.
 #
 sub IsListOf #(topic)
     {
@@ -339,7 +341,7 @@ sub IsListOf #(topic)
 #
 #   Function: IsIndexable
 #
-#   Returns whether the topic should be indexed.
+#   Returns whether the <TopicType> should be indexed.
 #
 sub IsIndexable #(topic)
     {
@@ -351,7 +353,7 @@ sub IsIndexable #(topic)
 #
 #   Function: IsAutoGroupable
 #
-#   Returns whether the topic should have auto-groups created for it.
+#   Returns whether the <TopicType> should have auto-groups created for it.
 #
 sub IsAutoGroupable #(topic)
     {
@@ -363,7 +365,7 @@ sub IsAutoGroupable #(topic)
 #
 #   Function: AllIndexable
 #
-#   Returns an array of all possible indexable <Topic Types>.
+#   Returns an array of all possible indexable <TopicTypes>.
 #
 sub AllIndexable
     {
@@ -375,7 +377,7 @@ sub AllIndexable
 #
 #   Function: NameOf
 #
-#   Returns the name string of the passed constant.
+#   Returns the name string of the passed <TopicType>.
 #
 sub NameOf #(topic)
     {
@@ -390,8 +392,8 @@ sub NameOf #(topic)
 #
 #   Function: PluralNameOf
 #
-#   Returns the plural name string of the passed constant.  Do *not* ever pass the plural name back to <ConstantOf()> because
-#   plural list topic names will return undef, and plural non-list topic names will return a list topic.
+#   Returns the plural name string of the passed <TopicType>.  Note that if you pass the plural name back to <ConstantOf()>,
+#   you will get a list <TopicType> instead of the original one.
 #
 sub PluralNameOf #(topic)
     {
@@ -406,8 +408,8 @@ sub PluralNameOf #(topic)
 #
 #   Function: ConstantOf
 #
-#   Returns the <Topic Types> associated with the string, or undef if none.  This supports every Natural Docs synonym the parser
-#   supports.  Note that if the string is plural, it will return a list type.  If that's not desired, use <NonListConstantOf()> instead.
+#   Returns the <TopicType> associated with the string, or undef if none.  This supports every Natural Docs synonym the parser
+#   supports.  Note that if the string is plural, it will return a list type.  If that's not desired, use <BaseConstantOf()> instead.
 #
 sub ConstantOf #(string)
     {
@@ -416,12 +418,12 @@ sub ConstantOf #(string)
     };
 
 #
-#   Function: NonListConstantOf
+#   Function: BaseConstantOf
 #
-#   Returns the <Topic Types> associated with the string, or undef if none.  If the result is a list topic, it runs it through
-#   <IsListOf()> before returning it.  This supports every Natural Docs synonym the parser supports.
+#   Returns the <TopicType> associated with the string, or undef if none.  The result will never be a list topic.  This supports
+#   every Natural Docs synonym the parser supports.
 #
-sub NonListConstantOf #(string)
+sub BaseConstantOf #(string)
     {
     my ($self, $string) = @_;
 
