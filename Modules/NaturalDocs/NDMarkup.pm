@@ -37,7 +37,7 @@
 #       <de></de>   - Surrounds a description list entry, which is the left side.  It will always be followed by a description list
 #                         description.
 #       <ds></ds>   - Surrounds a description list symbol.  This is the same as a description list entry, except that the content
-#                         is also a referencable symbol.  This occurs when the section type is <TOPIC_LIST>.  This tag will always
+#                         is also a referenceable symbol.  This occurs when inside a list topic.  This tag will always
 #                         be followed by a description list description.
 #       <dd></dd>   - Surrounds a description list description, which is the right side.  It will always be preceded by a description
 #                         list entry or symbol.
