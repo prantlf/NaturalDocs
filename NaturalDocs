@@ -104,10 +104,17 @@ use integer;
 #       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Output Formats>.
 #
 #       - C++ (.h and .hpp files only)
+#       - C#
 #       - Java
-#       - Perl (.pl and .pm files, plus .cgi and extensionless files if "perl" is in the #! line)
 #       - JavaScript (.js files only)
-#       - Text files
+#       - Perl (.pl and .pm files, plus .cgi and extensionless files if "perl" is in the #! line)
+#       - Python (.py files, plus .cgi and extensionless files if "python" is in the #! line)
+#       - PL/SQL
+#       - Visual Basic
+#       - Pascal (which includes Delphi)
+#       - Assembly
+#       - Ada
+#       - Text files (.txt files only)
 #
 #
 #   About: Supported Output Formats
