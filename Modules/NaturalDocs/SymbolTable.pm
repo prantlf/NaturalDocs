@@ -570,8 +570,6 @@ sub AddSymbol #(symbol, file, type, prototype, summary)
     {
     my ($self, $symbol, $file, $type, $prototype, $summary) = @_;
 
-    $prototype = $self->NormalizePrototype($prototype);
-
 
     # If the symbol doesn't exist...
     if (!exists $symbols{$symbol})
@@ -1260,32 +1258,6 @@ sub OnTargetSymbolChange #(referenceString)
 
 ###############################################################################
 # Group: Support Functions
-
-
-#
-#   Function: NormalizePrototype
-#
-#   Converts a prototype string for internal use.  Specifically, it strips out tabs and line breaks so that they can be saved in
-#   <SymbolTable.nd> properly.
-#
-#   Parameters:
-#
-#       prototype - The original prototype string.
-#
-#   Returns:
-#
-#       The prepared prototype.
-#
-sub NormalizePrototype #(prototype)
-    {
-    my ($self, $prototype) = @_;
-
-    $prototype =~ tr/ \t\r\n/ /s;
-    $prototype =~ s/^ //;
-    $prototype =~ s/ $//;
-
-    return $prototype;
-    };
 
 
 #
