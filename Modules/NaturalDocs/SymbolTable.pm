@@ -56,7 +56,8 @@ package NaturalDocs::SymbolTable;
 #
 #   hash: symbols
 #
-#   A hash of all <SymbolStrings>.  The keys are the <SymbolStrings> and the values are <NaturalDocs::SymbolTable::Symbol> objects.
+#   A hash of all <SymbolStrings>.  The keys are the <SymbolStrings> and the values are <NaturalDocs::SymbolTable::Symbol>
+#   objects.
 #
 #   Prior to <PurgeResolvingInfo()>, both defined symbols and symbols that are merely potential interpretations of references
 #   will be here.  Afterwards, only defined symbols will be here.
@@ -102,8 +103,8 @@ my $watchedFileName;
 #
 #   hash: watchedFileSymbolDefinitions
 #
-#   A hashref of the symbol definition information for all the <SymbolStrings> in the watched file.  The keys are the symbol strings, and
-#   the values are <NaturalDocs::SymbolTable::SymbolDefinition> objects.
+#   A hashref of the symbol definition information for all the <SymbolStrings> in the watched file.  The keys are the symbol strings,
+#   and the values are <NaturalDocs::SymbolTable::SymbolDefinition> objects.
 #
 my %watchedFileSymbolDefinitions;
 
@@ -138,13 +139,9 @@ my @indexChanges;
 #   Format:
 #
 #       > [BINARY_FORMAT]
+#       > [VersionInt: app version]
 #
-#       The file is binary, so the first byte is the <BINARY_FORMAT> token.
-#
-#       > [app version]
-#
-#       Immediately after is the application version it was generated with.  Manage with the binary functions in
-#       <NaturalDocs::Version>.
+#       The file starts with the standard <BINARY_FORMAT> <VersionInt> header.
 #
 #       The first stage of the file is for symbol definitions, analogous to <symbols>.
 #
@@ -159,7 +156,7 @@ my @indexChanges;
 #       >
 #       >    ...
 #
-#       These blocks continue until the number of identifiers integer is zero.  Only defined symbols will be included in this file, so
+#       These blocks continue until the <SymbolString> is undef.  Only defined symbols will be included in this file, so
 #       number of definitions will never be zero.  The first one is always the global definition.  If a symbol does not have a
 #       prototype or summary, the UInt16 length of the string will be zero.
 #
@@ -171,8 +168,12 @@ my @indexChanges;
 #       > [UInt8: number of definition files]
 #       >    [AString16: definition file] [AString16: definition file] ...
 #
-#       These blocks continue until the number of symbol identifiers is zero.  Since there can be multiple using <SymbolStrings>, those
+#       These blocks continue until the <ReferenceString> is undef.  Since there can be multiple using <SymbolStrings>, those
 #       continue until the number of identifiers is zero.  Note that all interpretations are rebuilt rather than stored.
+#
+#   See Also:
+#
+#       <File Format Conventions>
 #
 #   Revisions:
 #
@@ -1180,7 +1181,7 @@ sub OnInterpretationChange #(referenceString)
 
 
 #
-#   Function: OnTargetInformationChange
+#   Function: OnTargetSymbolChange
 #
 #   Called whenever the symbol that serves as the interpretation of a reference changes, but the reference still resolves to
 #   the same symbol.  This would happen if the type, prototype, summary, or which file serves as global definition of the symbol
@@ -1190,7 +1191,7 @@ sub OnInterpretationChange #(referenceString)
 #
 #       referenceString - The <ReferenceString> whose interpretation's symbol changed.
 #
-sub OnTargetInformationChange #(referenceString)
+sub OnTargetSymbolChange #(referenceString)
     {
     my ($self, $referenceString) = @_;
     my $referenceType = NaturalDocs::ReferenceString->TypeOf($referenceString);
@@ -1207,7 +1208,7 @@ sub OnTargetInformationChange #(referenceString)
 
     elsif (NaturalDocs::Constants->IsClassHierarchyReference($referenceType))
         {
-        NaturalDocs::ClassHierarchy->OnTargetInformationChange($referenceString);
+        NaturalDocs::ClassHierarchy->OnTargetSymbolChange($referenceString);
         };
     };
 
@@ -1236,6 +1237,8 @@ sub NormalizePrototype #(prototype)
     my ($self, $prototype) = @_;
 
     $prototype =~ tr/ \t\r\n/ /s;
+    $prototype =~ s/^ //;
+    $prototype =~ s/ $//;
 
     return $prototype;
     };
@@ -1244,8 +1247,8 @@ sub NormalizePrototype #(prototype)
 #
 #   Function: DeleteSymbol
 #
-#   Removes a symbol definition from the table.  If any files reference it, the function will call <NaturalDocs::Project->RebuildFile()>
-#   for them.
+#   Removes a symbol definition from the table.  It will call <OnInterpretationChange()> for all references that have it as their
+#   current interpretation.
 #
 #   External code should not attempt to delete symbols using this function.  Instead it should call <WatchFileFoChanges()>,
 #   reparse the file, and call <AnalyzeChanges()>.
@@ -1315,8 +1318,8 @@ sub DeleteSymbol #(symbol, file)
                     {
                     if ($references{$reference}->CurrentInterpretation() eq $symbol)
                         {
-                        $self->OnInterpretationChange($reference);
                         $self->InterpretReference($reference);
+                        $self->OnInterpretationChange($reference);
                         };
                     };
                 }
@@ -1476,9 +1479,9 @@ sub GenerateRelativeInterpretations #(referenceString, symbol, singulars, packag
 #
 #   Function: SingularInterpretationsOf
 #
-#   Generates singular interpretations of a <SymbolString> if it can be interpreted as a plural.  Not all of them will be valid singular forms,
-#   but that doesn't matter since it's incredibly unlikely an invalid form would exist as a symbol.  What matters is that the legimate
-#   singular is present on the list.
+#   Generates singular interpretations of a <SymbolString> if it can be interpreted as a plural.  Not all of them will be valid singular
+#   forms, but that doesn't matter since it's incredibly unlikely an invalid form would exist as a symbol.  What matters is that the
+#   legimate singular is present on the list.
 #
 #   Parameters:
 #
@@ -1486,8 +1489,8 @@ sub GenerateRelativeInterpretations #(referenceString, symbol, singulars, packag
 #
 #   Returns:
 #
-#       An array of potential singular interpretations as <SymbolStrings>, in no particular order.  If the symbol can't be interpreted as
-#       a plural, returns an empty array.
+#       An array of potential singular interpretations as <SymbolStrings>, in no particular order.  If the symbol can't be interpreted
+#       as a plural, returns an empty array.
 #
 sub SingularInterpretationsOf #(symbol)
     {
