@@ -4,7 +4,8 @@
 #
 ###############################################################################
 #
-#   A class containing the characteristics of a particular programming language.
+#   A class containing the characteristics of a particular programming language.  Also serves as a base class for languages
+#   that break from general conventions, such as not having parameter lists use parenthesis and commas.
 #
 ###############################################################################
 
@@ -26,9 +27,9 @@ package NaturalDocs::Languages::Language;
 #   The class is implemented as a blessed arrayref.  The following constants are used as indexes.
 #
 #   NAME                             - The name of the language.
-#   LINE_COMMENT              - An arrayref of symbols that start a single line comment.  Undef if none.
-#   START_COMMENT           - An arrayref of symbols that start a multi-line comment.  Undef if none.
-#   END_COMMENT              - An arrayref of symbols that ends a multi-line comment.  Undef if none.
+#   LINE_COMMENT_SYMBOLS         - An arrayref of symbols that start a single line comment.  Undef if none.
+#   OPENING_COMMENT_SYMBOLS  - An arrayref of symbols that start a multi-line comment.  Undef if none.
+#   CLOSING_COMMENT_SYMBOLS  - An arrayref of symbols that ends a multi-line comment.  Undef if none.
 #   FUNCTION_ENDERS        - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
@@ -37,9 +38,9 @@ package NaturalDocs::Languages::Language;
 # DEPENDENCY: New() depends on its parameter list being in the same order as these constants.  If the order changes, New()
 # needs to be changed.
 use constant NAME => 0;
-use constant LINE_COMMENT => 1;
-use constant START_COMMENT => 2;
-use constant END_COMMENT => 3;
+use constant LINE_COMMENT_SYMBOLS => 1;
+use constant OPENING_COMMENT_SYMBOLS => 2;
+use constant CLOSING_COMMENT_SYMBOLS => 3;
 use constant FUNCTION_ENDERS => 4;
 use constant VARIABLE_ENDERS => 5;
 use constant LINE_EXTENDER => 6;
@@ -55,23 +56,53 @@ use constant LINE_EXTENDER => 6;
 #
 #   Parameters:
 #
-#       name                        - The name of the language.
-#       lineComment             - An arrayref of symbols that start a single-line comment.  Undef if none.
-#       startComment            - An arrayref of symbols that start a multi-line comment.  Undef if none.
-#       endComment             - An arrayref of symbols that start a multi-line comment.  Undef if none.
-#       functionEnders           - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
-#       variableEnders           - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
-#       lineExtender               - The symbel to extend a line of code past a line break.  Undef if not applicable.
+#       name                - The name of the language.
+#       extensions         - The extensions of the language's files.  A string or an arrayref of strings.
+#       shebangStrings  - The strings to search for in the #! line of the language's files.  Only used when the file has a .cgi
+#                                 extension or no extension at all.  A string, an arrayref of strings, or undef if not applicable.
+#       lineCommentSymbols        - The symbols that start a single-line comment.  A string, an arrayref of strings, or undef if none.
+#       openingCommentSymbols  - The symbols that start a multi-line comment.  A string, an arrayref of strings, or undef if none.
+#       closingCommentSymbols   - The symbols that end a multi-line comment.  A string, an arrayref of strings, or undef if none.
+#       functionEnders   - The symbols that can end a function prototype.  A string, an arrayref of strings, or undef if not applicable.
+#       variableEnders   - The symbols that can end a variable declaration.  A string, an arrayref of strings, or undef if not applicable.
+#       lineExtender      - The symbel to extend a line of code past a line break.  A string or undef if not applicable.
 #
-sub New #(name, lineComment, startComment, endComment, functionEnders, variableEnders, lineExtender)
+#       Note that if neither opening/closingCommentSymbols or lineCommentSymbols are specified, the file will be interpreted
+#       as one big comment.
+#
+sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSymbols, closingCommentSymbols, functionEnders, variableEnders, lineExtender)
     {
-    # DEPENDENCY: This function depends on its parameter list being in the same order as the member constants.  If the order
-    # changes, this function needs to be changed.
+    my ($package, $name, $extensions, $shebangStrings, $lineCommentSymbols, $openingCommentSymbols,
+           $closingCommentSymbols, $functionEnders, $variableEnders, $lineExtender) = @_;
 
-    my $package = shift;
+    # Since these function calls are the most likely piece of code to be changed by people unfamiliar with Perl, do some extra
+    # checking.
 
-    my $object = [ @_ ];
+    if (scalar @_ != 10)
+        {
+        die "You didn't pass the correct number of parameters to NaturalDocs::Languages::Language->New().  "
+           . "Check your code against the documentation and try again.\n";
+        };
+
+
+    # Convert everything to arrayrefs.
+
+    foreach my $parameterRef (\$extensions, \$shebangStrings, \$lineCommentSymbols, \$openingCommentSymbols,
+                                             \$closingCommentSymbols, \$functionEnders, \$variableEnders)
+        {
+        if (!ref($$parameterRef) && defined $$parameterRef)
+            {  $$parameterRef = [ $$parameterRef ];  };
+        };
+
+
+    # DEPENDENCY:  This line is dependent on the order of the constants.  If they change, this needs to change.
+
+    my $object = [ $name, $lineCommentSymbols, $openingCommentSymbols, $closingCommentSymbols,
+                          $functionEnders, $variableEnders, $lineExtender ];
     bless $object, $package;
+
+    NaturalDocs::Languages::Register($object, $extensions, $shebangStrings);
+
 
     return $object;
     };
@@ -82,27 +113,27 @@ sub New #(name, lineComment, startComment, endComment, functionEnders, variableE
 sub Name
     {  return $_[0]->[NAME];  };
 
-# Function: LineComment
+# Function: LineCommentSymbols
 # Returns an arrayref of symbols used to start a single line comment, or undef if none.
-sub LineComment
-    { return $_[0]->[LINE_COMMENT];  };
+sub LineCommentSymbols
+    { return $_[0]->[LINE_COMMENT_SYMBOLS];  };
 
-# Function: StartComment
+# Function: OpeningCommentSymbols
 # Returns an arrayref of symbols used to start a multi-line comment, or undef if none.
-sub StartComment
-    {  return $_[0]->[START_COMMENT];  };
+sub OpeningCommentSymbols
+    {  return $_[0]->[OPENING_COMMENT_SYMBOLS];  };
 
-# Function: EndComment
+# Function: ClosingCommentSymbols
 # Returns an arrayref of symbols used to end a multi-line comment, or undef if none.
-sub EndComment
-    {  return $_[0]->[END_COMMENT];  };
+sub ClosingCommentSymbols
+    {  return $_[0]->[CLOSING_COMMENT_SYMBOLS];  };
 
 # Function: FileIsComment
 # Returns whether the entire file should be treated as one big comment.
 sub FileIsComment
     {
     my $self = $_[0];
-     return (!defined $self->LineComment() && !defined $self->StartComment() );
+     return (!defined $self->LineCommentSymbols() && !defined $self->OpeningCommentSymbols() );
      };
 
 # Function: FunctionEnders
@@ -122,7 +153,7 @@ sub LineExtender
 
 
 #
-#   Function: StripLineComment
+#   Function: StripLineCommentSymbol
 #
 #   Determines if the line starts with a line comment symbol, and if so, replaces it with spaces.  This only happens if the only
 #   thing before it on the line is whitespace.
@@ -136,15 +167,15 @@ sub LineExtender
 #       If the line starts with a line comment symbol, it will replace it in the line with spaces and return the symbol.  If the line
 #       doesn't, it will leave the line alone and return undef.
 #
-sub StripLineComment #(lineRef)
+sub StripLineCommentSymbol #(lineRef)
     {
     my ($self, $lineRef) = @_;
-    return $self->StripComment($lineRef, $self->LineComment());
+    return $self->StripCommentSymbol($lineRef, $self->LineCommentSymbols());
     };
 
 
 #
-#   Function: StripStartComment
+#   Function: StripOpeningCommentSymbol
 #
 #   Determines if the line starts with an opening multiline comment symbol, and if so, replaces it with spaces.  This only happens
 #   if the only thing before it on the line is whitespace.
@@ -158,15 +189,15 @@ sub StripLineComment #(lineRef)
 #       If the line starts with an opening multiline comment symbol, it will replace it in the line with spaces and return the symbol.
 #       If the line doesn't, it will leave the line alone and return undef.
 #
-sub StripStartComment #(lineRef)
+sub StripOpeningCommentSymbol #(lineRef)
     {
     my ($self, $lineRef) = @_;
-    return $self->StripComment($lineRef, $self->StartComment());
+    return $self->StripCommentSymbol($lineRef, $self->OpeningCommentSymbols());
     };
 
 
 #
-#   Function: StripEndComment
+#   Function: StripClosingCommentSymbol
 #
 #   Determines if the line contains a closing multiline comment symbol, and if so, truncates it just before the symbol.
 #
@@ -181,14 +212,14 @@ sub StripStartComment #(lineRef)
 #       symbol - The symbol that was found.
 #       lineRemainder - Everything on the line following the symbol.
 #
-sub StripEndComment #(lineRef)
+sub StripClosingCommentSymbol #(lineRef)
     {
     my ($self, $lineRef) = @_;
 
     my $index = -1;
     my $symbol;
 
-    foreach my $testSymbol (@{$self->EndComment()})
+    foreach my $testSymbol (@{$self->ClosingCommentSymbols()})
         {
         my $testIndex = index($$lineRef, $testSymbol);
 
@@ -296,7 +327,7 @@ sub RemoveExtenders #(stringRef)
 
 
 #
-#   Function: StripComment
+#   Function: StripCommentSymbol
 #
 #   Determines if the line starts with any of the passed comment symbols, and if so, replaces it with spaces.  This only happens
 #   if the only thing before it on the line is whitespace.
@@ -311,7 +342,7 @@ sub RemoveExtenders #(stringRef)
 #       If the line starts with any of the passed comment symbols, it will replace it in the line with spaces and return the symbol.
 #       If the line doesn't, it will leave the line alone and return undef.
 #
-sub StripComment #(lineRef, symbols)
+sub StripCommentSymbol #(lineRef, symbols)
     {
     my ($self, $lineRef, $symbols) = @_;
 
