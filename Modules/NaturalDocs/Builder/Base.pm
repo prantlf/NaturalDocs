@@ -25,23 +25,9 @@ package NaturalDocs::Builder::Base;
 #   Topic: Implementation
 #
 #   Builder packages are implemented as blessed arrayrefs, not hashrefs.  This is done for all objects in Natural Docs for
-#   efficiency reasons.  You create members by defining constants to use as indexes into the array.
+#   efficiency reasons.  You create members by defining constants via <DefineMembers()> and using them as indexes into the
+#   array.
 #
-#   Since we're using inheritance, each package must define a <LAST_MEMBER> constant to be the same as the highest index it
-#   uses, and each subpackage must increment off it for its own member indexes.  Note that the first one must use +1, not
-#   <LAST_MEMBER> itself.
-#
-
-#
-#   Constant: LAST_MEMBER
-#
-#   The last index in the arrayref used by this package.  When deriving from this package, start your constants at
-#
-#   > __PACKAGE__->SUPER::LAST_MEMBER() + 1
-#
-#   and continue incrementing.  Remember to define your own LAST_MEMBER to be the same as the last one.
-#
-use constant LAST_MEMBER => -1;  # No members, so zero is free to use.
 
 #
 #   Topic: Function Order
