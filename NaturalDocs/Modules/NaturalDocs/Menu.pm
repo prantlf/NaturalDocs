@@ -590,7 +590,7 @@ sub LoadMenuFile
 
         my $version;
 
-        if ($menuFileContent =~ /^[^\#]*format:[ \t]([0-9\.]+)/mi)
+        if ($menuFileContent =~ /^[ \t]*format:[ \t]+([0-9\.]+)/mi)
             {  $version = $1;  }
         else
             {
