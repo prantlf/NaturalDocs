@@ -135,9 +135,9 @@ sub LoadAndDetectChanges
         # Check if the file is in the right format.
         my $version = NaturalDocs::Version->FromTextFile(\*FILEINFOFILEHANDLE);
 
-        # The output needs to be rebuilt for 1.13 because there were bugs in the prototype detection and changes to the output.
+        # The output needs to be rebuilt for 1.14.
 
-        if ($version < NaturalDocs::Version->FromString('1.13'))
+        if ($version < NaturalDocs::Version->FromString('1.14'))
             {
             $fileIsOkay = 1;
             $rebuildOutput = 1;
