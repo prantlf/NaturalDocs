@@ -1074,10 +1074,13 @@ sub BuildPrototype #(type, prototype, file)
     if ($prototypeObject->OnlyBeforeParameters())
         {
         $output =
-        # A surrounding table as a hack to make the div form-fit.
-        '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
-            . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
-        . '</tr></td></table>';
+        # A blockquote to scroll it if it's too long.
+        '<blockquote>'
+            # A surrounding table as a hack to make the div form-fit.
+            . '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
+                . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
+            . '</tr></td></table>'
+        . '</blockquote>';
         }
 
     else
@@ -1087,12 +1090,12 @@ sub BuildPrototype #(type, prototype, file)
         my $afterParams = $prototypeObject->AfterParameters();
 
         $output =
-        '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
+        '<blockquote><table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
 
             # Stupid hack to get it to work right in IE.
             . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
-            . '<td class=PBeforeParameters>' . $self->ConvertAmpChars($beforeParams);
+            . '<td class=PBeforeParameters nowrap>' . $self->ConvertAmpChars($beforeParams);
 
             if ($beforeParams && $beforeParams !~ /[\(\[\{\<]$/)
                 {  $output .= '&nbsp;';  };
@@ -1136,7 +1139,7 @@ sub BuildPrototype #(type, prototype, file)
                             };
 
                         $output .=
-                        '<td class=PTypePrefix>'
+                        '<td class=PTypePrefix nowrap>'
                             . $self->ConvertAmpChars($typePrefix) . $afterTypePrefix
                         . '</td>';
                         };
@@ -1144,7 +1147,7 @@ sub BuildPrototype #(type, prototype, file)
                     if ($hasType)
                         {
                         $output .=
-                        '<td class=PType>'
+                        '<td class=PType nowrap>'
                             . $self->ConvertAmpChars($params->[$i]->Type()) . '&nbsp;'
                         . '</td>';
                         };
@@ -1152,13 +1155,13 @@ sub BuildPrototype #(type, prototype, file)
                     if ($hasNamePrefix)
                         {
                         $output .=
-                        '<td class=PParameterPrefix>'
+                        '<td class=PParameterPrefix nowrap>'
                             . $self->ConvertAmpChars($params->[$i]->NamePrefix())
                         . '</td>';
                         };
 
                     $output .=
-                    '<td class=PParameter>'
+                    '<td class=PParameter nowrap>'
                         . $self->ConvertAmpChars($params->[$i]->Name())
                     . '</td>';
                     }
@@ -1166,14 +1169,14 @@ sub BuildPrototype #(type, prototype, file)
                 else # !$language->TypeBeforeParameter()
                     {
                     $output .=
-                    '<td class=PParameter>'
+                    '<td class=PParameter nowrap>'
                         . $self->ConvertAmpChars( $params->[$i]->NamePrefix() . $params->[$i]->Name() )
                     . '</td>';
 
                     if ($hasType || $hasTypePrefix)
                         {
                         $output .=
-                        '<td class=PType>'
+                        '<td class=PType nowrap>'
                             . '&nbsp;' . $self->ConvertAmpChars( $params->[$i]->TypePrefix() . $params->[$i]->Type() )
                         . '</td>';
                         };
@@ -1182,14 +1185,14 @@ sub BuildPrototype #(type, prototype, file)
                 if ($hasDefaultValue)
                     {
                     $output .=
-                    '<td class=PDefaultValue>'
+                    '<td class=PDefaultValue nowrap>'
                         . '&nbsp;' . $self->ConvertAmpChars($params->[$i]->DefaultValue())
                     . '</td>';
                     };
                 };
 
             $output .=
-            '<td class=PAfterParameters>'
+            '<td class=PAfterParameters nowrap>'
                  . $self->ConvertAmpChars($afterParams);
 
                 if ($afterParams && $afterParams !~ /^[\)\]\}\>]/)
@@ -1200,7 +1203,7 @@ sub BuildPrototype #(type, prototype, file)
         . '</tr></table>'
 
         # Hack.
-        . '</td></tr></table>';
+        . '</td></tr></table></blockquote>';
        };
 
     return $output;
@@ -2282,16 +2285,17 @@ sub NDMarkupToHTML #(sourceFile, text, package, using)
 
         if ($text eq '<code>')
             {
-            $output .= '<pre class=CCode>';
+            $output .= '<blockquote><pre class=CCode>';
             $inCode = 1;
             }
         elsif ($text eq '</code>')
             {
-            $output .= '</pre>';
+            $output .= '</pre></blockquote>';
             $inCode = undef;
             }
         elsif ($inCode)
             {
+            $text =~ s/\n/<br>/g;
             $output .= $text;
             }
         else
@@ -2449,8 +2453,9 @@ sub BuildURLLink #(url)
 
     while ($i < scalar @segments)
         {
+        # Spaces don't wrap in IE for some reason.  Need to use dashes as well.
         if ($segments[$i] eq ',' || $segments[$i] eq '/' || $segments[$i] eq '&')
-            {  $output .= '<span class=HB> </span>';  };
+            {  $output .= '<span class=HB>- </span>';  };
 
         $output .= $self->ConvertAmpChars($segments[$i]);
         $i++;
