@@ -72,6 +72,22 @@ my @indexHeadings = ( '$#!', '0-9', 'A' .. 'Z' );
 #
 my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
 
+#
+#   int: tooltipLinkNumber
+#
+#   A number used as part of the ID for each link that has a tooltip.  Should be incremented whenever one is made, and reset
+#   for every new page.
+#
+my $tooltipLinkNumber;
+
+#
+#   hash: tooltips
+#
+#   A hash of all the tooltips necessary for each link in the page.  The keys are the tooltip IDs as returned by
+#   <BuildToolTip()>, and the values are the tooltip's HTML.  Should be reset for every new page.
+#
+my %tooltips;
+
 
 ###############################################################################
 # Group: Menu Variables
@@ -559,6 +575,9 @@ sub BuildContent #(sourceFile, parsedFile)
     {
     my ($self, $sourceFile, $parsedFile) = @_;
 
+    $tooltipLinkNumber = 1;
+    %tooltips = ( );
+
     my $output;
     my $i = 0;
 
@@ -723,18 +742,18 @@ sub BuildSummary #(sourceFile, parsedFile, index)
         while ($index < scalar @$parsedFile && ($completeSummary ||
                 ($parsedFile->[$index]->Type() != ::TOPIC_SECTION() && $parsedFile->[$index]->Type() != ::TOPIC_CLASS()) ))
             {
-            my $type = $parsedFile->[$index]->Type();
+            my $topic = $parsedFile->[$index];
 
 
             # Remove modifiers as appropriate for the current entry.
 
-            if ($type == ::TOPIC_SECTION() || $type == ::TOPIC_CLASS())
+            if ($topic->Type() == ::TOPIC_SECTION() || $topic->Type() == ::TOPIC_CLASS())
                 {
                 $inSectionOrClassTag = undef;
                 $inGroupTag = undef;
                 $isMarkedAttr = undef;
                 }
-            elsif ($type == ::TOPIC_GROUP())
+            elsif ($topic->Type() == ::TOPIC_GROUP())
                 {
                 $inGroupTag = undef;
                 $isMarkedAttr = undef;
@@ -743,7 +762,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             $output .=
              '<tr' . $isMarkedAttr . '><td' . $entrySizeAttr . '>'
-                . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$type}) . '>'
+                . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$topic->Type()}) . '>'
                     . '<div class=SEntry>';
 
 
@@ -755,20 +774,22 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             # Add the entry itself.
 
-            $output .=
-            '<a href="#' . $self->SymbolToHTMLSymbol( $parsedFile->[$index]->Class(), $parsedFile->[$index]->Name() ) . '"';
+            my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $topic->Type(), $topic->Prototype(), undef);
+            my $toolTipProperties;
 
-            if (defined $parsedFile->[$index]->Prototype())
+            if (defined $tooltipID)
                 {
-                my $prototype = $parsedFile->[$index]->Prototype();
+                my $linkNumber = $tooltipLinkNumber;
+                $tooltipLinkNumber++;
 
-                # IE will actually show a trailing line break in the tooltip, so we need to strip it.
-                $prototype =~ s/\n$//;
-
-                $output .= ' title="' . $self->ConvertAmpChars($prototype) . '"';
+                $toolTipProperties = 'id=link' . $linkNumber . ' '
+                                            . 'onMouseOver="ShowTip(\'' . $tooltipID . '\', \'link' . $linkNumber . '\')" '
+                                            . 'onMouseOut="HideTip(\'' . $tooltipID . '\')"';
                 };
 
-            $output .= '>'
+            $output .=
+            '<a href="#' . $self->SymbolToHTMLSymbol( $parsedFile->[$index]->Class(), $parsedFile->[$index]->Name() ) . '" '
+                . $toolTipProperties . '>'
                 . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$index]->Name() ))
             . '</a>';
 
@@ -786,7 +807,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             . '</td><td' . $descriptionSizeAttr . '>'
 
-                . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$type}) . '>'
+                . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$topic->Type()}) . '>'
                     . '<div class=SDescription>';
 
 
@@ -829,17 +850,17 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             # Prepare the modifiers for the next entry.
 
-            if ($type == ::TOPIC_CLASS())
+            if ($topic->Type() == ::TOPIC_CLASS())
                 {
                 $inSectionOrClassTag = '<div class=SInClass>';
                 $inGroupTag = undef;
                 }
-            elsif ($type == ::TOPIC_SECTION())
+            elsif ($topic->Type() == ::TOPIC_SECTION())
                 {
                 $inSectionOrClassTag = '<div class=SInSection>';
                 $inGroupTag = undef;
                 }
-            elsif ($type == ::TOPIC_GROUP())
+            elsif ($topic->Type() == ::TOPIC_GROUP())
                 {
                 $inGroupTag = '<div class=SInGroup>';
                 };
@@ -879,49 +900,52 @@ sub BuildPrototype #(prototype)
         {
         my ($pre, $openParen, $paramString, $closeParen, $post) = ($1, $2, $3, $4, $5);
 
-        $openParen =~ s/[ \t]/&nbsp;/g;
-        $closeParen =~ s/[ \t]/&nbsp;/g;
+        if (index($paramString, ',') != -1)
+            {
+           $openParen =~ s/[ \t]/&nbsp;/g;
+           $closeParen =~ s/[ \t]/&nbsp;/g;
 
-        my @params = split(/\, */, $paramString);
+           my @params = split(/\, */, $paramString);
 
-        my $firstParam = shift @params;
-        my $lastParam = pop @params;
+           my $firstParam = shift @params;
+           my $lastParam = pop @params;
 
-        $output =
-        # Crappy hacky extra div and table because browsers interpret padding on tables differently.
-        '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
-        . '<table border=0 cellspacing=0 cellpadding=0><tr>'
+           $output =
+           # Crappy hacky extra div and table because browsers interpret padding on tables differently.
+           '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
+           . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
-            . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
-            . '<td style="vertical-align: bottom">' . $openParen . '</td>'
-            . '<td style="vertical-align: bottom">' . $firstParam . (defined $lastParam ? ',' : '') . '</td>';
+               . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
+               . '<td style="vertical-align: bottom">' . $openParen . '</td>'
+               . '<td style="vertical-align: bottom">' . $firstParam . (defined $lastParam ? ',' : '') . '</td>';
 
-            if (scalar @params)
-                {
-                $output .=
-                    '<td colspan=2></td>'
-                . '</tr><tr>'
-                    . '<td colspan=2></td>'
-                    . '<td>' . join(',<br>', @params) . ',</td>';
-                };
+               if (scalar @params)
+                   {
+                   $output .=
+                       '<td colspan=2></td>'
+                   . '</tr><tr>'
+                       . '<td colspan=2></td>'
+                       . '<td>' . join(',<br>', @params) . ',</td>';
+                   };
 
-            if (defined $lastParam)
-                {
-                $output .=
-                    '<td colspan=2></td>'
-                . '</tr><tr>'
-                    . '<td colspan=2></td>'
-                    . '<td style="vertical-align: top">' . $lastParam . '</td>';
-                };
+               if (defined $lastParam)
+                   {
+                   $output .=
+                       '<td colspan=2></td>'
+                   . '</tr><tr>'
+                       . '<td colspan=2></td>'
+                       . '<td style="vertical-align: top">' . $lastParam . '</td>';
+                   };
 
-            $output .=
-            '<td style="vertical-align: top">' . $closeParen . '</td>'
-            . '<td style="vertical-align: top">' . $post . '</td>'
-        . '</tr></table>'
-        . '</div></td></tr></table>';
-        }
+               $output .=
+               '<td style="vertical-align: top">' . $closeParen . '</td>'
+               . '<td style="vertical-align: top">' . $post . '</td>'
+           . '</tr></table>'
+           . '</div></td></tr></table>';
+           };
+        };
 
-    else
+    if (!defined $output)
         {
         $output =
         # A surrounding table as a hack to make the div form-fit.
@@ -958,6 +982,8 @@ sub BuildFooter
         {
         $footer = 'Generated by <a href="' . NaturalDocs::Settings::AppURL() . '">Natural Docs</a>';
         };
+
+    return '<!--START_ND_FOOTER-->' . $footer . '<!--END_ND_FOOTER-->';
     };
 
 
@@ -979,6 +1005,9 @@ sub BuildFooter
 sub BuildIndexContent #(index, outputFile)
     {
     my ($self, $index, $outputFile) = @_;
+
+    $tooltipLinkNumber = 1;
+    %tooltips = ( );
 
     my $content = [ ];
     my $contentIndex;
@@ -1278,9 +1307,65 @@ sub BuildIndexNavigationBar #(type, page, locations)
 
 
 #
+#   Function: BuildToolTip
+#
+#   Builds the HTML for a symbol's tooltip and stores it in <tooltips>.
+#
+#   Parameters:
+#
+#       class - The target's class, or undef for global.
+#       symbol - The target symbol.
+#       type - The symbol type.  Should be one of the <Topic Types>.
+#       prototype - The target prototype, or undef for none.
+#       summary - The target summary, or undef for none.
+#
+#   Returns:
+#
+#       If a tooltip is necessary for the link, returns the tooltip ID.  If not, returns undef.
+#
+sub BuildToolTip #(class, symbol, type, prototype, summary)
+    {
+    my ($self, $class, $symbol, $type, $prototype, $summary) = @_;
+
+    if (defined $prototype)
+        {
+        my $id = 'tt' . $self->SymbolToHTMLSymbol($class, $symbol);
+
+        if (!exists $tooltips{$id})
+            {
+            $tooltips{$id} =
+           '<div class=CToolTip id="' . $id . '">'
+                . '<div class=C' . $topicNames{$type} . '>'
+                   . $self->BuildPrototype($prototype)
+                . '</div>'
+           . '</div>';
+          };
+
+        return $id;
+        }
+    else
+        {  return undef;  };
+    };
+
+#
+#   Function: BuildToolTips
+#
+#   Builds and returns the tooltips for the page in HTML.
+#
+sub BuildToolTips
+    {
+    my $self = shift;
+
+    return join('', values %tooltips);
+    };
+
+#
 #   Function: MenuToggleJavaScript
 #
 #   Returns the JavaScript necessary to expand and collapse the menus.
+#
+#   Creates the JavaScript function ToggleMenu(id).  Pass the menu group ID and it will toggle its display style between
+#   "block" and "none".
 #
 sub MenuToggleJavaScript
     {
@@ -1310,6 +1395,9 @@ sub MenuToggleJavaScript
 #   Function: BrowserStylesJavaScript
 #
 #   Returns the JavaScript necessary to detect the browser.
+#
+#   The JavaScript creates two variables, browserType and browserVer.  These contain the <Browser Styles> if the browser is
+#   detected, has JavaScript turned on, etc.  One or both may be undefined.
 #
 sub BrowserStylesJavaScript
     {
@@ -1360,6 +1448,116 @@ sub BrowserStylesJavaScript
     . '// --></script>';
     };
 
+
+#
+#   Function: ToolTipsJavaScript
+#
+#   Returns the JavaScript necessary to show, hide, and position tool tips.
+#
+#   Creates the functions ShowTip(tooltipID, linkID) and HideTip(tooltipID), which toggle the tooltips' visibility style between
+#   "visible" and "hidden".  Tooltip elements should be hidden by default.  Each link needs to have a unique ID.
+#
+sub ToolTipsJavaScript
+    {
+    my $self = shift;
+
+    return
+
+    '<script language=JavaScript><!--' . "\n"
+
+    . 'var tooltipTimer = 0;'
+
+    . 'function ShowTip(tooltipID, linkID)'
+        . '{'
+        . 'if (tooltipTimer)'
+            . '{  clearTimeout(tooltipTimer);  };'
+
+        . 'tooltipTimer = setTimeout("ReallyShowTip(\'" + tooltipID + "\', \'" + linkID + "\')", 1000);'
+        . '}'
+
+    . 'function ReallyShowTip(tooltipID, linkID)'
+        . '{'
+        . 'tooltipTimer = 0;'
+
+        . 'var tooltip;'
+        . 'var link;'
+
+        . 'if (document.getElementById)'
+            . '{'
+            . 'tooltip = document.getElementById(tooltipID);'
+            . 'link = document.getElementById(linkID);'
+            . '}'
+        . 'else if (document.all)'
+            . '{'
+            . 'tooltip = eval("document.all[\'" + tooltipID + "\']");'
+            . 'link = eval("document.all[\'" + linkID + "\']");'
+            . '}'
+
+        . 'if (tooltip)'
+            . '{'
+            . 'var left = 0;'
+            . 'var top = 0;'
+
+            . 'if (link && link.offsetWidth != null)'
+                . '{'
+                . 'var item = link;'
+                . 'while (item != document.body)'
+                    . '{'
+                    . 'left += item.offsetLeft;'
+                    . 'item = item.offsetParent;'
+                    . '}'
+
+                . 'item = link;'
+                . 'while (item != document.body)'
+                    . '{'
+                    . 'top += item.offsetTop;'
+                    . 'item = item.offsetParent;'
+                    . '}'
+                . 'top += link.offsetHeight;'
+
+                . 'var width = tooltip.offsetWidth;'
+                . 'var docWidth = document.body.clientWidth;'
+
+                . 'if (left + width > docWidth)'
+                    . '{  left = docWidth - width - 1;  }'
+                . '}'
+
+            . 'if (tooltip.style.left != null)'
+                . '{'
+                . 'tooltip.style.left = left + "px";'
+                . 'tooltip.style.top = top + "px";'
+                . '}'
+            . 'else if (tooltip.style.pixelLeft != null)'
+                . '{'
+                . 'tooltip.style.pixelLeft = left + "px";'
+                . 'tooltip.style.pixelTop = top + "px";'
+                . '}'
+
+            . 'tooltip.style.visibility = "visible";'
+            . '}'
+        . '}'
+
+    . 'function HideTip(tooltipID)'
+        . '{'
+        . 'if (tooltipTimer)'
+            . '{'
+            . 'clearTimeout(tooltipTimer);'
+            . 'tooltipTimer = 0;'
+            . '}'
+
+        . 'var tooltip;'
+
+        . 'if (document.getElementById)'
+            . '{  tooltip = document.getElementById(tooltipID); }'
+        . 'else if (document.all)'
+            . '{  tooltip = eval("document.all[\'" + tooltipID + "\']");  }'
+
+        . 'if (tooltip)'
+            . '{  tooltip.style.visibility = "hidden";  }'
+        . '}'
+
+    . '// --></script>';
+    };
 
 #
 #   Function: OpeningBrowserStyles
@@ -1654,9 +1852,9 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
             $text =~ s/&quot;/&rdquo;/g;
 
             # Resolve and convert links.
-            $text =~ s/<link>([^<]+)<\/link>/$self->MakeLink($scope, $1, $sourceFile)/ge;
+            $text =~ s/<link>([^<]+)<\/link>/$self->BuildLink($scope, $1, $sourceFile)/ge;
             $text =~ s/<url>([^<]+)<\/url>/<a href=\"$1\" class=LURL>$1<\/a>/g;
-            $text =~ s/<email>([^<]+)<\/email>/$self->MakeEMailLink($1)/eg;
+            $text =~ s/<email>([^<]+)<\/email>/$self->BuildEMailLink($1)/eg;
 
             # Add double spaces too.
             $text = $self->AddDoubleSpaces($text);
@@ -1704,7 +1902,7 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
 
 
 #
-#   Function: MakeLink
+#   Function: BuildLink
 #
 #   Creates a HTML link to a symbol, if it exists.
 #
@@ -1718,7 +1916,7 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
 #
 #       The link in HTML, including tags.  If the link doesn't resolve to anything, returns the HTML that should be substituted for it.
 #
-sub MakeLink #(scope, text, sourceFile)
+sub BuildLink #(scope, text, sourceFile)
     {
     my ($self, $scope, $text, $sourceFile) = @_;
 
@@ -1730,16 +1928,25 @@ sub MakeLink #(scope, text, sourceFile)
         my $targetFile;
 
         if ($target->File() ne $sourceFile)
-            {  $targetFile = $self->MakeRelativeURL($self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()));  };
+            {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()) );  };
         # else leave it undef
 
-        my $prototypeAttr;
+        my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $target->Type(),
+                                                                      $target->Prototype(), undef);
+        my $toolTipProperties;
 
-        if (defined $target->Prototype())
-            {  $prototypeAttr = ' title="' . $self->ConvertAmpChars($target->Prototype()) . '"';  };
+        if (defined $targetTooltipID)
+            {
+            my $targetLinkNumber = $tooltipLinkNumber;
+            $tooltipLinkNumber++;
 
-        return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '"'
-                . $prototypeAttr . ' class=L' . $topicNames{$target->Type()} . '>' . $text . '</a>';
+            $toolTipProperties = 'id=link' . $targetLinkNumber . ' '
+                                        . 'onMouseOver="ShowTip(\'' . $targetTooltipID . '\', \'link' . $targetLinkNumber . '\')" '
+                                        . 'onMouseOut="HideTip(\'' . $targetTooltipID . '\')"';
+            };
+
+        return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '" '
+                    . 'class=L' . $topicNames{$target->Type()} . ' ' . $toolTipProperties . '>' . $text . '</a>';
         }
     else
         {
@@ -1749,7 +1956,7 @@ sub MakeLink #(scope, text, sourceFile)
 
 
 #
-#   Function: MakeEMailLink
+#   Function: BuildEMailLink
 #
 #   Creates a HTML link to an e-mail address.  The address will be transparently munged to protect it (hopefully) from spambots.
 #
@@ -1761,7 +1968,7 @@ sub MakeLink #(scope, text, sourceFile)
 #
 #       The HTML e-mail link, complete with tags.
 #
-sub MakeEMailLink #(address)
+sub BuildEMailLink #(address)
     {
     my ($self, $address) = @_;
     my @splitAddress;

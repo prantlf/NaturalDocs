@@ -103,6 +103,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . $self->MenuToggleJavaScript()
             . $self->BrowserStylesJavaScript()
+            . $self->ToolTipsJavaScript()
 
         . '</head><body class=UnframedPage>'
             . $self->OpeningBrowserStyles() . "\n\n"
@@ -131,6 +132,8 @@ sub BuildFile #(sourceFile, parsedFile)
         . '<div class=Footer>'
             . $self->BuildFooter()
         . '</div>'
+
+        . $self->BuildToolTips()
 
             . $self->ClosingBrowserStyles()
         . '</body></html>';
@@ -176,6 +179,7 @@ sub BuildIndex #(type)
 
             . $self->MenuToggleJavaScript()
             . $self->BrowserStylesJavaScript()
+            . $self->ToolTipsJavaScript()
 
         . '</head><body class=UnframedPage>'
             . $self->OpeningBrowserStyles() . "\n\n"
@@ -308,7 +312,7 @@ sub UpdateFile #(sourceFile)
 
         $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($outputFile, undef)/es;
 
-        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $self->BuildFooter() . "<\/div>"/e;
+        $content =~ s/<!--START_ND_FOOTER-->.*?<!--END_ND_FOOTER-->/$self->BuildFooter()/e;
 
 
         open(OUTPUTFILEHANDLE, '>' . $fullOutputFile);
