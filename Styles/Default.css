@@ -153,6 +153,8 @@ body.FramedContentPage,
         margin-left: 0; margin-right: 0 }
 
     .CClass .CTitle,
+    .CDatabase .CTitle,
+    .CDatabaseTable .CTitle,
     .CSection .CTitle {
         font-size: 18pt;
         color: #FFFFFF; background-color: #A0A0A0;
@@ -318,20 +320,28 @@ body.FramedContentPage,
 
     .SMain .SEntry,
     .SClass .SEntry,
+    .SDatabase .SEntry,
+    .SDatabaseTable .SEntry,
     .SSection .SEntry {
         font-weight: bold; font-size: 10pt;
         margin-bottom: .25em }
 
     .SClass,
+    .SDatabase,
+    .SDatabaseTable,
     .SSection {
         margin-top: 1em }
 
     .SMain .SEntry a,
     .SClass .SEntry a,
+    .SDatabase .SEntry a,
+    .SDatabaseTable .SEntry a,
     .SSection .SEntry a { color: #000000 }
 
     .SMain .SEntry a:active,
     .SClass .SEntry a:active,
+    .SDatabase .SEntry a:active,
+    .SDatabaseTable .SEntry a:active,
     .SSection .SEntry a:active { color: #A00000 }
 
 
