@@ -93,7 +93,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
                 {
                 if ($1 eq ';')
                     {
-                    $endOfDirectives = $-[1];
+                    $endOfDirectives = $::LAST_MATCH_START[1];
                     $state = TRYKEYWORD;
                     }
                 else
@@ -112,7 +112,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
                 {
                 if ($1 eq ';')
                     {
-                    $endOfDirectives = $-[1];
+                    $endOfDirectives = $::LAST_MATCH_START[1];
                     $state = TRYKEYWORD;
                     };
                 };
