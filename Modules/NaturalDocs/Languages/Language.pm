@@ -502,6 +502,28 @@ sub ExtractEscapedLine #(line, startingIndex)
     };
 
 
+#
+#   Function: MakeSortableSymbol
+#
+#   Returns the symbol that should be used for sorting.  For example, in Perl, a scalar variable would be "$var".  However, we
+#   would want to sort on "var" so that all scalar variables don't get dumped into the symbols category in the indexes.
+#
+#   Parameters:
+#
+#       name - The name of the symbol.
+#       type  - The symbol's type.  One of the <Topic Types>.
+#
+#   Returns:
+#
+#       The symbol to sort on.  If the symbol doesn't need to be altered, just return name.
+#
+sub MakeSortableSymbol #(name, type)
+    {
+    my ($self, $name, $type) = @_;
+    return $name;
+    };
+
+
 ###############################################################################
 # Group: Support Functions
 

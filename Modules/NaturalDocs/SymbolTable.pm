@@ -1470,13 +1470,15 @@ sub InterpretReference #(referenceString)
 #
 #   Returns:
 #
-#       A sorted arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
+#       An arrayref of sections.  The first represents all the symbols, the second the numbers, and the rest A through Z.
+#       Each section is a sorted arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.  If a section has no content,
+#       it will be undef.
 #
 sub MakeIndex #(type)
     {
     my ($self, $type) = @_;
 
-    my %indexHash;
+    my $sections = [ ];
 
     while (my ($symbolString, $object) = each %symbols)
         {
@@ -1485,41 +1487,71 @@ sub MakeIndex #(type)
 
         foreach my $definition (@definitions)
             {
-            if (!defined $type || $type == $object->TypeDefinedIn($definition))
+            my $definitionType = $object->TypeDefinedIn($definition);
+
+            if (!defined $type || $type == $definitionType)
                 {
-                if (!defined $indexHash{$symbol})
+                my $sortableSymbol =
+                    NaturalDocs::Languages->LanguageOf($definition)->MakeSortableSymbol($symbol, $definitionType);
+
+                my $section = lc(substr($sortableSymbol, 0, 1));
+
+                if ($section =~ /^[a-z]$/)
+                    {  $section = ord($section) - ord('a') + 2;  }
+                elsif ($section =~ /^[0-9]$/)
+                    {  $section = 1;  }
+                else
+                    {  $section = 0;  };
+
+                if (!defined $sections->[$section])
+                    {  $sections->[$section] = { };  };
+
+                if (!defined $sections->[$section]->{$sortableSymbol})
                     {
-                    $indexHash{$symbol} = NaturalDocs::SymbolTable::IndexElement->New($symbol, $class, $definition,
-                                                                                                                              $object->TypeDefinedIn($definition),
-                                                                                                                              $object->PrototypeDefinedIn($definition),
-                                                                                                                              $object->SummaryDefinedIn($definition) );
+                    $sections->[$section]->{$sortableSymbol} =
+                        NaturalDocs::SymbolTable::IndexElement->New($symbol, $class, $definition, $definitionType,
+                                                                                               $object->PrototypeDefinedIn($definition),
+                                                                                               $object->SummaryDefinedIn($definition) );
                     }
                 else
                     {
-                    $indexHash{$symbol}->Merge($class, $definition, $object->TypeDefinedIn($definition),
-                                                                 $object->PrototypeDefinedIn($definition), $object->SummaryDefinedIn($definition) );
+                    $sections->[$section]->{$sortableSymbol}->Merge($class, $definition, $definitionType,
+                                                                                                $object->PrototypeDefinedIn($definition),
+                                                                                                $object->SummaryDefinedIn($definition) );
                     };
                 }; # If type matches
             }; # Each definition
         }; # Each symbol
 
 
-    # Sort them and migrate them to an array.
+    # Sort each section and convert them into the arrayrefs we need to return.
 
-    my $indexArray = [ keys %indexHash ];
-
-    @$indexArray = sort { ::StringCompare($a, $b) } @$indexArray;
-
-    for (my $i = 0; $i < scalar @$indexArray; $i++)
+    for (my $section = 0; $section < scalar @$sections; $section++)
         {
-        # Replace symbol names to IndexElement objects.
-        $indexArray->[$i] = $indexHash{$indexArray->[$i]};
+        if (defined $sections->[$section])
+            {
+            # Make arrayRef all the sortable symbols.
+            my $arrayRef = [ keys %{$sections->[$section]} ];
 
-        # Sort its internal content as well.
-        $indexArray->[$i]->Sort();
+            # Sort arrayref.
+            @$arrayRef = sort { ::StringCompare($a, $b) } @$arrayRef;
+
+            # Replace each symbol in the arrayRef with its object.
+            for (my $arrayIndex = 0; $arrayIndex < scalar @$arrayRef; $arrayIndex++)
+                {
+                $arrayRef->[$arrayIndex] = $sections->[$section]->{ $arrayRef->[$arrayIndex] };
+
+                # Sort its internal content as well.
+                $arrayRef->[$arrayIndex]->Sort();
+                };
+
+            # Replace the section hashref with the arrayref of objects.
+            $sections->[$section] = $arrayRef;
+            };
         };
 
-    return $indexArray;
+
+    return $sections;
     };
 
 1;
