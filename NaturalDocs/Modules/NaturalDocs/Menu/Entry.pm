@@ -112,7 +112,8 @@ sub Title
 #   Function: Target
 #
 #   Returns the target of the entry, if applicable.  If the type is <MENU_FILE>, it returns the source file name.  If the type is
-#   <MENU_LINK>, it returns the URL.  Otherwise it returns undef.
+#   <MENU_LINK>, it returns the URL.  If the type is <MENU_INDEX>, it returns one of the <Topic Types> or undef for the
+#   general index.  Otherwise it returns undef.
 #
 sub Target
     {
