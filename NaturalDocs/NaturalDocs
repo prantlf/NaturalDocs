@@ -351,6 +351,11 @@ eval {
     NaturalDocs::Settings::ParseCommandLine();
 
 
+    # Check that our required packages are okay.
+
+    NaturalDocs::File::CheckCompatibility();
+
+
     # Add the supported languages.
 
     my $cExtensions = [ 'h', 'hpp' ];
