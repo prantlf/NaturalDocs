@@ -56,12 +56,6 @@ use constant MINFILESINNEWGROUP => 3;
 #
 my $hasChanged;
 
-#
-#   bool: fileChanged
-#
-#   Whether the menu file has changed, usually meaning the user edited it.
-#
-my $fileChanged;
 
 #
 #   Object: menu
@@ -107,24 +101,22 @@ my $footer;
 #
 #   hash: indexes
 #
-#   An existence hash of all the defined index types appearing in the menu.  Keys are <TopicTypes> or * for the general
-#   index.
+#   An existence hash of all the defined index <TopicTypes> appearing in the menu.
 #
 my %indexes;
 
 #
 #   hash: previousIndexes
 #
-#   An existence hash of all the indexes that appeared in the menu last time.  Keys are <TopicTypes> or * for the general
-#   index.
+#   An existence hash of all the index <TopicTypes> that appeared in the menu last time.
 #
 my %previousIndexes;
 
 #
 #   hash: bannedIndexes
 #
-#   An existence hash of all the indexes that the user has manually deleted, and thus should not be added back to the menu
-#   automatically.  Keys are <TopicTypes> or * for the general index.
+#   An existence hash of all the index <TopicTypes> that the user has manually deleted, and thus should not be added back to
+#   the menu automatically.
 #
 my %bannedIndexes;
 
@@ -184,16 +176,14 @@ my %bannedIndexes;
 #       External links can be specified as above.  If the titled form is not used, the URL is used as the title.
 #
 #       > Index: [name]
-#       > [modifier] Index: [name]
+#       > [topic type name] Index: [name]
 #
-#       Indexes are specified with the types above.  Valid modifiers are topic keywords, either singular or plural.  If the modifier is
-#       "General" or not specified, the line specifies a general index.
+#       Indexes are specified as above.  The topic type names can be either singular or plural.  General is assumed if not specified.
 #
-#       > Don't Index: [type]
-#       > Don't Index: [type], [type], ...
+#       > Don't Index: [topic type name]
+#       > Don't Index: [topic type name], [topic type name], ...
 #
-#       The option above prevents indexes that exist but are not on the menu from being automatically added.  "General" is
-#       used to specify the general index.  Commas aren't required.
+#       The option above prevents indexes that exist but are not on the menu from being automatically added.
 #
 #       > Data: 1([obscured: [directory name]///[input directory]])
 #
@@ -207,10 +197,10 @@ my %bannedIndexes;
 #
 #       1.3:
 #
-#           The file spec is still the same, but the parsers are now more strict about it.
+#           The file spec is still the same, but the parser is now more strict about it.
 #
 #           - Can't use synonyms like "copyright" for "footer" or "sub-title" for "subtitle".
-#           - "Don't Index" line now requires commas to separate them, whereas it tolerated only spaces before.
+#           - "Don't Index" line now requires commas to separate them, whereas it tolerated just spaces before.
 #
 #       1.16:
 #
@@ -269,7 +259,7 @@ my %bannedIndexes;
 #   > [UInt8: 0 (end group)]
 #   > [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
 #   > [UInt8: MENU_GROUP] [AString16: title]
-#   > [UInt8: MENU_INDEX] [AString16: title] [UInt8: type (0 for general)]
+#   > [UInt8: MENU_INDEX] [AString16: title] [AString16: topic type]
 #   > [UInt8: MENU_LINK] [AString16: title] [AString16: url]
 #   > [UInt8: MENU_TEXT] [AString16: text]
 #
@@ -284,9 +274,14 @@ my %bannedIndexes;
 #   Dependencies:
 #
 #       - Because the type is represented by a UInt8, the <Menu Entry Types> must all be <= 255.
-#       - Because the index target is represented by a UInt8, the <TopicTypes> must all be <= 255.
 #
 #   Revisions:
+#
+#       1.3:
+#
+#           - The topic type following the <MENU_INDEX> entries were changed from UInt8s to AString16s, since <TopicTypes>
+#             were switched from integer constants to strings.  You can still convert the old to the new via
+#             <NaturalDocs::Topics->TypeFromLegacy()>.
 #
 #       1.16:
 #
@@ -374,7 +369,7 @@ sub LoadAndUpdate
     # If the menu file changed, we can't be sure which groups changed and which didn't without a comparison, which really isn't
     # worth the trouble.  So we regenerate all the titles instead.  Also, since LoadPreviousMenuStateFile() isn't affected by
     # NaturalDocs::Settings->RebuildData(), we'll pick up some of the slack here.  We'll regenerate all the titles in this case too.
-    if ($fileChanged || NaturalDocs::Settings->RebuildData())
+    if (NaturalDocs::Settings->RebuildData() || NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
         {  $updateAllTitles = 1;  }
     else
         {  $self->FlagAutoTitleChanges();  };
@@ -484,8 +479,7 @@ sub Footer
 #
 #   Function: Indexes
 #
-#   Returns an existence hashref of all the indexes appearing in the menu.  The keys are <TopicTypes> or * for the general
-#   index.  Do not change the arrayref.
+#   Returns an existence hashref of all the index <TopicTypes> appearing in the menu.  Do not change the arrayref.
 #
 sub Indexes
     {  return \%indexes;  };
@@ -493,8 +487,8 @@ sub Indexes
 #
 #   Function: PreviousIndexes
 #
-#   Returns an existence hashref of all the indexes that previously appeared in the menu.  The keys are <TopicTypes> or *
-#   for the general index.  Do not change the arrayref.
+#   Returns an existence hashref of all the index <TopicTypes> that previously appeared in the menu.  Do not change the
+#   arrayref.
 #
 sub PreviousIndexes
     {  return \%previousIndexes;  };
@@ -531,26 +525,13 @@ sub FilesInMenu
     };
 
 
+
 ###############################################################################
 # Group: Event Handlers
 #
 #   These functions are called by <NaturalDocs::Project> only.  You don't need to worry about calling them.  For example, when
 #   changing the default menu title of a file, you only need to call <NaturalDocs::Project->SetDefaultMenuTitle()>.  That function
 #   will handle calling <OnDefaultTitleChange()>.
-
-
-#
-#   Function: OnFileChange
-#
-#   Called by <NaturalDocs::Project> if it detects that the menu file has changed.
-#
-sub OnFileChange
-    {
-    my ($self) = @_;
-
-    $fileChanged = 1;
-    $hasChanged = 1;
-    };
 
 
 #
@@ -572,6 +553,7 @@ sub OnDefaultTitleChange #(file)
     };
 
 
+
 ###############################################################################
 # Group: Support Functions
 
@@ -586,8 +568,8 @@ sub OnDefaultTitleChange #(file)
 #
 #       The array ( inputDirectories, relativeFiles ) or an empty array if the file doesn't exist.
 #
-#       inputDirectories - A hashref of all the input directories and their names stored in the menu file.  The keys are the directories,
-#                                 and the values are their names.  Undef if none.
+#       inputDirectories - A hashref of all the input directories and their names stored in the menu file.  The keys are the
+#                                 directories and the values are their names.  Undef if none.
 #       relativeFiles - Whether the menu is in a pre-1.16 format that uses relative file names.
 #
 sub LoadMenuFile
@@ -794,42 +776,45 @@ sub LoadMenuFile
                 {
                 my @indexes = split(/, ?/, $value);
 
-                foreach my $bannedIndex (@indexes)
+                foreach my $index (@indexes)
                     {
-                    if ($bannedIndex eq 'general')
-                        {  $bannedIndex = '*';  }
-                    else
-                        {  $bannedIndex = NaturalDocs::Topics->BaseConstantOf($bannedIndex);  };
+                    my $indexType = NaturalDocs::Topics->TypeFromName($index);
 
-                    if (defined $bannedIndex)
-                        {  $bannedIndexes{$bannedIndex} = 1;  };
+                    if (defined $indexType)
+                        {  $bannedIndexes{$indexType} = 1;  };
                     };
                 }
 
-            elsif ($keyword eq 'index' || $keyword eq 'general index')
+            elsif ($keyword eq 'index')
                 {
-                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, undef, undef);
+                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, ::TOPIC_GENERAL(), undef);
                 $currentGroup->PushToGroup($entry);
 
-                $indexes{'*'} = 1;
+                $indexes{::TOPIC_GENERAL()} = 1;
                 }
 
             elsif (substr($keyword, -6) eq ' index')
                 {
-                my $index = NaturalDocs::Topics->BaseConstantOf( substr($keyword, 0, -6) );
+                my $index = substr($keyword, 0, -6);
+                my ($indexType, $indexInfo) = NaturalDocs::Topics->NameInfo($index);
 
-                if (defined $index)
+                if (defined $indexType)
                     {
-                    if (NaturalDocs::Topics->IsIndexable($index))
+                    if ($indexInfo->Index())
                         {
-                        $indexes{$index} = 1;
+                        $indexes{$indexType} = 1;
                         $currentGroup->PushToGroup(
-                            NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, $index, undef) );
+                            NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, $indexType, undef) );
+                        }
+                    else
+                        {
+                        # If it's on the menu but isn't indexable, the topic setting may have changed out from under it.
+                        $hasChanged = 1;
                         };
                     }
                 else
                     {
-                    NaturalDocs::ConfigFile->AddError(ucfirst($index) . ' is not a valid index type.');
+                    NaturalDocs::ConfigFile->AddError($index . ' is not a valid index type.');
                     };
                 }
 
@@ -916,15 +901,16 @@ sub SaveMenuFile
             {
             print MENUFILEHANDLE
             "\n"
-            . "# You can also add a sub-title to your menu by adding a\n"
-            . "# \"SubTitle: [subtitle]\" line.\n";
+            . "# You can also add a sub-title to your menu like this:\n"
+            . "# SubTitle: [subtitle]\n";
             };
         }
     else
         {
         print MENUFILEHANDLE
-        "# You can add a title and sub-title to your menu.\n"
-        . "# Just add \"Title: [project name]\" and \"SubTitle: [subtitle]\" lines here.\n";
+        "# You can add a title and sub-title to your menu like this:\n"
+        . "# Title: [project name]\n"
+        . "# SubTitle: [subtitle]\n";
         };
 
     print MENUFILEHANDLE "\n";
@@ -936,9 +922,9 @@ sub SaveMenuFile
     else
         {
         print MENUFILEHANDLE
-        "# You can add a footer to your documentation.  Just add a\n"
-        . "# \"Footer: [text]\" line here.  If you want to add a copyright notice,\n"
-        . "# this would be the place to do it.\n";
+        "# You can add a footer to your documentation like this:\n"
+        . "# Footer: [text]\n"
+        . "# If you want to add a copyright notice, this would be the place to do it.\n";
         };
 
     print MENUFILEHANDLE "\n";
@@ -961,10 +947,7 @@ sub SaveMenuFile
             else
                 {  $first = undef;  };
 
-            if ($index eq '*')
-                {  print MENUFILEHANDLE 'General';  }
-            else
-                {  print MENUFILEHANDLE NaturalDocs::Topics->PluralNameOf($index, 1);  };
+            print MENUFILEHANDLE NaturalDocs::Topics->NameOfType($index, 1);
             };
 
         print MENUFILEHANDLE "\n\n";
@@ -982,8 +965,7 @@ sub SaveMenuFile
     . "# Docs will take care of that.\n"
     . "# \n"
     . "# You can further organize the menu by grouping the entries.  Add a\n"
-    . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.  Groups\n"
-    . "# can appear within each other.\n"
+    . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.\n"
     . "# \n"
     . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
     . "# \"Link: [name] ([URL])\" lines, respectively.\n"
@@ -1052,9 +1034,9 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
         elsif ($entry->Type() == ::MENU_INDEX())
             {
             my $type;
-            if (defined $entry->Target())
+            if ($entry->Target() ne ::TOPIC_GENERAL())
                 {
-                $type = NaturalDocs::Topics->NameOf($entry->Target(), 1) . ' ';
+                $type = NaturalDocs::Topics->NameOfType($entry->Target()) . ' ';
                 };
 
             print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
@@ -1075,12 +1057,11 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #
 #   Returns:
 #
-#       The array ( previousMenu, previousIndexes, previousFiles ), or an empty array if the file doesn't exist.
+#       The array ( previousMenu, previousIndexes, previousFiles ) or an empty array if there was a problem with the file.
 #
 #       previousMenu - A <MENU_GROUP> <NaturalDocs::Menu::Entry> object, similar to <menu>, which contains the entire
 #                              previous menu.
-#       previousIndexes - An existence hashref of the indexes present in the previous menu.  The keys are <TopicTypes> or
-#                                  '*' for general.
+#       previousIndexes - An existence hashref of the index <TopicTypes> present in the previous menu.
 #       previousFiles - A hashref of the files present in the previous menu.  The keys are the <FileNames>, and the entries are
 #                             references to its object in previousMenu.
 #
@@ -1089,11 +1070,7 @@ sub LoadPreviousMenuStateFile
     my ($self) = @_;
 
     my $fileIsOkay;
-
-    my $menu;
-    my $indexes;
-    my $files;
-
+    my $version;
     my $previousStateFileName = NaturalDocs::Project->PreviousMenuStateFile();
 
     # We ignore NaturalDocs::Settings->RebuildData() because otherwise user changes can be lost.
@@ -1107,9 +1084,9 @@ sub LoadPreviousMenuStateFile
 
         if ($firstChar == ::BINARY_FORMAT())
             {
-            my $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUSSTATEFILEHANDLE);
+            $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUSSTATEFILEHANDLE);
 
-            # The file format has not changed since switching to binary.
+            # Only the topic type format has changed since switching to binary, and we support both methods.
 
             if ($version <= NaturalDocs::Settings->AppVersion())
                 {  $fileIsOkay = 1;  }
@@ -1123,9 +1100,13 @@ sub LoadPreviousMenuStateFile
 
     if ($fileIsOkay)
         {
-        $menu = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), undef, undef, undef);
-        $indexes = { };
-        $files = { };
+        if (NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
+            {  $hasChanged = 1;  };
+
+            
+        my $menu = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), undef, undef, undef);
+        my $indexes = { };
+        my $files = { };
 
         my @groupStack;
         my $currentGroup = $menu;
@@ -1171,17 +1152,29 @@ sub LoadPreviousMenuStateFile
 
             elsif ($type == ::MENU_INDEX())
                 {
-                # [AString16: title] [UInt8: type (0 for general)]
+                # [AString16: title]
 
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
-                read(PREVIOUSSTATEFILEHANDLE, $raw, 1);
-                $target = unpack('C', $raw);
 
-                if ($target == 0)
-                    {  $target = undef;  };
+                if ($version >= NaturalDocs::Version->FromString('1.3'))
+                    {
+                    # [AString16: topic type]
+                    read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
+                    $targetLength = unpack('n', $raw);
+
+                    read(PREVIOUSSTATEFILEHANDLE, $target, $targetLength);
+                    }
+                else
+                    {
+                    # [UInt8: topic type (0 for general)]
+                    read(PREVIOUSSTATEFILEHANDLE, $raw, 1);
+                    $target = unpack('C', $raw);
+
+                    $target = NaturalDocs::Topics->TypeFromLegacy($target);
+                    };
                 }
 
             elsif ($type == ::MENU_LINK())
@@ -1209,33 +1202,39 @@ sub LoadPreviousMenuStateFile
                 };
 
 
-            my $entry = NaturalDocs::Menu::Entry->New($type, $title, $target, ($flags || 0));
-            $currentGroup->PushToGroup($entry);
+            # The topic type of the index may have been removed.
 
+            if ( !($type == ::MENU_INDEX() && !NaturalDocs::Topics->IsValidType($target)) )
+                {
+                my $entry = NaturalDocs::Menu::Entry->New($type, $title, $target, ($flags || 0));
+                $currentGroup->PushToGroup($entry);
 
-            if ($type == ::MENU_FILE())
-                {
-                $files->{$target} = $entry;
-                }
-            elsif ($type == ::MENU_GROUP())
-                {
-                push @groupStack, $currentGroup;
-                $currentGroup = $entry;
-                }
-            elsif ($type == ::MENU_INDEX())
-                {
-                if (!defined $target)
-                    {  $target = '*';  };
-
-                $indexes->{$target} = 1;
+                if ($type == ::MENU_FILE())
+                    {
+                    $files->{$target} = $entry;
+                    }
+                elsif ($type == ::MENU_GROUP())
+                    {
+                    push @groupStack, $currentGroup;
+                    $currentGroup = $entry;
+                    }
+                elsif ($type == ::MENU_INDEX())
+                    {
+                    $indexes->{$target} = 1;
+                    };
                 };
 
             };
 
         close(PREVIOUSSTATEFILEHANDLE);
-        };
 
-    return ($menu, $indexes, $files);
+        return ($menu, $indexes, $files);
+        }
+    else
+        {
+        $hasChanged = 1;
+        return ( );
+        };
     };
 
 
@@ -1300,8 +1299,9 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
 
         elsif ($entry->Type() == ::MENU_INDEX())
             {
-            # [UInt8: MENU_INDEX] [AString16: title] [UInt8: type (0 for general)]
-            print $fileHandle pack('CnA*C', ::MENU_INDEX(), length($entry->Title()), $entry->Title(), $entry->Target());
+            # [UInt8: MENU_INDEX] [AString16: title] [AString16: topic type]
+            print $fileHandle pack('CnA*nA*', ::MENU_INDEX(), length($entry->Title()), $entry->Title(),
+                                                                                       length($entry->Target()), $entry->Target());
             }
 
         elsif ($entry->Type() == ::MENU_LINK())
@@ -1539,7 +1539,6 @@ sub ResolveInputDirectories #(inputDirectoryNames)
     # Whew.
 
     $hasChanged = 1;
-    $fileChanged = 1;
     };
 
 
@@ -1621,7 +1620,6 @@ sub ResolveRelativeInputDirectories
             };
         };
 
-    $fileChanged = 1;
     $hasChanged = 1;
     };
 
@@ -1647,6 +1645,7 @@ sub ResolveFile #(relativePath, possibleBases, possibleBaseScores)
             {  $possibleBaseScores->[$i]++;  };
         };
     };
+
 
 #
 #   Function: LockUserTitleChanges
@@ -1800,11 +1799,11 @@ sub AutoPlaceNewFiles #(fileInMenu)
 #
 #   Returns:
 #
-#   A hashref.  The keys are the directory names, and the values are references to the group objects they should be placed in.
+#       A hashref.  The keys are the directory names, and the values are references to the group objects they should be placed in.
 #
-#   This only repreesents directories that currently have files on the menu, so it shouldn't be assumed that every possible directory
-#   will exist.  To match, you should first try to match the directory, and then strip the deepest directories one by one until there's
-#   a match or there's none left.  If there's none left, use the root group <menu>.
+#       This only repreesents directories that currently have files on the menu, so it shouldn't be assumed that every possible
+#       directory will exist.  To match, you should first try to match the directory, and then strip the deepest directories one by
+#       one until there's a match or there's none left.  If there's none left, use the root group <menu>.
 #
 sub MatchDirectoriesAndGroups
     {
@@ -1970,10 +1969,11 @@ sub BanAndUnbanIndexes
     foreach my $index (keys %indexes)
         {  delete $bannedIndexes{$index};  };
 
-    # Ban any indexes that were in the previous menu but not the current, meaning the user manually deleted them.
+    # Ban any indexes that were in the previous menu but not the current, meaning the user manually deleted them.  However,
+    # don't do this if the topic isn't indexable, meaning they changed the topic type rather than the menu.
     foreach my $index (keys %previousIndexes)
         {
-        if (!exists $indexes{$index})
+        if (!exists $indexes{$index} && NaturalDocs::Topics->TypeInfo($index)->Index())
             {  $bannedIndexes{$index} = 1;  };
         };
     };
@@ -1990,7 +1990,7 @@ sub AddAndRemoveIndexes
     my ($self) = @_;
 
     my %validIndexes;
-    my @allIndexes = ( NaturalDocs::Topics->AllIndexable(), '*' );
+    my @allIndexes = NaturalDocs::Topics->AllIndexableTypes();
 
     foreach my $index (@allIndexes)
         {
@@ -2032,10 +2032,10 @@ sub AddAndRemoveIndexes
 
                 # Remove it if it's dead.
 
-                if (!exists $validIndexes{ ($entry->Target() || '*') })
+                if (!exists $validIndexes{ $entry->Target() })
                     {
                     $currentGroup->DeleteFromGroup($index);
-                    delete $indexes{ ($entry->Target() || '*') };
+                    delete $indexes{ $entry->Target() };
                     $hasChanged = 1;
                     }
                 else
@@ -2066,8 +2066,8 @@ sub AddAndRemoveIndexes
             {
             $menu->MarkEndOfOriginal();
 
-            my $newIndexGroup = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), 'Indexes', undef,
-                                                                                             ::MENU_GROUP_ISINDEXGROUP());
+            my $newIndexGroup = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), 'Index', undef,
+                                                                                              ::MENU_GROUP_ISINDEXGROUP());
             $menu->PushToGroup($newIndexGroup);
 
             $bestIndexGroup = $newIndexGroup;
@@ -2085,20 +2085,17 @@ sub AddAndRemoveIndexes
 
             if ($isIndexGroup)
                 {
-                if ($index eq '*')
+                if ($index eq ::TOPIC_GENERAL())
                     {  $title = 'Everything';  }
                 else
-                    {  $title = NaturalDocs::Topics->PluralNameOf($index);  };
+                    {  $title = NaturalDocs::Topics->NameOfType($index, 1);  };
                 }
             else
                 {
-                if ($index eq '*')
-                    {  $title = 'General Index';  }
-                else
-                    {  $title .= NaturalDocs::Topics->NameOf($index) . ' Index';  };
+                $title = NaturalDocs::Topics->NameOfType($index) . ' Index';
                 };
 
-            my $newEntry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $title, ($index eq '*' ? undef : $index), undef);
+            my $newEntry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $title, $index, undef);
             $bestIndexGroup->PushToGroup($newEntry);
 
             $indexes{$index} = 1;
@@ -2327,8 +2324,8 @@ sub CreateDirectorySubGroups
                     if ($count >= MINFILESINNEWGROUP)
                         {
                         my $newGroup = NaturalDocs::Menu::Entry->New( ::MENU_GROUP(), ucfirst($directory), undef,
-                                                                                                  ::MENU_GROUP_UPDATETITLES() |
-                                                                                                  ::MENU_GROUP_UPDATEORDER() );
+                                                                                                   ::MENU_GROUP_UPDATETITLES() |
+                                                                                                   ::MENU_GROUP_UPDATEORDER() );
 
                         if ($count > MAXFILESINGROUP)
                             {  $newGroup->SetFlags( $newGroup->Flags() | ::MENU_GROUP_UPDATESTRUCTURE());  };
@@ -2355,7 +2352,9 @@ sub CreateDirectorySubGroups
 
                         if ($entry->Type() == ::MENU_FILE())
                             {
-                            my @entryDirectories = NaturalDocs::File->SplitDirectories( (NaturalDocs::File->SplitPath($entry->Target()))[1] );
+                            my @entryDirectories =
+                                NaturalDocs::File->SplitDirectories( (NaturalDocs::File->SplitPath($entry->Target()))[1] );
+
                             my $unsharedDirectory = $entryDirectories[$unsharedIndex];
 
                             if (exists $directoryGroups{$unsharedDirectory})
@@ -2509,7 +2508,7 @@ sub DetectOrder #(forceAll)
                 # Ignore the first entry if it's the general index in an index group.  We don't want it to affect the sort.
 
                 elsif ($index == 0 && ($groupEntry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) &&
-                        $entry->Type() == ::MENU_INDEX() && !defined $entry->Target() )
+                        $entry->Type() == ::MENU_INDEX() && $entry->Target() eq ::TOPIC_GENERAL() )
                     {
                     # Ignore.
                     }
@@ -2789,7 +2788,7 @@ sub ResortGroups #(forceAll)
 
             if ( ($groupEntry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) &&
                  $groupEntry->GroupContent()->[0]->Type() == ::MENU_INDEX() &&
-                 !defined $groupEntry->GroupContent()->[0]->Target() )
+                 $groupEntry->GroupContent()->[0]->Target() eq ::TOPIC_GENERAL() )
                 {
                 $leadingGeneralIndex = shift @{$groupEntry->GroupContent()};
                 if ($newEntriesIndex != -1)
