@@ -395,6 +395,8 @@ sub Parse #(file)
             };
         };
 
+
+    NaturalDocs::Extensions->AfterFileParsed($file, \@parsedFile);
     };
 
 
