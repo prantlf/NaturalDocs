@@ -98,10 +98,17 @@ sub Scope
     {  return $_[0]->[SCOPE];  };
 
 # Function: Prototype
-# Returns the function prototype, if <Type()> is <TOPIC_FUNCTION> or <TOPIC_VARIABLE> and one is defined.  Will be undef
-# otherwise.
+# Returns the prototype if <Type()> is <TOPIC_FUNCTION> or <TOPIC_VARIABLE> and one is defined.  Will be undef otherwise.
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
+
+# Function: SetPrototype
+# Replaces the function or variable prototype.
+sub SetPrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+    $self->[PROTOTYPE] = $prototype;
+    };
 
 # Function: Summary
 # Returns the section summary, if it exists, formatted in <NDMarkup>.
