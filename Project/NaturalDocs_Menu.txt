@@ -1,5 +1,5 @@
 Title: Natural Docs
-SubTitle: Version 0.91
+SubTitle: Version 0.95
 
 Footer: Copyright (c) 2003 Greg Valure
 
