@@ -192,7 +192,7 @@ sub EndBuild #(hasChanged)
         # date.  Should rarely happen, but it might.
         if (! -e $localCSSFile ||
             (stat($masterCSSFile))[9] != (stat($localCSSFile))[9] ||
-            (stat($masterCSSFile))[7] != (stat($localCSSFile))[7] )
+             -s $masterCSSFile != -s $localCSSFile)
             {
             if (!NaturalDocs::Settings::IsQuiet())
                 {  print "Updating CSS file...\n";  };

@@ -445,7 +445,7 @@ sub OnDefaultTitleChange #(file, title)
 #       The array ( hasGroups, errors, filesInMenu, trashAlert ).
 #
 #       hasGroups - Whether the menu uses groups or not.
-#       errors - An arrayref of errors appearing in the file, each one being an <NaturalDocs::Menu::Error> object.
+#       errors - An arrayref of errors appearing in the file, each one being an <NaturalDocs::Menu::Error> object.  Undef if none.
 #       filesInMenu - An existence hashref of all the source files that appear in the menu.  This parameter will always exist.
 #       trashAlert - Will be true if the menu file had a significant number of file entries, but all of them resolved invalid.  Use to
 #                        protect against accidential menu file trashing due to mistakes in the command line.
@@ -478,7 +478,7 @@ sub ParseMenuFile
     if (open($menuFileHandle, '<' . NaturalDocs::Project::MenuFile()))
         {
         my $menuFileContent;
-        read($menuFileHandle, $menuFileContent, (stat(NaturalDocs::Project::MenuFile()))[7]);
+        read($menuFileHandle, $menuFileContent, -s $menuFileHandle);
         close($menuFileHandle);
 
         my @segments = split(/([\n{}\#])/, $menuFileContent);
@@ -1066,7 +1066,7 @@ sub HandleErrors #(errors)
     my $menuFileContent;
 
     open($menuFileHandle, '<' . $menuFile);
-    read($menuFileHandle, $menuFileContent, (stat($menuFile))[7]);
+    read($menuFileHandle, $menuFileContent, -s $menuFileHandle);
     close($menuFileHandle);
 
     my @lines = split(/\n/, $menuFileContent);
