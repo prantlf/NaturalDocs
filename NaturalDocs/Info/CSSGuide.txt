@@ -69,7 +69,7 @@ Topic: Page Structure
     >   </body FramedContentPage/FramedIndexPage>
 
 
-List: Page Styles
+Styles: Page Styles
 
     UnframedPage - An unframed page.  Will be applied to a body tag.
 
@@ -84,7 +84,7 @@ List: Page Styles
     Footer - The page footer.  Will be in a framed menu page or on its own in a non-framed page.
 
 
-List: Browser Styles
+Styles: Browser Styles
 
     Natural Docs pages include JavaScript to detect which browser the user is running and apply styles so that you can work
     around browser quirks right in the CSS file.
@@ -149,7 +149,7 @@ Topic: Content Structure
     <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so that you only style explicit <NDMarkup> paragraphs,
     not any p that appears.
 
-    In addition to the top-level <NDMarkup> tags, you also have <CPrototype>, <CTitle>, and <Summaries>.  <Summaries> are
+    In addition to the top-level <NDMarkup> tags, you also have <Prototype>, <CTitle>, and <Summaries>.  <Summaries> are
     described in their own section.
 
     (start diagram)
@@ -167,9 +167,7 @@ Topic: Content Structure
 
                     <ClassHierarchy> (See it's section)
 
-                    <CPrototype>
-                        Prototype
-                    </CPrototype>
+                    <Prototype> (See it's section)
 
                     <p CParagraph>
                          Paragraph
@@ -215,13 +213,12 @@ Topic: Content Structure
     specific titles with .CType .CTitle.
 
 
-List: Content Styles
+Styles: Content Styles
 
     CTopic - An individual topic.
 
     CTitle - The title of a topic.
     CBody - The body of a topic.  May not exist.
-    CPrototype - A prototype.
     CParagraph - A paragraph.  Is implemented with a p.
     CHeading - A heading.
     CBulletList - A bullet list.  Is implemented with a ul.
@@ -293,7 +290,7 @@ Topic: Menu Structure
     .MFile#MSelected.
 
 
-List: Menu Styles
+Styles: Menu Styles
 
     MTitle - The title of the menu.
     MSubTitle - The subtitle of the menu.  Will appear within <MTitle>.
@@ -335,7 +332,7 @@ Topic: Class Hierarchy Structure
     (end diagram)
 
 
-List: Class Hierarchy Styles
+Styles: Class Hierarchy Styles
 
     ClassHierarchy - The topmost style containing everything.
 
@@ -414,7 +411,7 @@ Topic: Summary Structure
     style to .SGroup.  Or, you could apply a style to all the entries by applying it to .SEntry.  And so on.
 
 
-List: Summary Styles
+Styles: Summary Styles
 
     Summary - The topmost style containing the entire summary.
 
@@ -438,6 +435,108 @@ List: Summary Styles
                 So the SType of a "PL/SQL Function" topic will actually be SPLSQLFunction.
 
 
+Topic: Prototype Structure
+
+    Everything is enclosed in a <Prototype>.  All other styles are prefixed with a P.
+
+    Type First Style:
+
+        For prototypes such as
+        > void Function (int* a, int b = 0)
+        where the types come first.
+
+        (start diagram)
+
+        <table Prototype>
+
+            <td PBeforeParameters>
+                "void Function ("
+            </td PBeforeParameters>
+
+            <td PLeftType>
+                "int"
+            </td PLeftType>
+
+            <td PTypeSuffix>
+                "*"
+            </td PTypeSuffix>
+
+            <td PRightParameter>
+                "a", "b"
+            </td PRightParameter>
+
+            <td PDefaultValue>
+                "= 0"
+            </td PDefaultValue>
+
+            (repeated as necessary)
+
+            <td PAfterParameters>
+                ")"
+            </td PAfterParameters>
+
+        </table Prototype>
+
+        (end diagram)
+
+
+    Parameter First Style:
+
+        For prototypes such as
+        > function Function (a, b: int; c: int := 0)
+        where the parameters come first.
+
+        (start diagram)
+
+        <table Prototype>
+
+            <td PBeforeParameters>
+                "function Function ("
+            </td PBeforeParameters>
+
+            <td PLeftParameter>
+                "a,", "b:", "c:"
+            </td PLeftParameter>
+
+            <td PRightType>
+                "int"
+            </td PRightType>
+
+            <td PDefaultValue>
+                ":= 0"
+            </td PDefaultValue>
+
+            (repeated as necessary)
+
+            <td PAfterParameters>
+                ")"
+            </td PAfterParameters>
+
+        </table Prototype>
+
+        (end diagram)
+
+        Note that there is no separate <PTypeSuffix>.  It is attached to <PRightType> instead.
+
+
+Styles: Prototype Styles
+
+    Prototype - The style encompassing the entire prototype.
+
+    PBeforeParameters - The part of the prototype that comes before the parameters.
+    PAfterParameters - The part of the prototype that comes after the parameters.
+
+    PLeftType - The type of a parameter when it appears before the name.
+    PRightType - The type of a parameter when it appears after the name.
+
+    PLeftParameter - The parameter name when it appears before the type.
+    PRightParameter - The parameter name when it appears after the type.
+
+    PTypeSuffix - Some suffix symbols split off from <PLeftType> so that they align in their own cell.  Will not be present for
+                        <PRightType>.
+
+    PDefaultValue - The default value expression for a parameter.
+
 
 Topic: Link Structure
 
@@ -452,7 +551,7 @@ Topic: Link Structure
     links to classes bold, except when appearing in summary entries.  You can combine this with other styles to be even more
     specific.  For example, you can apply a style to function links appearing in summary descriptions with .SDescription .LFunction.
 
-List: Link Styles
+Styles: Link Styles
 
     LType - A placeholder for all topic-specific styles.  The actual styles will be L followed by the alphanumeric-only topic type name.
                 So the LType of a "PL/SQL Function" topic will actually be LPLSQLFunction.
@@ -543,7 +642,8 @@ Topic: Index Structure
     It's called <IParent> instead of <IClass> because class entries are <ISymbols>.  <IParents> are only used when the symbol
     has a class.  If the symbol _is_ a class, the symbol is global.
 
-List: Index Styles
+
+Styles: Index Styles
 
     Index - Surrounds the entire index.
 
@@ -589,7 +689,7 @@ Topic: Tool Tip Structure
     >
     >   </CToolTip>
 
-List: Tool Tip Styles
+Styles: Tool Tip Styles
 
     CToolTip - Surrounds the entire tool tip.  This *must* have position: absolute and visibility: hidden for the tool tip mechanism
                     to work.
@@ -597,7 +697,7 @@ List: Tool Tip Styles
     See also <CPrototype>.
 
 
-List: Miscellaneous Styles
+Styles: Miscellaneous Styles
 
     HB   - Hidden Break.  Will surround a single space to try to break a word transparently.  Should be set to as small as possible.
 
@@ -608,6 +708,7 @@ Topic: Revisions
 
     1.3:
 
+        - Removed CPrototype.  See the replacement <Prototype Structure> and <Prototype Styles>.
         - Removed SInGroup, SInClass, and SInSection in favor of more general <SIndent#>.
         - <CTypes>, <STypes>, and <LTypes> are now completely determined by <Topics.txt> configuration files.
         - <CTypes>, <STypes>, and <LTypes> no longer have separate list types.  A CFunctionList is now just a CFunction.
