@@ -47,7 +47,7 @@ use constant LINE_EXTENDER => 6;
 
 
 #############################################################################
-# Group: Functions
+# Group: Creation Functions
 
 #
 #   Function: New
@@ -108,6 +108,11 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
     };
 
 
+
+###############################################################################
+# Group: Information Functions
+
+
 # Function: Name
 # Returns the name of the language.
 sub Name
@@ -150,6 +155,11 @@ sub VariableEnders
 # Returns the symbol used to extend a line of code past a line break, or undef if not applicable.
 sub LineExtender
     {  return $_[0]->[LINE_EXTENDER];  };
+
+
+
+###############################################################################
+# Group: Parsing Functions
 
 
 #
@@ -250,18 +260,20 @@ sub StripClosingCommentSymbol #(lineRef)
 #   Parameters:
 #
 #       stringRef  - A reference to the string.
+#       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
+#                              ignored.  This is for use by derived classes only, so set to undef.
 #
 #   Returns:
 #
 #       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from
 #       <FunctionEnders()>.
 #
-sub EndOfFunction #(stringRef)
+sub EndOfFunction #(stringRef, falsePositives)
     {
-    my ($self, $stringRef) = @_;
+    my ($self, $stringRef, $falsePositives) = @_;
 
     if (defined $self->FunctionEnders())
-        {  return $self->EndOfPrototype($stringRef, $self->FunctionEnders());  }
+        {  return $self->EndOfPrototype($stringRef, $falsePositives, $self->FunctionEnders());  }
     else
         {  return -1;  };
     };
@@ -275,18 +287,20 @@ sub EndOfFunction #(stringRef)
 #   Parameters:
 #
 #       stringRef  - A reference to the string.
+#       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
+#                              ignored.  This is for use by derived classes only, so set to undef.
 #
 #   Returns:
 #
 #       The zero-based offset into the string of the end of the declaration, or -1 if the string doesn't contain a symbol from
 #       <VariableEnders()>.
 #
-sub EndOfVariable #(stringRef)
+sub EndOfVariable #(stringRef, falsePositives)
     {
-    my ($self, $stringRef) = @_;
+    my ($self, $stringRef, $falsePositives) = @_;
 
     if (defined $self->VariableEnders())
-        {  return $self->EndOfPrototype($stringRef, $self->VariableEnders());  }
+        {  return $self->EndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
     else
         {  return -1;  };
     };
@@ -371,6 +385,8 @@ sub StripCommentSymbol #(lineRef, symbols)
 #   Parameters:
 #
 #       stringRef        - A reference to the string.
+#       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
+#                              ignored.  Undef if none.
 #       symbols         - An arrayref of the symbols that can end the prototype.
 #
 #   Returns:
@@ -378,9 +394,12 @@ sub StripCommentSymbol #(lineRef, symbols)
 #       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from the
 #       arrayref.
 #
-sub EndOfPrototype #(stringRef, symbols)
+sub EndOfPrototype #(stringRef, falsePositives, symbols)
     {
-    my ($self, $stringRef, $symbols) = @_;
+    my ($self, $stringRef, $falsePositives, $symbols) = @_;
+
+    if (!defined $falsePositives)
+        {  $falsePositives = { };  };
 
     my $enderIndex = -1;
 
@@ -402,8 +421,9 @@ sub EndOfPrototype #(stringRef, symbols)
                 my $extenderIndex = rindex($$stringRef, $self->LineExtender(), $testIndex);
 
                 if ($extenderIndex == -1 ||
-                    substr( $$stringRef, $extenderIndex + length($self->LineExtender()),
-                               $testIndex - $extenderIndex - length($self->LineExtender()) ) =~ /[^ \t]/)
+                    ( substr( $$stringRef, $extenderIndex + length($self->LineExtender()),
+                                 $testIndex - $extenderIndex - length($self->LineExtender()) ) !~ /^[ \t]*$/ &&
+                      !exists $falsePositives->{$testIndex}) )
                     {
                     last;
                     };
@@ -425,16 +445,10 @@ sub EndOfPrototype #(stringRef, symbols)
 
                 # If the ender is a text keyword, the next and previous character can't be alphanumeric.
                 if ( ($testIndex == 0 || substr($$stringRef, $testIndex - 1, 1) !~ /^[a-z0-9_]$/i) &&
-                     substr($$stringRef, $testIndex + length($ender), 1) !~ /^[a-z0-9_]$/i )
+                     substr($$stringRef, $testIndex + length($ender), 1) !~ /^[a-z0-9_]$/i &&
+                     !exists $falsePositives->{$testIndex} )
                     {
-                    if ($self->Name() eq 'PL/SQL' && (lc($ender) eq 'is' || lc($ender) eq 'as') &&
-                        $testIndex != 0 && substr($$stringRef, $testIndex - 1, 1) eq '@')
-                        {
-                        # An exception for PL/SQL.  Microsoft's syntax specifies parameters as @param, @param so it's valid to have
-                        # parameters named @is or @as.  We don't want to count those as matches.
-                        }
-                    else
-                        {  last;  };
+                    last;
                     };
 
                 $startingIndex = $testIndex + 1;
@@ -443,23 +457,16 @@ sub EndOfPrototype #(stringRef, symbols)
 
         else # ender is a symbol or a line break with no defined line extender.
             {
-            $testIndex = index($$stringRef, $ender);
+            my $startingIndex = 0;
 
-            # An exception for Pascal.  Semicolons are used both to end functions and to separate parameters.  Parenthesis are
-            # required if you want parameters, but parameters are not required themselves.
-            if ($self->Name() eq 'Pascal' && $ender eq ';' && $testIndex != -1)
+            for (;;)
                 {
-                my $openParenIndex = index($$stringRef, '(');
+                $testIndex = index($$stringRef, $ender, $startingIndex);
 
-                if ($openParenIndex != -1 && $openParenIndex < $testIndex)
-                    {
-                    my $closedParenIndex = index($$stringRef, ')', $openParenIndex);
+                if ($testIndex == -1 || !exists $falsePositives->{$testIndex})
+                    {  last;  };
 
-                    if ($closedParenIndex == -1)
-                        {  $testIndex = -1;  }
-                    else
-                        {  $testIndex = index($$stringRef, ';', $closedParenIndex);  };
-                    };
+                $startingIndex = $testIndex + 1;
                 };
             };
 
@@ -469,6 +476,63 @@ sub EndOfPrototype #(stringRef, symbols)
         };
 
     return $enderIndex;
+    };
+
+
+#
+#   Function: FalsePositivesForSemicolonsInParenthesis
+#
+#   Returns an existence hashref of potential false positives for languages that can end a function prototype with a semicolon
+#   but also use them to separate parameters.  For example:
+#
+#   > function MyFunction( param1: type; param2, param3: type; param4: type);
+#
+#   It will create false positives for every semicolon appearing within parenthesis.
+#
+#   Parameters:
+#
+#       stringRef - The potential function prototype.
+#
+#   Returns:
+#
+#       An existence hashref of false positive indexes.  If none, will return an empty hashref.
+#
+sub FalsePositivesForSemicolonsInParenthesis #(stringRef)
+    {
+    my ($self, $stringRef) = @_;
+
+    my $falsePositives = { };
+    my $startingParenIndex = 0;
+
+    for (;;)
+        {
+        my $openingParenIndex = index($$stringRef, '(', $startingParenIndex);
+
+        if ($openingParenIndex == -1)
+            {  last;  };
+
+        my $closingParenIndex = index($$stringRef, ')', $openingParenIndex);
+
+        if ($closingParenIndex == -1)
+            {  last;  };
+
+        my $startingSemicolonIndex = $openingParenIndex;
+
+        for (;;)
+            {
+            my $semicolonIndex = index($$stringRef, ';', $startingSemicolonIndex);
+
+            if ($semicolonIndex == -1 || $semicolonIndex > $closingParenIndex)
+                {  last;  };
+
+            $falsePositives->{$semicolonIndex} = 1;
+            $startingSemicolonIndex = $semicolonIndex + 1;
+            };
+
+        $startingParenIndex = $closingParenIndex + 1;
+        };
+
+    return $falsePositives;
     };
 
 
