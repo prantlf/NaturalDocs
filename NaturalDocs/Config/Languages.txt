@@ -1,0 +1,290 @@
+Format: 1.3
+
+# This is the main Natural Docs languages file.  If you change anything here,
+# it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
+# change something for just one project, edit the Languages.txt in its project
+# directory instead.
+
+# Also, if you add something that you think would be useful to other developers
+# and should be included in Natural Docs by default, please e-mail it to
+# languages [at] naturaldocs [dot] org.
+
+
+###############################################################################
+#
+#   Syntax
+#
+#   Unlike other Natural Docs configuration files, in this file all comments
+#   MUST be alone on a line.  Some languages deal with the # character, so you
+#   cannot put comments on the same line as content.
+#
+###############################################################################
+#
+#   Ignore Extensions: [extension] [extension] ...
+#
+#   Causes the listed file extensions to be ignored, even if they were
+#   previously defined to be part of a language.  The list is
+#   space-separated.  ex. "Ignore Extensions: cvs txt"
+#
+#
+#   Language: [name]
+#
+#   Defines a new language.  Its name can use any characters.
+#
+#   The languages "Text File" and "Shebang Script" have special meanings.
+#   Text files are treated like one big comment and don't have comment symbols.
+#   Shebang scripts have their language determined by the shebang string
+#   instead of the extension and include files with no extension.
+#
+#
+#   Alter Language: [name]
+#
+#   Alters an existing language so you can override its settings.  Note that if
+#   a property has an Add/Replace form and that property has already been
+#   defined, you have to specify whether you're adding to the list or replacing
+#   it.  Otherwise assume you're replacing the value.
+#
+#
+###############################################################################
+#
+#   Language Properties
+#
+###############################################################################
+#
+#   Extensions: [extension] [extension] ...
+#   [Add/Replace] Extensions: [extension] [extension] ...
+#
+#   Defines the file extensions for the language's source files.  The list is
+#   space-separated.  ex. "Extensions: c cpp".  You can use extensions that
+#   were previously used by another language to redefine them.
+#
+#
+#   Shebang Strings: [string] [string] ...
+#   [Add/Replace] Shebang Strings: [string] [string] ...
+#
+#   Defines a list of strings that can appear in the shebang (#!) line to
+#   designate that it's part of the language.  They can appear anywhere in the
+#   line, so "php" will work for "#!/user/bin/php4".  You can use strings
+#   that were previously used by another language to redefine them.
+#
+#
+#   Package Separator: [symbol]
+#
+#   Defines the default package separator symbol, such as . or ::.  This is
+#   for presentation only and will not affect how Natural Docs links are
+#   parsed.  The default is a dot.
+#
+#
+#   Ignore Prefixes in Index: [prefix] [prefix] ...
+#   [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...
+#
+#   Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...
+#   [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...
+#
+#   Specifies prefixes that should be ignored when sorting symbols in an
+#   index.  Can be specified in general or for a specific topic type.  The
+#   prefixes will still appear, the symbols will just be sorted as if they're
+#   not there.  For example, specifying "ADO_" for functions will mean that
+#   "ADO_DoSomething" will appear under D instead of A.
+#
+#
+###############################################################################
+#
+#   Basic Language Support Properties
+#
+#   These properties are only available for languages with basic language
+#   support.
+#
+###############################################################################
+#
+#   Line Comments: [symbol] [symbol] ...
+#
+#   Defines a space-separated list of symbols that are used for line comments,
+#   if any.  ex. "Line Comments: //".
+#
+#
+#   Block Comments: [opening sym] [closing sym] [opening sym] [closing sym] ...
+#
+#   Defines a space-separated list of symbol pairs that are used for block
+#   comments, if any.  ex. "Block Comments: /* */".
+#
+#
+#   [Topic Type] Prototype Enders: [symbol] [symbol] ...
+#
+#   When defined, Natural Docs will attempt to get a prototype from the code
+#   immediately following the specified topic type.  It grabs code until the
+#   first ender symbol or the next Natural Docs comment, and if it contains the
+#   topic name, it serves as its prototype.  Use \n to specify a line break.
+#   ex. "Function Prototype Enders: { ;", "Variable Prototype Enders: = ;".
+#
+#
+#   Line Extender: [symbol]
+#
+#   Defines the symbol that allows a prototype to span multiple lines if
+#   normally a line break would end it.
+#
+#
+#   Perl Package: [perl package]
+#
+#   Specifies the Perl package used to fine-tune the language behavior in ways
+#   too complex to do in this file.
+#
+#
+###############################################################################
+#
+#   Full Language Support Properties:
+#
+#   These properties are only available for languages with full language
+#   support.
+#
+###############################################################################
+#
+#   Full Language Support: [perl package]
+#
+#   Specifies the Perl package that has the parsing routines necessary for full
+#   language support.
+#
+#
+###############################################################################
+
+# The language "Shebang Script" MUST be defined in this file.
+
+
+Language: Text File
+
+   Extension: txt
+
+
+Language: Shebang Script
+
+   Extension: cgi
+
+
+Language: C/C++
+
+   Extensions: c cpp h hpp cxx hxx
+   Line Comment: //
+   Block Comment: /* */
+   Package Separator: ::
+   Function Prototype Enders: ; {
+   Variable Prototype Enders: ; =
+
+
+Language: C#
+
+   Extension: cs
+   Full Language Support: NaturalDocs::Languages::CSharp
+
+
+Language: Java
+
+   Extension: java
+   Line Comment: //
+   Block Comment: /* */
+   Function Prototype Ender: {
+   Variable Prototype Enders: ; =
+
+
+Language: JavaScript
+
+   Extension: js
+   Line Comment: //
+   Block Comment: /* */
+   Function Prototype Ender: {
+   Variable Prototype Enders: ; =
+
+
+Language: Perl
+
+   Extensions: pl pm
+   Shebang String: perl
+   Package Separator: ::
+   Full Language Support: NaturalDocs::Languages::Perl
+
+
+Language: Python
+
+   Extension: py
+   Shebang String: python
+   Line Comment: #
+   Function Prototype Ender: :
+   Variable Prototype Ender: =
+   Line Extender: \
+
+
+Language: PHP
+
+   Extensions: inc php php3 php4 phtml
+   Shebang String: php
+   Line Comments: // #
+   Block Comment: /* */
+   Function Prototype Enders: ; {
+   Variable Prototype Enders: ; =
+
+
+Language: SQL
+
+   Extension: sql
+   Line Comment: --
+   Block Comment: /* */
+   Function Prototype Enders: , ; ) as As AS is Is IS
+   Variable Prototype Enders: , ; ) := default Default DEFAULT
+   Perl Package: NaturalDocs::Languages::PLSQL
+
+
+Language: Visual Basic
+
+   Extensions: vb vbs bas cls frm
+   Line Comment: '
+   Function Prototype Ender: \n
+   Variable Prototype Enders: \n =
+   Line Extender: _
+
+
+Language: Pascal
+
+   Extension: pas
+   Line Comment: //
+   Block Comments: { } (* *)
+   Function Prototype Ender: ;
+   Variable Prototype Enders: ; =
+   Perl Package: NaturalDocs::Languages::Pascal
+
+
+Language: Assembly
+
+   Extension: asm
+   Line Comment: ;
+   Variable Prototype Ender: \n
+   Line Extender: \
+
+
+Language: Ada
+
+   Extensions: ada ads adb
+   Line Comment: --
+   Function Prototype Enders: ; is Is IS
+   Variable Prototype Enders: ; :=
+   Perl Package: NaturalDocs::Languages::Ada
+
+
+Language: Tcl
+
+   Extension: tcl
+   Shebang Strings: tclsh wish
+   Line Comment: #
+   Package Separator: ::
+   Function Prototype Enders: ; {
+   Variable Prototype Enders: ; \n
+   Line Extender: \
+   Perl Package: NaturalDocs::Languages::Tcl
+
+
+Language: Ruby
+
+   Extension: rb
+   Shebang String: ruby
+   Line Comment: #
+   Function Prototype Enders: ; \n
+   Variable Prototype Enders: ; \n =
+   Line Extender: \
