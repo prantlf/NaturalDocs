@@ -121,9 +121,7 @@ sub ParseCommandLineOptions #(options)
 #
 #   Parameters:
 #
-#       file - The source file.  The path is relative to <NaturalDocs::Settings->InputDirectory()>, which is how all functions within
-#               Natural Docs use it.  If you need the full path, join them with <NaturalDocs::File->JoinPath()>.
-#
+#       file - The source file.
 #       parsedFile - The arrayref of <NaturalDocs::Parser::ParsedTopic> objects.  Directly change this arrayref as necessary.
 #
 sub AfterFileParsed #(file, parsedFile)
