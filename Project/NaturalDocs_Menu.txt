@@ -69,9 +69,17 @@ Group: Output Formats  {
    }  # Group: Output Formats
 
 
+Group: Languages  {
+
+   File: Base  (no auto-title, Modules\NaturalDocs\Languages\Language.pm)
+   File: Ada  (Modules\NaturalDocs\Languages\Ada.pm)
+   File: Pascal  (Modules\NaturalDocs\Languages\Pascal.pm)
+   File: PLSQL  (Modules\NaturalDocs\Languages\PLSQL.pm)
+   }  # Group: Languages
+
+
 Group: Objects  {
 
-   File: Languages::Language  (Modules\NaturalDocs\Languages\Language.pm)
    File: Project::File  (Modules\NaturalDocs\Project\File.pm)
    File: Menu::Entry  (Modules\NaturalDocs\Menu\Entry.pm)
    File: Menu::Error  (Modules\NaturalDocs\Menu\Error.pm)
