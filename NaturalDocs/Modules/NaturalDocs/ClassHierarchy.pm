@@ -489,7 +489,7 @@ sub AddClass #(file, class)
     if (!exists $classes{$class})
         {
         $classes{$class} = NaturalDocs::ClassHierarchy::Class->New();
-        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class))
+        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class), $file)
         };
 
     if (defined $file)
@@ -558,7 +558,7 @@ sub AddParentReference #(file, class, symbol, scope, using, resolvingFlags) or (
         }
     else
         {
-        NaturalDocs::SymbolTable->AddReference($parentReference);
+        NaturalDocs::SymbolTable->AddReference($parentReference, $file);
         my $parentTarget = NaturalDocs::SymbolTable->References($parentReference);
 
         if (defined $parentTarget)
@@ -814,7 +814,7 @@ sub ClassReferenceOf #(class)
     {
     my ($self, $class) = @_;
 
-    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class, undef, undef, undef,
+    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class, undef, undef,
                                                                             ::RESOLVE_ABSOLUTE() | ::RESOLVE_NOPLURAL());
     };
 
