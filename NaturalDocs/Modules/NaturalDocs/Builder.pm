@@ -158,7 +158,7 @@ sub Run
     if ($numberToPurge)
         {
         NaturalDocs::StatusMessage->Start('Purging ' . $numberToPurge . ' file' . ($numberToPurge > 1 ? 's' : '') . '...',
-                                                             $numberToPurge);
+                                                             scalar @$buildTargets);
 
         foreach my $buildTarget (@$buildTargets)
             {
@@ -171,7 +171,7 @@ sub Run
         {
         NaturalDocs::StatusMessage->Start('Purging ' . $numberOfIndexesToPurge .
                                                              ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . '...',
-                                                             $numberOfIndexesToPurge);
+                                                             scalar @$buildTargets);
 
         foreach my $buildTarget (@$buildTargets)
             {
@@ -183,7 +183,7 @@ sub Run
     if ($numberToBuild)
         {
         NaturalDocs::StatusMessage->Start('Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') . '...',
-                                                             $numberToBuild);
+                                                             $numberToBuild * scalar @$buildTargets);
 
         foreach my $file (keys %$filesToBuild)
             {
@@ -204,7 +204,8 @@ sub Run
     if ($numberOfIndexesToBuild)
         {
         NaturalDocs::StatusMessage->Start('Building ' . $numberOfIndexesToBuild .
-                                                             ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . '...', $numberOfIndexesToBuild);
+                                                             ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . '...',
+                                                             $numberOfIndexesToBuild * scalar @$buildTargets);
 
         foreach my $index (keys %indexesToBuild)
             {
