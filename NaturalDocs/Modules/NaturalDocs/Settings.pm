@@ -243,10 +243,65 @@ sub GenerateDirectoryNames #(hints)
     {
     my ($self, $hints) = @_;
 
+    # First, we have to convert all non-numeric names to numbers, since they may come from a pre-1.32 menu file.  We do it here
+    # instead of there to keep the naming scheme centralized.
+
+    my @names = values %$hints;
+    my $hasNonNumeric;
+
+    foreach my $name (@names)
+        {
+        if ($name !~ /^[0-9]+$/)
+            {
+            $hasNonNumeric = 1;
+            last;
+            };
+        };
+
+    # If there was non-numeric names, we convert them to numbers.
+
+    if ($hasNonNumeric)
+        {
+        # Hash mapping old names to new names.
+        my %conversion;
+
+        # The sequential number to use.  Starts at two because we want 'default' to be one.
+        my $currentNumber = 2;
+
+        # If there's only one name, we set it to one no matter what it was set to before.
+        if (scalar @names == 1)
+            {  $conversion{$names[0]} = 1;  }
+        else
+            {
+            # We sort the list first because we want the end result to be predictable.  This conversion could be happening on many
+            # machines, and they may not all specify the input directories in the same order.  They need to all come up with the same
+            # result.
+            @names = sort @names;
+
+            foreach my $name (@names)
+                {
+                if ($name eq 'default')
+                    {  $conversion{$name} = 1;  }
+                else
+                    {
+                    $conversion{$name} = $currentNumber;
+                    $currentNumber++;
+                    };
+                };
+            };
+
+        # Convert them to the new names.
+        foreach my $directory (keys %$hints)
+            {
+            $hints->{$directory} = $conversion{ $hints->{$directory} };
+            };
+        };
+
+
+
+    # Now we apply all the names from the hints.
+
     my %usedNames;
-
-
-    # Pass one applies all names from the hints.
 
     if (defined $hints)
         {
@@ -261,7 +316,7 @@ sub GenerateDirectoryNames #(hints)
         };
 
 
-    # Pass two generates names for anything remaining.
+    # Now we generate names for anything remaining.
 
     my $nameCounter = 1;
 
@@ -279,6 +334,7 @@ sub GenerateDirectoryNames #(hints)
             };
         };
     };
+
 
 
 ###############################################################################
