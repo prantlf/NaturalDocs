@@ -15,7 +15,7 @@
 #         the <Modification Functions> like <AddSymbol()> are available, but the symbol table still isn't fully resolved to the
 #         changes in the source tree so the <Information Functions> are still out.
 #
-#       - <NaturalDocs::Parser::ParseForInformation()> must be called on all files that have changed to fully resolve the symbol
+#       - <NaturalDocs::Parser->ParseForInformation()> must be called on all files that have changed to fully resolve the symbol
 #         table.  Afterwards <PurgeResolvingInfo()> can be called and the <Information Functions> are available.
 #
 #       - <Save()> must be called to commit any changes to the symbol table back to disk.
@@ -166,18 +166,20 @@ my %indexChanges;
 #
 sub LoadAndPurge
     {
+    my ($self) = @_;
+
     my $line;
     my $fileIsOkay;
 
-    if (!NaturalDocs::Settings::RebuildData() && open(SYMBOLTABLEFILEHANDLE, '<' . NaturalDocs::Project::SymbolTableFile()))
+    if (!NaturalDocs::Settings->RebuildData() && open(SYMBOLTABLEFILEHANDLE, '<' . NaturalDocs::Project->SymbolTableFile()))
         {
         # Check if the version is okay.
 
-        my $version = NaturalDocs::Version::FromTextFile(\*SYMBOLTABLEFILEHANDLE);
+        my $version = NaturalDocs::Version->FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
         # There were bugs in prototype detection until 1.13.  Need to regenerate the symbol table.
 
-        if ($version >= NaturalDocs::Version::FromString('1.13') && $version <= NaturalDocs::Settings::AppVersion())
+        if ($version >= NaturalDocs::Version->FromString('1.13') && $version <= NaturalDocs::Settings->AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close(SYMBOLTABLEFILEHANDLE);  };
@@ -187,7 +189,7 @@ sub LoadAndPurge
     # If something's wrong with the file, we need to reparse everything.
     if (!$fileIsOkay)
         {
-        NaturalDocs::Project::ReparseEverything();
+        NaturalDocs::Project->ReparseEverything();
         return;
         };
 
@@ -269,16 +271,16 @@ sub LoadAndPurge
 
         # Get the possible interpretations and add them to the tables.
 
-        my ($scope, $reference) = DecodeReferenceString($referenceString);
+        my ($scope, $reference) = $self->DecodeReferenceString($referenceString);
 
-        GenerateInterpretations($scope, $reference);
-        InterpretReference($referenceString);
+        $self->GenerateInterpretations($scope, $reference);
+        $self->InterpretReference($referenceString);
         };
 
 
     close(SYMBOLTABLEFILEHANDLE);
 
-    Purge();
+    $self->Purge();
     };
 
 #
@@ -288,11 +290,13 @@ sub LoadAndPurge
 #
 sub Save
     {
-    open(SYMBOLTABLEFILEHANDLE, '>' . NaturalDocs::Project::SymbolTableFile())
-        or die "Couldn't save project file " . NaturalDocs::Project::SymbolTableFile() . "\n";
+    my ($self) = @_;
+
+    open(SYMBOLTABLEFILEHANDLE, '>' . NaturalDocs::Project->SymbolTableFile())
+        or die "Couldn't save project file " . NaturalDocs::Project->SymbolTableFile() . "\n";
 
 
-    NaturalDocs::Version::ToTextFile(\*SYMBOLTABLEFILEHANDLE, NaturalDocs::Settings::AppVersion());
+    NaturalDocs::Version->ToTextFile(\*SYMBOLTABLEFILEHANDLE, NaturalDocs::Settings->AppVersion());
 
 
     # Symbols
@@ -353,7 +357,7 @@ sub Save
 #   Function: AddSymbol
 #
 #   Adds a symbol definition to the table, if it doesn't already exist.  If the definition changes or otherwise requires the files that
-#   reference it to be updated, the function will call <NaturalDocs::Project::RebuildFile()> to make sure that they are.
+#   reference it to be updated, the function will call <NaturalDocs::Project->RebuildFile()> to make sure that they are.
 #
 #   Parameters:
 #
@@ -366,9 +370,9 @@ sub Save
 #
 sub AddSymbol #(class, symbol, file, type, prototype, summary)
     {
-    my ($class, $symbol, $file, $type, $prototype, $summary) = @_;
+    my ($self, $class, $symbol, $file, $type, $prototype, $summary) = @_;
 
-    my $symbolString = MakeSymbolString($class, $symbol);
+    my $symbolString = $self->MakeSymbolString($class, $symbol);
 
 
     # If the symbol doesn't exist...
@@ -412,7 +416,7 @@ sub AddSymbol #(class, symbol, file, type, prototype, summary)
                     my @referenceDefinitions = $referenceObject->Definitions();
                     foreach my $referenceDefinition (@referenceDefinitions)
                         {
-                        NaturalDocs::Project::RebuildFile($referenceDefinition);
+                        NaturalDocs::Project->RebuildFile($referenceDefinition);
                         };
                     };
                 };
@@ -477,9 +481,9 @@ sub AddSymbol #(class, symbol, file, type, prototype, summary)
 #
 sub AddReference #(scope, reference, file)
     {
-    my ($scope, $reference, $file) = @_;
+    my ($self, $scope, $reference, $file) = @_;
 
-    my $referenceString = MakeReferenceString($scope, $reference);
+    my $referenceString = $self->MakeReferenceString($scope, $reference);
 
 
     # If the reference doesn't exist...
@@ -490,8 +494,8 @@ sub AddReference #(scope, reference, file)
 
         $references{$referenceString} = $referenceObject;
 
-        GenerateInterpretations($scope, $reference);
-        InterpretReference($referenceString);
+        $self->GenerateInterpretations($scope, $reference);
+        $self->InterpretReference($referenceString);
         }
 
     # If the reference exists...
@@ -529,7 +533,7 @@ sub AddReference #(scope, reference, file)
 #
 sub WatchFileForChanges #(file)
     {
-    my $file = shift;
+    my ($self, $file) = @_;
 
     $watchedFile = NaturalDocs::SymbolTable::File->New();
     $watchedFileName = $file;
@@ -544,6 +548,8 @@ sub WatchFileForChanges #(file)
 #
 sub AnalyzeChanges
     {
+    my ($self) = @_;
+
     if (exists $files{$watchedFileName})
         {
 
@@ -554,7 +560,7 @@ sub AnalyzeChanges
         foreach my $reference (@references)
             {
             if (!$watchedFile->DefinesReference($reference))
-                {  DeleteReference($reference, $watchedFileName);  };
+                {  $self->DeleteReference($reference, $watchedFileName);  };
             };
 
 
@@ -567,7 +573,7 @@ sub AnalyzeChanges
 
             if (!$watchedFile->DefinesSymbol($symbol))
                 {
-                DeleteSymbol($symbol, $watchedFileName);
+                $self->DeleteSymbol($symbol, $watchedFileName);
                 }
 
             else
@@ -601,7 +607,7 @@ sub AnalyzeChanges
                                 {
                                 my @definitions = $referenceObject->Definitions();
                                 foreach my $referenceFile (@definitions)
-                                    {  NaturalDocs::Project::RebuildFile($referenceFile);  };
+                                    {  NaturalDocs::Project->RebuildFile($referenceFile);  };
                                 }; # If reference interprets as symbol
                             }; # While references
                         }; # If global definition is watched file
@@ -626,6 +632,8 @@ sub AnalyzeChanges
 #
 sub PurgeResolvingInfo
     {
+    my ($self) = @_;
+
     # Go through the symbols.  We don't need to keep around potential symbols anymore, nor do we need what references can
     # be interpreted as the defined ones.
 
@@ -657,6 +665,7 @@ sub PurgeResolvingInfo
 #
 sub PurgeIndexes
     {
+    my ($self) = @_;
     %indexes = ( );
     };
 
@@ -684,8 +693,8 @@ sub PurgeIndexes
 #   Parameters:
 #
 #       class      - The symbol's class.  Remember that if you got this value direct from <NDMarkup>, you must run it
-#                      through <NaturalDocs::NDMarkup::RestoreAmpChars()> first.  Use undef if the symbol is global.
-#       symbol  - The symbol's name.  You also need to run this through <NaturalDocs::NDMarkup::RestoreAmpChars()> if it was
+#                      through <NaturalDocs::NDMarkup->RestoreAmpChars()> first.  Use undef if the symbol is global.
+#       symbol  - The symbol's name.  You also need to run this through <NaturalDocs::NDMarkup->RestoreAmpChars()> if it was
 #                      gotten from <NDMarkup>.
 #
 #   Returns:
@@ -694,12 +703,12 @@ sub PurgeIndexes
 #
 sub Defines #(class, symbol)
     {
-    my @symbol = @_;
+    my ($self, @symbol) = @_;
 
     if (defined $symbol[0])
-        {  $symbol[0] = PrepareString($symbol[0]);  };
+        {  $symbol[0] = $self->PrepareString($symbol[0]);  };
 
-    $symbol[1] = PrepareString($symbol[1]);
+    $symbol[1] = $self->PrepareString($symbol[1]);
 
     return @symbol;
     };
@@ -714,8 +723,8 @@ sub Defines #(class, symbol)
 #   Parameters:
 #
 #       scope        - The scope the symbol appears in.  Note that if you got this value direct from <NDMarkup>, you must run
-#                          it through <NaturalDocs::NDMarkup::RestoreAmpChars()> first.  Use undef if the reference appears as global.
-#       reference   - The reference text.  You need to run this through <NaturalDocs::NDMarkup::RestoreAmpChars()> too if
+#                          it through <NaturalDocs::NDMarkup->RestoreAmpChars()> first.  Use undef if the reference appears as global.
+#       reference   - The reference text.  You need to run this through <NaturalDocs::NDMarkup->RestoreAmpChars()> too if
 #                          necessary.
 #       file            - The source file the reference appears in.  This is important because if a symbol is defined in multiple places,
 #                          the definition in the same file as the reference gets priority.
@@ -726,16 +735,16 @@ sub Defines #(class, symbol)
 #
 sub References #(scope, reference, file)
     {
-    my ($scope, $reference, $file) = @_;
+    my ($self, $scope, $reference, $file) = @_;
 
-    my $referenceString = MakeReferenceString($scope, $reference);
+    my $referenceString = $self->MakeReferenceString($scope, $reference);
 
     if (exists $references{$referenceString} && $references{$referenceString}->HasCurrentInterpretation())
         {
         my $targetString = $references{$referenceString}->CurrentInterpretation();
         my $targetObject = $symbols{$targetString};
 
-        my ($class, $symbol) = DecodeSymbolString($targetString);
+        my ($class, $symbol) = $self->DecodeSymbolString($targetString);
 
         my $targetFile;
         my $type;
@@ -783,13 +792,13 @@ sub References #(scope, reference, file)
 #
 sub Index #(type)
     {
-    my $type = shift;
+    my ($self, $type) = @_;
 
     my $key = ($type || '*');
 
     if (!exists $indexes{$key})
         {
-        $indexes{$key} = MakeIndex($type);
+        $indexes{$key} = $self->MakeIndex($type);
         };
 
     return $indexes{$key};
@@ -811,7 +820,7 @@ sub Index #(type)
 #
 sub HasIndexes #(types)
     {
-    my $types = shift;
+    my ($self, $types) = @_;
 
     my %eliminationHash = %$types;
 
@@ -847,7 +856,7 @@ sub HasIndexes #(types)
 #
 sub IndexChanged #(type)
     {
-    my $type = shift;
+    my ($self, $type) = @_;
 
     if ($type)
         {  return (exists $indexChanges{$type});  }
@@ -866,7 +875,9 @@ sub IndexChanged #(type)
 #
 sub Purge
     {
-    my $filesToPurge = NaturalDocs::Project::FilesToPurge();
+    my ($self) = @_;
+
+    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
 
     # We do this in two stages.  First we delete all the references, and then we delete all the definitions.  This causes us to go
     # through the list twice, but it makes sure no purged files get added to the build list.  For example, if we deleted all of
@@ -880,7 +891,7 @@ sub Purge
             {
             my @references = $files{$file}->References();
             foreach my $reference (@references)
-                {  DeleteReference($reference, $file);  };
+                {  $self->DeleteReference($reference, $file);  };
             };
         };
 
@@ -890,7 +901,7 @@ sub Purge
             {
             my @symbols = $files{$file}->Symbols();
             foreach my $symbol (@symbols)
-                {  DeleteSymbol($symbol, $file);  };
+                {  $self->DeleteSymbol($symbol, $file);  };
 
             delete $files{$file};
             };
@@ -916,16 +927,15 @@ sub Purge
 #
 sub MakeSymbolString #(class, symbol)
     {
-    my $class = shift;
-    my $symbol = shift;
+    my ($self, $class, $symbol) = @_;
 
     # If there's no class, the encoded symbol is just symbol.  Otherwise it's class-tab-symbol.  Tab was chosen because
     # PrepareString removes them, so there won't be any conflicts.
 
-    $symbol = PrepareString($symbol);
+    $symbol = $self->PrepareString($symbol);
 
     if ($class)
-        {  $symbol = PrepareString($class) . "\t" . $symbol;  };
+        {  $symbol = $self->PrepareString($class) . "\t" . $symbol;  };
 
     return $symbol;
     };
@@ -950,8 +960,10 @@ sub MakeSymbolString #(class, symbol)
 #
 sub MakeReferenceString #(scope, reference)
     {
+    my ($self, @params) = @_;
+
     # Just use the same format as MakeSymbolString().
-    return MakeSymbolString(@_);
+    return $self->MakeSymbolString(@params);
     };
 
 
@@ -970,7 +982,7 @@ sub MakeReferenceString #(scope, reference)
 #
 sub DecodeSymbolString #(symbolString)
     {
-    my $symbolString = shift;
+    my ($self, $symbolString) = @_;
 
     my @array = split(/\t/, $symbolString);
 
@@ -996,7 +1008,7 @@ sub DecodeSymbolString #(symbolString)
 #
 sub DecodeReferenceString #(referenceString)
     {
-    my $referenceString = shift;
+    my ($self, $referenceString) = @_;
 
     my @array = split(/\t/, $referenceString);
 
@@ -1022,7 +1034,7 @@ sub DecodeReferenceString #(referenceString)
 #
 sub PrepareString #(string)
     {
-    my $string = shift;
+    my ($self, $string) = @_;
 
     # Convert tabs to spaces.
     $string =~ s/\t/ /g;
@@ -1043,7 +1055,7 @@ sub PrepareString #(string)
 #
 #   Function: DeleteSymbol
 #
-#   Removes a symbol definition from the table.  If any files reference it, the function will call <NaturalDocs::Project::RebuildFile()>
+#   Removes a symbol definition from the table.  If any files reference it, the function will call <NaturalDocs::Project->RebuildFile()>
 #   for them.
 #
 #   External code should not attempt to delete symbols using this function.  Instead it should call <WatchFileFoChanges()>,
@@ -1056,8 +1068,7 @@ sub PrepareString #(string)
 #
 sub DeleteSymbol #(symbolString, file)
     {
-    my $symbolString = shift;
-    my $file = shift;
+    my ($self, $symbolString, $file) = @_;
 
 
     # If the symbol and definition exist...
@@ -1093,7 +1104,7 @@ sub DeleteSymbol #(symbolString, file)
                             # If the symbol isn't defined in the file that has a reference to it...
                             # In other words, if the file with the reference didn't have its own definition, so it used the global definition...
                             if (!$symbolObject->IsDefinedIn($referenceFile))
-                                {  NaturalDocs::Project::RebuildFile($referenceFile);  };
+                                {  NaturalDocs::Project->RebuildFile($referenceFile);  };
                             };
                         };
                     };
@@ -1124,11 +1135,11 @@ sub DeleteSymbol #(symbolString, file)
                     my $referenceObject = $references{$reference};
                     if ($referenceObject->CurrentInterpretation() eq $symbolString)
                         {
-                        InterpretReference($reference);
+                        $self->InterpretReference($reference);
 
                         my @definitions = $referenceObject->Definitions();
                         foreach my $referenceFile (@definitions)
-                            {  NaturalDocs::Project::RebuildFile($referenceFile);  };
+                            {  NaturalDocs::Project->RebuildFile($referenceFile);  };
                         };
                     };
                 }
@@ -1171,8 +1182,7 @@ sub DeleteSymbol #(symbolString, file)
 #
 sub DeleteReference #(referenceString, file)
     {
-    my $referenceString = shift;
-    my $file = shift;
+    my ($self, $referenceString, $file) = @_;
 
 
     # If the reference exists...
@@ -1219,10 +1229,10 @@ sub DeleteReference #(referenceString, file)
 #
 sub GenerateInterpretations #(scope, reference)
     {
-    my ($scope, $reference) = @_;
-    my $referenceString = MakeReferenceString($scope, $reference);
+    my ($self, $scope, $reference) = @_;
+    my $referenceString = $self->MakeReferenceString($scope, $reference);
 
-    my @splitReference = NaturalDocs::Languages::SeparateMember($reference);
+    my @splitReference = NaturalDocs::Languages->SeparateMember($reference);
 
     # If we found a member separator, it's either that or a global.  We're not supporting members that have their own member
     # separators.
@@ -1231,29 +1241,29 @@ sub GenerateInterpretations #(scope, reference)
         {
         # Lower priority is the symbol interpreted as a global with the separator as part of the name.
 
-        my @singulars = GenerateSingularInterpretations($reference);
+        my @singulars = $self->GenerateSingularInterpretations($reference);
         my $score = 1;
 
         foreach my $singular (@singulars)
             {
-            AddInterpretation($referenceString, undef, $singular, $score);
+            $self->AddInterpretation($referenceString, undef, $singular, $score);
             $score++;
             };
 
-        AddInterpretation($referenceString, undef, $reference, $score);
+        $self->AddInterpretation($referenceString, undef, $reference, $score);
         $score++;
 
         # Higher priority is the symbol interpreted as a class and symbol.
 
-        @singulars = GenerateSingularInterpretations($splitReference[1]);
+        @singulars = $self->GenerateSingularInterpretations($splitReference[1]);
 
         foreach my $singular (@singulars)
             {
-            AddInterpretation($referenceString, $splitReference[0], $singular, $score);
+            $self->AddInterpretation($referenceString, $splitReference[0], $singular, $score);
             $score++;
             };
 
-        AddInterpretation($referenceString, $splitReference[0], $splitReference[1], $score);
+        $self->AddInterpretation($referenceString, $splitReference[0], $splitReference[1], $score);
         }
 
 
@@ -1261,18 +1271,18 @@ sub GenerateInterpretations #(scope, reference)
 
     else
         {
-        my @singulars = GenerateSingularInterpretations($reference);
+        my @singulars = $self->GenerateSingularInterpretations($reference);
         my $score = 1;
 
         # Lower priority is the symbol interpreted as a global.
 
         foreach my $singular (@singulars)
             {
-            AddInterpretation($referenceString, undef, $singular, $score);
+            $self->AddInterpretation($referenceString, undef, $singular, $score);
             $score++;
             };
 
-        AddInterpretation($referenceString, undef, $reference, $score);
+        $self->AddInterpretation($referenceString, undef, $reference, $score);
         $score++;
 
         # Higher priority is the symbol as part of the current scope.
@@ -1281,11 +1291,11 @@ sub GenerateInterpretations #(scope, reference)
             {
             foreach my $singular (@singulars)
                 {
-                AddInterpretation($referenceString, $scope, $singular, $score);
+                $self->AddInterpretation($referenceString, $scope, $singular, $score);
                 $score++;
                 };
 
-            AddInterpretation($referenceString, $scope, $reference, $score);
+            $self->AddInterpretation($referenceString, $scope, $reference, $score);
             };
         };
     };
@@ -1306,7 +1316,7 @@ sub GenerateInterpretations #(scope, reference)
 #
 sub GenerateSingularInterpretations #(symbol)
     {
-    my $symbol = shift;
+    my ($self, $symbol) = @_;
     my @results;
 
     # First cut off any 's or ' at the end, since they can appear after other plural forms.
@@ -1394,9 +1404,9 @@ sub GenerateSingularInterpretations #(symbol)
 #
 sub AddInterpretation #(referenceString, class, symbol, score)
     {
-    my ($referenceString, $class, $symbol, $score) = @_;
+    my ($self, $referenceString, $class, $symbol, $score) = @_;
 
-    my $interpretationString = MakeSymbolString($class, $symbol);
+    my $interpretationString = $self->MakeSymbolString($class, $symbol);
     $references{$referenceString}->AddInterpretation($interpretationString, $score);
 
     # Create a potential symbol if it doesn't exist.
@@ -1421,7 +1431,7 @@ sub AddInterpretation #(referenceString, class, symbol, score)
 #
 sub InterpretReference #(referenceString)
     {
-    my $referenceString = shift;
+    my ($self, $referenceString) = @_;
 
     my $interpretation;
     my $currentInterpretation;
@@ -1462,13 +1472,13 @@ sub InterpretReference #(referenceString)
 #
 sub MakeIndex #(type)
     {
-    my $type = shift;
+    my ($self, $type) = @_;
 
     my %indexHash;
 
     while (my ($symbolString, $object) = each %symbols)
         {
-        my ($class, $symbol) = DecodeSymbolString($symbolString);
+        my ($class, $symbol) = $self->DecodeSymbolString($symbolString);
         my @definitions = $object->Definitions();
 
         foreach my $definition (@definitions)

@@ -13,7 +13,7 @@
 #         Since this is normally done in their INIT functions, they should be available to all normal functions immediately.
 #
 #       - Prior to calling <Run()>, <NaturalDocs::Settings>, <NaturalDocs::Project>, and <NaturalDocs::Menu> must be initialized.
-#         If files need to be built (i.e. <NaturalDocs::Project::FilesToBuild()> returns something) <NaturalDocs::Parser> must be
+#         If files need to be built (i.e. <NaturalDocs::Project->FilesToBuild()> returns something) <NaturalDocs::Parser> must be
 #         initialized and <NaturalDocs::SymbolTable> must be initialized and fully resolved.
 #
 ###############################################################################
@@ -51,9 +51,7 @@ my @outputPackages;
 #   Add output packages to this list with the <Add()> function.
 #
 sub OutputPackages
-    {
-    return \@outputPackages;
-    };
+    {  return \@outputPackages;  };
 
 
 #
@@ -63,7 +61,8 @@ sub OutputPackages
 #
 sub OutputPackageOf #(commandLineOption)
     {
-    my $commandLineOption = shift;
+    my ($self, $commandLineOption) = @_;
+
     $commandLineOption = lc($commandLineOption);
 
     foreach my $package (@outputPackages)
@@ -88,7 +87,7 @@ sub OutputPackageOf #(commandLineOption)
 #
 sub Add #(package)
     {
-    my $package = shift;
+    my ($self, $package) = @_;
 
     # Output packages shouldn't register themselves more than once, so we don't need to check for it.
     push @outputPackages, $package;
@@ -106,23 +105,26 @@ sub Add #(package)
 #
 sub Run
     {
+    my ($self) = @_;
+
+
     # Determine what we're doing.
 
-    my @outputFormats = keys %{NaturalDocs::Settings::OutputFormats()};
-    my $filesToBuild = NaturalDocs::Project::FilesToBuild();
+    my @outputFormats = keys %{NaturalDocs::Settings->OutputFormats()};
+    my $filesToBuild = NaturalDocs::Project->FilesToBuild();
 
-    my $numberToPurge = scalar keys %{NaturalDocs::Project::FilesToPurge()};
+    my $numberToPurge = scalar keys %{NaturalDocs::Project->FilesToPurge()};
     my $numberToBuild = scalar keys %$filesToBuild;
 
     my %indexesToBuild;
     my %indexesToPurge;
 
-    my $currentIndexes = NaturalDocs::Menu::Indexes();
-    my $previousIndexes = NaturalDocs::Menu::PreviousIndexes();
+    my $currentIndexes = NaturalDocs::Menu->Indexes();
+    my $previousIndexes = NaturalDocs::Menu->PreviousIndexes();
 
     foreach my $index (keys %$currentIndexes)
         {
-        if (NaturalDocs::Settings::RebuildOutput() || NaturalDocs::SymbolTable::IndexChanged($index eq '*' ? undef : $index) ||
+        if (NaturalDocs::Settings->RebuildOutput() || NaturalDocs::SymbolTable->IndexChanged($index eq '*' ? undef : $index) ||
             !exists $previousIndexes->{$index})
             {
             $indexesToBuild{$index} = 1;
@@ -147,12 +149,12 @@ sub Run
     foreach my $format (@outputFormats)
         {
         $format->BeginBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
-                                       NaturalDocs::Menu::HasChanged());
+                                       NaturalDocs::Menu->HasChanged());
         };
 
     if ($numberToPurge)
         {
-        if (!NaturalDocs::Settings::IsQuiet())
+        if (!NaturalDocs::Settings->IsQuiet())
             {  print 'Purging ' . $numberToPurge . ' file' . ($numberToPurge > 1 ? 's' : '') . "...\n";  };
 
         foreach my $format (@outputFormats)
@@ -161,7 +163,7 @@ sub Run
 
     if ($numberOfIndexesToPurge)
         {
-        if (!NaturalDocs::Settings::IsQuiet())
+        if (!NaturalDocs::Settings->IsQuiet())
             {  print 'Purging ' . $numberOfIndexesToPurge . ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . "...\n";  };
 
         foreach my $format (@outputFormats)
@@ -170,12 +172,12 @@ sub Run
 
     if ($numberToBuild)
         {
-        if (!NaturalDocs::Settings::IsQuiet())
+        if (!NaturalDocs::Settings->IsQuiet())
             {  print 'Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') . "...\n";  };
 
         foreach my $file (keys %$filesToBuild)
             {
-            my $parsedFile = NaturalDocs::Parser::ParseForBuild($file);
+            my $parsedFile = NaturalDocs::Parser->ParseForBuild($file);
 
             foreach my $format (@outputFormats)
                 {  $format->BuildFile($file, $parsedFile);  };
@@ -184,7 +186,7 @@ sub Run
 
     if ($numberOfIndexesToBuild)
         {
-        if (!NaturalDocs::Settings::IsQuiet())
+        if (!NaturalDocs::Settings->IsQuiet())
             {  print 'Building ' . $numberOfIndexesToBuild . ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . "...\n";  };
 
         foreach my $index (keys %indexesToBuild)
@@ -194,9 +196,9 @@ sub Run
             };
         };
 
-    if (NaturalDocs::Menu::HasChanged())
+    if (NaturalDocs::Menu->HasChanged())
         {
-        if (!NaturalDocs::Settings::IsQuiet())
+        if (!NaturalDocs::Settings->IsQuiet())
             {  print "Updating menu...\n";  };
 
         foreach my $format (@outputFormats)
@@ -206,7 +208,7 @@ sub Run
     foreach my $format (@outputFormats)
         {
         $format->EndBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
-                                       NaturalDocs::Menu::HasChanged());
+                                       NaturalDocs::Menu->HasChanged());
         };
     };
 

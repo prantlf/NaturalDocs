@@ -250,18 +250,18 @@ my @parsedFile;
 #
 sub ParseForInformation #(file)
     {
-    my $file = shift;
+    my ($self, $file) = @_;
 
     # Have the symbol table watch this parse so we detect any changes.
-    NaturalDocs::SymbolTable::WatchFileForChanges($file);
+    NaturalDocs::SymbolTable->WatchFileForChanges($file);
 
-    Parse($file);
+    $self->Parse($file);
 
     foreach my $topic (@parsedFile)
         {
         # Add a symbol for the topic.
 
-        NaturalDocs::SymbolTable::AddSymbol($topic->Class(), $topic->Name(), $file, $topic->Type(),
+        NaturalDocs::SymbolTable->AddSymbol($topic->Class(), $topic->Name(), $file, $topic->Type(),
                                                                   $topic->Prototype(), $topic->Summary());
 
 
@@ -282,7 +282,7 @@ sub ParseForInformation #(file)
                 $listSummary =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
                 $listSummary = $1 . $2;
 
-                NaturalDocs::SymbolTable::AddSymbol($topic->Scope(), NaturalDocs::NDMarkup::RestoreAmpChars($listSymbol),
+                NaturalDocs::SymbolTable->AddSymbol($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($listSymbol),
                                                                           $file, $listType, undef, $listSummary);
                 };
             };
@@ -291,18 +291,18 @@ sub ParseForInformation #(file)
         # Add references in the topic.
 
         while ($body =~ /<link>([^<]+)<\/link>/g)
-            {  NaturalDocs::SymbolTable::AddReference($topic->Scope(), NaturalDocs::NDMarkup::RestoreAmpChars($1), $file);  };
+            {  NaturalDocs::SymbolTable->AddReference($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($1), $file);  };
         };
 
     # Handle any changes to the file.
-    NaturalDocs::SymbolTable::AnalyzeChanges();
+    NaturalDocs::SymbolTable->AnalyzeChanges();
 
     # Update project on the file's characteristics.
     my $hasContent = (scalar @parsedFile > 0);
 
-    NaturalDocs::Project::SetHasContent($file, $hasContent);
+    NaturalDocs::Project->SetHasContent($file, $hasContent);
     if ($hasContent)
-        {  NaturalDocs::Project::SetDefaultMenuTitle($file, $defaultMenuTitle);  };
+        {  NaturalDocs::Project->SetDefaultMenuTitle($file, $defaultMenuTitle);  };
 
     # We don't need to keep this around.
     @parsedFile = ( );
@@ -328,9 +328,9 @@ sub ParseForInformation #(file)
 #
 sub ParseForBuild #(file)
     {
-    my $file = shift;
+    my ($self, $file) = @_;
 
-    Parse($file);
+    $self->Parse($file);
 
     # If the title ended up being the file name, add a leading section for it.
     if ($defaultMenuTitle eq $file && $parsedFile[0]->Name() ne $file)
@@ -361,19 +361,19 @@ sub ParseForBuild #(file)
 #
 sub Parse #(file)
     {
-    my $file = shift;
+    my ($self, $file) = @_;
 
-    $language = NaturalDocs::Languages::LanguageOf($file);
+    $language = NaturalDocs::Languages->LanguageOf($file);
     $scope = undef;
     @parsedFile = ( );
 
-    my $fileName = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $file );
+    my $fileName = NaturalDocs::File->JoinPath( NaturalDocs::Settings->InputDirectory(), $file );
 
     open(SOURCEFILEHANDLE, '<' . $fileName)
         or die "Couldn't open input file " . $fileName . "\n";
 
     # Parse the content for comments.
-    ExtractComments();
+    $self->ExtractComments();
 
     close(SOURCEFILEHANDLE);
 
@@ -405,6 +405,8 @@ sub Parse #(file)
 #
 sub ExtractComments
     {
+    my ($self) = @_;
+
     my @commentLines;
 
     if ($language->FileIsComment())
@@ -414,7 +416,7 @@ sub ExtractComments
         foreach my $commentLine (@commentLines)
             {  chomp($commentLine);  };
 
-        CleanComment(\@commentLines);
+        $self->CleanComment(\@commentLines);
         }
 
     else
@@ -526,7 +528,7 @@ sub ExtractComments
                 {
                 my $previousTopics = scalar @parsedFile;
 
-                CleanComment(\@commentLines);
+                $self->CleanComment(\@commentLines);
                 @commentLines = ( );
 
                 # If there were topics created from the last comments...
@@ -568,7 +570,7 @@ sub ExtractComments
 #
 sub CleanComment #(commentLines)
     {
-    my $commentLines = shift;
+    my ($self, $commentLines) = @_;
 
     use constant DONT_KNOW => 0;
     use constant IS_UNIFORM => 1;
@@ -581,7 +583,7 @@ sub CleanComment #(commentLines)
     my $rightSideChar;
 
     my $index = 0;
-    my $tabLength = NaturalDocs::Settings::TabLength();
+    my $tabLength = NaturalDocs::Settings->TabLength();
 
     while ($index < scalar @$commentLines)
         {
@@ -754,7 +756,7 @@ sub CleanComment #(commentLines)
     splice(@$commentLines, $index);
 
 
-    ExtractTopics($commentLines);
+    $self->ExtractTopics($commentLines);
     };
 
 
@@ -769,7 +771,7 @@ sub CleanComment #(commentLines)
 #
 sub ExtractTopics #(commentLines)
     {
-    my $commentLines = shift;
+    my ($self, $commentLines) = @_;
 
     my $prevLineBlank = 1;
 
@@ -818,8 +820,8 @@ sub ExtractTopics #(commentLines)
 
             if (defined $type)
                 {
-                my $body = FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-                AddToParsedFile($name, $class, $type, $body);
+                my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
+                $self->AddToParsedFile($name, $class, $type, $body);
                 };
 
             $type = $newType;
@@ -874,8 +876,8 @@ sub ExtractTopics #(commentLines)
     # Last one, if any.  This is the only one that gets the prototypes.
     if (defined $type)
         {
-        my $body = FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-        AddToParsedFile($name, $class, $type, $body);
+        my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
+        $self->AddToParsedFile($name, $class, $type, $body);
         };
     };
 
@@ -895,7 +897,7 @@ sub ExtractTopics #(commentLines)
 #
 sub AddToParsedFile #(name, class, type, body)
     {
-    my ($name, $class, $type, $body) = @_;
+    my ($self, $name, $class, $type, $body) = @_;
     # $scope is a package variable.
 
     my $summary;
@@ -939,7 +941,7 @@ sub AddToParsedFile #(name, class, type, body)
 #
 sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     {
-    my ($commentLines, $startingIndex, $endingIndex, $type) = @_;
+    my ($self, $commentLines, $startingIndex, $endingIndex, $type) = @_;
 
     use constant TAG_NONE => 1;
     use constant TAG_PARAGRAPH => 2;
@@ -1014,7 +1016,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 {
                 if (defined $textBlock)
                     {
-                    $output .= RichFormatTextBlock($textBlock) . $tagEnders{$topLevelTag};
+                    $output .= $self->RichFormatTextBlock($textBlock) . $tagEnders{$topLevelTag};
                     $textBlock = undef;
                     };
 
@@ -1043,7 +1045,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
             if ($topLevelTag == TAG_CODE)
                 {
                 $codeBlock =~ s/\n+$//;
-                $output .= NaturalDocs::NDMarkup::ConvertAmpChars($codeBlock) . '</code>';
+                $output .= NaturalDocs::NDMarkup->ConvertAmpChars($codeBlock) . '</code>';
                 $codeBlock = undef;
                 $topLevelTag = TAG_NONE;
                 };
@@ -1055,7 +1057,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 # End a paragraph.  Everything else ignores it for now.
                 if ($topLevelTag == TAG_PARAGRAPH)
                     {
-                    $output .= RichFormatTextBlock($textBlock) . '</p>';
+                    $output .= $self->RichFormatTextBlock($textBlock) . '</p>';
                     $textBlock = undef;
                     $topLevelTag = TAG_NONE;
                     };
@@ -1069,7 +1071,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 my $bulletedText = $1;
 
                 if (defined $textBlock)
-                    {  $output .= RichFormatTextBlock($textBlock);  };
+                    {  $output .= $self->RichFormatTextBlock($textBlock);  };
 
                 if ($topLevelTag == TAG_BULLETLIST)
                     {
@@ -1093,7 +1095,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 my $description = $2;
 
                 if (defined $textBlock)
-                    {  $output .= RichFormatTextBlock($textBlock);  };
+                    {  $output .= $self->RichFormatTextBlock($textBlock);  };
 
                 if ($topLevelTag == TAG_DESCRIPTIONLIST)
                     {
@@ -1107,11 +1109,11 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
 
                 if (::TopicIsList($type))
                     {
-                    $output .= '<ds>' . NaturalDocs::NDMarkup::ConvertAmpChars($entry) . '</ds><dd>';
+                    $output .= '<ds>' . NaturalDocs::NDMarkup->ConvertAmpChars($entry) . '</ds><dd>';
                     }
                 else
                     {
-                    $output .= '<de>' . NaturalDocs::NDMarkup::ConvertAmpChars($entry) . '</de><dd>';
+                    $output .= '<de>' . NaturalDocs::NDMarkup->ConvertAmpChars($entry) . '</de><dd>';
                     };
 
                 $textBlock = $description;
@@ -1126,14 +1128,14 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
 
                 if (defined $textBlock)
                     {
-                    $output .= RichFormatTextBlock($textBlock);
+                    $output .= $self->RichFormatTextBlock($textBlock);
                     $textBlock = undef;
                     }
 
                 $output .= $tagEnders{$topLevelTag};
                 $topLevelTag = TAG_NONE;
 
-                $output .= '<h>' . RichFormatTextBlock($headerText) . '</h>';
+                $output .= '<h>' . $self->RichFormatTextBlock($headerText) . '</h>';
 
                 $prevLineBlank = undef;
                 }
@@ -1145,7 +1147,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 # we don't want blank lines between list items to break the list.
                 if ($prevLineBlank && ($topLevelTag == TAG_BULLETLIST || $topLevelTag == TAG_DESCRIPTIONLIST))
                     {
-                    $output .= RichFormatTextBlock($textBlock) . $tagEnders{$topLevelTag} . '<p>';
+                    $output .= $self->RichFormatTextBlock($textBlock) . $tagEnders{$topLevelTag} . '<p>';
 
                     $topLevelTag = TAG_PARAGRAPH;
                     $textBlock = undef;
@@ -1173,12 +1175,12 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     # Clean up anything left dangling.
     if (defined $textBlock)
         {
-        $output .= RichFormatTextBlock($textBlock) . $tagEnders{$topLevelTag};
+        $output .= $self->RichFormatTextBlock($textBlock) . $tagEnders{$topLevelTag};
         }
     elsif (defined $codeBlock)
         {
         $codeBlock =~ s/\n+$//;
-        $output .= NaturalDocs::NDMarkup::ConvertAmpChars($codeBlock) . '</code>';
+        $output .= NaturalDocs::NDMarkup->ConvertAmpChars($codeBlock) . '</code>';
         };
 
     return $output;
@@ -1200,7 +1202,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
 #
 sub RichFormatTextBlock #(text)
     {
-    my $text = shift;
+    my ($self, $text) = @_;
     my $output;
 
 
@@ -1229,9 +1231,9 @@ sub RichFormatTextBlock #(text)
 
     while ($index < scalar @textBlocks)
         {
-        if ($textBlocks[$index] eq '<' && TagType(\@textBlocks, $index) == POSSIBLE_OPENING_TAG)
+        if ($textBlocks[$index] eq '<' && $self->TagType(\@textBlocks, $index) == POSSIBLE_OPENING_TAG)
             {
-            my $endingIndex = ClosingTag(\@textBlocks, $index, undef);
+            my $endingIndex = $self->ClosingTag(\@textBlocks, $index, undef);
 
             if ($endingIndex != -1)
                 {
@@ -1246,11 +1248,11 @@ sub RichFormatTextBlock #(text)
                 # Index will be incremented again at the end of the loop.
 
                 if ($linkText =~ /^(?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
-                    {  $output .= '<email>' . NaturalDocs::NDMarkup::ConvertAmpChars($1) . '</email>';  }
+                    {  $output .= '<email>' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '</email>';  }
                 elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:[a-z0-9\-\=\~\@\#\%\&\_\+\/\?\.\,]+$/i)
-                    {  $output .= '<url>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText ). '</url>';  }
+                    {  $output .= '<url>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText ). '</url>';  }
                 else
-                    {  $output .= '<link>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText) . '</link>';  };
+                    {  $output .= '<link>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText) . '</link>';  };
                 }
 
             else # it's not a link.
@@ -1261,9 +1263,9 @@ sub RichFormatTextBlock #(text)
 
         elsif ($textBlocks[$index] eq '*')
             {
-            my $tagType = TagType(\@textBlocks, $index);
+            my $tagType = $self->TagType(\@textBlocks, $index);
 
-            if ($tagType == POSSIBLE_OPENING_TAG && ClosingTag(\@textBlocks, $index, undef) != -1)
+            if ($tagType == POSSIBLE_OPENING_TAG && $self->ClosingTag(\@textBlocks, $index, undef) != -1)
                 {
                 # ClosingTag() makes sure tags aren't opened multiple times in a row.
                 $bold = 1;
@@ -1282,9 +1284,9 @@ sub RichFormatTextBlock #(text)
 
         elsif ($textBlocks[$index] eq '_')
             {
-            my $tagType = TagType(\@textBlocks, $index);
+            my $tagType = $self->TagType(\@textBlocks, $index);
 
-             if ($tagType == POSSIBLE_OPENING_TAG && ClosingTag(\@textBlocks, $index, \$underlineHasWhitespace) != -1)
+             if ($tagType == POSSIBLE_OPENING_TAG && $self->ClosingTag(\@textBlocks, $index, \$underlineHasWhitespace) != -1)
                 {
                 # ClosingTag() makes sure tags aren't opened multiple times in a row.
                 $underline = 1;
@@ -1312,7 +1314,7 @@ sub RichFormatTextBlock #(text)
 
         else # plain text or a > that isn't part of a link
             {
-            my $text = NaturalDocs::NDMarkup::ConvertAmpChars($textBlocks[$index]);
+            my $text = NaturalDocs::NDMarkup->ConvertAmpChars($textBlocks[$index]);
 
             $text =~ s{
                                 # The previous character can't be an alphanumeric.
@@ -1400,7 +1402,7 @@ sub RichFormatTextBlock #(text)
 #
 sub TagType #(textBlocks, index)
     {
-    my ($textBlocks, $index) = @_;
+    my ($self, $textBlocks, $index) = @_;
 
 
     # Possible opening tags
@@ -1471,7 +1473,7 @@ sub TagType #(textBlocks, index)
 #
 sub ClosingTag #(textBlocks, index, hasWhitespace)
     {
-    my ($textBlocks, $index, $hasWhitespaceRef) = @_;
+    my ($self, $textBlocks, $index, $hasWhitespaceRef) = @_;
 
     my $hasWhitespace;
     my $closingTag;
@@ -1488,7 +1490,7 @@ sub ClosingTag #(textBlocks, index, hasWhitespace)
 
     while ($index < scalar @$textBlocks)
         {
-        if ($textBlocks->[$index] eq '<' && TagType($textBlocks, $index) == POSSIBLE_OPENING_TAG)
+        if ($textBlocks->[$index] eq '<' && $self->TagType($textBlocks, $index) == POSSIBLE_OPENING_TAG)
             {
             # If we hit a < and we're checking whether a link is closed, it's not.  The first < becomes literal and the second one
             # becomes the new link opening.
@@ -1503,8 +1505,8 @@ sub ClosingTag #(textBlocks, index, hasWhitespace)
                 {
                 my $linkHasWhitespace;
 
-                my $endIndex = ClosingTag($textBlocks, $index,
-                                                          ($hasWhitespaceRef && !$hasWhitespace ? \$linkHasWhitespace : undef) );
+                my $endIndex = $self->ClosingTag($textBlocks, $index,
+                                                                    ($hasWhitespaceRef && !$hasWhitespace ? \$linkHasWhitespace : undef) );
 
                 if ($endIndex != -1)
                     {
@@ -1519,7 +1521,7 @@ sub ClosingTag #(textBlocks, index, hasWhitespace)
 
         elsif ($textBlocks->[$index] eq $closingTag)
             {
-            my $tagType = TagType($textBlocks, $index);
+            my $tagType = $self->TagType($textBlocks, $index);
 
             if ($tagType == POSSIBLE_CLOSING_TAG)
                 {

@@ -81,6 +81,8 @@ my %outputStyles;
 #
 sub ParseCommandLine
     {
+    my ($self) = @_;
+
     my %synonyms = ( '--input'    => '-i',
                                   '--source' => '-i',
                                   '--output'  => '-o',
@@ -176,7 +178,7 @@ sub ParseCommandLine
                     {  $headersOnly = 1;  }
                 elsif ($option eq '-h')
                     {
-                    PrintSyntax();
+                    $self->PrintSyntax();
                     exit;
                     }
                 elsif ($option ne '-o')
@@ -201,7 +203,7 @@ sub ParseCommandLine
 
             elsif ($option eq '-o')
                 {
-                my $format = NaturalDocs::Builder::OutputPackageOf($arg);
+                my $format = NaturalDocs::Builder->OutputPackageOf($arg);
 
                 if (!defined $format)
                     {
@@ -234,7 +236,7 @@ sub ParseCommandLine
 
     if (defined $inputDirectory)
         {
-        $inputDirectory = NaturalDocs::File::CanonizePath($inputDirectory);
+        $inputDirectory = NaturalDocs::File->CanonizePath($inputDirectory);
 
         if (! -e $inputDirectory || ! -d $inputDirectory)
             {  push @errorMessages, 'The input directory ' . $inputDirectory . ' does not exist.';  };
@@ -244,7 +246,7 @@ sub ParseCommandLine
 
     if (defined $projectDirectory)
         {
-        $projectDirectory = NaturalDocs::File::CanonizePath($projectDirectory);
+        $projectDirectory = NaturalDocs::File->CanonizePath($projectDirectory);
 
         if (! -e $projectDirectory || ! -d $projectDirectory)
             {  push @errorMessages, 'The project directory ' . $projectDirectory . ' does not exist.';  };
@@ -256,7 +258,7 @@ sub ParseCommandLine
         {
         while (my ($format, $dir) = each %outputFormats)
             {
-            $outputFormats{$format} = NaturalDocs::File::CanonizePath($dir);
+            $outputFormats{$format} = NaturalDocs::File->CanonizePath($dir);
 
             if (! -e $dir || ! -d $dir)
                 {  push @errorMessages, 'The output directory ' . $dir . ' does not exist.';  };
@@ -282,7 +284,7 @@ sub ParseCommandLine
             my $outputFormat = shift @styles;
             my $outputStyle = shift @styles;
 
-            my $outputPackage = NaturalDocs::Builder::OutputPackageOf($outputFormat);
+            my $outputPackage = NaturalDocs::Builder->OutputPackageOf($outputFormat);
 
             # We don't care if the output format is actually being used, just that it exists.
             if (defined $outputPackage)
@@ -324,12 +326,15 @@ sub ParseCommandLine
 #
 sub PrintSyntax
     {
+    my ($self) = @_;
+
+
     # Make sure all line lengths are under 80 characters.
 
     my $output =
 
-    "Natural Docs, version " . TextAppVersion() . "\n"
-    . AppURL() . "\n"
+    "Natural Docs, version " . $self->TextAppVersion() . "\n"
+    . $self->AppURL() . "\n"
     . "This program is licensed under the GPL\n"
     . "--------------------------------------\n"
     . "\n"
@@ -358,7 +363,7 @@ sub PrintSyntax
     . "     Can be specified multiple times, but only once per output format.\n"
     . "     Possible output formats:\n";
 
-    my $outputPackages = NaturalDocs::Builder::OutputPackages();
+    my $outputPackages = NaturalDocs::Builder->OutputPackages();
 
     foreach my $outputPackage (@$outputPackages)
         {
@@ -421,7 +426,10 @@ sub InputDirectory
 #       The output format directory, or undef if the format wasn't specified.
 #
 sub OutputDirectory #(package)
-    {  return $outputFormats{$_[0]};  };
+    {
+    my ($self, $package) = @_;
+    return $outputFormats{$package};
+    };
 
 # Function: OutputFormats
 # Returns a hashref of the output formats and their directories.  The keys are the package names, and the values are their
@@ -444,7 +452,7 @@ sub OutputFormats
 #
 sub OutputStyle #(package)
     {
-    my $package = shift;
+    my ($self, $package) = @_;
 
     if (exists $outputStyles{$package})
         {  return $outputStyles{$package};  }
@@ -460,7 +468,7 @@ sub ProjectDirectory
 # Function: StyleDirectory
 # Returns the main style directory.
 sub StyleDirectory
-    {  return NaturalDocs::File::JoinPath($FindBin::Bin, 'Styles', 1);  };
+    {  return NaturalDocs::File->JoinPath($FindBin::Bin, 'Styles', 1);  };
 
 # Function: TabLength
 # Returns the number of spaces tabs should be expanded to.
@@ -497,7 +505,10 @@ sub HeadersOnly
 #   Returns Natural Docs' version number as an integer.  Use <TextAppVersion()> to get a printable version.
 #
 sub AppVersion
-    {  return NaturalDocs::Version::FromString(TextAppVersion());  };
+    {
+    my ($self) = @_;
+    return NaturalDocs::Version->FromString($self->TextAppVersion());
+    };
 
 #
 #   Function: TextAppVersion

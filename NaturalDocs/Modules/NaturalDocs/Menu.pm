@@ -11,7 +11,7 @@
 #       - The <Event Handlers> can be called by <NaturalDocs::Project> immediately.
 #
 #       - Prior to initialization, <NaturalDocs::Project> must be initialized, and all files that have been changed must be run
-#         through <NaturalDocs::Parser::ParseForInformation()>.
+#         through <NaturalDocs::Parser->ParseForInformation()>.
 #
 #       - To initialize, call <LoadAndUpdate()>.  Afterwards, all other functions are available.
 #
@@ -344,18 +344,20 @@ my %bannedIndexes;
 #
 sub LoadAndUpdate
     {
-    my ($errors, $filesInMenu, $oldLockedTitles) = LoadMenuFile();
+    my ($self) = @_;
+
+    my ($errors, $filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
 
     if (defined $errors)
-        {  HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
+        {  $self->HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
 
-    my ($previousMenu, $previousIndexes, $previousFiles) = LoadPreviousMenuStateFile();
+    my ($previousMenu, $previousIndexes, $previousFiles) = $self->LoadPreviousMenuStateFile();
 
     if (defined $previousIndexes)
         {  %previousIndexes = %$previousIndexes;  };
 
     if (defined $previousFiles)
-        {  LockUserTitleChanges($previousFiles);  };
+        {  $self->LockUserTitleChanges($previousFiles);  };
 
     # Don't need these anymore.  We keep this level of detail because it may be used more in the future.
     $previousMenu = undef;
@@ -370,42 +372,42 @@ sub LoadAndUpdate
 
     # If the menu file changed, we can't be sure which groups changed and which didn't without a comparison, which really isn't
     # worth the trouble.  So we regenerate all the titles instead.  Also, since LoadPreviousMenuStateFile() isn't affected by
-    # NaturalDocs::Settings::RebuildData(), we'll pick up some of the slack here.  We'll regenerate all the titles in this case too.
-    if ($fileChanged || NaturalDocs::Settings::RebuildData())
+    # NaturalDocs::Settings->RebuildData(), we'll pick up some of the slack here.  We'll regenerate all the titles in this case too.
+    if ($fileChanged || NaturalDocs::Settings->RebuildData())
         {  $updateAllTitles = 1;  }
     else
-        {  FlagAutoTitleChanges();  };
+        {  $self->FlagAutoTitleChanges();  };
 
     # We add new files before deleting old files so their presence still affects the grouping.  If we deleted old files first, it could
     # throw off where to place the new ones.
 
-    AutoPlaceNewFiles($filesInMenu);
+    $self->AutoPlaceNewFiles($filesInMenu);
 
-    my $numberRemoved = RemoveDeadFiles();
+    my $numberRemoved = $self->RemoveDeadFiles();
 
-    CheckForTrashedMenu(scalar keys %$filesInMenu, $numberRemoved);
+    $self->CheckForTrashedMenu(scalar keys %$filesInMenu, $numberRemoved);
 
-    BanAndUnbanIndexes();
+    $self->BanAndUnbanIndexes();
 
     # Index groups need to be detected before adding new ones.
 
-    DetectIndexGroups();
+    $self->DetectIndexGroups();
 
-    AddAndRemoveIndexes();
+    $self->AddAndRemoveIndexes();
 
    # We wait until after new files are placed to remove dead groups because a new file may save a group.
 
-    RemoveDeadGroups();
+    $self->RemoveDeadGroups();
 
-    CreateDirectorySubGroups();
+    $self->CreateDirectorySubGroups();
 
     # We detect the sort before regenerating the titles so it doesn't get thrown off by changes.  However, we do it after deleting
     # dead entries and moving things into subgroups because their removal may bump it into a stronger sort category (i.e.
     # SORTFILESANDGROUPS instead of just SORTFILES.)  New additions don't factor into the sort.
 
-    DetectOrder($updateAllTitles);
+    $self->DetectOrder($updateAllTitles);
 
-    GenerateAutoFileTitles($updateAllTitles);
+    $self->GenerateAutoFileTitles($updateAllTitles);
 
     # Check if any of the generated titles are different from the old locked titles.  If so, restore the old locked titles and lock the
     # entries.  We do this test because, due to the crappy auto-titling present pre-1.0, users may have edited the titles to do the
@@ -425,7 +427,7 @@ sub LoadAndUpdate
             };
         };
 
-    ResortGroups($updateAllTitles);
+    $self->ResortGroups($updateAllTitles);
 
 
     # Don't need this anymore.
@@ -442,12 +444,14 @@ sub LoadAndUpdate
 #
 sub LoadUnchanged
     {
-    my ($errors, $filesInMenu, $oldLockedTitles) = LoadMenuFile();
+    my ($self) = @_;
+
+    my ($errors, $filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
 
     if (defined $errors)
-        {  HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
+        {  $self->HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
 
-    my ($previousMenu, $previousIndexes, $previousFiles) = LoadPreviousMenuStateFile();
+    my ($previousMenu, $previousIndexes, $previousFiles) = $self->LoadPreviousMenuStateFile();
 
     if (defined $previousIndexes)
         {  %previousIndexes = %$previousIndexes;  };
@@ -461,10 +465,12 @@ sub LoadUnchanged
 #
 sub Save
     {
+    my ($self) = @_;
+
     if ($hasChanged)
         {
-        SaveMenuFile();
-        SavePreviousMenuStateFile();
+        $self->SaveMenuFile();
+        $self->SavePreviousMenuStateFile();
         };
     };
 
@@ -538,7 +544,7 @@ sub PreviousIndexes
 # Group: Event Handlers
 #
 #   These functions are called by <NaturalDocs::Project> only.  You don't need to worry about calling them.  For example, when
-#   changing the default menu title of a file, you only need to call <NaturalDocs::Project::SetDefaultMenuTitle()>.  That function
+#   changing the default menu title of a file, you only need to call <NaturalDocs::Project->SetDefaultMenuTitle()>.  That function
 #   will handle calling <OnDefaultTitleChange()>.
 
 
@@ -549,6 +555,8 @@ sub PreviousIndexes
 #
 sub OnFileChange
     {
+    my ($self) = @_;
+
     $fileChanged = 1;
     $hasChanged = 1;
     };
@@ -565,7 +573,7 @@ sub OnFileChange
 #
 sub OnDefaultTitleChange #(file)
     {
-    my $file = shift;
+    my ($self, $file) = @_;
 
     # Collect them for later.  We'll deal with them in LoadAndUpdate().
 
@@ -597,6 +605,8 @@ sub OnDefaultTitleChange #(file)
 #
 sub LoadMenuFile
     {
+    my ($self) = @_;
+
     my $errors = [ ];
     my $filesInMenu = { };
     my $oldLockedTitles = { };
@@ -615,7 +625,7 @@ sub LoadMenuFile
 
     my $lineNumber = 1;
 
-    if (open(MENUFILEHANDLE, '<' . NaturalDocs::Project::MenuFile()))
+    if (open(MENUFILEHANDLE, '<' . NaturalDocs::Project->MenuFile()))
         {
         my $menuFileContent;
         read(MENUFILEHANDLE, $menuFileContent, -s MENUFILEHANDLE);
@@ -1029,14 +1039,16 @@ sub LoadMenuFile
 #
 sub SaveMenuFile
     {
-    open(MENUFILEHANDLE, '>' . NaturalDocs::Project::MenuFile())
-        or die "Couldn't save menu file " . NaturalDocs::Project::MenuFile() . "\n";
+    my ($self) = @_;
+
+    open(MENUFILEHANDLE, '>' . NaturalDocs::Project->MenuFile())
+        or die "Couldn't save menu file " . NaturalDocs::Project->MenuFile() . "\n";
 
 
     print MENUFILEHANDLE
 
     "# Do not change or remove this line.\n"
-    . "Format: " . NaturalDocs::Settings::TextAppVersion() . "\n\n";
+    . "Format: " . NaturalDocs::Settings->TextAppVersion() . "\n\n";
 
 
     if (defined $title)
@@ -1132,7 +1144,7 @@ sub SaveMenuFile
         print MENUFILEHANDLE "\n\n\n";
         };
 
-    WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef);
+    $self->WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef);
 
     close(MENUFILEHANDLE);
     };
@@ -1152,7 +1164,7 @@ sub SaveMenuFile
 #
 sub WriteMenuEntries #(entries, fileHandle, indentChars)
     {
-    my ($entries, $fileHandle, $indentChars) = @_;
+    my ($self, $entries, $fileHandle, $indentChars) = @_;
 
     foreach my $entry (@$entries)
         {
@@ -1164,7 +1176,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
         elsif ($entry->Type() == ::MENU_GROUP())
             {
             print $fileHandle "\n" . $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
-            WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars);
+            $self->WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars);
             print $fileHandle '   ' . $indentChars . '}  # Group: ' . $entry->Title() . "\n\n";
             }
         elsif ($entry->Type() == ::MENU_TEXT())
@@ -1194,7 +1206,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #
 #   Loads and parses the previous menu state file.
 #
-#   Note that this is not affected by <NaturalDocs::Settings::RebuildData()>.  Since this is used to detect user changes, the
+#   Note that this is not affected by <NaturalDocs::Settings->RebuildData()>.  Since this is used to detect user changes, the
 #   information here can't be ditched on a whim.
 #
 #   Returns:
@@ -1213,15 +1225,17 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #
 sub LoadPreviousMenuStateFile
     {
+    my ($self) = @_;
+
     my $fileIsOkay;
 
     my $menu;
     my $indexes;
     my $files;
 
-    my $previousStateFileName = NaturalDocs::Project::PreviousMenuStateFile();
+    my $previousStateFileName = NaturalDocs::Project->PreviousMenuStateFile();
 
-    # We ignore NaturalDocs::Settings::RebuildData() because otherwise user changes can be lost.
+    # We ignore NaturalDocs::Settings->RebuildData() because otherwise user changes can be lost.
     if (open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName))
         {
         # See if it's binary.
@@ -1232,11 +1246,11 @@ sub LoadPreviousMenuStateFile
 
         if ($firstChar == ::BINARY_FORMAT())
             {
-            my $version = NaturalDocs::Version::FromBinaryFile(\*PREVIOUSSTATEFILEHANDLE);
+            my $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUSSTATEFILEHANDLE);
 
             # The file format has not changed since switching to binary.
 
-            if ($version <= NaturalDocs::Settings::AppVersion())
+            if ($version <= NaturalDocs::Settings->AppVersion())
                 {  $fileIsOkay = 1;  }
             else
                 {  close(PREVIOUSSTATEFILEHANDLE);  };
@@ -1249,10 +1263,10 @@ sub LoadPreviousMenuStateFile
             open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName);
 
             # Check the version.
-            my $version = NaturalDocs::Version::FromTextFile(\*PREVIOUSSTATEFILEHANDLE);
+            my $version = NaturalDocs::Version->FromTextFile(\*PREVIOUSSTATEFILEHANDLE);
 
             # We'll still read the pre-1.0 text file, since it's simple.
-            if ($version <= NaturalDocs::Version::FromString('0.95'))
+            if ($version <= NaturalDocs::Version->FromString('0.95'))
                 {
                 my $indexLine = <PREVIOUSSTATEFILEHANDLE>;
                 chomp($indexLine);
@@ -1393,16 +1407,18 @@ sub LoadPreviousMenuStateFile
 #
 sub SavePreviousMenuStateFile
     {
-    open (PREVIOUSSTATEFILEHANDLE, '>' . NaturalDocs::Project::PreviousMenuStateFile())
-        or die "Couldn't save " . NaturalDocs::Project::PreviousMenuStateFile() . ".\n";
+    my ($self) = @_;
+
+    open (PREVIOUSSTATEFILEHANDLE, '>' . NaturalDocs::Project->PreviousMenuStateFile())
+        or die "Couldn't save " . NaturalDocs::Project->PreviousMenuStateFile() . ".\n";
 
     binmode(PREVIOUSSTATEFILEHANDLE);
 
     print PREVIOUSSTATEFILEHANDLE '' . ::BINARY_FORMAT();
 
-    NaturalDocs::Version::ToBinaryFile(\*PREVIOUSSTATEFILEHANDLE, NaturalDocs::Settings::AppVersion());
+    NaturalDocs::Version->ToBinaryFile(\*PREVIOUSSTATEFILEHANDLE, NaturalDocs::Settings->AppVersion());
 
-    WritePreviousMenuStateEntries($menu->GroupContent(), \*PREVIOUSSTATEFILEHANDLE);
+    $self->WritePreviousMenuStateEntries($menu->GroupContent(), \*PREVIOUSSTATEFILEHANDLE);
 
     close(PREVIOUSSTATEFILEHANDLE);
     };
@@ -1420,7 +1436,7 @@ sub SavePreviousMenuStateFile
 #
 sub WritePreviousMenuStateEntries #(entries, fileHandle)
     {
-    my ($entries, $fileHandle) = @_;
+    my ($self, $entries, $fileHandle) = @_;
 
     foreach my $entry (@$entries)
         {
@@ -1439,7 +1455,7 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
             {
             # [UInt8: MENU_GROUP] [AString16: title]
             print $fileHandle pack('CnA*', ::MENU_GROUP(), length($entry->Title()), $entry->Title());
-            WritePreviousMenuStateEntries($entry->GroupContent(), $fileHandle);
+            $self->WritePreviousMenuStateEntries($entry->GroupContent(), $fileHandle);
             print $fileHandle pack('C', 0);
             }
 
@@ -1477,9 +1493,9 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
 #
 sub HandleErrors #(errors)
     {
-    my $errors = shift;
+    my ($self, $errors) = @_;
 
-    my $menuFile = NaturalDocs::Project::MenuFile();
+    my $menuFile = NaturalDocs::Project->MenuFile();
     my $menuFileContent;
 
     open(MENUFILEHANDLE, '<' . $menuFile);
@@ -1570,7 +1586,7 @@ sub HandleErrors #(errors)
 #
 sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
     {
-    my ($numberOriginallyInMenu, $numberRemoved) = @_;
+    my ($self, $numberOriginallyInMenu, $numberRemoved) = @_;
 
     no integer;
 
@@ -1578,9 +1594,9 @@ sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
          ($numberOriginallyInMenu >= 12 && ($numberRemoved / $numberOriginallyInMenu) >= 0.4) ||
          ($numberRemoved >= 15) )
         {
-        my $backupFile = NaturalDocs::Project::MenuBackupFile();
+        my $backupFile = NaturalDocs::Project->MenuBackupFile();
 
-        NaturalDocs::File::Copy( NaturalDocs::Project::MenuFile(), $backupFile );
+        NaturalDocs::File->Copy( NaturalDocs::Project->MenuFile(), $backupFile );
 
         print STDERR
         "\n"
@@ -1624,7 +1640,7 @@ sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
 #
 sub LockUserTitleChanges #(previousMenuFiles)
     {
-    my $previousMenuFiles = shift;
+    my ($self, $previousMenuFiles) = @_;
 
     my @groupStack = ( $menu );
     my $groupEntry;
@@ -1668,6 +1684,8 @@ sub LockUserTitleChanges #(previousMenuFiles)
 #
 sub FlagAutoTitleChanges
     {
+    my ($self) = @_;
+
     my @groupStack = ( $menu );
     my $groupEntry;
 
@@ -1707,8 +1725,9 @@ sub FlagAutoTitleChanges
 #
 sub AutoPlaceNewFiles #(fileInMenu)
     {
-    my $filesInMenu = shift;
-    my $files = NaturalDocs::Project::FilesWithContent();
+    my ($self, $filesInMenu) = @_;
+
+    my $files = NaturalDocs::Project->FilesWithContent();
 
     my $directories;
 
@@ -1718,10 +1737,10 @@ sub AutoPlaceNewFiles #(fileInMenu)
             {
             # This is done on demand because new files shouldn't be added very often, so this will save time.
             if (!defined $directories)
-                {  $directories = MatchDirectoriesAndGroups();  };
+                {  $directories = $self->MatchDirectoriesAndGroups();  };
 
             my $targetGroup;
-            my $fileDirectoryString = (NaturalDocs::File::SplitPath($file))[1];
+            my $fileDirectoryString = (NaturalDocs::File->SplitPath($file))[1];
 
             $targetGroup = $directories->{$fileDirectoryString};
 
@@ -1729,12 +1748,12 @@ sub AutoPlaceNewFiles #(fileInMenu)
                 {
                 # Okay, if there's no exact match, work our way down.
 
-                my @fileDirectories = NaturalDocs::File::SplitDirectories($fileDirectoryString);
+                my @fileDirectories = NaturalDocs::File->SplitDirectories($fileDirectoryString);
 
                 do
                     {
                     pop @fileDirectories;
-                    $targetGroup = $directories->{ NaturalDocs::File::JoinDirectories(@fileDirectories) };
+                    $targetGroup = $directories->{ NaturalDocs::File->JoinDirectories(@fileDirectories) };
                     }
                 while (!defined $targetGroup && scalar @fileDirectories);
 
@@ -1769,6 +1788,8 @@ sub AutoPlaceNewFiles #(fileInMenu)
 #
 sub MatchDirectoriesAndGroups
     {
+    my ($self) = @_;
+
     # The keys are the directory names, and the values are hashrefs.  For the hashrefs, the keys are the group objects, and the
     # values are the number of files in them from that directory.  In other words,
     # $directories{$directory}->{$groupEntry} = $count;
@@ -1796,7 +1817,7 @@ sub MatchDirectoriesAndGroups
                 }
             elsif ($entry->Type() == ::MENU_FILE())
                 {
-                my $directory = (NaturalDocs::File::SplitPath($entry->Target()))[1];
+                my $directory = (NaturalDocs::File->SplitPath($entry->Target()))[1];
 
                 if (!exists $directories{$directory})
                     {
@@ -1875,10 +1896,12 @@ sub MatchDirectoriesAndGroups
 #
 sub RemoveDeadFiles
     {
+    my ($self) = @_;
+
     my @groupStack = ( $menu );
     my $numberRemoved = 0;
 
-    my $filesWithContent = NaturalDocs::Project::FilesWithContent();
+    my $filesWithContent = NaturalDocs::Project->FilesWithContent();
 
     while (scalar @groupStack)
         {
@@ -1921,6 +1944,8 @@ sub RemoveDeadFiles
 #
 sub BanAndUnbanIndexes
     {
+    my ($self) = @_;
+
     # Unban any indexes that are present, meaning the user added them back manually without deleting the ban.
     foreach my $index (keys %indexes)
         {  delete $bannedIndexes{$index};  };
@@ -1942,6 +1967,8 @@ sub BanAndUnbanIndexes
 #
 sub AddAndRemoveIndexes
     {
+    my ($self) = @_;
+
     # A quick way to get the possible indexes...
     my $validIndexes = { %indexNames, '*' => 1 };
 
@@ -1949,7 +1976,7 @@ sub AddAndRemoveIndexes
     foreach my $index (keys %bannedIndexes)
         {  delete $validIndexes->{$index};  };
 
-    $validIndexes = NaturalDocs::SymbolTable::HasIndexes($validIndexes);
+    $validIndexes = NaturalDocs::SymbolTable->HasIndexes($validIndexes);
 
 
     # Delete dead indexes and find the best index group.
@@ -2069,6 +2096,8 @@ sub AddAndRemoveIndexes
 #
 sub RemoveDeadGroups
     {
+    my ($self) = @_;
+
     my $index = 0;
 
     while ($index < scalar @{$menu->GroupContent()})
@@ -2077,7 +2106,7 @@ sub RemoveDeadGroups
 
         if ($entry->Type() == ::MENU_GROUP())
             {
-            my $removed = RemoveIfDead($entry, $menu, $index);
+            my $removed = $self->RemoveIfDead($entry, $menu, $index);
 
             if (!$removed)
                 {  $index++;  };
@@ -2106,7 +2135,7 @@ sub RemoveDeadGroups
 #
 sub RemoveIfDead #(groupEntry, parentGroupEntry, parentGroupIndex)
     {
-    my ($groupEntry, $parentGroupEntry, $parentGroupIndex) = @_;
+    my ($self, $groupEntry, $parentGroupEntry, $parentGroupIndex) = @_;
 
 
     # Do all sub-groups first, since their deletions will affect our UPDATESTRUCTURE flag and content count.
@@ -2118,7 +2147,7 @@ sub RemoveIfDead #(groupEntry, parentGroupEntry, parentGroupIndex)
 
         if ($entry->Type() == ::MENU_GROUP())
             {
-            my $removed = RemoveIfDead($entry, $groupEntry, $index);
+            my $removed = $self->RemoveIfDead($entry, $groupEntry, $index);
 
             if (!$removed)
                 {  $index++;  };
@@ -2172,6 +2201,8 @@ sub RemoveIfDead #(groupEntry, parentGroupEntry, parentGroupIndex)
 #
 sub DetectIndexGroups
     {
+    my ($self) = @_;
+
     my @groupStack = ( $menu );
 
     while (scalar @groupStack)
@@ -2214,6 +2245,8 @@ sub DetectIndexGroups
 #
 sub CreateDirectorySubGroups
     {
+    my ($self) = @_;
+
     my @groupStack = ( $menu );
 
     foreach my $groupEntry (@groupStack)
@@ -2233,7 +2266,7 @@ sub CreateDirectorySubGroups
 
             if ($fileCount > MAXFILESINGROUP)
                 {
-                my @sharedDirectories = SharedDirectoriesOf($groupEntry);
+                my @sharedDirectories = $self->SharedDirectoriesOf($groupEntry);
                 my $unsharedIndex = scalar @sharedDirectories;
 
                 # The keys are the first directory entries after the shared ones, and the values are the number of files that are in
@@ -2245,7 +2278,7 @@ sub CreateDirectorySubGroups
                     {
                     if ($entry->Type() == ::MENU_FILE())
                         {
-                        my @entryDirectories = NaturalDocs::File::SplitDirectories( (NaturalDocs::File::SplitPath($entry->Target()))[1] );
+                        my @entryDirectories = NaturalDocs::File->SplitDirectories( (NaturalDocs::File->SplitPath($entry->Target()))[1] );
 
                         if (scalar @entryDirectories > $unsharedIndex)
                             {
@@ -2299,7 +2332,7 @@ sub CreateDirectorySubGroups
 
                         if ($entry->Type() == ::MENU_FILE())
                             {
-                            my @entryDirectories = NaturalDocs::File::SplitDirectories( (NaturalDocs::File::SplitPath($entry->Target()))[1] );
+                            my @entryDirectories = NaturalDocs::File->SplitDirectories( (NaturalDocs::File->SplitPath($entry->Target()))[1] );
                             my $unsharedDirectory = $entryDirectories[$unsharedIndex];
 
                             if (exists $directoryGroups{$unsharedDirectory})
@@ -2326,7 +2359,7 @@ sub CreateDirectorySubGroups
                             {
                             # See if we need to relocate this group.
 
-                            my @groupDirectories = SharedDirectoriesOf($entry);
+                            my @groupDirectories = $self->SharedDirectoriesOf($entry);
 
                             # The group's shared directories must be at least two levels deeper than the current.  If the first level deeper
                             # is a new group, move it there because it's a subdirectory of that one.
@@ -2407,6 +2440,8 @@ sub CreateDirectorySubGroups
 #
 sub CreatePrefixSubGroups
     {
+    my ($self) = @_;
+
     # XXX This function hasn't been converted to use PushToGroup(), DeleteFromGroup(), MarkEndOfOriginal() etc. which would
     # improve readability.
     my @groupStack = ( $menu );
@@ -2432,10 +2467,10 @@ sub CreatePrefixSubGroups
                     # We want to ignore titles with spaces in them.  Otherwise we'll group on manual titles starting with "The" or
                     # something.  This is meant for code only.
                     if (!$noGlobalPrefixes &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) !~ / /)
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) !~ / /)
                         {
-                        my @tokens = NaturalDocs::Project::DefaultMenuTitleOf($entry->Target())
+                        my @tokens = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target())
 #                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
                                                                                                             =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
 
@@ -2465,10 +2500,10 @@ sub CreatePrefixSubGroups
                 foreach my $entry (@{$groupEntry->GroupContent()})
                     {
                     if ($entry->Type() == ::MENU_FILE() &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) !~ / /)
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) !~ / /)
                         {
-                        my @tokens = NaturalDocs::Project::DefaultMenuTitleOf($entry->Target())
+                        my @tokens = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target())
 #                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
                                                                                                             =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
 
@@ -2562,10 +2597,10 @@ sub CreatePrefixSubGroups
                     my $entry = $groupEntry->GroupContent()->[$index];
 
                     if ($entry->Type() == ::MENU_FILE() &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) !~ / /)
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) !~ / /)
                         {
-                        my @tokens =  NaturalDocs::Project::DefaultMenuTitleOf($entry->Target())
+                        my @tokens =  NaturalDocs::Project->DefaultMenuTitleOf($entry->Target())
 #                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
                                                                                                             =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
 
@@ -2641,7 +2676,7 @@ sub CreatePrefixSubGroups
 #
 sub DetectOrder #(forceAll)
     {
-    my $forceAll = shift;
+    my ($self, $forceAll) = @_;
     my @groupStack = ( $menu );
 
     while (scalar @groupStack)
@@ -2757,7 +2792,7 @@ sub DetectOrder #(forceAll)
 #
 sub GenerateAutoFileTitles #(forceAll)
     {
-    my $forceAll = shift;
+    my ($self, $forceAll) = @_;
 
     my @groupStack = ( $menu );
 
@@ -2783,8 +2818,8 @@ sub GenerateAutoFileTitles #(forceAll)
 
                     if (!$noSharedDirectories)
                         {
-                        my ($volume, $directoryString, $file) = NaturalDocs::File::SplitPath($entry->Target());
-                        my @entryDirectories = NaturalDocs::File::SplitDirectories($directoryString);
+                        my ($volume, $directoryString, $file) = NaturalDocs::File->SplitPath($entry->Target());
+                        my @entryDirectories = NaturalDocs::File->SplitDirectories($directoryString);
 
                         if (!scalar @entryDirectories)
                             {  $noSharedDirectories = 1;  }
@@ -2811,9 +2846,9 @@ sub GenerateAutoFileTitles #(forceAll)
                     # Find the common prefixes among all file entries that are unlocked and don't use the file name as their default title.
 
                     if (!$noSharedPrefixes && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0 &&
-                        NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()) ne $entry->Target())
+                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target())
                         {
-                        my @entryPrefixes = split(/(\.|::|->)/, NaturalDocs::Project::DefaultMenuTitleOf($entry->Target()));
+                        my @entryPrefixes = split(/(\.|::|->)/, NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()));
 
                         # Remove potential leading undef/empty string.
                         if (!length $entryPrefixes[0])
@@ -2858,12 +2893,12 @@ sub GenerateAutoFileTitles #(forceAll)
                 {
                 if ($entry->Type() == ::MENU_FILE() && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0)
                     {
-                    my $title = NaturalDocs::Project::DefaultMenuTitleOf($entry->Target());
+                    my $title = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target());
 
                     if ($title eq $entry->Target())
                         {
-                        my ($volume, $directoryString, $file) = NaturalDocs::File::SplitPath($title);
-                        my @directories = NaturalDocs::File::SplitDirectories($directoryString);
+                        my ($volume, $directoryString, $file) = NaturalDocs::File->SplitPath($title);
+                        my @directories = NaturalDocs::File->SplitDirectories($directoryString);
 
                         if (!$noSharedDirectories)
                             {  splice(@directories, 0, scalar @sharedDirectories);  };
@@ -2873,8 +2908,8 @@ sub GenerateAutoFileTitles #(forceAll)
                         if (scalar @directories > 2)
                             {  @directories = ( $directories[0], '...', $directories[-1] );  };
 
-                        $directoryString = NaturalDocs::File::JoinDirectories(@directories);
-                        $title = NaturalDocs::File::JoinPath($directoryString, $file);
+                        $directoryString = NaturalDocs::File->JoinDirectories(@directories);
+                        $title = NaturalDocs::File->JoinPath($directoryString, $file);
                         }
                     else
                         {
@@ -2924,7 +2959,7 @@ sub GenerateAutoFileTitles #(forceAll)
 #
 sub ResortGroups #(forceAll)
     {
-    my $forceAll = shift;
+    my ($self, $forceAll) = @_;
     my @groupStack = ( $menu );
 
     while (scalar @groupStack)
@@ -3026,7 +3061,7 @@ sub ResortGroups #(forceAll)
                     my @newEntries =
                         @{$groupEntry->GroupContent()}[$newEntriesIndex..scalar @{$groupEntry->GroupContent()} - 1];
 
-                    @newEntries = sort { CompareEntries($a, $b) } @newEntries;
+                    @newEntries = sort { $self->CompareEntries($a, $b) } @newEntries;
 
                     foreach my $newEntry (@newEntries)
                         {
@@ -3038,7 +3073,7 @@ sub ResortGroups #(forceAll)
 
             elsif ($groupEntry->Flags() & ::MENU_GROUP_EVERYTHINGSORTED())
                 {
-                @{$groupEntry->GroupContent()} = sort { CompareEntries($a, $b) } @{$groupEntry->GroupContent()};
+                @{$groupEntry->GroupContent()} = sort { $self->CompareEntries($a, $b) } @{$groupEntry->GroupContent()};
                 }
 
             elsif ( ($groupEntry->Flags() & ::MENU_GROUP_FILESSORTED()) ||
@@ -3058,7 +3093,7 @@ sub ResortGroups #(forceAll)
 
                 sub IsIncludedInSort #(groupEntry, entry)
                     {
-                    my ($groupEntry, $entry) = @_;
+                    my ($self, $groupEntry, $entry) = @_;
 
                     return ($entry->Type() == ::MENU_FILE() ||
                                 ( $entry->Type() == ::MENU_GROUP() &&
@@ -3067,17 +3102,17 @@ sub ResortGroups #(forceAll)
 
                 sub IsSorted #(groupEntry)
                     {
-                    my $groupEntry = shift;
+                    my ($self, $groupEntry) = @_;
                     my $lastApplicable;
 
                     foreach my $entry (@{$groupEntry->GroupContent()})
                         {
                         # If the entry is applicable to the sort order...
-                        if (IsIncludedInSort($groupEntry, $entry))
+                        if ($self->IsIncludedInSort($groupEntry, $entry))
                             {
                             if (defined $lastApplicable)
                                 {
-                                if (CompareEntries($entry, $lastApplicable) < 0)
+                                if ($self->CompareEntries($entry, $lastApplicable) < 0)
                                     {  return undef;  };
                                 };
 
@@ -3090,7 +3125,7 @@ sub ResortGroups #(forceAll)
 
 
                 # There's a good chance it's still sorted.  They should only become unsorted if an auto-title changes.
-                if (!IsSorted($groupEntry))
+                if (!$self->IsSorted($groupEntry))
                     {
                     # Crap.  Okay, method one is to sort each group of continuous sortable elements.  There's a possibility that doing
                     # this will cause the whole to become sorted again.  We try this first, even though it isn't guaranteed to succeed,
@@ -3105,14 +3140,14 @@ sub ResortGroups #(forceAll)
                     while (1)
                         {
                         # If index is on an unsortable entry or the end of the array...
-                        if ($index == scalar @$groupContent || !IsIncludedInSort($groupEntry, $groupContent->[$index]))
+                        if ($index == scalar @$groupContent || !$self->IsIncludedInSort($groupEntry, $groupContent->[$index]))
                             {
                             # If we have at least two sortable entries...
                             if ($index - $startSortable >= 2)
                                 {
                                 # Sort them.
                                 my @sortableEntries = @{$groupContent}[$startSortable .. $index - 1];
-                                @sortableEntries = sort { CompareEntries($a, $b) } @sortableEntries;
+                                @sortableEntries = sort { $self->CompareEntries($a, $b) } @sortableEntries;
                                 foreach my $sortableEntry (@sortableEntries)
                                     {
                                     $groupContent->[$startSortable] = $sortableEntry;
@@ -3129,7 +3164,7 @@ sub ResortGroups #(forceAll)
                         $index++;
                         };
 
-                    if (!IsSorted($groupEntry))
+                    if (!$self->IsSorted($groupEntry))
                         {
                         # Crap crap.  Okay, now we do a full sort but with potential damage to the original structure.  Each unsortable
                         # element is locked to the next sortable element.  We sort the sortable elements, bringing all the unsortable
@@ -3143,7 +3178,7 @@ sub ResortGroups #(forceAll)
                             push @$currentPiece, $entry;
 
                             # If the entry is sortable...
-                            if (IsIncludedInSort($groupEntry, $entry))
+                            if ($self->IsIncludedInSort($groupEntry, $entry))
                                 {
                                 $currentPiece = [ ];
                                 push @pieces, $currentPiece;
@@ -3162,7 +3197,7 @@ sub ResortGroups #(forceAll)
                             {  $lastUnsortablePiece = pop @pieces;  };
 
                         # Sort the list.
-                        @pieces = sort { CompareEntries( $a->[-1], $b->[-1] ) } @pieces;
+                        @pieces = sort { $self->CompareEntries( $a->[-1], $b->[-1] ) } @pieces;
 
                         # Copy it back to the original.
                         if (defined $lastUnsortablePiece)
@@ -3186,19 +3221,19 @@ sub ResortGroups #(forceAll)
 
                 if (scalar @newEntries)
                     {
-                    @newEntries = sort { CompareEntries($a, $b) } @newEntries;
+                    @newEntries = sort { $self->CompareEntries($a, $b) } @newEntries;
                     my @originalEntries = @$groupContent;
                     @$groupContent = ( );
 
                     while (1)
                         {
-                        while (scalar @originalEntries && !IsIncludedInSort($groupEntry, $originalEntries[0]))
+                        while (scalar @originalEntries && !$self->IsIncludedInSort($groupEntry, $originalEntries[0]))
                             {  push @$groupContent, (shift @originalEntries);  };
 
                         if (!scalar @originalEntries || !scalar @newEntries)
                             {  last;  };
 
-                        while (scalar @newEntries && CompareEntries($newEntries[0], $originalEntries[0]) < 0)
+                        while (scalar @newEntries && $self->CompareEntries($newEntries[0], $originalEntries[0]) < 0)
                             {  push @$groupContent, (shift @newEntries);  };
 
                         push @$groupContent, (shift @originalEntries);
@@ -3246,7 +3281,7 @@ sub ResortGroups #(forceAll)
 #
 sub CompareEntries #(a, b)
     {
-    my ($a, $b) = @_;
+    my ($self, $a, $b) = @_;
 
     my $result = ::StringCompare($a->Title(), $b->Title());
 
@@ -3269,14 +3304,14 @@ sub CompareEntries #(a, b)
 #
 sub SharedDirectoriesOf #(group)
     {
-    my $groupEntry = shift;
+    my ($self, $groupEntry) = @_;
     my @sharedDirectories;
 
     foreach my $entry (@{$groupEntry->GroupContent()})
         {
         if ($entry->Type() == ::MENU_FILE())
             {
-            my @entryDirectories = NaturalDocs::File::SplitDirectories( (NaturalDocs::File::SplitPath($entry->Target()))[1] );
+            my @entryDirectories = NaturalDocs::File->SplitDirectories( (NaturalDocs::File->SplitPath($entry->Target()))[1] );
 
             if (!scalar @sharedDirectories)
                 {  @sharedDirectories = @entryDirectories;  }

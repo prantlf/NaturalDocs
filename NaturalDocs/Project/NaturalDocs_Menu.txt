@@ -1,118 +1,242 @@
 # Do not change or remove this line.
+
 Format: 1.13
 
+
+
 Title: Natural Docs
+
 SubTitle: Version 1.13
+
+
 
 Footer: Copyright (c) 2003 Greg Valure
 
+
+
 # ------------------------------------------------------------------------ #
+
+
 
 # Cut and paste the lines below to change the order in which your files
+
 # appear on the menu.  Don't worry about adding or removing files, Natural
+
 # Docs will take care of that.
+
 # 
+
 # You can further organize the menu by grouping the entries.  Add a
+
 # "Group: [name] {" line to start a group, and add a "}" to end it.  Groups
+
 # can appear within each other.
+
 # 
+
 # You can add text and web links to the menu by adding "Text: [text]" and
+
 # "Link: [name] ([URL])" lines, respectively.
+
 # 
+
 # The formatting and comments are auto-generated, so don't worry about
+
 # neatness when editing the file.  Natural Docs will clean it up the next
+
 # time it is run.  When working with groups, just deal with the braces and
+
 # forget about the indentation and comments.
+
+
 
 # ------------------------------------------------------------------------ #
 
+
+
 # These are indexes you deleted, so Natural Docs will not add them again
+
 # unless you remove them from this line.
+
+
 
 Don't Index: Variable
 
 
+
+
+
 File: Natural Docs  (NaturalDocs)
+
+
 
 Group: Packages  {
 
+
+
    File: Settings  (Modules\NaturalDocs\Settings.pm)
+
    File: Languages  (Modules\NaturalDocs\Languages.pm)
+
    File: Project  (Modules\NaturalDocs\Project.pm)
+
    File: Menu  (Modules\NaturalDocs\Menu.pm)
+
    File: SymbolTable  (Modules\NaturalDocs\SymbolTable.pm)
+
    File: Parser  (Modules\NaturalDocs\Parser.pm)
+
    File: Builder  (Modules\NaturalDocs\Builder.pm)
+
+
 
    Group: Support  {
 
+
+
       File: Constants  (Modules\NaturalDocs\Constants.pm)
+
       File: File  (Modules\NaturalDocs\File.pm)
+
       File: NDMarkup  (Modules\NaturalDocs\NDMarkup.pm)
+
       File: Version  (Modules\NaturalDocs\Version.pm)
+
       }  # Group: Support
+
+
+
+   File: Extensions  (Modules\NaturalDocs\Extensions.pm)
+
+   File: Settings::BuildTarget  (Modules\NaturalDocs\Settings\BuildTarget.pm)
+
+   File: Extensions::Base  (Modules\NaturalDocs\Extensions\Base.pm)
 
    }  # Group: Packages
 
 
+
+
+
 Group: Output Formats  {
+
+
 
    File: Base  (Modules\NaturalDocs\Builder\Base.pm)
 
+
+
    Group: HTML  {
 
+
+
       File: HTML  (Modules\NaturalDocs\Builder\HTML.pm)
+
       File: FramedHTML  (Modules\NaturalDocs\Builder\FramedHTML.pm)
+
       File: HTMLBase  (Modules\NaturalDocs\Builder\HTMLBase.pm)
+
       }  # Group: HTML
+
+
 
    }  # Group: Output Formats
 
 
+
+
+
 Group: Languages  {
 
+
+
    File: Base  (no auto-title, Modules\NaturalDocs\Languages\Language.pm)
+
    File: Ada  (Modules\NaturalDocs\Languages\Ada.pm)
+
    File: Pascal  (Modules\NaturalDocs\Languages\Pascal.pm)
+
    File: PL/SQL  (no auto-title, Modules\NaturalDocs\Languages\PLSQL.pm)
+
    File: Tcl  (Modules\NaturalDocs\Languages\Tcl.pm)
+
    }  # Group: Languages
+
+
+
 
 
 Group: Objects  {
 
+
+
    File: Project::File  (Modules\NaturalDocs\Project\File.pm)
+
    File: Menu::Entry  (Modules\NaturalDocs\Menu\Entry.pm)
+
    File: Menu::Error  (Modules\NaturalDocs\Menu\Error.pm)
+
+
 
    Group: SymbolTable  {
 
+
+
       File: Symbol  (Modules\NaturalDocs\SymbolTable\Symbol.pm)
+
       File: SymbolDefinition  (Modules\NaturalDocs\SymbolTable\SymbolDefinition.pm)
+
       File: Reference  (Modules\NaturalDocs\SymbolTable\Reference.pm)
+
       File: ReferenceTarget  (Modules\NaturalDocs\SymbolTable\ReferenceTarget.pm)
+
       File: File  (Modules\NaturalDocs\SymbolTable\File.pm)
+
       File: IndexElement  (Modules\NaturalDocs\SymbolTable\IndexElement.pm)
+
       }  # Group: SymbolTable
 
+
+
    File: Parser::ParsedTopic  (Modules\NaturalDocs\Parser\ParsedTopic.pm)
+
    }  # Group: Objects
+
+
+
 
 
 Group: Documentation  {
 
+
+
    File: NDMarkup  (NDMarkup.txt)
+
    File: CSS Guide  (CSSGuide.txt)
+
    }  # Group: Documentation
+
+
+
 
 
 Group: Indexes  {
 
+
+
    Index: Everything
+
    Class Index: Packages and Classes
+
    Function Index: Functions
+
    File Index: Files
+
    Constant Index: Constants
+
    }  # Group: Indexes
 
+
+
 Link: Web Site  (http://www.naturaldocs.org/)
+

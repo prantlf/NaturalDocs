@@ -35,7 +35,7 @@ package NaturalDocs::Version;
 #
 sub FromString #(string)
     {
-    my $string = shift;
+    my ($self, $string) = @_;
 
     if ($string eq '1')
         {
@@ -68,7 +68,7 @@ sub FromString #(string)
 #
 sub FromBinaryFile #(fileHandle)
     {
-    my $fileHandle = shift;
+    my ($self, $fileHandle) = @_;
 
     my $version;
     read($fileHandle, $version, 2);
@@ -92,12 +92,12 @@ sub FromBinaryFile #(fileHandle)
 #
 sub FromTextFile #(fileHandle)
     {
-    my $fileHandle = shift;
+    my ($self, $fileHandle) = @_;
 
     my $version = <$fileHandle>;
     chomp $version;
 
-    return FromString($version);
+    return $self->FromString($version);
     };
 
 
@@ -108,7 +108,7 @@ sub FromTextFile #(fileHandle)
 #
 sub ToString #(integer)
     {
-    my $integer = shift;
+    my ($self, $integer) = @_;
 
     my $major = $integer >> 8;
     my $minor = $integer & 0x00FF;
@@ -134,9 +134,9 @@ sub ToString #(integer)
 #
 sub ToTextFile #(fileHandle, version)
     {
-    my ($fileHandle, $version) = @_;
+    my ($self, $fileHandle, $version) = @_;
 
-    print $fileHandle ToString($version) . "\n";
+    print $fileHandle $self->ToString($version) . "\n";
     };
 
 
@@ -152,7 +152,7 @@ sub ToTextFile #(fileHandle, version)
 #
 sub ToBinaryFile #(fileHandle, version)
     {
-    my ($fileHandle, $version) = @_;
+    my ($self, $fileHandle, $version) = @_;
 
     # Big-endian UInt16 as a shortcut to the binary format.
     print $fileHandle pack('n', $version);

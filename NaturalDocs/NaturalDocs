@@ -221,18 +221,12 @@ use integer;
 #
 #   Topic: Code Conventions
 #
-#       - All top-level NaturalDocs:: packages (i.e. <NaturalDocs::Project>, <NaturalDocs::Languages>) have their functions called
-#         in Package::Function() notation.  You call <NaturalDocs::Project::FilesToBuild()>, *not*
-#         <NaturalDocs::Project->FilesToBuild()>.
+#       - All NaturalDocs:: packages have their functions called in Package->Function() notation.  You call
+#         <NaturalDocs::Project->FilesToBuild()>, *not* <NaturalDocs::Project::FilesToBuild()>.  Note that this was not the case
+#         until version 1.2, so any custom modifications done before then probably need to be updated.
 #
-#       - All output format packages (i.e. <NaturalDocs::Builder::HTML>) have their interface functions called in
-#         Package->Function() notation because they need to be affected by inheritance.  Since these functions are only called by
-#         <NaturalDocs::Builder>, you don't need to worry about this unless you're writing one.  How any other functions in these
-#         packages are called depends on the package, since they shouldn't be called externally anyway.
-#
-#       - All other lower-level NaturalDocs:: packages (i.e. <NaturalDocs::Project::File>, <NaturalDocs::Parser::ParsedTopic>)
-#         are object packages.  You call New() as Package->New(), and then everything else is called on the object as
-#         $object->Function().
+#       - If you're wondering about some of the line lengths or the strange indentation, it's because I work on Natural Docs using
+#         8pt Verdana.
 #
 
 
@@ -350,8 +344,8 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 #
 sub UseDirectory #(directory, directory, directory ...)
     {
-    my $extraPath = NaturalDocs::File::JoinDirectories(@_);
-    my $fullPath = NaturalDocs::File::JoinPath($FindBin::Bin, $extraPath, 1);
+    my $extraPath = NaturalDocs::File->JoinDirectories(@_);
+    my $fullPath = NaturalDocs::File->JoinPath($FindBin::Bin, $extraPath, 1);
 
     my @directories = ( $fullPath );
 
@@ -363,17 +357,17 @@ sub UseDirectory #(directory, directory, directory ...)
         my @entries = readdir DIRECTORYHANDLE;
         closedir DIRECTORYHANDLE;
 
-        @entries = NaturalDocs::File::NoUpwards(@entries);
+        @entries = NaturalDocs::File->NoUpwards(@entries);
 
         foreach my $entry (@entries)
             {
-            my $fullEntry = NaturalDocs::File::JoinPath($directory, $entry);
+            my $fullEntry = NaturalDocs::File->JoinPath($directory, $entry);
 
             # If an entry is a directory, recurse.
             if (-d $fullEntry)
                 {
                 # Join again with the noFile flag set in case the platform handles them differently.
-                push @directories, NaturalDocs::File::JoinPath($directory, $entry, 1);
+                push @directories, NaturalDocs::File->JoinPath($directory, $entry, 1);
                 }
 
             # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
@@ -412,19 +406,19 @@ eval {
 
     # Almost everything requires Settings to be initialized.
 
-    NaturalDocs::Settings::ParseCommandLine();
+    NaturalDocs::Settings->ParseCommandLine();
 
 
     # Check that our required packages are okay.
 
-    NaturalDocs::File::CheckCompatibility();
+    NaturalDocs::File->CheckCompatibility();
 
 
     # Add the supported languages.
 
     my $cExtensions = [ 'h', 'hpp' ];
 
-    if (!NaturalDocs::Settings::HeadersOnly())
+    if (!NaturalDocs::Settings->HeadersOnly())
         {  push @$cExtensions, 'c', 'cpp';  };
 
     # Notes for people unfamiliar with Perl:
@@ -452,68 +446,68 @@ eval {
     NaturalDocs::Languages::Language->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
 
 
-    if (!NaturalDocs::Settings::IsQuiet())
+    if (!NaturalDocs::Settings->IsQuiet())
         {  print "Finding files and detecting changes...\n";  };
 
-    if (NaturalDocs::Project::LoadAndDetectChanges())
+    if (NaturalDocs::Project->LoadAndDetectChanges())
         {
         # We only load the symbol table if supported files have changed.
 
-        NaturalDocs::SymbolTable::LoadAndPurge();
+        NaturalDocs::SymbolTable->LoadAndPurge();
 
 
         # Parse any supported files that have changed.
 
-        my $filesToParse = NaturalDocs::Project::FilesToParse();
+        my $filesToParse = NaturalDocs::Project->FilesToParse();
         my $amount = scalar keys %$filesToParse;
 
         if ($amount > 0)
           {
-          if (!NaturalDocs::Settings::IsQuiet())
+          if (!NaturalDocs::Settings->IsQuiet())
               {  print 'Parsing ' . $amount . ' file' . ($amount > 1 ? 's' : '') . "...\n";  };
 
           foreach my $file (keys %$filesToParse)
-              {  NaturalDocs::Parser::ParseForInformation($file);  };
+              {  NaturalDocs::Parser->ParseForInformation($file);  };
           };
 
 
         # The symbol table is now fully resolved, so we can reduce its memory footprint.
 
-        NaturalDocs::SymbolTable::PurgeResolvingInfo();
+        NaturalDocs::SymbolTable->PurgeResolvingInfo();
 
 
         # Load and update the menu file.  We need to do this after parsing so when it is updated, it will detect files where the
         # default menu title has changed and files that have added or deleted Natural Docs content.
 
-        NaturalDocs::Menu::LoadAndUpdate();
+        NaturalDocs::Menu->LoadAndUpdate();
 
 
         # Build any files that need it.  This needs to be run regardless of whether there are any files to build.  It will handle its own
         # output messages.
 
-        NaturalDocs::Builder::Run();
+        NaturalDocs::Builder->Run();
 
 
         # Write the changes back to disk.  The menu must be saved before the project because the project file stores when the
         # menu file was last changed.
 
-        NaturalDocs::Menu::Save();
-        NaturalDocs::Project::Save();
-        NaturalDocs::SymbolTable::Save();
+        NaturalDocs::Menu->Save();
+        NaturalDocs::Project->Save();
+        NaturalDocs::SymbolTable->Save();
         }
     else
         {
         # We need to load the menu file anyway, because Builder may need it.  However, we have an optimized version for this
         # occasion.
-        NaturalDocs::Menu::LoadUnchanged();
+        NaturalDocs::Menu->LoadUnchanged();
 
         # Builder needs to be run anyway.  Since there were no changes to the source tree, we don't need to worry about
         # parsing or NaturalDocs::SymbolTable.
 
-        NaturalDocs::Builder::Run();
+        NaturalDocs::Builder->Run();
         };
 
-    if (!NaturalDocs::Settings::IsQuiet())
+    if (!NaturalDocs::Settings->IsQuiet())
         {  print "Done.\n";  };
 
 };
@@ -532,7 +526,7 @@ if ($@)  # Oops.
          . "Natural Docs encountered the following error and was stopped:\n"
          . "     " . $@
          . "\n"
-         . "Natural Docs Version: " . NaturalDocs::Settings::TextAppVersion() . "\n"
+         . "Natural Docs Version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
          . "Perl Version: " .$perlVersion . "\n"
          . "\n";
     };

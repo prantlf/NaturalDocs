@@ -60,7 +60,7 @@ package NaturalDocs::Builder::Base;
 #       Implement <BuildIndex()> to create an output file for each index.  Use the menu function described earlier for each page.
 #
 #       Implement <UpdateMenu()> to go through the list of unbuilt files and update their menus.  You can get the list from
-#       <NaturalDocs::Project::UnbuiltFilesWithContent()>.  You need to open their output files, replace the menu, and save it back
+#       <NaturalDocs::Project->UnbuiltFilesWithContent()>.  You need to open their output files, replace the menu, and save it back
 #       to disk.  Yes, it would be simpler from a programmer's point of view to just rebuild the file completely, but that would be
 #       _very_ inefficient since there could potentially be a _lot_ of files in this group.  Plus, <NaturalDocs::SymbolTable> may not
 #       be available to this function, so this is impossible anyway.  (Without changing the main code, that is, and I'm not going to
@@ -152,7 +152,7 @@ package NaturalDocs::Builder::Base;
 #
 #   Function: INIT
 #
-#   Define this function to call <NaturalDocs::Builder::Add()> so that <NaturalDocs::Builder> knows about this package.
+#   Define this function to call <NaturalDocs::Builder->Add()> so that <NaturalDocs::Builder> knows about this package.
 #   Packages are defined this way so that new ones can be added without messing around in other code.
 #
 
@@ -238,7 +238,7 @@ sub EndBuild #(hasChanged)
 #
 #   Function: BuildIndex
 #
-#   Define this function to create an index for the passed topic.  You can get the index from <NaturalDocs::SymbolTable::Index()>.
+#   Define this function to create an index for the passed topic.  You can get the index from <NaturalDocs::SymbolTable->Index()>.
 #
 #   The reason it's not passed directly to this function is because indexes may be time-consuming to create.  As such, they're
 #   generated on demand because some output packages may choose not to implement them.

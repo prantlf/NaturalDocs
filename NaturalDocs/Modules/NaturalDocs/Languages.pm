@@ -73,7 +73,7 @@ my %shebangs;
 #
 sub LanguageOf #(sourceFile)
     {
-    my $sourceFile = shift;
+    my ($self, $sourceFile) = @_;
 
     my $extension;
     if ($sourceFile =~ /\.([^\.]+)$/)
@@ -81,7 +81,7 @@ sub LanguageOf #(sourceFile)
 
     if (!defined $extension || $extension eq 'cgi')
         {
-        my $fullSourceFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $sourceFile);
+        my $fullSourceFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->InputDirectory(), $sourceFile);
         my $shebangLine;
 
         open(SOURCEFILEHANDLE, '<' . $fullSourceFile) or die 'Could not open ' . $sourceFile;
@@ -135,12 +135,12 @@ sub LanguageOf #(sourceFile)
 #
 sub IsSupported #(file)
     {
-    my $file = shift;
+    my ($self, $file) = @_;
 
     # This function used to be slightly more efficient than just testing if LanguageOf returns undef, but now that we support
     # shebangs, it's really not worth it.
 
-    return (defined LanguageOf($file));
+    return (defined $self->LanguageOf($file));
     };
 
 
@@ -162,7 +162,7 @@ sub IsSupported #(file)
 #
 sub SeparateMember #(string)
     {
-    my $string = shift;
+    my ($self, $string) = @_;
 
     if ($string =~ /^(.+)(?:\.|::|->)(.+)$/)
         {  return ($1, $2);  }
@@ -177,13 +177,13 @@ sub SeparateMember #(string)
 
 
 #
-#   Function: Add
+#   Function:
 #
 #   Adds a <NaturalDocs::Languages::Language> object to the package.
 #
 #   Usage:
 #
-#       This function is *only* to be called by <NaturalDocs::Languages::Language::New()>.  Languages self-add when
+#       This function is *only* to be called by <NaturalDocs::Languages::Language->New()>.  Languages self-add when
 #       created, so there is no need to call anywhere else.
 #
 #   Parameters:
@@ -195,12 +195,12 @@ sub SeparateMember #(string)
 #
 sub Add #(languageObject, extensions, shebangStrings)
     {
-    my ($languageObject, $extensions, $shebangStrings) = @_;
+    my ($self, $languageObject, $extensions, $shebangStrings) = @_;
 
     # Prior to 1.13, Add() was called from the main script to add languages.  Since people may be cutting and pasting old code,
     # they may not be aware that the method changed.  We want to throw a specific error message for this situation so it's clear.
     # We can detect an old Add() call because it had many more parameters.
-    if (scalar @_ > 3)
+    if (scalar @_ > 4)
         {
         die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Languages->New().\n";
         };

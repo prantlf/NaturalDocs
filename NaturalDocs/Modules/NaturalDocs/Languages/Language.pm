@@ -101,7 +101,7 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
                           $functionEnders, $variableEnders, $lineExtender ];
     bless $object, $package;
 
-    NaturalDocs::Languages::Add($object, $extensions, $shebangStrings);
+    NaturalDocs::Languages->Add($object, $extensions, $shebangStrings);
 
 
     return $object;

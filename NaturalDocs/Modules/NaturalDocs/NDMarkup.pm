@@ -36,7 +36,7 @@ package NaturalDocs::NDMarkup;
 #
 sub ConvertAmpChars #(text)
     {
-    my $text = shift;
+    my ($self, $text) = @_;
 
     $text =~ s/&/&amp;/g;
     $text =~ s/</&lt;/g;
@@ -62,7 +62,7 @@ sub ConvertAmpChars #(text)
 #
 sub RestoreAmpChars #(text)
     {
-    my $text = shift;
+    my ($self, $text) = @_;
 
     $text =~ s/&quot;/\"/g;
     $text =~ s/&gt;/>/g;

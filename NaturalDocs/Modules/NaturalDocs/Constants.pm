@@ -102,7 +102,8 @@ use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
 #
 sub TopicIsList #(topic)
     {
-    return ($_[0] >= TOPIC_LIST_BASE);
+    my ($topic) = @_;
+    return ($topic >= TOPIC_LIST_BASE);
     };
 
 #
@@ -112,7 +113,8 @@ sub TopicIsList #(topic)
 #
 sub TopicIsListOf #(topic)
     {
-    return ($_[0] - TOPIC_LIST_BASE);
+    my ($topic) = @_;
+    return ($topic - TOPIC_LIST_BASE);
     };
 
 
