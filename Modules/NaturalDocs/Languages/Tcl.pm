@@ -37,7 +37,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
 
     my $falsePositives;
 
-    if ($type == ::TOPIC_FUNCTION())
+    if ($type eq ::TOPIC_FUNCTION())
         {
         $falsePositives = { };
 
@@ -90,7 +90,7 @@ sub FormatPrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type == ::TOPIC_FUNCTION() && $prototype =~ /^([^\{\}]+)\{(.*)\}([^\{\}]*)$/)
+    if ($type eq ::TOPIC_FUNCTION() && $prototype =~ /^([^\{\}]+)\{(.*)\}([^\{\}]*)$/)
         {
         my ($pre, $paramString, $post) = ($1, $2, $3);
 
