@@ -449,7 +449,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                     $textBlock = undef;
                     };
 
-                $output .= '<code>';
+                $output .= $tagEnders{$topLevelTag} . '<code>';
                 $topLevelTag = TAG_TAGCODE;
                 }
 
