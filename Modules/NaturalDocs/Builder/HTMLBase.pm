@@ -129,7 +129,7 @@ my $menuGroupNumber;
 #
 #   array: menuSelectionHierarchy
 #
-#   An array of the <NaturalDocs::Menu::Entry> objects of each group surrounding the selected menu item.  First entry is the
+#   An array of the <NaturalDocs::Menu->Entry> objects of each group surrounding the selected menu item.  First entry is the
 #   group immediately encompassing it, and each subsequent entries works its way towards the outermost group.
 #
 my @menuSelectionHierarchy;
@@ -147,7 +147,7 @@ my $menuLength;
 #   hash: menuGroupLengths
 #
 #   A hash of the length of each group, *not* including any subgroup contents.  The keys are references to each groups'
-#   <NaturalDocs::Menu::Entry> object, and the values are their lengths computed from the <Menu Length Constants>.
+#   <NaturalDocs::Menu->Entry> object, and the values are their lengths computed from the <Menu Length Constants>.
 #
 my %menuGroupLengths;
 tie %menuGroupLengths, 'Tie::RefHash';
@@ -157,7 +157,7 @@ tie %menuGroupLengths, 'Tie::RefHash';
 #   hash: menuGroupNumbers
 #
 #   A hash of the number of each group, as managed by <menuGroupNumber>.  The keys are references to each groups'
-#   <NaturalDocs::Menu::Entry> object, and the values are the number.
+#   <NaturalDocs::Menu->Entry> object, and the values are the number.
 #
 my %menuGroupNumbers;
 tie %menuGroupNumbers, 'Tie::RefHash';
@@ -205,11 +205,11 @@ sub PurgeFiles
     {
     my $self = shift;
 
-    my $filesToPurge = NaturalDocs::Project::FilesToPurge();
-    my $outputPath = NaturalDocs::Settings::OutputDirectory($self);
+    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
+    my $outputPath = NaturalDocs::Settings->OutputDirectory($self);
 
     foreach my $file (keys %$filesToPurge)
-        {  unlink( NaturalDocs::File::JoinPath($outputPath, $self->OutputFileOf($file)) );  };
+        {  unlink( NaturalDocs::File->JoinPath($outputPath, $self->OutputFileOf($file)) );  };
     };
 
 
@@ -226,7 +226,7 @@ sub PurgeIndexes #(indexes)
     {
     my ($self, $indexes) = @_;
 
-    my $outputPath = NaturalDocs::Settings::OutputDirectory($self);
+    my $outputPath = NaturalDocs::Settings->OutputDirectory($self);
 
     foreach my $index (keys %$indexes)
         {
@@ -244,12 +244,12 @@ sub EndBuild #(hasChanged)
     {
     my ($self, $hasChanged) = @_;
 
-    my $style = NaturalDocs::Settings::OutputStyle($self);
+    my $style = NaturalDocs::Settings->OutputStyle($self);
 
     if (lc($style) ne 'custom')
         {
-        my $masterCSSFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::StyleDirectory(), $style . '.css' );
-        my $localCSSFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'NaturalDocs.css' );
+        my $masterCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->StyleDirectory(), $style . '.css' );
+        my $localCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectory($self), 'NaturalDocs.css' );
 
         # We check both the date and the size in case the user switches between two styles which just happen to have the same
         # date.  Should rarely happen, but it might.
@@ -257,10 +257,10 @@ sub EndBuild #(hasChanged)
             (stat($masterCSSFile))[9] != (stat($localCSSFile))[9] ||
              -s $masterCSSFile != -s $localCSSFile)
             {
-            if (!NaturalDocs::Settings::IsQuiet())
+            if (!NaturalDocs::Settings->IsQuiet())
                 {  print "Updating CSS file...\n";  };
 
-            NaturalDocs::File::Copy($masterCSSFile, $localCSSFile);
+            NaturalDocs::File->Copy($masterCSSFile, $localCSSFile);
             };
         };
     };
@@ -289,9 +289,9 @@ sub BuildTitle #(sourceFile)
 
     # If we have a menu title, the page title is [menu title] - [file title].  Otherwise it is just [file title].
 
-    my $title = NaturalDocs::Project::DefaultMenuTitleOf($sourceFile);
+    my $title = NaturalDocs::Project->DefaultMenuTitleOf($sourceFile);
 
-    my $menuTitle = NaturalDocs::Menu::Title();
+    my $menuTitle = NaturalDocs::Menu->Title();
     if (defined $menuTitle && $menuTitle ne $title)
         {  $title .= ' - ' . $menuTitle;  };
 
@@ -326,7 +326,7 @@ sub BuildMenu #(outputFile, isFramed)
     %menuGroupNumbers = ( );
 
     my ($segmentOutput, $hasSelection, $rootLength) =
-        $self->BuildMenuSegment($outputFile, $isFramed, NaturalDocs::Menu::Content());
+        $self->BuildMenuSegment($outputFile, $isFramed, NaturalDocs::Menu->Content());
 
 
     # Comment needed for UpdateFile().
@@ -334,7 +334,7 @@ sub BuildMenu #(outputFile, isFramed)
 
     # The title and sub-title, if any.
 
-    my $menuTitle = NaturalDocs::Menu::Title();
+    my $menuTitle = NaturalDocs::Menu->Title();
     if (defined $menuTitle)
         {
         $menuLength += MENU_TITLELENGTH;
@@ -344,7 +344,7 @@ sub BuildMenu #(outputFile, isFramed)
         '<div class=MTitle>'
             . $self->StringToHTML($menuTitle);
 
-        my $menuSubTitle = NaturalDocs::Menu::SubTitle();
+        my $menuSubTitle = NaturalDocs::Menu->SubTitle();
         if (defined $menuSubTitle)
             {
             $menuLength += MENU_SUBTITLELENGTH;
@@ -914,7 +914,7 @@ sub BuildPrototype #(prototype, file)
     {
     my ($self, $prototype, $file) = @_;
 
-    my $language = NaturalDocs::Languages::LanguageOf($file);
+    my $language = NaturalDocs::Languages->LanguageOf($file);
     my ($pre, $open, $params, $close, $post) = $language->FormatPrototype($prototype);
 
     my $output;
@@ -1003,7 +1003,7 @@ sub BuildPrototype #(prototype, file)
 sub BuildFooter
     {
     my $self = shift;
-    my $footer = NaturalDocs::Menu::Footer();
+    my $footer = NaturalDocs::Menu->Footer();
 
     if (defined $footer)
         {
@@ -1012,11 +1012,11 @@ sub BuildFooter
 
         $footer =~ s/\(c\)/&copy;/gi;
 
-        $footer .= '&nbsp; Generated by <a href="' . NaturalDocs::Settings::AppURL() . '">Natural Docs</a>.'
+        $footer .= '&nbsp; Generated by <a href="' . NaturalDocs::Settings->AppURL() . '">Natural Docs</a>.'
         }
     else
         {
-        $footer = 'Generated by <a href="' . NaturalDocs::Settings::AppURL() . '">Natural Docs</a>';
+        $footer = 'Generated by <a href="' . NaturalDocs::Settings->AppURL() . '">Natural Docs</a>';
         };
 
     return '<!--START_ND_FOOTER-->' . $footer . '<!--END_ND_FOOTER-->';
@@ -1269,7 +1269,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
                 close(INDEXFILEHANDLE);
                 };
 
-            $indexFileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory($self),
+            $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectory($self),
                                                                                $self->IndexFileOf($type, $page));
 
             open(INDEXFILEHANDLE, '>' . $indexFileName)
@@ -1304,7 +1304,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
     # Build a dummy page so there's something at least.
     else
         {
-        $indexFileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory($self),
+        $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectory($self),
                                                                            $self->IndexFileOf($type, 1));
 
         open(INDEXFILEHANDLE, '>' . $indexFileName)
@@ -1751,11 +1751,11 @@ sub PurgeIndexFiles #(type, startingPage)
     if (!defined $page)
         {  $page = 1;  };
 
-    my $outputDirectory = NaturalDocs::Settings::OutputDirectory($self);
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectory($self);
 
     for (;;)
         {
-        my $file = NaturalDocs::File::JoinPath($outputDirectory, $self->IndexFileOf($type, $page));
+        my $file = NaturalDocs::File->JoinPath($outputDirectory, $self->IndexFileOf($type, $page));
 
         if (-e $file)
             {
@@ -1842,10 +1842,10 @@ sub MakeRelativeURL #(baseFile, targetFile)
     {
     my ($self, $baseFile, $targetFile) = @_;
 
-    my $baseDir = NaturalDocs::File::NoFileName($baseFile);
-    my $relativePath = NaturalDocs::File::MakeRelativePath($baseDir, $targetFile);
+    my $baseDir = NaturalDocs::File->NoFileName($baseFile);
+    my $relativePath = NaturalDocs::File->MakeRelativePath($baseDir, $targetFile);
 
-    return $self->ConvertAmpChars( NaturalDocs::File::ConvertToURL($relativePath) );
+    return $self->ConvertAmpChars( NaturalDocs::File->ConvertToURL($relativePath) );
     };
 
 #
@@ -1904,7 +1904,7 @@ sub SymbolToHTMLSymbol #(class, symbol)
     {
     my ($self, $class, $symbol) = @_;
 
-    ($class, $symbol) = NaturalDocs::SymbolTable::Defines($class, $symbol);
+    ($class, $symbol) = NaturalDocs::SymbolTable->Defines($class, $symbol);
 
     # Some of these changes can potentially create conflicts, though they should be incredibly rare.
 
@@ -2009,7 +2009,7 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
                 '<tr>'
                     . '<td class=CDLEntry>'
                         # The anchors are closed, but not around the text, to prevent the :hover CSS style from kicking in.
-                        . '<a name="' . $self->SymbolToHTMLSymbol($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text)) . '"></a>'
+                        . '<a name="' . $self->SymbolToHTMLSymbol($scope, NaturalDocs::NDMarkup->RestoreAmpChars($text)) . '"></a>'
                         . $text
                     . '</td>';
                 };
@@ -2044,13 +2044,13 @@ sub BuildLink #(scope, text, sourceFile)
     {
     my ($self, $scope, $text, $sourceFile) = @_;
 
-    my $restoredText = NaturalDocs::NDMarkup::RestoreAmpChars($text);
+    my $restoredText = NaturalDocs::NDMarkup->RestoreAmpChars($text);
 
     # DEPENDENCY: This is undoing the fancy quotes from NDMarkupToHTML.
     $restoredText =~ s/&(?:[lr]dquo|quot);/\"/g;
     $restoredText =~ s/&[lr]squo;/\'/g;
 
-    my $target = NaturalDocs::SymbolTable::References($scope, $restoredText, $sourceFile);
+    my $target = NaturalDocs::SymbolTable->References($scope, $restoredText, $sourceFile);
 
     if (defined $target)
         {
@@ -2290,7 +2290,7 @@ sub FindFirstFile
     my ($self, $arrayref) = @_;
 
     if (!defined $arrayref)
-        {  $arrayref = NaturalDocs::Menu::Content();  };
+        {  $arrayref = NaturalDocs::Menu->Content();  };
 
     foreach my $entry (@$arrayref)
         {
@@ -2364,7 +2364,7 @@ sub ExpandMenu #(outputFile, rootLength)
             if (scalar @menuSelectionHierarchy)
                 {  $content = $menuSelectionHierarchy[0]->GroupContent();  }
             else
-                {  $content = NaturalDocs::Menu::Content();  };
+                {  $content = NaturalDocs::Menu->Content();  };
 
             $bottomIndex = 0;
 
@@ -2391,7 +2391,7 @@ sub ExpandMenu #(outputFile, rootLength)
                 if (scalar @menuSelectionHierarchy > 1)
                     {  $content = $menuSelectionHierarchy[1]->GroupContent();  }
                 else
-                    {  $content = NaturalDocs::Menu::Content();  };
+                    {  $content = NaturalDocs::Menu->Content();  };
 
                 $bottomIndex = 0;
 

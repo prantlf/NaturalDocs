@@ -76,5 +76,5 @@ About: General Tag Properties
    gotchas.  No need for sophisticated parsing routines.
 
    Remember that for symbol definitions, the text should appear as is, but internally (such as for the anchor) they need to
-   be passed through <NaturalDocs::SymbolTable::Defines()> so that the output file is just as tolerant as
+   be passed through <NaturalDocs::SymbolTable->Defines()> so that the output file is just as tolerant as
    <NaturalDocs::SymbolTable>.

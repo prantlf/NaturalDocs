@@ -37,6 +37,8 @@ package NaturalDocs::File;
 #
 sub CheckCompatibility
     {
+    my ($self) = @_;
+
     eval {
         File::Spec->splitpath('');
     };
@@ -62,7 +64,7 @@ sub CheckCompatibility
 #
 sub CanonizePath #(path)
     {
-    my $path = shift;
+    my ($self, $path) = @_;
 
     if ($^O eq 'MSWin32')
         {
@@ -97,7 +99,7 @@ sub CanonizePath #(path)
 #
 sub JoinPath #(basePath, extraPath, noFileInExtra)
     {
-    my ($basePath, $extraPath, $noFileInExtra) = @_;
+    my ($self, $basePath, $extraPath, $noFileInExtra) = @_;
 
     # If both are undef, it will return undef, which is what we want.
     if (!defined $basePath)
@@ -108,14 +110,14 @@ sub JoinPath #(basePath, extraPath, noFileInExtra)
     my ($baseVolume, $baseDirString, $baseFile) = File::Spec->splitpath($basePath, 1);
     my ($extraVolume, $extraDirString, $extraFile) = File::Spec->splitpath($extraPath, $noFileInExtra);
 
-    my @baseDirectories = SplitDirectories($baseDirString);
-    my @extraDirectories = SplitDirectories($extraDirString);
+    my @baseDirectories = $self->SplitDirectories($baseDirString);
+    my @extraDirectories = $self->SplitDirectories($extraDirString);
 
-    my $fullDirString = JoinDirectories(@baseDirectories, @extraDirectories);
+    my $fullDirString = $self->JoinDirectories(@baseDirectories, @extraDirectories);
 
     my $fullPath = File::Spec->catpath($baseVolume, $fullDirString, $extraFile);
 
-    return CanonizePath($fullPath);
+    return $self->CanonizePath($fullPath);
     };
 
 
@@ -141,7 +143,7 @@ sub JoinPath #(basePath, extraPath, noFileInExtra)
 #
 sub SplitPath #(path, noFile)
     {
-    my ($path, $noFile) = @_;
+    my ($self, $path, $noFile) = @_;
 
     my @segments = File::Spec->splitpath($path, $noFile);
 
@@ -167,7 +169,8 @@ sub SplitPath #(path, noFile)
 #
 sub JoinDirectories #(directory, directory, ...)
     {
-    return File::Spec->catdir(@_);
+    my ($self, @directories) = @_;
+    return File::Spec->catdir(@directories);
     };
 
 
@@ -183,7 +186,7 @@ sub JoinDirectories #(directory, directory, ...)
 #
 sub SplitDirectories #(directoryString)
     {
-    my $directoryString = shift;
+    my ($self, $directoryString) = @_;
 
     my @directories = File::Spec->splitdir($directoryString);
 
@@ -228,17 +231,17 @@ sub SplitDirectories #(directoryString)
 #
 sub MakeRelativePath #(basePath, targetPath)
     {
-    my ($basePath, $targetPath) = @_;
+    my ($self, $basePath, $targetPath) = @_;
 
-    my ($baseVolume, $baseDirString, $baseFile) = SplitPath($basePath, 1);
-    my ($targetVolume, $targetDirString, $targetFile) = SplitPath($targetPath);
+    my ($baseVolume, $baseDirString, $baseFile) = $self->SplitPath($basePath, 1);
+    my ($targetVolume, $targetDirString, $targetFile) = $self->SplitPath($targetPath);
 
     # If the volumes are different, there is no possible relative path.
     if ($targetVolume ne $baseVolume)
         {  return $targetPath;  };
 
-    my @baseDirectories = SplitDirectories($baseDirString);
-    my @targetDirectories = SplitDirectories($targetDirString);
+    my @baseDirectories = $self->SplitDirectories($baseDirString);
+    my @targetDirectories = $self->SplitDirectories($targetDirString);
 
     # Skip the parts of the path that are the same.
     while (scalar @baseDirectories && @targetDirectories && $baseDirectories[0] eq $targetDirectories[0])
@@ -253,7 +256,7 @@ sub MakeRelativePath #(basePath, targetPath)
         unshift @targetDirectories, File::Spec->updir();
         };
 
-    $targetDirString = JoinDirectories(@targetDirectories);
+    $targetDirString = $self->JoinDirectories(@targetDirectories);
 
     return File::Spec->catpath(undef, $targetDirString, $targetFile);
     };
@@ -267,10 +270,10 @@ sub MakeRelativePath #(basePath, targetPath)
 #
 sub ConvertToURL #(path)
     {
-    my $path = shift;
+    my ($self, $path) = @_;
 
-    my ($pathVolume, $pathDirString, $pathFile) = SplitPath($path);
-    my @pathDirectories = SplitDirectories($pathDirString);
+    my ($pathVolume, $pathDirString, $pathFile) = $self->SplitPath($path);
+    my @pathDirectories = $self->SplitDirectories($pathDirString);
 
     my $i = 0;
     while ($i < scalar @pathDirectories && $pathDirectories[$i] eq File::Spec->updir())
@@ -290,7 +293,8 @@ sub ConvertToURL #(path)
 #
 sub NoUpwards #(array)
     {
-    return File::Spec->no_upwards(@_);
+    my ($self, @array) = @_;
+    return File::Spec->no_upwards(@array);
     };
 
 
@@ -301,7 +305,7 @@ sub NoUpwards #(array)
 #
 sub NoFileName #(path)
     {
-    my $path = shift;
+    my ($self, $path) = @_;
 
     my ($pathVolume, $pathDirString, $pathFile) = File::Spec->splitpath($path);
 
@@ -321,7 +325,8 @@ sub NoFileName #(path)
 #
 sub CreatePath #(path)
     {
-    File::Path::mkpath($_[0]);
+    my ($self, $path) = @_;
+    File::Path::mkpath($path);
     };
 
 
@@ -337,7 +342,8 @@ sub CreatePath #(path)
 #
 sub Copy #(source, destination)
     {
-    File::Copy::copy(@_);
+    my ($self, $source, $destination) = @_;
+    File::Copy::copy($source, $destination);
     };
 
 
