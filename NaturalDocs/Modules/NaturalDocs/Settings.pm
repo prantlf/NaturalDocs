@@ -652,29 +652,62 @@ sub ParseCommandLine
 
     if ($styles[0])
         {
-        @styles = split(/ +/, $styles[0]);
+        my @stylePieces = split(/ +/, $styles[0]);
+        @styles = ( );
 
-        for (my $i = 0; $i < scalar @styles; $i++)
+        while (scalar @stylePieces)
             {
-            # Tolerate .css by stripping it off.
-            $styles[$i] =~ s/\.css$//i;
-
-            if (lc($styles[$i]) eq 'custom')
+            if (lc($stylePieces[0]) eq 'custom')
                 {
                 push @errorMessages, 'The "Custom" style setting is no longer supported.  Copy your custom style sheet to your '
                                                . 'project directory and you can refer to it with -s.';
+                shift @stylePieces;
                 }
             else
                 {
-                my $cssFile = NaturalDocs::File->JoinPaths( $self->StyleDirectory(), $styles[$i] . '.css' );
-                if (! -e $cssFile)
-                    {
-                    $cssFile = NaturalDocs::File->JoinPaths( $self->ProjectDirectory(), $styles[$i] . '.css' );
+                # People may use styles with spaces in them.  If a style doesn't exist, we need to join the pieces until we find one that
+                # does or we run out of pieces.
 
-                    if (! -e $cssFile)
+                my $extras = 0;
+                my $success;
+
+                while ($extras < scalar @stylePieces)
+                    {
+                    my $style;
+
+                    if (!$extras)
+                        {  $style = $stylePieces[0];  }
+                    else
+                        {  $style = join(' ', @stylePieces[0..$extras]);  };
+
+                    my $cssFile = NaturalDocs::File->JoinPaths( $self->StyleDirectory(), $style . '.css' );
+                    if (-e $cssFile)
                         {
-                        push @errorMessages, 'The style ' . $styles[$i] . ' does not exist.';
+                        push @styles, $style;
+                        splice(@stylePieces, 0, 1 + $extras);
+                        $success = 1;
+                        last;
+                        }
+                    else
+                        {
+                        $cssFile = NaturalDocs::File->JoinPaths( $self->ProjectDirectory(), $style . '.css' );
+
+                        if (-e $cssFile)
+                            {
+                            push @styles, $style;
+                            splice(@stylePieces, 0, 1 + $extras);
+                            $success = 1;
+                            last;
+                            }
+                        else
+                            {  $extras++;  };
                         };
+                    };
+
+                if (!$success)
+                    {
+                    push @errorMessages, 'The style "' . $stylePieces[0] . '" does not exist.';
+                    shift @stylePieces;
                     };
                 };
             };
