@@ -235,21 +235,25 @@ sub Load
     if (!exists $languages{'text file'})
         {  NaturalDocs::ConfigFile->AddError('You must define "Text File" in the main languages file.');  };
 
-    if (NaturalDocs::ConfigFile->ErrorCount())
+    my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
+
+    if ($errorCount)
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
-        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
-           . ' in ' . NaturalDocs::Project->MainLanguagesFile() . "\n";
+        NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
+                                                    . ' in ' . NaturalDocs::Project->MainLanguagesFile());
         }
 
 
     $self->LoadFile(0, \%tempExtensions, \%tempShebangStrings);  # User
 
-    if (NaturalDocs::ConfigFile->ErrorCount())
+    $errorCount = NaturalDocs::ConfigFile->ErrorCount();
+
+    if ($errorCount)
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
-        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
-           . ' in ' . NaturalDocs::Project->UserLanguagesFile() . "\n";
+        NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
+                                                    . ' in ' . NaturalDocs::Project->UserLanguagesFile());
         };
 
 
@@ -404,7 +408,7 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
             };
         }
 
-    else # ($languageKeyword eq 'language')
+    elsif ($languageKeyword eq 'language')
         {
         if (exists $languages{$lcLanguageName})
             {
@@ -459,6 +463,13 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
             {  $language = NaturalDocs::Languages::Simple->New($languageName);  };
 
         $languages{$lcLanguageName} = $language;
+        }
+
+    else # not language or alter language
+        {
+        NaturalDocs::ConfigFile->AddError('You must start this line with "Language", "Alter Language", or "Ignore Extensions".',
+                                                           $lineNumber);
+        return;
         };
 
 
