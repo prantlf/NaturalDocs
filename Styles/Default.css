@@ -154,6 +154,7 @@ body.FramedContentPage,
         margin-left: 0; margin-right: 0 }
 
     .CClass .CTitle,
+    .CInterface .CTitle,
     .CDatabase .CTitle,
     .CDatabaseTable .CTitle,
     .CSection .CTitle {
@@ -252,10 +253,15 @@ body.FramedContentPage,
         background-color: #F4F4FF; border-color: #C0C0E8 }
     .CVariable .Prototype {
         background-color: #FFFFF0; border-color: #E0E0A0 }
+
     .CConstant .Prototype {
-        background-color: #C8C8C8; border-color: #000000 }
+        background-color: #D0D0D0; border-color: #000000 }
     .CType .Prototype {
         background-color: #FFF8F8; border-color: #E8C8C8 }
+    .CEvent .Prototype,
+    .CDelegate .Prototype {
+        background-color: #F0FCF0; border-color: #B8E4B8 }
+
     .CToolTip .Prototype {
         margin: 0 0 .5em 0;
         white-space: nowrap;
