@@ -120,9 +120,9 @@ my %indexChanges;
 #
 #   Format:
 #
-#       The first line of the file is <NaturalDocs::Settings::FileVersion()>.
+#       The first line of the file is <NaturalDocs::Settings::AppVersion()>.
 #
-#       > [file format version]
+#       > [app version]
 #
 #       The first stage of the file is for symbol definitions, analogous to <symbols>.  For this stage, each entry continues until it
 #       reaches a blank line.  The first line is the symbol string, and each subsequent line is a tab separated list of the definition,
@@ -170,10 +170,13 @@ sub LoadAndPurge
         $line = <$fileHandle>;
         chomp $line;
 
-        if ($line != NaturalDocs::Settings::FileVersion())
-            {  close($fileHandle);  }
+        # Currently, the file format hasn't changed between public versions, so any version <= our own is okay.
+        # If the version is "1" with no ".x", that means 0.91 and prior because we were using a separate FileVersion() function then.
+
+        if ($line <= NaturalDocs::Settings::AppVersion() || $line eq '1')
+            {  $fileIsOkay = 1;  }
         else
-            {  $fileIsOkay = 1;  };
+            {  close($fileHandle);  };
         };
 
 
@@ -280,7 +283,7 @@ sub Save
         or die "Couldn't save project file " . NaturalDocs::Project::SymbolTableFile() . "\n";
 
 
-    print $fileHandle '' . NaturalDocs::Settings::FileVersion() . "\n";
+    print $fileHandle '' . NaturalDocs::Settings::AppVersion() . "\n";
 
 
     # Symbols
