@@ -92,6 +92,10 @@ my $isQuiet;
 # An array of style names to use, most important first.
 my @styles;
 
+# var: charset
+# The character encoding of the source files, and thus the output.
+my $charset;
+
 
 ###############################################################################
 # Group: Files
@@ -169,6 +173,7 @@ my @styles;
 #       > [UInt8: tab length]
 #       > [UInt8: documented only (0 or 1)]
 #       > [UInt8: no auto-group (0 or 1)]
+#       > [AString16: charset]
 #       >
 #       > [UInt8: number of input directories]
 #       > [AString16: input directory] [AString16: input directory name] ...
@@ -182,6 +187,10 @@ my @styles;
 #
 #
 #   Revisions:
+#
+#       1.33:
+#
+#           - Added charset.
 #
 #       1.3:
 #
@@ -498,6 +507,11 @@ sub NoAutoGroup
 sub IsQuiet
     {  return $isQuiet;  };
 
+# Function: CharSet
+# Returns the character set, or undef if none.
+sub CharSet
+    {  return $charset;  };
+
 
 ###############################################################################
 # Group: Constant Functions
@@ -560,7 +574,9 @@ sub ParseCommandLine
                                   'headersonly' => '-ho',
                                   'help'     => '-h',
                                   'autogroup' => '-ag',
-                                  'noautogroup' => '-nag' );
+                                  'noautogroup' => '-nag',
+                                  'charset' => '-cs',
+                                  'characterset' => '-cs' );
 
 
     my @errorMessages;
@@ -637,6 +653,10 @@ sub ParseCommandLine
             elsif ($option eq '-t')
                 {
                 $valueRef = \$tabLength;
+                }
+            elsif ($option eq '-cs')
+                {
+                $valueRef = \$charset;
                 }
             elsif ($option eq '-ag')
                 {
@@ -891,6 +911,10 @@ sub ParseCommandLine
         {  $tabLength = 4;  };
 
 
+    # Strip any quotes off of the charset.
+    $charset =~ tr/\"//d;
+
+
     # Exit with the error message if there was one.
 
     if (scalar @errorMessages)
@@ -1044,9 +1068,9 @@ sub LoadAndComparePreviousSettings
             {
             $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUS_SETTINGS_FILEHANDLE);
 
-            # The file format changed in 1.3.
+            # The file format changed in 1.33.
 
-            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.3'))
+            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
                 {
                 close(PREVIOUS_SETTINGS_FILEHANDLE);
                 $fileIsOkay = undef;
@@ -1069,11 +1093,11 @@ sub LoadAndComparePreviousSettings
         # [UInt8: tab expansion]
         # [UInt8: documented only (0 or 1)]
         # [UInt8: no auto-group (0 or 1)]
-        # [UInt8: number of input directories]
+        # [AString16: charset]
 
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 4);
-        my ($prevTabLength, $prevDocumentedOnly, $prevNoAutoGroup, $inputDirectoryCount)
-            = unpack('CCCC', $raw);
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 5);
+        my ($prevTabLength, $prevDocumentedOnly, $prevNoAutoGroup, $prevCharsetLength)
+            = unpack('CCCn', $raw);
 
         if ($prevTabLength != $self->TabLength())
             {
@@ -1092,6 +1116,17 @@ sub LoadAndComparePreviousSettings
             NaturalDocs::Project->ReparseEverything();
             };
 
+        my $prevCharset;
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $prevCharset, $prevCharsetLength);
+
+        if ($prevCharset ne $charset)
+            {  NaturalDocs::Project->RebuildEverything();  };
+
+
+        # [UInt8: number of input directories]
+
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 1);
+        my $inputDirectoryCount = unpack('C', $raw);
 
         while ($inputDirectoryCount)
             {
@@ -1183,12 +1218,14 @@ sub SavePreviousSettings
     # [UInt8: tab length]
     # [UInt8: documented only (0 or 1)]
     # [UInt8: no auto-group (0 or 1)]
+    # [AString16: charset]
     # [UInt8: number of input directories]
 
     my $inputDirectories = $self->InputDirectories();
 
-    print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCC', $self->TabLength(), ($self->DocumentedOnly() ? 1 : 0),
-                                                                                    ($self->NoAutoGroup() ? 1 : 0), scalar @$inputDirectories);
+    print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCnA*C', $self->TabLength(), ($self->DocumentedOnly() ? 1 : 0),
+                                                                                        ($self->NoAutoGroup() ? 1 : 0), length($charset), $charset,
+                                                                                         scalar @$inputDirectories);
 
     foreach my $inputDirectory (@$inputDirectories)
         {

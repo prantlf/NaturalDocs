@@ -87,6 +87,9 @@ sub BuildFile #(sourceFile, parsedFile)
 
         '<html><head>'
 
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+
             . '<title>'
                 . $self->BuildTitle($sourceFile)
             . '</title>'
@@ -134,6 +137,9 @@ sub BuildIndex #(type)
             . '"http://www.w3.org/TR/REC-html40/loose.dtd">' . "\n\n"
 
         . '<html><head>'
+
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
 
             . '<title>';
 
@@ -197,6 +203,9 @@ sub UpdateMenu
 
         . '<html><head>'
 
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+
             . '<title>'
                 . $title
             . '</title>'
@@ -244,6 +253,9 @@ sub UpdateMenu
             . '<html>'
 
                 . '<head>'
+
+                    . (NaturalDocs::Settings->CharSet() ?
+                        '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
 
                     . '<title>'
                         . $self->StringToHTML(NaturalDocs::Menu->Title())
