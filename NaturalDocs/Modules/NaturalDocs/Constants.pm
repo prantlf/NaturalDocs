@@ -40,6 +40,12 @@ require Exporter;
 #
 
 #
+#   Constants: Topic Types
+#
+#   See <NaturalDocs::Topics::Topic Types>.
+#
+
+#
 #   Constants: Menu Entry Types
 #
 #   Constants representing all the types of sections that can appear in the menu file.
