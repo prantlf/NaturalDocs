@@ -818,7 +818,7 @@ sub AddToClassHierarchy
 
     foreach my $topic (@parsedFile)
         {
-        if ($topic->Type() eq ::TOPIC_CLASS())
+        if (NaturalDocs::Topics->TypeInfo( $topic->Type() )->ClassHierarchy())
             {
             if ($topic->IsList())
                 {
