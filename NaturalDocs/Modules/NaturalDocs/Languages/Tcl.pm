@@ -20,13 +20,6 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Simple>
-#
-
-
-#
 #   Function: EndOfPrototype
 #
 #   Tcl's function syntax is shown below.

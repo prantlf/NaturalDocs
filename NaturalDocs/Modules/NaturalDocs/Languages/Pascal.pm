@@ -20,12 +20,6 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Simple>
-#
-
-#
 #   hash: prototypeDirectives
 #
 #   An existence hash of all the directives that can appear after a function prototype and will be included.  The keys are the all
