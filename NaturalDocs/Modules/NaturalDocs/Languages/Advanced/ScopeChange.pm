@@ -8,7 +8,7 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright © 2004 Greg Valure
+# This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
 use strict;
@@ -21,7 +21,7 @@ package NaturalDocs::Languages::Advanced::ScopeChange;
 #
 #   The object is implemented as a blessed arrayref.  The constants below are used as indexes.
 #
-#   SCOPE - The new scope.
+#   SCOPE - The new scope <SymbolString>.
 #   LINE_NUMBER - The line number of the change.
 #
 use NaturalDocs::DefineMembers 'SCOPE', 'LINE_NUMBER';
@@ -35,29 +35,29 @@ use NaturalDocs::DefineMembers 'SCOPE', 'LINE_NUMBER';
 #
 #   Parameters:
 #
-#       scope - What the scope was changed to.
+#       scope - The <SymbolString> the scope was changed to.
 #       lineNumber - What line it occurred on.
 #
 sub New #(scope, lineNumber)
     {
     # Dependency: This depends on the order of the parameters matching the constants, and that there are no inherited
     # members.
-    my $package = shift;
+    my $self = shift;
 
     my $object = [ @_ ];
-    bless $object, $package;
+    bless $object, $self;
 
     return $object;
     };
 
 
 # Function: Scope
-# Returns what the scope was changed to.
+# Returns the <SymbolString> the scope was changed to.
 sub Scope
-    {  return $_[0]->[SCOPE ];  };
+    {  return $_[0]->[SCOPE];  };
 
 # Function: SetScope
-# Replaces what the scope was changed to.
+# Replaces the <SymbolString> the scope was changed to.
 sub SetScope #(scope)
     {  $_[0]->[SCOPE] = $_[1];  };
 
