@@ -4,7 +4,27 @@
 #
 ###############################################################################
 #
-#   A class for parsed topics of source files.
+#   A class for parsed topics of source files.  Also encompasses some of the <TopicType>-specific behavior.
+#
+#
+#   Topic: Type-Specific Behavior
+#
+#   TOPIC_CLASS:
+#
+#       - <Symbol()> will be generated from both the title and the package passed to <New()>.
+#       - <Package()> will be generated from both the title and the package passed to <New()>, not just the package.
+#
+#   TOPIC_FILE:
+#
+#       - <Symbol()> will be generated from the title only, guaranteeing that it's global.
+#       - <Package()> will return the package passed to <New()>, so it will still appear as part of the package when iterating
+#         through the topics.  Also so its body will have the package as its scope when resolving links.
+#
+#   Everything else:
+#
+#       - <Symbol()> will be generated from both the title and the package.
+#       - <Package()> will be generated from the package passed to <New()> only.  Any separators found in the title will not
+#         be reflected here.
 #
 ###############################################################################
 
@@ -25,17 +45,18 @@ package NaturalDocs::Parser::ParsedTopic;
 #
 #   The object is a blessed arrayref with the following indexes.
 #
-#       TYPE           - The type of the topic.  Will be one of the <Topic Types>.
-#       NAME          - The name of the topic.
-#       CLASS        - The class of the topic, if any.  This applies to Name only.  Will be undef if global.
-#       SCOPE        - The scope the topic's body appears in.  This may be different from Class.  Will be undef if global.
+#       TYPE           - The <TopicType>.
+#       TITLE          - The title of the topic.
+#       PACKAGE    - The package <SymbolString> the topic appears in, or undef if none.
+#       USING         - An arrayref of additional package <SymbolStrings> available to the topic via "using" statements, or undef if none.
 #       PROTOTYPE - The prototype, if it exists and is applicable.
 #       SUMMARY    - The summary, if it exists.
 #       BODY          - The body of the topic, formatted in <NDMarkup>.  Some topics may not have bodies, and if not, this
 #                           will be undef.
 #       LINE_NUMBER  - The line number the topic appears at in the file.
 #
-use NaturalDocs::DefineMembers 'TYPE', 'NAME', 'CLASS', 'SCOPE', 'PROTOTYPE', 'SUMMARY', 'BODY', 'LINE_NUMBER';
+use NaturalDocs::DefineMembers 'TYPE', 'TITLE', 'PACKAGE', 'USING', 'PROTOTYPE', 'SUMMARY', 'BODY',
+                                                 'LINE_NUMBER';
 # DEPENDENCY: New() depends on the order of these constants, and that this class is not inheriting any members.
 
 
@@ -49,20 +70,20 @@ use NaturalDocs::DefineMembers 'TYPE', 'NAME', 'CLASS', 'SCOPE', 'PROTOTYPE', 'S
 #
 #   Parameters:
 #
-#       type          - The type of the topic.  Will be one of the <Topic Types>.
-#       name        - The name of the topic.
-#       class         - The class of the topic's _name_, if any.  Set to undef if global.
-#       scope        - The scope the topic's _body_ appears in.  This may be different from class.  Set to undef if global.
-#       prototype  - If the type is <TOPIC_FUNCTION> or <TOPIC_VARIABLE>, the prototype, if it exists.  Otherwise set to undef.
-#       summary  - The summary of the topic, if any.
-#       body         - The body of the topic, formatted in <NDMarkup>.  May be undef, as some topics may not have bodies.
+#       type          - The <TopicType>.
+#       title           - The title of the topic.
+#       package    - The package <SymbolString> the topic appears in, or undef if none.
+#       using         - An arrayref of additional package <SymbolStrings> available to the topic via "using" statements, or undef if none.
+#       prototype   - The prototype, if it exists and is applicable.  Otherwise set to undef.
+#       summary   - The summary of the topic, if any.
+#       body          - The body of the topic, formatted in <NDMarkup>.  May be undef, as some topics may not have bodies.
 #       lineNumber - The line number the topic appears at in the file.
 #
 #   Returns:
 #
 #       The new object.
 #
-sub New #(type, name, class, scope, prototype, summary, body, lineNumber)
+sub New #(type, title, package, using, prototype, summary, body, lineNumber)
     {
     # DEPENDENCY: This depends on the order of the parameter list being the same as the constants, and that there are no
     # members inherited from a base class.
@@ -77,52 +98,92 @@ sub New #(type, name, class, scope, prototype, summary, body, lineNumber)
 
 
 # Function: Type
-# Returns the type of the topic.  Will be one of <Topic Types>.
+# Returns the <TopicType>.
 sub Type
     {  return $_[0]->[TYPE];  };
 
 # Function: SetType
-# Replaces the topic's type.
+# Replaces the <TopicType>.
 sub SetType #(type)
     {  $_[0]->[TYPE] = $_[1];  };
 
-# Function: Name
-# Returns the name of the topic.
-sub Name
-    {  return $_[0]->[NAME];  };
+# Function: Title
+# Returns the title of the topic.
+sub Title
+    {  return $_[0]->[TITLE];  };
 
-# Function: Class
-# Returns the class of the topic.  Applies to <Name()> only.  Will be undef if global.
-sub Class
-    {  return $_[0]->[CLASS];  };
+#
+#   Function: Symbol
+#
+#   Returns the <SymbolString> defined by the topic.  It is fully resolved and does _not_ need to be joined with <Package()>.
+#
+#   Type-Specific Behavior:
+#
+#       - <TOPIC_FILE> symbols will always be generated from the title only, so that they are always global.
+#       - Everything else's smybols will be generated from the title and the package passed to <New()>.
+#
+sub Symbol
+    {
+    my ($self) = @_;
 
-# Function: SetClass
-# Replaces the topic's class.
-sub SetClass #(class)
-    {  $_[0]->[CLASS] = $_[1];  };
+    my $titleSymbol = NaturalDocs::SymbolString->FromText($self->[TITLE]);
 
-# Function: Scope
-# Returns the scope the topic appears in.  Applies to <Body()> only.  Will be undef if global.
-sub Scope
-    {  return $_[0]->[SCOPE];  };
+    if ($self->Type() == ::TOPIC_FILE())
+        {  return $titleSymbol;  }
+    else
+        {
+        return NaturalDocs::SymbolString->Join( $self->[PACKAGE], $titleSymbol );
+        };
+    };
 
-# Function: SetScope
-# Replaces the topic's scope.
-sub SetScope #(scope)
-    {  $_[0]->[SCOPE] = $_[1];  };
+
+#
+#   Function: Package
+#
+#   Returns the package <SymbolString> that the topic appears in.
+#
+#   Type-Specific Behavior:
+#
+#       - <TOPIC_CLASS'> package will be generated from both the title and the package passed to <New()>, not just the package.
+#       - <TOPIC_FILE's> package will be the one passed to <New()>, even though it isn't part of it's <Symbol()>.
+#       - Everything else's package will be what was passed to <New()>, even if the title has separator symbols in it.
+#
+sub Package
+    {
+    my ($self) = @_;
+
+    if ($self->Type() == ::TOPIC_CLASS())
+        {  return $self->Symbol();  }
+    else
+        {  return $self->[PACKAGE];  };
+    };
+
+
+# Function: SetPackage
+# Replaces the package the topic appears in.  This will behave the same way as the package parameter in <New()>.  Later calls
+# to <Package()> will still be generated according to the <Type-Specific Behavior>.
+sub SetPackage #(package)
+    {  $_[0]->[PACKAGE] = $_[1];  };
+
+# Function: Using
+# Returns an arrayref of additional scope <SymbolStrings> available to the topic via "using" statements, or undef if none.
+sub Using
+    {  return $_[0]->[USING];  };
+
+# Function: SetUsing
+# Replaces the using arrayref of sope <SymbolStrings>.
+sub SetUsing #(using)
+    {  $_[0]->[USING] = $_[1];  };
 
 # Function: Prototype
-# Returns the prototype if <Type()> is <TOPIC_FUNCTION> or <TOPIC_VARIABLE> and one is defined.  Will be undef otherwise.
+# Returns the prototype if one is defined.  Will be undef otherwise.
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
 
 # Function: SetPrototype
 # Replaces the function or variable prototype.
 sub SetPrototype #(prototype)
-    {
-    my ($self, $prototype) = @_;
-    $self->[PROTOTYPE] = $prototype;
-    };
+    {  $_[0]->[PROTOTYPE] = $_[1];  };
 
 # Function: Summary
 # Returns the topic summary, if it exists, formatted in <NDMarkup>.
