@@ -423,6 +423,11 @@ sub MenuFile
 sub SettingsFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Settings.txt' );  };
 
+# Function: PreviousSettingsFile
+# Returns the full path to the project's previous settings file.
+sub PreviousSettingsFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'PreviousSettings.nd' );  };
+
 # Function: PreviousMenuStateFile
 # Returns the full path to the project's previous menu state file.
 sub PreviousMenuStateFile
