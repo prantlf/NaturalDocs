@@ -25,8 +25,8 @@ package NaturalDocs::SymbolTable::File;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#       SYMBOLS       - An existence hashref of all the symbols it defines.
-#       REFERENCES  - An existence hashref of all the references in the file.
+#       SYMBOLS       - An existence hashref of the <SymbolStrings> it defines.
+#       REFERENCES  - An existence hashref of the <ReferenceStrings> in the file.
 #
 
 # DEPENDENCY: New() depends on the order of these constants.  If they change, New() has to be updated.
@@ -62,32 +62,32 @@ sub New
 #
 #   Function: AddSymbol
 #
-#   Adds a symbol definition.
+#   Adds a <SymbolString> definition.
 #
 #   Parameters:
 #
-#       symbolString - The symbol string being added.
+#       symbol - The <SymbolString> being added.
 #
-sub AddSymbol #(symbolString)
+sub AddSymbol #(symbol)
     {
-    my ($self, $symbolString) = @_;
-    $self->[SYMBOLS]{$symbolString} = 1;
+    my ($self, $symbol) = @_;
+    $self->[SYMBOLS]{$symbol} = 1;
     };
 
 
 #
 #   Function: DeleteSymbol
 #
-#   Removes a symbol definition.
+#   Removes a <SymbolString> definition.
 #
 #   Parameters:
 #
-#       symbolString - The symbol to delete.
+#       symbol - The <SymbolString> to delete.
 #
-sub DeleteSymbol #(symbolString)
+sub DeleteSymbol #(symbol)
     {
-    my ($self, $symbolString) = @_;
-    delete $self->[SYMBOLS]{$symbolString};
+    my ($self, $symbol) = @_;
+    delete $self->[SYMBOLS]{$symbol};
     };
 
 
@@ -98,7 +98,7 @@ sub DeleteSymbol #(symbolString)
 #
 #   Parameters:
 #
-#       referenceString - The reference string being added.
+#       referenceString - The <ReferenceString> being added.
 #
 sub AddReference #(referenceString)
     {
@@ -114,7 +114,7 @@ sub AddReference #(referenceString)
 #
 #   Parameters:
 #
-#       referenceString - The reference to delete.
+#       referenceString - The <ReferenceString> to delete.
 #
 sub DeleteReference #(referenceString)
     {
@@ -141,7 +141,7 @@ sub HasAnything
 #
 #   Function: Symbols
 #
-#   Returns an array of all the symbols defined in this file.  If none, returns an empty array.
+#   Returns an array of all the <SymbolStrings> defined in this file.  If none, returns an empty array.
 #
 sub Symbols
     {
@@ -152,7 +152,7 @@ sub Symbols
 #
 #   Function: References
 #
-#   Returns an array of all the references defined in this file.  If none, returns an empty array.
+#   Returns an array of all the <ReferenceStrings> defined in this file.  If none, returns an empty array.
 #
 sub References
     {
@@ -163,19 +163,19 @@ sub References
 #
 #   Function: DefinesSymbol
 #
-#   Returns whether the file defines the passed symbol or not.
+#   Returns whether the file defines the passed <SymbolString> or not.
 #
-sub DefinesSymbol #(symbolString)
+sub DefinesSymbol #(symbol)
     {
-    my ($self, $symbolString) = @_;
-    return exists $self->[SYMBOLS]{$symbolString};
+    my ($self, $symbol) = @_;
+    return exists $self->[SYMBOLS]{$symbol};
     };
 
 
 #
 #   Function: DefinesReference
 #
-#   Returns whether the file defines the passed reference or not.
+#   Returns whether the file defines the passed <ReferenceString> or not.
 #
 sub DefinesReference #(referenceString)
     {
