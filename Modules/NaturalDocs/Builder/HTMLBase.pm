@@ -27,6 +27,14 @@ use base 'NaturalDocs::Builder::Base';
 # Group: Package Variables
 # These variables are shared by all instances of the package so don't change them.
 
+
+#
+#   handle: FH_CSS_FILE
+#
+#   The file handle to use when updating CSS files.
+#
+
+
 #
 #   Hash: abbreviations
 #
@@ -240,12 +248,29 @@ sub EndBuild #(hasChanged)
     {
     my ($self, $hasChanged) = @_;
 
-    my $style = NaturalDocs::Settings->OutputStyleOf($self);
 
-    if (lc($style) ne 'custom')
+    # Update the style sheets.
+
+    my $styles = NaturalDocs::Settings->Styles();
+    my $changed;
+
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
+    my $mainCSSFile = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs.css');
+
+    for (my $i = 0; $i < scalar @$styles; $i++)
         {
-        my $masterCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->StyleDirectory(), $style . '.css' );
-        my $outputCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'NaturalDocs.css' );
+        my $outputCSSFile;
+
+        if (scalar @$styles == 1)
+            {  $outputCSSFile = $mainCSSFile;  }
+        else
+            {  $outputCSSFile = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs' . ($i + 1) . '.css');  };
+
+
+        my $masterCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), $styles->[$i] . '.css' );
+
+        if (! -e $masterCSSFile)
+            {  $masterCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->StyleDirectory(), $styles->[$i] . '.css' );  };
 
         # We check both the date and the size in case the user switches between two styles which just happen to have the same
         # date.  Should rarely happen, but it might.
@@ -260,8 +285,45 @@ sub EndBuild #(hasChanged)
                 };
 
             NaturalDocs::File->Copy($masterCSSFile, $outputCSSFile);
+
+            $changed = 1;
             };
         };
+
+    if ($changed)
+        {
+        my $deleteFrom;
+
+        if (scalar @$styles == 1)
+            {  $deleteFrom = 1;  }
+        else
+            {
+            $deleteFrom = scalar @$styles + 1;
+
+            open(FH_CSS_FILE, '>' . $mainCSSFile);
+
+            for (my $i = 0; $i < scalar @$styles; $i++)
+                {
+                print FH_CSS_FILE '@import URL("NaturalDocs' . ($i + 1) . '.css");' . "\n";
+                };
+
+            close(FH_CSS_FILE);
+            };
+
+        for (;;)
+            {
+            my $file = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs' . $deleteFrom . '.css');
+
+            if (! -e $file)
+                {  last;  };
+
+            unlink ($file);
+            $deleteFrom++;
+            };
+        };
+
+
+    # Update the JavaScript file.
 
     my $jsMaster = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->JavaScriptDirectory(), 'NaturalDocs.js' );
     my $jsOutput = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'NaturalDocs.js' );
