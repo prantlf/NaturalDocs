@@ -87,7 +87,7 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], [ '=pod begin nd', '=pod end nd' ]);
+    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], [ '=begin nd', '=end nd' ]);
 
     my $tokens = $self->Tokens();
     my $index = 0;
@@ -142,28 +142,30 @@ sub ParseFile #(sourceFile, topicsList)
 #
 #   Function: PreprocessLine
 #
-#   Overridden to support "=pod begin nd" and similar.
+#   Overridden to support "=begin nd" and similar.
 #
-#   - "=pod begin [nd|naturaldocs|natural docs]" all translate to "=pod begin nd".
-#   - "=[nd|naturaldocs|natural docs]" also translate to "=pod begin nd".
-#   - "=pod end [nd|naturaldocs|natural docs]" all translate to "=pod end nd".
-#   - "=cut" from a ND block translates into "=pod end nd", but the next line will be altered to begin with "(NDPODBREAK)".  This is
+#   - "=begin [nd|naturaldocs|natural docs]" all translate to "=begin nd".
+#   - "=[nd|naturaldocs|natural docs]" also translate to "=begin nd".
+#   - "=end [nd|naturaldocs|natural docs]" all translate to "=end nd".
+#   - "=cut" from a ND block translates into "=end nd", but the next line will be altered to begin with "(NDPODBREAK)".  This is
 #     so if there is POD leading into ND which ends with a cut, the parser can still end the original POD because the end ND line
 #     would have been removed.
+#   - "=pod begin nd" and "=pod end nd" are supported for compatibility with ND 1.32 and earlier, even though the syntax is a
+#     mistake.
 #
 sub PreprocessLine #(lineRef)
     {
     my ($self, $lineRef) = @_;
 
-    if ($$lineRef =~ /^\=(?:pod[ \t]+begin[ \t]+)?(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+    if ($$lineRef =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
         {
-        $$lineRef = '=pod begin nd';
+        $$lineRef = '=begin nd';
         $inNDPOD = 1;
         $mustBreakPOD = 0;
         }
-    elsif ($$lineRef =~ /^\=pod[ \t]+end[ \t]+(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+    elsif ($$lineRef =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
         {
-        $$lineRef = '=pod end nd';
+        $$lineRef = '=end nd';
         $inNDPOD = 0;
         $mustBreakPOD = 0;
         }
@@ -171,7 +173,7 @@ sub PreprocessLine #(lineRef)
         {
         if ($inNDPOD)
             {
-            $$lineRef = '=pod end nd';
+            $$lineRef = '=end nd';
             $inNDPOD = 0;
             $mustBreakPOD = 1;
             };
