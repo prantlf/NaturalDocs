@@ -407,6 +407,11 @@ sub SymbolTableFile
 sub MenuFile
     {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
 
+# Function: SettingsFile
+# Returns the full path to the project's settings file.
+sub SettingsFile
+    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Settings.txt' );  };
+
 # Function: PreviousMenuStateFile
 # Returns the full path to the project's previous menu state file.
 sub PreviousMenuStateFile
@@ -415,7 +420,7 @@ sub PreviousMenuStateFile
 # Function: MenuBackupFile
 # Returns the full path to the project's menu backup file, which is used to save the original menu in some situations.
 sub MenuBackupFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'NaturalDocs_MenuBackup.txt' );  };
+    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Menu_Backup.txt' );  };
 
 # Function: FilesToParse
 # Returns an existence hashref of the list of files to parse.  This is not a copy of the data, so don't change it.
@@ -568,6 +573,7 @@ sub GetAllSupportedFiles
 
     my @directories = ( NaturalDocs::Settings->InputDirectory() );
     my $menuFile = $self->MenuFile();
+    my $menuBackup = $self->MenuBackupFile();
 
     while (scalar @directories)
         {
@@ -596,7 +602,7 @@ sub GetAllSupportedFiles
                 {
                 my $relativeName = NaturalDocs::File->MakeRelativePath(NaturalDocs::Settings->InputDirectory(), $fullEntry);
 
-                if (NaturalDocs::Languages->IsSupported($relativeName) && $fullEntry ne $menuFile)
+                if (NaturalDocs::Languages->IsSupported($relativeName) && $fullEntry ne $menuFile && $fullEntry ne $menuBackup)
                     {
                     $supportedFiles{$relativeName} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
                     };
