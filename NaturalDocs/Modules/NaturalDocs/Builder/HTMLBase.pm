@@ -1009,7 +1009,8 @@ sub BuildFooter
 #
 #   Parameters:
 #
-#       index  - An arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
+#       index  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement> objects.
+#                   The first section is for symbols, the second for numbers, and the rest for A through Z.
 #       outputFile - The output file the index is going to be stored in.  Since there may be multiple files, just send the first file.
 #
 #   Returns:
@@ -1024,106 +1025,96 @@ sub BuildIndexContent #(index, outputFile)
     $self->ResetToolTips();
 
     my $content = [ ];
-    my $contentIndex;
 
-    foreach my $entry (@$index)
+    for (my $section = 0; $section < scalar @$index; $section++)
         {
-        # Check for headings
-
-        $contentIndex = uc(substr($entry->Symbol(), 0, 1));
-
-        if ($contentIndex =~ /^[0-9]$/)
-            {  $contentIndex = 1;  }
-        elsif ($contentIndex !~ /^[A-Z]$/)
-            {  $contentIndex = 0;  }
-        else
-            {  $contentIndex = (ord(lc($contentIndex)) - ord('a')) + 2;  };
-
-
-        # Build a simple entry
-
-        if (!ref $entry->Class() && !ref $entry->File())
+        foreach my $entry ( @{$index->[$section]} )
             {
-            $content->[$contentIndex] .=
-                $self->BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
-                                                $entry->File(), $entry->Type(), $entry->Prototype(), $entry->Summary(), $outputFile);
-            }
+            # Build a simple entry
 
-
-        # Build an entry with subindexes.
-
-        else
-            {
-            $content->[$contentIndex] .=
-            '<div class=IEntry>'
-                . '<span class=ISymbol>' . $self->StringToHTML($entry->Symbol()) . '</span>';
-
-                if (defined $entry->Class() && !ref $entry->Class())
-                    {  $content->[$contentIndex] .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
-
-                $content->[$contentIndex] .=
-                '<div class=ISubIndex>';
-
-            if (ref $entry->Class())
+            if (!ref $entry->Class() && !ref $entry->File())
                 {
-                my $classEntries = $entry->Class();
-
-                foreach my $classEntry (@$classEntries)
-                    {
-                    if (ref $classEntry->File())
-                        {
-                        $content->[$contentIndex] .= '<div class=IEntry><span class=IParent>';
-
-                        if (defined $classEntry->Class())
-                            {  $content->[$contentIndex] .= $self->AddHiddenBreaks($self->StringToHTML($classEntry->Class()));  }
-                        else
-                            {  $content->[$contentIndex] .= 'Global';  };
-
-                        $content->[$contentIndex] .= '</span><div class=ISubIndex>';
-
-                        my $fileEntries = $classEntry->File();
-                        foreach my $fileEntry (@$fileEntries)
-                            {
-                            $content->[$contentIndex] .=
-                                $self->BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
-                                                                 $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(),
-                                                                 $fileEntry->Summary(), $outputFile);
-                            };
-
-                        $content->[$contentIndex] .= '</div></div>';
-                        }
-
-                    else #(!ref $classEntry->File())
-                        {
-                        $content->[$contentIndex] .=
-                            $self->BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
-                                                              $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(),
-                                                              $classEntry->Summary(), $outputFile);
-                        };
-                    };
+                $content->[$section] .=
+                    $self->BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
+                                                    $entry->File(), $entry->Type(), $entry->Prototype(), $entry->Summary(), $outputFile);
                 }
 
-            else #(!ref $entry->Class())
-                {
-                # ref $entry->File() is logically true then.
 
-                my $fileEntries = $entry->File();
-                foreach my $fileEntry (@$fileEntries)
+            # Build an entry with subindexes.
+
+            else
+                {
+                $content->[$section] .=
+                '<div class=IEntry>'
+                    . '<span class=ISymbol>' . $self->StringToHTML($entry->Symbol()) . '</span>';
+
+                    if (defined $entry->Class() && !ref $entry->Class())
+                        {  $content->[$section] .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
+
+                    $content->[$section] .=
+                    '<div class=ISubIndex>';
+
+                if (ref $entry->Class())
                     {
-                    $content->[$contentIndex] .=
-                        $self->BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
-                                                         $fileEntry->Type(), $fileEntry->Prototype(), $fileEntry->Summary(), $outputFile);
+                    my $classEntries = $entry->Class();
+
+                    foreach my $classEntry (@$classEntries)
+                        {
+                        if (ref $classEntry->File())
+                            {
+                            $content->[$section] .= '<div class=IEntry><span class=IParent>';
+
+                            if (defined $classEntry->Class())
+                                {  $content->[$section] .= $self->AddHiddenBreaks($self->StringToHTML($classEntry->Class()));  }
+                            else
+                                {  $content->[$section] .= 'Global';  };
+
+                            $content->[$section] .= '</span><div class=ISubIndex>';
+
+                            my $fileEntries = $classEntry->File();
+                            foreach my $fileEntry (@$fileEntries)
+                                {
+                                $content->[$section] .=
+                                    $self->BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
+                                                                     $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(),
+                                                                     $fileEntry->Summary(), $outputFile);
+                                };
+
+                            $content->[$section] .= '</div></div>';
+                            }
+
+                        else #(!ref $classEntry->File())
+                            {
+                            $content->[$section] .=
+                                $self->BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
+                                                                  $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(),
+                                                                  $classEntry->Summary(), $outputFile);
+                            };
+                        };
+                    }
+
+                else #(!ref $entry->Class())
+                    {
+                    # ref $entry->File() is logically true then.
+
+                    my $fileEntries = $entry->File();
+                    foreach my $fileEntry (@$fileEntries)
+                        {
+                        $content->[$section] .=
+                            $self->BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
+                                                             $fileEntry->Type(), $fileEntry->Prototype(), $fileEntry->Summary(), $outputFile);
+                        };
                     };
+
+                $content->[$section] .= '</div></div>'; # Symbol IEntry and ISubIndex
                 };
 
-            $content->[$contentIndex] .= '</div></div>'; # Symbol IEntry and ISubIndex
+
+            # Add the tooltips to each section.
+
+            $content->[$section] .= $self->BuildToolTips();
+            $self->ResetToolTips(1);
             };
-
-
-        # Add the tooltips to each section.
-
-        $content->[$contentIndex] .= $self->BuildToolTips();
-        $self->ResetToolTips(1);
         };
 
 
