@@ -340,11 +340,8 @@ sub LoadAndUpdate
     if ($errorCount)
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
-
-        if ($errorCount == 1)
-            {  die "There is an error in the menu file.\n";  }
-        else
-            {  die "There are " . $errorCount . " errors in the menu file.\n";  };
+        NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
+                                                    . ' in ' . NaturalDocs::Project->MenuFile());
         };
 
     if ($relativeFiles)
