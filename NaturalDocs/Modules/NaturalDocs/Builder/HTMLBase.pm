@@ -2096,7 +2096,7 @@ sub NDMarkupToHTML #(sourceFile, text, package, using)
             # Format non-code text.
 
             # Convert quotes to fancy quotes.
-            # DEPENDENCY: BuildLink needs to be able to undo these.
+            # DEPENDENCY: BuildTextLink and BuildURLLink need to be able to undo these.
             $text =~ s/^\'/&lsquo;/gm;
             $text =~ s/([\ \(\[\{])\'/$1&lsquo;/g;
             $text =~ s/\'/&rsquo;/g;
@@ -2227,6 +2227,12 @@ sub BuildTextLink #(text, package, using, sourceFile)
 sub BuildURLLink #(url)
     {
     my ($self, $url) = @_;
+
+    $url = NaturalDocs::NDMarkup->RestoreAmpChars($url);
+
+    # DEPENDENCY: This is undoing the fancy quotes from NDMarkupToHTML.
+    $url =~ s/&(?:[lr]dquo|quot);/\"/g;
+    $url =~ s/&[lr]squo;/\'/g;
 
     if (length $url < 50)
         {  return '<a href="' . $url . '" class=LURL>' . $self->ConvertAmpChars($url) . '</a>';  };
