@@ -391,6 +391,11 @@ sub LoadUnchanged
 
     if (defined $errors)
         {  HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
+
+    my ($previousMenu, $previousIndexes, $previousFiles) = LoadPreviousMenuStateFile();
+
+    if (defined $previousIndexes)
+        {  %previousIndexes = %$previousIndexes;  };
     };
 
 
