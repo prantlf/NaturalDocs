@@ -1189,19 +1189,153 @@ sub GenerateInterpretations #(scope, reference)
 
     if (scalar @splitReference == 2)
         {
-        AddInterpretation($referenceString, $splitReference[0], $splitReference[1], 2);
-        AddInterpretation($referenceString, undef, $reference, 1);
+        # Lower priority is the symbol interpreted as a global with the separator as part of the name.
+
+        my @singulars = GenerateSingularInterpretations($reference);
+        my $score = 1;
+
+        foreach my $singular (@singulars)
+            {
+            AddInterpretation($referenceString, undef, $singular, $score);
+            $score++;
+            };
+
+        AddInterpretation($referenceString, undef, $reference, $score);
+        $score++;
+
+        # Higher priority is the symbol interpreted as a class and symbol.
+
+        @singulars = GenerateSingularInterpretations($splitReference[1]);
+
+        foreach my $singular (@singulars)
+            {
+            AddInterpretation($referenceString, $splitReference[0], $singular, $score);
+            $score++;
+            };
+
+        AddInterpretation($referenceString, $splitReference[0], $splitReference[1], $score);
         }
+
 
     # If there wasn't a member separator, we can resolve it as a local or a global.
 
     else
         {
-        if (defined $scope)
-            {  AddInterpretation($referenceString, $scope, $reference, 2);  };
+        my @singulars = GenerateSingularInterpretations($reference);
+        my $score = 1;
 
-        AddInterpretation($referenceString, undef, $reference, 1);
+        # Lower priority is the symbol interpreted as a global.
+
+        foreach my $singular (@singulars)
+            {
+            AddInterpretation($referenceString, undef, $singular, $score);
+            $score++;
+            };
+
+        AddInterpretation($referenceString, undef, $reference, $score);
+        $score++;
+
+        # Higher priority is the symbol as part of the current scope.
+
+        if (defined $scope)
+            {
+            foreach my $singular (@singulars)
+                {
+                AddInterpretation($referenceString, $scope, $singular, $score);
+                $score++;
+                };
+
+            AddInterpretation($referenceString, $scope, $reference, $score);
+            };
         };
+    };
+
+#
+#   Function: GenerateSingularInterpretations
+#
+#   Generates singular interpretations of a symbol if it can be interpreted as a plural.  Will strip extensions such as -s, -es, and -'s.
+#
+#   Parameters:
+#
+#       symbol - The symbol part of the reference.
+#
+#   Returns:
+#
+#       An array of potential singular interpretations, in no particular order.  If the symbol can't be interpreted as a plural, returns
+#       an empty array.
+#
+sub GenerateSingularInterpretations #(symbol)
+    {
+    my $symbol = shift;
+    my @results;
+
+    # First cut off any 's or ' at the end, since they can appear after other plural forms.
+    if ($symbol =~ s/\'s?$//i)
+        {
+        push @results, $symbol;
+        };
+
+    # See http://www.gsu.edu/~wwwesl/egw/crump.htm for a good list of potential plural forms.  There are a couple more than
+    # listed below, but they're fairly rare and this is already seriously over-engineered.  This is split by suffix length to make
+    # comparisons more efficient.
+
+    # The fact that this will generate some impossible combinations (leaves => leave, leav, leaf, leafe) doesn't matter.  It's very
+    # unlikely that more than one will manage to match a defined symbol.  Even if they do (leave, leaf), it's incredibly unlikely
+    # that someone has defined an impossible one (leav, leafe).  So it's not so important that we remove impossible combinations,
+    # just that we include all the possible ones.
+
+    my @suffixGroups = ( [ 's', undef,  # boys => boy
+                                       'i', 'us',  # alumni => alumnus
+                                       'a', 'um', # errata => erratum
+                                       'a', 'on' ],  # phenomena => phenomenon
+
+                                    [ 'es', undef,  # foxes => fox
+                                      'ae', 'a' ],  # amoebae => amoeba
+
+                                    [ 'ies', 'y',  # pennies => penny
+                                      'ves', 'f',  # calves => calf
+                                      'ves', 'fe',  # knives => knife
+                                      'men', 'man',  # women => woman
+                                      'ice', 'ouse',  # mice => mouse
+                                      'oes', 'o',  # vetoes => veto
+                                      'ces', 'x' ],  # matrices => matrix
+
+                                    [ 'ices', 'ex',  # indices => index
+                                      'feet', 'foot',  # feet => foot
+                                      'eese', 'oose',  # geese => goose
+                                      'eeth', 'ooth',  # teeth => tooth
+                                      'dren', 'd' ] );  # children => child
+
+    my $suffixLength = 1;
+
+    foreach my $suffixGroup (@suffixGroups)
+        {
+        my $symbolSuffix = lc( substr($symbol, 0 - $suffixLength) );
+        my $cutSymbol = substr($symbol, 0, 0 - $suffixLength);
+
+        for (my $i = 0; $i + 1 < scalar @$suffixGroup; $i += 2)
+            {
+            my $suffix = $suffixGroup->[$i];
+            my $replacement = $suffixGroup->[$i + 1];
+
+            if ($symbolSuffix eq $suffix)
+                {
+                if (defined $replacement)
+                    {
+                    push @results, $cutSymbol . $replacement;
+                    push @results, $cutSymbol . uc($replacement);
+                    }
+                else
+                    {
+                    push @results, $cutSymbol;
+                    };
+                };
+            };
+
+        $suffixLength++;
+        };
+
+    return @results;
     };
 
 
