@@ -263,42 +263,19 @@ sub GenerateDirectoryNames #(hints)
 
     # Pass two generates names for anything remaining.
 
+    my $nameCounter = 1;
+
     for (my $i = 0; $i < scalar @inputDirectories; $i++)
         {
         if (!defined $inputDirectoryNames[$i])
             {
-            my $name;
+            while (exists $usedNames{$nameCounter})
+                {  $nameCounter++;  };
 
-            if (!exists $usedNames{'default'})
-                {  $name = 'default';  }
-            else
-                {
-                # The first attempt at a name is the last directory that isn't already used.
+            $inputDirectoryNames[$i] = $nameCounter;
+            $usedNames{$nameCounter} = 1;
 
-                my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($inputDirectories[$i], 1);
-                my @directories = NaturalDocs::File->SplitDirectories($dirString);
-
-                while (scalar @directories && !defined $name)
-                    {
-                    my $directory = pop @directories;
-                    if (!exists $usedNames{$directory})
-                        {  $name = $directory;  };
-                    };
-
-                if (!defined $name)
-                    {
-                    # If that didn't work, the second attempt is a number.
-
-                    my $number = 1;
-                    while (!exists $usedNames{$number})
-                        {  $number++;  };
-
-                    $name = $number;
-                    };
-                };
-
-            $inputDirectoryNames[$i] = $name;
-            $usedNames{$name} = 1;
+            $nameCounter++;
             };
         };
     };
@@ -465,7 +442,7 @@ sub AppVersion
 #   Returns Natural Docs' version number as plain text.
 #
 sub TextAppVersion
-    {  return '1.31';  };
+    {  return '1.32';  };
 
 #
 #   Function: AppURL
