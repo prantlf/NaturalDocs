@@ -216,7 +216,7 @@ sub ParseParameterLine #(line)
     $line =~ s/^ //;
     $line =~ s/ $//;
 
-    return NaturalDocs::Languages::Prototype::Parameter->New(undef, undef, $line, undef);
+    return NaturalDocs::Languages::Prototype::Parameter->New(undef, undef, $line, undef, undef);
     };
 
 
