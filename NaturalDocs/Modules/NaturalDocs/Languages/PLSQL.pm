@@ -28,7 +28,7 @@ use base 'NaturalDocs::Languages::Simple';
 #
 #   CREATE OR REPLACE TYPE obj_Test AS OBJECT (
 #       dummy NUMBER,
-#       dummy2 VARCHAR2,
+#       dummy2 VARCHAR2(2),
 #       MEMBER FUNCTION test( p_lala IN NUMBER ) RETURN NUMBER,
 #       MEMBER FUNCTION test_2 RETURN NUMBER,
 #       MEMBER PROCEDURE test_3( p_lala IN NUMBER, p_lala2 IN NUMBER, p_lala3 OUT VARCHAR2 )
@@ -53,7 +53,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
 
     my $falsePositives;
 
-    if ($type == ::TOPIC_FUNCTION())
+    if ($type == ::TOPIC_FUNCTION() || $type == ::TOPIC_VARIABLE() || $type == ::TOPIC_PROPERTY())
         {
         $falsePositives = { };
 
@@ -108,8 +108,8 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
                 };
             }
 
-        # If there are no parenthesis and the prototype contains an @ character, all commas are false positives.
-        elsif (index($$stringRef, '@') != -1)
+        # If there are no parenthesis, the prototype is a function, and it contains an @ character, all commas are false positives.
+        elsif ($type == ::TOPIC_FUNCTION() && index($$stringRef, '@') != -1)
             {
             my $index = index($$stringRef, ',');
 
