@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-#   Script: Natural Docs
+#   Script: NaturalDocs
 #
 ###############################################################################
 #
@@ -33,211 +33,21 @@
 #       Boston, MA  02111-1307  USA.
 #
 #
-#   About: Syntax
-#
-#       > NaturalDocs -i [input (source) directory]
-#       >            (-i [input (source) directory] ...)
-#       >             -o [output format] [output directory]
-#       >            (-o [output format] [output directory] ...)
-#       >             -p [project directory]
-#       >             [options]
-#
-#       Directory names with spaces are fine.  They don't need quotes on Windows.
-#
-#       Examples:
-#
-#           > NaturalDocs -i C:\My Project\Source
-#           >             -o HTML C:\My Project\Docs
-#           >             -p C:\My Project\Natural Docs
-#
-#           > NaturalDocs -i /src/project
-#           >             -o HTML /doc/project
-#           >             -p /etc/naturaldocs/project
-#           >             -s Small -t 2 -q
-#
-#       Options:
-#
-#           -i [dir]            - The input (source) directory.  Required.  Can be specified multiple times.  Also --input, --source.
-#
-#           -o [fmt] [dir]   - The output format and directory.  Required.  See <Supported Output Formats> for a list of
-#                                   options.  This can be specified multiple times, but only once per directory.  Also --output.
-#
-#           -p [dir]           - The project directory.  Required.  There should be a unique project directory for each
-#                                   input directory.  Also --project.
-#
-#           -s [style]        - Sets the CSS style for HTML output.  If set to "Custom", it will not sync the project's CSS file
-#                                   with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
-#                                   <HTML Styles> for options.  Also --style.
-#
-#           -do                - Prevents undocumented code aspects from being included in the output.  Also --documentedonly.
-#
-#           -t [len]           - Sets the number of spaces tabs should be expanded to.  This only needs to be set if you use tabs
-#                                  in example code and text diagrams.  The default is 4.  Also --tablength.
-#
-#           -r                   - Rebuilds all output and data files from scratch.  Does not affect the menu file.  Also --rebuild.
-#
-#           -ro                 - Rebuilds all output files from scratch.  Use this whenever you add or change output formats.
-#                                   Also --rebuildoutput.
-#
-#           -q                  - Suppresses all non-error output.  Also --quiet.
-#
-#           -ho                - For C and C++, only check the headers and not the source files.  Also --headersonly.
-#
-#           -h                  - Prints the syntax reference.  Also -?, --help.
-#
-#
-#   About: Supported Languages
-#
-#       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Languages>.
-#
-#       - C++
-#       - C#
-#       - Java
-#       - JavaScript (.js files only)
-#       - Perl (.pl and .pm files, plus .cgi and extensionless files if "perl" is in the #! line)
-#       - Python (.py files, plus .cgi and extensionless files if "python" is in the #! line)
-#       - PHP  (support isn't flawless because escapement isn't handled yet)
-#       - PL/SQL
-#       - Visual Basic
-#       - Pascal (which includes Delphi)
-#       - Assembly
-#       - Tcl
-#       - Ada
-#       - Ruby
-#       - Text files (.txt files only)
-#
-#
-#   About: Supported Output Formats
-#
-#       HTML    - Creates HTML output.  A directory tree will be created to mirror the source tree, and each source file will have a
-#                     corresponding HTML file of the same name, only with .html appended.  The files are self-contained and don't rely
-#                     on frames.  index.html forwards to the first file on the menu.
-#
-#       FramedHTML - Creates framed HTML output.  A directory tree will be created to mirror the source tree, and each source file
-#                             will have a corresponding HTML file of the same name, only with .html appended.  The menu has its own
-#                             file, so changes to it will be done much quicker.
-#
-#       Natural Docs is designed to be extended with more output formats, but it requires familiarity with Perl.  See <How to Add
-#       Output Formats> for details.
-#
-#
-#   About: HTML Styles
-#
-#       Default  - The standard Natural Docs appearence.  You're looking at it right now.
-#
-#       Small    - For people who prefer 8pt Verdana, aka people with good eyes.  You get more on the screen at once, but some
-#                     people hate it when web pages use tiny fonts.
-#
-#       Roman  - For people who prefer Roman fonts, aka people who use OS X, XP with ClearType, or some other decent
-#                     anti-aliasing system.  Most people don't and thus prefer Verdana.  It makes the fancy quotes (66 and 99, as
-#                     opposed to II) look especially nice, though.
-#
-#       Custom - Tells Natural Docs that the output directory is using its own custom CSS file.  Natural Docs will not sync the CSS
-#                     file at all with this option set.
-#
-#       You can also use any CSS file present in Natural Docs' styles directory.  Just use its name without the .css extension.  For
-#       example, if your style is Blue.css, use "Blue".
-#
-#       You can check for additional styles at http://www.naturaldocs.org.  If you would like to build your own, see
-#       <How to Add HTML Styles>.
-#
-#
-#   Topic: HTML Compatibility
-#
-#       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.4.  1.0.2 has minor formatting issues with
-#                                        prototypes in tooltips, but nothing that hurts usability.
-#       Internet Explorer      - *Works on 4+.*  Tested on 4.0, 5.0 and 6.0.  I don't have a partition for 5.5 so I'm assuming it
-#                                        works.  4.0 can't collapse the menu and makes the tooltips the full page width, although it positions
-#                                        them correctly.  5.0 occasionally slightly misplaces the tooltips, but it's still usable and is usually fine.
-#       Opera                      - *Works on 5+.*  Tested on 5.12, 6.05, and 7.02.  Only 7.02 can collapse the menu.  5.12 can't
-#                                         size or position the tooltips very well, but they're usable most of the time.
-#       Konqueror (KHTML)   - *Works on 3+.*  Tested on Konqueror 3.1.1.  Has some minor margin issues, but it's definitely their
-#                                         renderer that's the problem.  Shows tooltips immediately because it has problems doing it on a timer.
-#       Netscape 4.x            - *Nope.*  Crashes 4.08 and mangled on 4.8.  Why did they ever drop this for Gecko?  I've stopped
-#                                        supporting NS4 in my projects and have found that my quality of life has improved considerably.
-#
-#       Note that a browser not being able to collapse the menu isn't a compatibility concern.  The menu defaults to completely open
-#       if the browser can't handle collapsing it, so it's always usable.  It's just better on browsers that support it.
-#
-#       Also note that if a browser doesn't support frames, the user will automatically be forwarded to the menu file when using
-#       framed HTML output so it will still be usable.
-#
-#
-#   About: Maintainer
-#
-#       Greg Valure (gregvalure@naturaldocs.org)
-#
-
-###############################################################################
-#
-#   Group: Extending
-#
-###############################################################################
-#
-#   Topic: How to Add Languages
-#
-#       In the main script add a call to <NaturalDocs::Languages::Simple->New()> after all the rest.  See its documentation for
-#       an explanation of the parameters.
-#
-#
-#   Topic: How to Add Output Formats
-#
-#       - Create a new <NaturalDocs::Builder> sub-package derived from <NaturalDocs::Builder::Base>.
-#       - See <NaturalDocs::Builder::Base>'s documentation for a list of the interface functions that should be implemented and
-#         examples of how to do so.
-#       - By placing the file in the Modules/NaturalDocs/Builder directory, it will automatically be included by Natural Docs.  You
-#         do not have to add a 'use' statement anywhere in the code, which makes it easy to keep custom output formats whenever
-#         you upgrade Natural Docs.
-#
-#
-#   Topic: How to Add Topics
-#
-#       - If you'd like to add a synonym for an existing topic type, edit <NaturalDocs::Topics::constants>.  Note that it must be in
-#         all lowercase.
-#       - If you'd like to add a new topic type, read through <NaturalDocs::Topics'> source.  It should be obvious what needs to
-#         be edited, just don't skip anything.  You can stop when you reach the functions.
-#
-#
-#   Topic: How to Add Extensions
-#
-#       - Create a new <NaturalDocs::Extensions> sub-package derived from <NaturalDocs::Extensions::Base>.
-#       - See <NaturalDocs::Extensions::Base's> documentation for a list of interface functions can be implemented.
-#       - By placing the file in the Modules/NaturalDocs/Extensions directory, it will automatically be included by Natural Docs.  You
-#         do not have to add a 'use' statement anywhere in the code, which makes it easy to keep custom extensions whenever
-#         you upgrade Natural Docs.
-#
-#
-#   Topic: How to Add HTML Styles
-#
-#       Read the <CSS Guide> to understand the styles Natural Docs uses and how they fit together.
-#
-#       After you've created your own CSS file, drop it in the Natural Docs styles directory.  Then you can reference it via -s in the
-#       command line.  Its name is the CSS file name without the extension.  So if your file is Red.css, you use it by specifying
-#       "-s Red" in your projects.
-#
-#       If you ever change the CSS file in the Natural Docs styles directory, each project that uses it will get an updated copy
-#       automatically the next time Natural Docs is run on it.
-#
-#       Also make sure that whenever you upgrade Natural Docs, you check the Revisions section of the <CSS Guide> to see if
-#       there have been any changes to the generated HTML.  It may require you to update your CSS file.
-#
-#
 #   Topic: Code Conventions
 #
-#       - All NaturalDocs:: packages have their functions called in Package->Function() notation.  You call
-#         <NaturalDocs::Project->FilesToBuild()>, *not* <NaturalDocs::Project::FilesToBuild()>.  Note that this was not the case
-#         until version 1.14, so any custom modifications done before then probably need to be updated.
+#       - Every package function is called with an arrow operator.  It's needed for inheritance in some places, and consistency
+#         when it's not.
 #
-#       - If you're wondering about some of the line lengths or the strange indentation, it's because I work on Natural Docs using
-#         8pt Verdana.
+#       - No constant will ever be zero or undef.  Those are reserved so any piece of code can allow a "none of the above" option
+#         and not worry about conflicts with an existing value.
 #
-###############################################################################
-
 
 use strict;
 use integer;
 
 use 5.005;  # When File::Spec was included by default
+
+use English '-no_match_vars';
 
 use FindBin;
 use lib "$FindBin::RealBin/Modules";
@@ -249,6 +59,8 @@ sub INIT
     };
 
 use NaturalDocs::Constants;
+use NaturalDocs::SymbolString;
+use NaturalDocs::ReferenceString;
 use NaturalDocs::Topics;
 use NaturalDocs::Version;
 use NaturalDocs::File;
@@ -263,6 +75,47 @@ use NaturalDocs::ClassHierarchy;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
 use NaturalDocs::Extensions;
+
+
+
+###############################################################################
+#
+#   Group: Basic Types
+#
+#   Types used throughout the program.  As Perl is a weakly-typed language unless you box things into objects, these types are
+#   for documentation purposes and are not enforced.
+#
+#
+#   Type: FileName
+#
+#   A string representing the absolute, platform-dependent path to a file.  Relative file paths are no longer in use anywhere in the
+#   program.  All path manipulation should be done through <NaturalDocs::File>.
+#
+#
+#   Type: SymbolString
+#
+#   A scalar which encodes a normalized array of identifier strings representing a full or partially-resolved symbol.  All symbols
+#   must be retrieved from plain text via <NaturalDocs::SymbolString->FromText()> so that the separation and normalization is
+#   always consistent.  Symbols are comparable via string compare functions and are sortable.
+#
+#
+#   Type: ReferenceString
+#
+#   All the information about a reference that makes it unique encoded into a string.  This includes the <SymbolString> of the
+#   reference, the scope <SymbolString> it appears in, the scope <Symbols> it has access to via "using", and the
+#   <ReferenceType>.  This is done because if any of those parameters change, it needs to be treated as a completely separate
+#   reference.
+#
+#
+#   Types: Enum Types
+#
+#   Since Perl does not actually have an enum type, these are just scalar variables whose values should always be one of the
+#   specified constants or undef.  Undef and zero will never be used as a constant's value.
+#
+#       TopicType - One of the <NaturalDocs::Topics::Type Constants>.
+#       MenuEntryType - One of the <NaturalDocs::Constants::Menu Entry Type Constants>.
+#       FileStatus - One of the <NaturalDocs::Constants::File Status Constants>.
+#
 
 
 
@@ -478,7 +331,7 @@ eval {
     # - Don't worry that some lines use something like PLSQL->New() instead of Simple->New().  This is only necessary
     #   when the language's syntax needs special handling.  Simple->New() should be fine in most cases.
 
-    NaturalDocs::Languages::Simple->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Simple->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef, '::' );
     NaturalDocs::Languages::Simple->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
@@ -494,11 +347,11 @@ eval {
     NaturalDocs::Languages::Pascal->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
     NaturalDocs::Languages::Ada->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
-    NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], undef );
+    NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], "\\", '::' );
     NaturalDocs::Languages::Ruby->New( 'Ruby', 'rb', 'ruby', '#', undef, undef, [ ';', "\n" ], [ ';', '=', "\n" ], "\\" );
     NaturalDocs::Languages::Simple->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
 
-    # This one has full language support, hence no parameters.
+    # These have full language support, hence no parameters.
     NaturalDocs::Languages::Perl->New();
 
 
@@ -565,7 +418,7 @@ eval {
 
 };
 
-if ($@)  # Oops.
+if ($EVAL_ERROR)  # Oops.
     {
     my $perlVersion;
 
@@ -584,7 +437,7 @@ if ($@)  # Oops.
          . "Also include the following information when sending an error report:\n"
          . "\n"
          . "   Natural Docs version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
-         . "   Perl version: " .$perlVersion . " on " . $^O . "\n"
+         . "   Perl version: " .$perlVersion . " on " . $OSNAME . "\n"
          . "\n"
 
          . "You can get help at the following web site:\n"
