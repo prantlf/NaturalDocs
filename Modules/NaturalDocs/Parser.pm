@@ -393,10 +393,10 @@ sub Parse #(file)
             {
             $defaultMenuTitle = $parsedFile[0]->Name();
             };
+
+        # We only want to call the hook if it has content.
+        NaturalDocs::Extensions->AfterFileParsed($file, \@parsedFile);
         };
-
-
-    NaturalDocs::Extensions->AfterFileParsed($file, \@parsedFile);
     };
 
 

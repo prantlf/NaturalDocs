@@ -117,6 +117,8 @@ sub ParseCommandLineOptions #(options)
 #   Called after a file has been parsed, but before it is scanned for symbols or turned into output.  Any modifications done here
 #   will affect those two functions.
 #
+#   Note that this function will only be called when the file has Natural Docs content.  It will not send an empty array.
+#
 #   Parameters:
 #
 #       file - The source file.  The path is relative to <NaturalDocs::Settings->InputDirectory()>, which is how all functions within

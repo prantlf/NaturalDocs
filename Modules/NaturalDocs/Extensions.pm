@@ -192,7 +192,8 @@ sub ParseCommandLineOptions #(options)
 #
 #   Function: AfterFileParsed
 #
-#   Called after a file has been parsed, but before it is scanned for symbols or turned into output.
+#   Called after a file has been parsed, but before it is scanned for symbols or turned into output.  Only call this function if the
+#   file has Natural Docs content.
 #
 #   Parameters:
 #
@@ -210,5 +211,5 @@ sub AfterFileParsed #(file, parsedFile)
         };
     };
 
-    
+
 1;
