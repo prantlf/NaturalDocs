@@ -1010,14 +1010,16 @@ sub BuildPrototype #(type, prototype, file)
             $output .=
             '</td>';
 
-            my ($hasType, $hasSuffix, $hasDefaultValue);
+            my ($hasType, $hasTypePrefix, $hasNamePrefix, $hasDefaultValue);
 
             foreach my $param (@$params)
                 {
                 if ($param->Type())
                     {  $hasType = 1;  };
-                if ($param->Suffix())
-                    {  $hasSuffix = 1;  };
+                if ($param->TypePrefix())
+                    {  $hasTypePrefix = 1;  };
+                if ($param->NamePrefix())
+                    {  $hasNamePrefix = 1;  };
                 if ($param->DefaultValue())
                     {  $hasDefaultValue = 1;  };
                 };
@@ -1032,51 +1034,58 @@ sub BuildPrototype #(type, prototype, file)
 
                 if ($language->TypeBeforeParameter())
                     {
+                    if ($hasTypePrefix)
+                        {
+                        my $typePrefix = $params->[$i]->TypePrefix();
+                        my $afterTypePrefix;
+
+                        if ($typePrefix =~ / $/)
+                            {
+                            $typePrefix =~ s/ $//;
+                            $afterTypePrefix = '&nbsp;';
+                            };
+
+                        $output .=
+                        '<td class=PTypePrefix>'
+                            . $self->ConvertAmpChars($typePrefix) . $afterTypePrefix
+                        . '</td>';
+                        };
+
                     if ($hasType)
                         {
                         $output .=
-                        '<td class=PLeftType>'
-                            . $self->ConvertAmpChars($params->[$i]->Type())
-                            . (!$hasSuffix ? '&nbsp;' : '')
+                        '<td class=PType>'
+                            . $self->ConvertAmpChars($params->[$i]->Type()) . '&nbsp;'
                         . '</td>';
                         };
 
-                    if ($hasSuffix)
+                    if ($hasNamePrefix)
                         {
                         $output .=
-                        '<td class=PLeftSuffix>'
-                            . $self->ConvertAmpChars($params->[$i]->Suffix()) . '&nbsp;'
+                        '<td class=PParameterPrefix>'
+                            . $self->ConvertAmpChars($params->[$i]->NamePrefix())
                         . '</td>';
                         };
-                    };
 
-                my $orientation;
-                if ($language->TypeBeforeParameter() || !$hasType)
-                    {  $orientation = 'Right';  }
-                else
-                    {  $orientation = 'Left';  };
+                    $output .=
+                    '<td class=PParameter>'
+                        . $self->ConvertAmpChars($params->[$i]->Name())
+                    . '</td>';
+                    }
 
-                $output .=
-                '<td class=P' . $orientation . 'Parameter>'
-                    . $self->ConvertAmpChars($params->[$i]->Name())
-                . '</td>';
-
-                if (!$language->TypeBeforeParameter())
+                else # !$language->TypeBeforeParameter()
                     {
-                    if ($hasSuffix)
-                        {
-                        $output .=
-                        '<td class=PLeftSuffix>'
-                            . $self->ConvertAmpChars($params->[$i]->Suffix())
-                        . '</td>';
-                        };
+                    $output .=
+                    '<td class=PParameter>'
+                        . $self->ConvertAmpChars( $params->[$i]->NamePrefix() . $params->[$i]->Name() )
+                    . '</td>';
 
-                    if ($hasType)
+                    if ($hasType || $hasTypePrefix)
                         {
                         $output .=
-                        '<td class=PRightType>'
-                            . '&nbsp;' . $self->ConvertAmpChars($params->[$i]->Type())
-                        . '</td>'
+                        '<td class=PType>'
+                            . '&nbsp;' . $self->ConvertAmpChars( $params->[$i]->TypePrefix() . $params->[$i]->Type() )
+                        . '</td>';
                         };
                     };
 
