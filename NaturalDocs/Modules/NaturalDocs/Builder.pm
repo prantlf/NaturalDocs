@@ -128,8 +128,7 @@ sub Run
 
     foreach my $index (keys %$currentIndexes)
         {
-        if (NaturalDocs::Settings->RebuildOutput() || NaturalDocs::SymbolTable->IndexChanged($index) ||
-            !exists $previousIndexes->{$index})
+        if (NaturalDocs::SymbolTable->IndexChanged($index) || !exists $previousIndexes->{$index})
             {
             $indexesToBuild{$index} = 1;
             };
