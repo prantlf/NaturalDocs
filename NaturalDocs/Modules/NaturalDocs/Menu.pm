@@ -105,6 +105,21 @@ my %indexNames = (
 
 
 #
+#   hash: indexPluralNames
+#
+#   A hash of plural text equivalents of the possible index types.  The keys are the <Topic Types>, and the values are the strings.
+#
+my %indexPluralNames = (
+                                        ::TOPIC_FUNCTION() => 'Functions',
+                                        ::TOPIC_CLASS() => 'Classes',
+                                        ::TOPIC_FILE() => 'Files',
+                                        ::TOPIC_VARIABLE() => 'Variables',
+                                        ::TOPIC_TYPE() => 'Types',
+                                        ::TOPIC_CONSTANT() => 'Constants'
+                                      );
+
+
+#
 #   bool: hasChanged
 #
 #   Whether the menu changed or not, regardless of why.
@@ -2018,16 +2033,19 @@ sub AddAndRemoveIndexes
             {
             my $title;
 
-            if ($index eq '*')
+            if ($isIndexGroup)
                 {
-                $title = ( $isIndexGroup ? 'Everything' : 'General Index' );
+                if ($index eq '*')
+                    {  $title = 'Everything';  }
+                else
+                    {  $title = $indexPluralNames{$index};  };
                 }
             else
                 {
-                $title = $indexNames{$index};
-
-                if (!$isIndexGroup)
-                    {  $title .= ' Index';  };
+                if ($index eq '*')
+                    {  $title = 'General Index';  }
+                else
+                    {  $title .= $indexNames{$index} . ' Index';  };
                 };
 
             my $newEntry = NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $title, ($index eq '*' ? undef : $index), undef);
