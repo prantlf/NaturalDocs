@@ -369,7 +369,7 @@ sub Parse
 
     open($fileHandle, '<' . $fileName)
         or die "Couldn't open input file " . $fileName . "\n";
-    read($fileHandle, $fileContent, (stat($fileName))[7]);
+    read($fileHandle, $fileContent, -s $fileHandle);
     close($fileHandle);
 
 

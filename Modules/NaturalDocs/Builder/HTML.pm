@@ -304,7 +304,7 @@ sub UpdateFile #(sourceFile)
         {
         my $content;
 
-        read($outputFileHandle, $content, (stat($fullOutputFile))[7]);
+        read($outputFileHandle, $content, -s $outputFileHandle);
         close($outputFileHandle);
 
 
@@ -354,7 +354,7 @@ sub UpdateIndex #(type)
 
         my $content;
 
-        read($outputFileHandle, $content, (stat($fullOutputFile))[7]);
+        read($outputFileHandle, $content, -s $outputFileHandle);
         close($outputFileHandle);
 
 
