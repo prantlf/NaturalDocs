@@ -195,7 +195,7 @@ sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type ne ::TOPIC_FUNCTION())
+    if ($type ne ::TOPIC_FUNCTION() && $type ne ::TOPIC_DELEGATE())
         {
         my $object = NaturalDocs::Languages::Prototype->New($prototype);
         return $object;
