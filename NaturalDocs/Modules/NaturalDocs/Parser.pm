@@ -95,7 +95,11 @@ sub ParseForInformation #(file)
         {
         # Add a symbol for the topic.
 
-        NaturalDocs::SymbolTable->AddSymbol($topic->Symbol(), $sourceFile, $topic->Type(),
+        my $type = $topic->Type();
+        if ($type eq ::TOPIC_ENUMERATION())
+            {  $type = ::TOPIC_TYPE();  };
+
+        NaturalDocs::SymbolTable->AddSymbol($topic->Symbol(), $sourceFile, $type,
                                                                    $topic->Prototype(), $topic->Summary());
 
 
@@ -103,11 +107,26 @@ sub ParseForInformation #(file)
         my $body = $topic->Body();
 
 
-        # If it's a list topic, add a symbol for each description list entry.
+        # If it's a list or enum topic, add a symbol for each description list entry.
 
-        if ($topic->IsList())
+        if ($topic->IsList() || $topic->Type() eq ::TOPIC_ENUMERATION())
             {
-            my $scope = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();
+            # We'll hijack the enum constants to apply to non-enum behavior too.
+            my $behavior;
+
+            if ($topic->Type() eq ::TOPIC_ENUMERATION())
+                {
+                $type = ::TOPIC_CONSTANT();
+                $behavior = $language->EnumValues();
+                }
+            elsif (NaturalDocs::Topics->TypeInfo($topic->Type())->Scope() == ::SCOPE_ALWAYS_GLOBAL())
+                {
+                $behavior = ::ENUM_GLOBAL();
+                }
+            else
+                {
+                $behavior = ::ENUM_UNDER_PARENT();
+                };
 
             while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
                 {
@@ -116,10 +135,12 @@ sub ParseForInformation #(file)
                 $listTextSymbol = NaturalDocs::NDMarkup->RestoreAmpChars($listTextSymbol);
                 my $listSymbol = NaturalDocs::SymbolString->FromText($listTextSymbol);
 
-                if ($scope != ::SCOPE_ALWAYS_GLOBAL())
-                    {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);  };
-
-                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $topic->Type(), undef,
+                if ($behavior == ::ENUM_UNDER_PARENT())
+                    {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);  }
+                elsif ($behavior == ::ENUM_UNDER_TYPE())
+                    {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Symbol(), $listSymbol);  };
+                    
+                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $type, undef,
                                                                            $self->GetSummaryFromDescriptionList($listSummary));
                 };
             };

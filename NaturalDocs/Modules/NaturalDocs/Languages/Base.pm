@@ -19,7 +19,26 @@ package NaturalDocs::Languages::Base;
 use NaturalDocs::DefineMembers 'NAME', 'Name()',
                                                  'EXTENSIONS', 'Extensions()', 'SetExtensions() duparrayref',
                                                  'SHEBANG_STRINGS', 'ShebangStrings()', 'SetShebangStrings() duparrayref',
-                                                 'IGNORED_PREFIXES';
+                                                 'IGNORED_PREFIXES',
+                                                 'ENUM_VALUES';
+
+use base 'Exporter';
+our @EXPORT = ('ENUM_GLOBAL', 'ENUM_UNDER_TYPE', 'ENUM_UNDER_PARENT');
+
+
+#
+#   Constants: EnumValuesType
+#
+#   How enum values are handled in the language.
+#
+#   ENUM_GLOBAL - Values are always global and thus 'value'.
+#   ENUM_UNDER_TYPE - Values are under the type in the hierarchy, and thus 'package.enum.value'.
+#   ENUM_UNDER_PARENT - Values are under the parent in the hierarchy, putting them on the same level as the enum itself.  Thus
+#                                       'package.value'.
+#
+use constant ENUM_GLOBAL => 1;
+use constant ENUM_UNDER_TYPE => 2;
+use constant ENUM_UNDER_PARENT => 3;
 
 
 #
@@ -74,6 +93,14 @@ sub PackageSeparator
 #
 sub PackageSeparatorWasSet
     {  return 0;  };
+
+
+#
+#   Function: EnumValues
+#   Returns the <EnumValuesType> that describes how the language handles enums.
+#
+sub EnumValues
+    {  return ENUM_GLOBAL;  };
 
 
 #
