@@ -20,13 +20,6 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Simple>
-#
-
-
-#
 #   Function: EndOfPrototype
 #
 #   Ada's syntax uses the semicolons and commas parameter style shown below, yet also uses semicolons to end

@@ -20,13 +20,6 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Simple>
-#
-
-
-#
 #   Function: MakeSortableSymbol
 #
 #   Ruby's variables may start with symbols: none for local, $ for global, @ for instance, and @@ for class.  This function strips

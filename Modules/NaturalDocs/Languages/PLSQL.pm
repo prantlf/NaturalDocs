@@ -20,13 +20,6 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Simple>
-#
-
-
-#
 #   Function: EndOfPrototype
 #
 #   Microsoft's SQL specifies parameters as shown below.

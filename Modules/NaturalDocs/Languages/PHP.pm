@@ -20,13 +20,6 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Simple>
-#
-
-
-#
 #   Function: MakeSortableSymbol
 #
 #   PHP's variables start with dollar signs.  This function strips them off for sorting.
