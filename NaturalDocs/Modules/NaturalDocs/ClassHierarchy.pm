@@ -498,7 +498,7 @@ sub AddClass #(file, class)
         if ($classes{$class}->AddDefinition($file))
             {  $self->RebuildFilesFor($class, 1, 1, 1);  };
 
-        if (!defined $files{$file})
+        if (!exists $files{$file})
             {  $files{$file} = NaturalDocs::ClassHierarchy::File->New();  };
 
         $files{$file}->AddClass($class);
