@@ -2014,17 +2014,10 @@ sub OutputFileOf #(sourceFile)
         {  return undef;  };
 
     my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
-
-    # We need to keep output files from multiple input directories from overwriting each other.  To do that, we use the input
-    # directory names with a "ND-" prefix.  We don't do this with "default" since we want to maintain compatibility with pre-1.16
-    # releases.  The prefix should make it less likely files from "default" will collide with those from other directories.
-
     my $inputDirectoryName = NaturalDocs::Settings->InputDirectoryNameOf($inputDirectory);
 
-    if ($inputDirectoryName ne 'default')
-        {
-        $outputDirectory = NaturalDocs::File->JoinPaths($outputDirectory, 'ND-' . $inputDirectoryName, 1);
-        };
+    $outputDirectory = NaturalDocs::File->JoinPaths( $outputDirectory,
+                                                                            'files' . ($inputDirectoryName != 1 ? $inputDirectoryName : ''), 1 );
 
     # We need to change any extensions to dashes because Apache will think file.pl.html is a script.
     # We also need to add a dash if the file doesn't have an extension so there'd be no conflicts with index.html,
