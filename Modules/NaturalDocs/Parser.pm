@@ -472,7 +472,7 @@ sub ExtractComments #(content)
 
                         if (defined $language->VariableEnders())
                             {
-                            my $variableEnd = $language->EndOfFunction(\$content, $prototypeStart);
+                            my $variableEnd = $language->EndOfVariable(\$content, $prototypeStart);
                             if ($variableEnd == -1)
                                 {  $variableEnd = $length  };
 
