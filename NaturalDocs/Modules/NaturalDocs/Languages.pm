@@ -940,15 +940,22 @@ sub SaveFile #(isMain)
     . "#   cannot put comments on the same line as content.\n"
     . "#\n"
     . "###############################################################################\n"
-    . "#\n"
-    . "#   Ignore Extensions: [extension] [extension] ...\n"
-    . "#\n"
-    . "#   Causes the listed file extensions to be ignored, even if they were\n"
-    . "#   previously defined to be part of a language.  The list is\n"
-    . "#   space-separated.  ex. \"Ignore Extensions: cvs txt\"\n"
-    . "#\n"
-    . "#\n"
-    . "#   Language: [name]\n"
+    . "#\n";
+
+    if (!$isMain)
+        {
+        print FH_LANGUAGES
+        "#   Ignore Extensions: [extension] [extension] ...\n"
+        . "#\n"
+        . "#   Causes the listed file extensions to be ignored, even if they were\n"
+        . "#   previously defined to be part of a language.  The list is\n"
+        . "#   space-separated.  ex. \"Ignore Extensions: cvs txt\"\n"
+        . "#\n"
+        . "#\n";
+        };
+
+    print FH_LANGUAGES
+    "#   Language: [name]\n"
     . "#\n"
     . "#   Defines a new language.  Its name can use any characters.\n"
     . "#\n"
@@ -962,21 +969,28 @@ sub SaveFile #(isMain)
     . "#   if you don't specify a package separator or any ignored prefixes, it will\n"
     . "#   copy those settings from the language that is used most in the source tree.\n"
     . "#\n"
-    . "#\n"
-    . "#   Alter Language: [name]\n"
-    . "#\n"
-    . "#   Alters an existing language so you can override its settings.  Note that if\n"
-    . "#   a property has an Add/Replace form and that property has already been\n"
-    . "#   defined, you have to specify whether you're adding to the list or replacing\n"
-    . "#   it.  Otherwise assume you're replacing the value.\n"
-    . "#\n"
-    . "#\n"
-    . "#------------------------------------------------------------------------------\n"
+    . "#\n";
+
+    if (!$isMain)
+        {
+        print FH_LANGUAGES
+        "#   Alter Language: [name]\n"
+        . "#\n"
+        . "#   Alters an existing language so you can override its settings.  Note that if\n"
+        . "#   a property has an Add/Replace form and that property has already been\n"
+        . "#   defined, you have to specify whether you're adding to the list or replacing\n"
+        . "#   it.  Otherwise assume you're replacing the value.\n"
+        . "#\n"
+        . "#\n";
+        };
+
+    print FH_LANGUAGES
+    "#------------------------------------------------------------------------------\n"
     . "#   General Properties\n"
     . "#------------------------------------------------------------------------------\n"
     . "#\n"
     . "#   Extensions: [extension] [extension] ...\n"
-    . "#   [Add/Replace] Extensions: [extension] [extension] ...\n"
+    . (!$isMain ? "#   [Add/Replace] Extensions: [extension] [extension] ...\n" : '')
     . "#\n"
     . "#   Defines the file extensions for the language's source files.  The list is\n"
     . "#   space-separated.  ex. \"Extensions: c cpp\".  You can use extensions that\n"
@@ -984,7 +998,7 @@ sub SaveFile #(isMain)
     . "#\n"
     . "#\n"
     . "#   Shebang Strings: [string] [string] ...\n"
-    . "#   [Add/Replace] Shebang Strings: [string] [string] ...\n"
+    . (!$isMain ? "#   [Add/Replace] Shebang Strings: [string] [string] ...\n" : '')
     . "#\n"
     . "#   Defines a list of strings that can appear in the shebang (#!) line to\n"
     . "#   designate that it's part of the language.  They can appear anywhere in the\n"
@@ -1000,10 +1014,9 @@ sub SaveFile #(isMain)
     . "#\n"
     . "#\n"
     . "#   Ignore Prefixes in Index: [prefix] [prefix] ...\n"
-    . "#   [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...\n"
-    . "#\n"
+    . (!$isMain ? "#   [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...\n#\n" : '')
     . "#   Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n"
-    . "#   [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n"
+    . (!$isMain ? "#   [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n" : '')
     . "#\n"
     . "#   Specifies prefixes that should be ignored when sorting symbols in an\n"
     . "#   index.  Can be specified in general or for a specific topic type.  The\n"

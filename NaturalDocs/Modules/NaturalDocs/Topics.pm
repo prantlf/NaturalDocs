@@ -893,13 +893,20 @@ sub SaveFile #(isMain)
     . "#   Creates a new topic type.  Its name can have letters, numbers, spaces, and\n"
     . "#   these charaters: - / . '  You cannot use the name General or Ignored.\n"
     . "#\n"
-    . "#\n"
-    . "#   Alter Topic Type: [name]\n"
-    . "#\n"
-    . "#   Alters an existing topic type so you can override its settings.\n"
-    . "#\n"
-    . "#\n"
-    . "#------------------------------------------------------------------------------\n"
+    . "#\n";
+
+    if (!$isMain)
+        {
+        print FH_TOPICS
+        "#   Alter Topic Type: [name]\n"
+        . "#\n"
+        . "#   Alters an existing topic type so you can override its settings.\n"
+        . "#\n"
+        . "#\n";
+        };
+
+    print FH_TOPICS
+    "#------------------------------------------------------------------------------\n"
     . "#   Properties\n"
     . "#------------------------------------------------------------------------------\n"
     . "#\n"
@@ -1057,14 +1064,21 @@ sub SaveFile #(isMain)
     . "#\n"
     . "#   Starts a list of keywords for the specified topic type.\n"
     . "#\n"
-    . "#\n"
-    . "#   Keywords: Ignored\n"
-    . "#\n"
-    . "#   Starts a list of keywords that Natural Docs will skip if they were\n"
-    . "#   previously defined.\n"
-    . "#\n"
-    . "#\n"
-    . "#   [keyword]\n"
+    . "#\n";
+
+    if (!$isMain)
+        {
+        print FH_TOPICS
+        "#   Keywords: Ignored\n"
+        . "#\n"
+        . "#   Starts a list of keywords that Natural Docs will skip if they were\n"
+        . "#   previously defined.\n"
+        . "#\n"
+        . "#\n";
+        };
+
+    print FH_TOPICS
+    "#   [keyword]\n"
     . "#   [keyword], [plural keyword]\n"
     . "#\n"
     . "#   Each line until the next Keyword line is the keyword and optionally its\n"
