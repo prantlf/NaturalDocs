@@ -30,6 +30,7 @@ package NaturalDocs::Parser::ParsedTopic;
 #       CLASS        - The class of the section, if any.  This applies to Name only.  Will be undef if global.
 #       SCOPE        - The scope the section's body appears in.  This may be different from Class.  Will be undef if global.
 #       PROTOTYPE - The prototype, if it exists and is applicable.
+#       SUMMARY    - The summary, if it exists.
 #       BODY          - The body of the section, formatted in <NDMarkup>.  Some sections may not have bodies, and if not, this
 #                           will be undef.
 #
@@ -38,7 +39,8 @@ use constant NAME => 1;
 use constant CLASS => 2;
 use constant SCOPE => 3;
 use constant PROTOTYPE => 4;
-use constant BODY => 5;
+use constant SUMMARY => 5;
+use constant BODY => 6;
 # DEPENDENCY: New() depends on the order in which these are defined.
 
 
@@ -57,13 +59,14 @@ use constant BODY => 5;
 #       class         - The class of the section's _name_, if any.  Set to undef if global.
 #       scope        - The scope the section's _body_ appears in.  This may be different from class.  Set to undef if global.
 #       prototype  - If the type is <TOPIC_FUNCTION> or <TOPIC_VARIABLE>, the prototype, if it exists.  Otherwise set to undef.
+#       summary  - The summary of the section, if any.
 #       body         - The body of the section, formatted in <NDMarkup>.  May be undef, as some sections may not have bodies.
 #
 #   Returns:
 #
 #       The new object.
 #
-sub New #(type, name, class, scope, prototype, body)
+sub New #(type, name, class, scope, prototype, summary, body)
     {
     # DEPENDENCY: This depends on the order of the parameter list being the same as the constants.
 
@@ -99,6 +102,11 @@ sub Scope
 # otherwise.
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
+
+# Function: Summary
+# Returns the section summary, if it exists, formatted in <NDMarkup>.
+sub Summary
+    {  return $_[0]->[SUMMARY];  };
 
 # Function: Body
 # Returns the section's body, formatted in <NDMarkup>.  May be undef.

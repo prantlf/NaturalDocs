@@ -774,17 +774,23 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             # Add the entry itself.
 
-            my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $topic->Type(), $topic->Prototype(), undef);
             my $toolTipProperties;
 
-            if (defined $tooltipID)
-                {
-                my $linkNumber = $tooltipLinkNumber;
-                $tooltipLinkNumber++;
+            # We only want a tooltip here if there's a protoype.  Otherwise it's redundant.
 
-                $toolTipProperties = 'id=link' . $linkNumber . ' '
-                                            . 'onMouseOver="ShowTip(\'' . $tooltipID . '\', \'link' . $linkNumber . '\')" '
-                                            . 'onMouseOut="HideTip(\'' . $tooltipID . '\')"';
+            if (defined $topic->Prototype())
+                {
+                my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $topic->Type(),
+                                                                     $topic->Prototype(), $topic->Summary());
+                if (defined $tooltipID)
+                    {
+                    my $linkNumber = $tooltipLinkNumber;
+                    $tooltipLinkNumber++;
+
+                    $toolTipProperties = 'id=link' . $linkNumber . ' '
+                                                . 'onMouseOver="ShowTip(\'' . $tooltipID . '\', \'link' . $linkNumber . '\')" '
+                                                . 'onMouseOut="HideTip(\'' . $tooltipID . '\')"';
+                    };
                 };
 
             $output .=
@@ -820,16 +826,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             if (defined $parsedFile->[$index]->Body())
                 {
-                $parsedFile->[$index]->Body() =~ /^<p>(.*?)(<\/p>|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
-
-                if (length $1)
-                    {
-                    my $summary = $1;
-                    if ($2 ne '</p>')
-                        {  $summary .= $2;  };
-
-                    $output .= $self->NDMarkupToHTML($sourceFile, $summary, $parsedFile->[$index]->Scope());
-                    };
+                $output .= $self->NDMarkupToHTML($sourceFile, $parsedFile->[$index]->Summary(), $parsedFile->[$index]->Scope());
                 };
 
 
@@ -1398,19 +1395,41 @@ sub BuildToolTip #(class, symbol, type, prototype, summary)
     {
     my ($self, $class, $symbol, $type, $prototype, $summary) = @_;
 
-    if (defined $prototype)
+    if (defined $prototype || defined $summary)
         {
         my $id = 'tt' . $self->SymbolToHTMLSymbol($class, $symbol);
 
         if (!exists $tooltips{$id})
             {
             $tooltips{$id} =
-           '<div class=CToolTip id="' . $id . '">'
-                . '<div class=C' . $topicNames{$type} . '>'
-                   . $self->BuildPrototype($prototype)
-                . '</div>'
-           . '</div>';
-          };
+            '<div class=CToolTip id="' . $id . '">'
+                . '<div class=C' . $topicNames{$type} . '>';
+
+            if (defined $prototype)
+                {
+                $tooltips{$id} .= $self->BuildPrototype($prototype);
+                };
+
+            if (defined $summary)
+                {
+                # Remove links, since people can't/shouldn't be clicking on tooltips anyway.
+
+                $summary =~ s/<\/?(?:link|url)>//g;
+
+                $summary = $self->NDMarkupToHTML(undef, $summary, undef);
+
+                # XXX - Hack.  We want to remove e-mail links as well, but keep their obfuscation.  So we leave the tags in there for
+                # the NDMarkupToHTML call, then strip out the link part afterwards.  The text obfuscation should still be in place.
+
+                $summary =~ s/<\/?a[^>]+>//g;
+
+                $tooltips{$id} .= $summary;
+                };
+
+            $tooltips{$id} .=
+                '</div>'
+            . '</div>';
+            };
 
         return $id;
         }
@@ -1567,7 +1586,7 @@ sub ToolTipsJavaScript
         . 'if (tooltip)'
             . '{'
             . 'var left = 0;'
-            . 'var top = 0;'
+            . 'var top = 10;'
 
             . 'if (link && link.offsetWidth != null)'
                 . '{'
@@ -2003,7 +2022,7 @@ sub BuildLink #(scope, text, sourceFile)
         # else leave it undef
 
         my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $target->Type(),
-                                                                      $target->Prototype(), undef);
+                                                                      $target->Prototype(), $target->Summary());
         my $toolTipProperties;
 
         if (defined $targetTooltipID)
