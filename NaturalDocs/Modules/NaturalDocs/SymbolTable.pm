@@ -93,7 +93,7 @@ my %watchedFileSymbolDefinitions;
 
 
 #
-#   hash: indexes;
+#   hash: indexes
 #
 #   A hash of generated symbol indexes.  The keys are <Topic Types> or *, and the values are sorted arrayrefs of
 #   <NaturalDocs::SymbolTable::IndexElements>.  A key of * means the index is not limited to a topic type.
@@ -797,6 +797,46 @@ sub Index #(type)
 
 
 #
+#   Function: HasIndexes
+#
+#   Determines which indexes out of a list actually have content.
+#
+#   Parameters:
+#
+#       types  - An existence hashref of the symbols to check for indexes.  The keys are the <Topic Types> or * for general.
+#
+#   Returns:
+#
+#       An existence hashref of all the specified indexes that have content.  Will return an empty hashref if none.
+#
+sub HasIndexes #(types)
+    {
+    my $types = shift;
+
+    my %eliminationHash = %$types;
+
+    finddefs:
+    foreach my $symbolObject (values %symbols)
+        {
+        foreach my $definition ($symbolObject->Definitions())
+            {
+            delete $eliminationHash{ $symbolObject->TypeDefinedIn($definition) };
+            delete $eliminationHash{ '*' };
+
+            if (!scalar keys %eliminationHash)
+                {  last finddefs;  };
+            };
+        };
+
+    my $result = { %$types };
+
+    foreach my $type (keys %eliminationHash)
+        {  delete $result->{$type};  };
+
+    return $result;
+    };
+
+#
 #   Function: IndexChanged
 #
 #   Returns whether the specified index has changed.
@@ -809,7 +849,7 @@ sub IndexChanged #(type)
     {
     my $type = shift;
 
-    if (defined $type)
+    if ($type)
         {  return (exists $indexChanges{$type});  }
     else
         {  return (scalar keys %indexChanges > 0);  };
