@@ -99,7 +99,7 @@ Format: 1.3
 #------------------------------------------------------------------------------
 #
 #   Line Comments: [symbol] [symbol] ...
-#
+# 
 #   Defines a space-separated list of symbols that are used for line comments,
 #   if any.  ex. "Line Comments: //".
 #
