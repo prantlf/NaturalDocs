@@ -93,9 +93,11 @@ sub BuildFile #(sourceFile, parsedFile)
                                                                                                 'NaturalDocs.css' ) )
                 . '">'
 
-            . $self->MenuToggleJavaScript()
-            . $self->BrowserStylesJavaScript()
-            . $self->ToolTipsJavaScript()
+            . '<script language=JavaScript src="'
+                . $self->MakeRelativeURL($outputFile,
+                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
+                                                                                                  'NaturalDocs.js' ) )
+                . '"></script>'
 
         . '</head><body class=UnframedPage>'
             . $self->OpeningBrowserStyles() . "\n\n"
@@ -173,9 +175,11 @@ sub BuildIndex #(type)
                                                                                                 'NaturalDocs.css' ) )
                 . '">'
 
-            . $self->MenuToggleJavaScript()
-            . $self->BrowserStylesJavaScript()
-            . $self->ToolTipsJavaScript()
+            . '<script language=JavaScript src="'
+                . $self->MakeRelativeURL($indexFile,
+                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
+                                                                                                  'NaturalDocs.js' ) )
+                . '"></script>'
 
         . '</head><body class=UnframedPage>'
             . $self->OpeningBrowserStyles() . "\n\n"
@@ -276,6 +280,7 @@ sub UpdateMenu
         unlink($indexFile);
         };
     };
+
 
 
 ###############################################################################

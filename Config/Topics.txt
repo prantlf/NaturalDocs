@@ -22,7 +22,7 @@ Format: 1.3
 #   Topic Type: [name]
 #
 #   Creates a new topic type.  Its name can have letters, numbers, spaces, and
-#   these charaters: - / . '  You cannot use the name General.
+#   these charaters: - / . '  You cannot use the name General or Ignored.
 #
 #
 #   Alter Topic Type: [name]
@@ -30,7 +30,9 @@ Format: 1.3
 #   Alters an existing topic type so you can override its settings.
 #
 #
-###############################################################################
+#------------------------------------------------------------------------------
+#   Properties
+#------------------------------------------------------------------------------
 #
 #   Plural: [name]
 #
@@ -81,7 +83,9 @@ Format: 1.3
 ###############################################################################
 
 # The following topics MUST be defined in this file:
-# Generic, Class, Section, File, Group, Function, Variable, Property, Type, Constant
+#
+#    Generic, Class, Section, File, Group, Function, Variable, Property, Type, 
+#    Constant
 
 
 Topic Type: Generic
@@ -191,12 +195,18 @@ Topic Type: Cookie
 #   Starts a list of keywords for the specified topic type.
 #
 #
+#   Keywords: Ignored
+#
+#   Starts a list of keywords that Natural Docs will skip if they were
+#   previously defined.
+#
+#
 #   [keyword]
 #   [keyword], [plural keyword]
 #
-#   Each line until the next Topic Keyword line is the keyword and optionally
-#   its plural form.  The plural form is needed if you want to document topics
-#   as a list.
+#   Each line until the next Keyword line is the keyword and optionally its
+#   plural form.  The plural form is needed if you want to document topics as a
+#   list.
 #
 #   Keywords can only have letters and numbers, and are not case-sensitive.
 #   You can include keywords that were previously used by a different type to

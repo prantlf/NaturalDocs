@@ -31,10 +31,15 @@ Format: 1.3
 #
 #   Defines a new language.  Its name can use any characters.
 #
-#   The languages "Text File" and "Shebang Script" have special meanings.
-#   Text files are treated like one big comment and don't have comment symbols.
-#   Shebang scripts have their language determined by the shebang string
-#   instead of the extension and include files with no extension.
+#   The language Shebang Script is special.  It's entry is only used for
+#   extensions, and files with those extensions have their shebang (#!) lines
+#   read to determine the real language of the file.  Extensionless files are
+#   always treated this way.
+#
+#   The language Text File is also special.  It's treated as one big comment
+#   so you can put Natural Docs content in them without special symbols.  Also,
+#   if you don't specify a package separator or any ignored prefixes, it will
+#   copy those settings from the language that is used most in the source tree.
 #
 #
 #   Alter Language: [name]
@@ -45,11 +50,9 @@ Format: 1.3
 #   it.  Otherwise assume you're replacing the value.
 #
 #
-###############################################################################
-#
-#   Language Properties
-#
-###############################################################################
+#------------------------------------------------------------------------------
+#   General Properties
+#------------------------------------------------------------------------------
 #
 #   Extensions: [extension] [extension] ...
 #   [Add/Replace] Extensions: [extension] [extension] ...
@@ -88,14 +91,12 @@ Format: 1.3
 #   "ADO_DoSomething" will appear under D instead of A.
 #
 #
-###############################################################################
-#
+#------------------------------------------------------------------------------
 #   Basic Language Support Properties
 #
 #   These properties are only available for languages with basic language
 #   support.
-#
-###############################################################################
+#------------------------------------------------------------------------------
 #
 #   Line Comments: [symbol] [symbol] ...
 #
@@ -130,14 +131,12 @@ Format: 1.3
 #   too complex to do in this file.
 #
 #
-###############################################################################
-#
+#------------------------------------------------------------------------------
 #   Full Language Support Properties:
 #
 #   These properties are only available for languages with full language
 #   support.
-#
-###############################################################################
+#------------------------------------------------------------------------------
 #
 #   Full Language Support: [perl package]
 #
@@ -147,7 +146,9 @@ Format: 1.3
 #
 ###############################################################################
 
-# The language "Shebang Script" MUST be defined in this file.
+# The following languages MUST be defined in this file:
+#
+#    Text File, Shebang Script
 
 
 Language: Text File
