@@ -298,10 +298,16 @@ body.FramedContentPage,
         background-color: #F8F8D8 }
 
 
-    .SEntry .SInClass,
-    .SEntry .SInSection,
-    .SEntry .SInGroup {
+    .SEntry .SIndent1 {
         margin-left: 1.5ex }
+    .SEntry .SIndent2 {
+        margin-left: 3ex }
+    .SEntry .SIndent3 {
+        margin-left: 4.5ex }
+    .SEntry .SIndent4 {
+        margin-left: 6ex }
+    .SEntry .SIndent5 {
+        margin-left: 7.5ex }
 
     .SDescription {
         padding-left: 3ex }
