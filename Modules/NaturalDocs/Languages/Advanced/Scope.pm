@@ -23,8 +23,9 @@ package NaturalDocs::Languages::Advanced::Scope;
 #
 #   CLOSING_SYMBOL - The closing symbol character of the scope.
 #   PACKAGE - The package <SymbolString> of the scope.
+#   USING - An arrayref of <SymbolStrings> for using statements, or undef if none.
 #
-use NaturalDocs::DefineMembers 'CLOSING_SYMBOL', 'PACKAGE';
+use NaturalDocs::DefineMembers 'CLOSING_SYMBOL', 'PACKAGE', 'USING';
 # Dependency: New() depends on the order of these constants as well as that there is no inherited members.
 
 
@@ -37,10 +38,11 @@ use NaturalDocs::DefineMembers 'CLOSING_SYMBOL', 'PACKAGE';
 #
 #       closingSymbol - The closing symbol character of the scope.
 #       package - The package <SymbolString> of the scope.
+#       using - An arrayref of using <SymbolStrings>, or undef if none.  The contents of the array will be duplicated.
 #
 #       If package is set to undef, it is assumed that it inherits the value of the previous scope on the stack.
 #
-sub New #(closingSymbol, package)
+sub New #(closingSymbol, package, using)
     {
     # Dependency: This depends on the order of the parameters matching the constants, and that there are no inherited
     # members.
@@ -48,6 +50,9 @@ sub New #(closingSymbol, package)
 
     my $object = [ @_ ];
     bless $object, $package;
+
+    if (defined $object->[USING])
+        {  $object->[USING] = [ @{$object->[USING]} ];  };
 
     return $object;
     };
@@ -67,6 +72,24 @@ sub Package
 # Sets the package <SymbolString> of the scope.
 sub SetPackage #(package)
     {  $_[0]->[PACKAGE] = $_[1];  };
+
+# Function: Using
+# Returns an arrayref of <SymbolStrings> for using statements, or undef if none
+sub Using
+    {  return $_[0]->[USING];  };
+
+# Function: AddUsing
+# Adds a <SymbolString> to the <Using()> array.
+sub AddUsing #(using)
+    {
+    my ($self, $using) = @_;
+
+    if (!defined $self->[USING])
+        {  $self->[USING] = [ ];  };
+
+    push @{$self->[USING]}, $using;
+    };
+
 
 
 1;
