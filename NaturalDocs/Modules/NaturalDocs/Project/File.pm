@@ -28,16 +28,13 @@ package NaturalDocs::Project::File;
 #
 #       HAS_CONTENT             - Whether the file contains Natural Docs content or not.
 #       LAST_MODIFIED           - The integer timestamp of when the file was last modified.
-#       STATUS                       - Status since the last build.  One of the <File Status Constants>.
+#       STATUS                       - <FileStatus> since the last build.
 #       DEFAULT_MENU_TITLE  - The file's default title in the menu.
 #
 
 # DEPENDENCY: New() depends on its parameter list being in the same order as these constants.  If the order changes, New()
 # needs to be changed.
-use constant HAS_CONTENT => 0;
-use constant LAST_MODIFIED => 1;
-use constant STATUS => 2;
-use constant DEFAULT_MENU_TITLE => 3;
+use NaturalDocs::DefineMembers 'HAS_CONTENT', 'LAST_MODIFIED', 'STATUS', 'DEFAULT_MENU_TITLE';
 
 
 ###############################################################################
@@ -52,7 +49,7 @@ use constant DEFAULT_MENU_TITLE => 3;
 #
 #       hasContent         - Whether the file contains Natural Docs content or not.
 #       lastModified         - The integer timestamp of when the file was last modified.
-#       status                 - The file's status since the last build.  One of the <File Status Constants>.
+#       status                 - The <FileStatus> since the last build.
 #       defaultMenuTitle  - The file's title in the menu.
 #
 #   Returns:
@@ -77,35 +74,35 @@ sub New #(hasContent, lastModified, status, defaultMenuTitle)
 sub HasContent
     {  return $_[0]->[HAS_CONTENT];  };
 
-# Function: LastModified
-# Returns the integer timestamp of when the file was last modified.
-sub LastModified
-    {  return $_[0]->[LAST_MODIFIED];  };
-
-# Function: Status
-# Returns the status of the file since the last build.  Will be one of the <File Status Constants>.
-sub Status
-    {  return $_[0]->[STATUS];  };
-
-# Function: DefaultMenuTitle
-# Returns the file's default title on the menu.
-sub DefaultMenuTitle
-    {  return $_[0]->[DEFAULT_MENU_TITLE];  };
-
 # Function: SetHasContent
 # Sets whether the file contains Natural Docs content or not.
 sub SetHasContent #(hasContent)
     {  $_[0]->[HAS_CONTENT] = $_[1];  };
+
+# Function: LastModified
+# Returns the integer timestamp of when the file was last modified.
+sub LastModified
+    {  return $_[0]->[LAST_MODIFIED];  };
 
 # Function: SetLastModified
 # Sets the file's last modification timestamp.
 sub SetLastModified #(lastModified)
     {  $_[0]->[LAST_MODIFIED] = $_[1];  };
 
+# Function: Status
+# Returns the <FileStatus> since the last build.
+sub Status
+    {  return $_[0]->[STATUS];  };
+
 # Function: SetStatus
-# Sets the file's status since the last build.
+# Sets the <FileStatus> since the last build.
 sub SetStatus #(status)
     {  $_[0]->[STATUS] = $_[1];  };
+
+# Function: DefaultMenuTitle
+# Returns the file's default title on the menu.
+sub DefaultMenuTitle
+    {  return $_[0]->[DEFAULT_MENU_TITLE];  };
 
 # Function: SetDefaultMenuTitle
 # Sets the file's default title on the menu.
