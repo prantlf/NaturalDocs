@@ -184,10 +184,9 @@ sub PurgeFiles
     my $self = shift;
 
     my $filesToPurge = NaturalDocs::Project->FilesToPurge();
-    my $outputPath = NaturalDocs::Settings->OutputDirectoryOf($self);
 
     foreach my $file (keys %$filesToPurge)
-        {  unlink( NaturalDocs::File->JoinPath($outputPath, $self->OutputFileOf($file)) );  };
+        {  unlink( $self->OutputFileOf($file) );  };
     };
 
 
@@ -203,8 +202,6 @@ sub PurgeFiles
 sub PurgeIndexes #(indexes)
     {
     my ($self, $indexes) = @_;
-
-    my $outputPath = NaturalDocs::Settings->OutputDirectoryOf($self);
 
     foreach my $index (keys %$indexes)
         {
@@ -226,19 +223,19 @@ sub EndBuild #(hasChanged)
 
     if (lc($style) ne 'custom')
         {
-        my $masterCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->StyleDirectory(), $style . '.css' );
-        my $localCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectoryOf($self), 'NaturalDocs.css' );
+        my $masterCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->StyleDirectory(), $style . '.css' );
+        my $outputCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'NaturalDocs.css' );
 
         # We check both the date and the size in case the user switches between two styles which just happen to have the same
         # date.  Should rarely happen, but it might.
-        if (! -e $localCSSFile ||
-            (stat($masterCSSFile))[9] != (stat($localCSSFile))[9] ||
-             -s $masterCSSFile != -s $localCSSFile)
+        if (! -e $outputCSSFile ||
+            (stat($masterCSSFile))[9] != (stat($outputCSSFile))[9] ||
+             -s $masterCSSFile != -s $outputCSSFile)
             {
             if (!NaturalDocs::Settings->IsQuiet())
                 {  print "Updating CSS file...\n";  };
 
-            NaturalDocs::File->Copy($masterCSSFile, $localCSSFile);
+            NaturalDocs::File->Copy($masterCSSFile, $outputCSSFile);
             };
         };
     };
@@ -603,7 +600,7 @@ sub BuildContent #(sourceFile, parsedFile)
 
         '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type() )
             . ($i == 0 ? ' id=MainTopic' : '') . '>'
-            
+
             . '<div class=CTopic>'
 
             . '<' . $headerType . ' class=CTitle>'
@@ -1223,8 +1220,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
                 close(INDEXFILEHANDLE);
                 };
 
-            $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                               $self->IndexFileOf($type, $page));
+            $indexFileName = $self->IndexFileOf($type, $page);
 
             open(INDEXFILEHANDLE, '>' . $indexFileName)
                 or die "Couldn't create output file " . $indexFileName . ".\n";
@@ -1239,14 +1235,14 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
                 if ($page > 1)
                     {
                     $linkTags .=
-                        '<link rel=First href="' . $self->IndexFileOf($type, 1) . '">'
-                        . '<link rel=Previous href="' . $self->IndexFileOf($type, $page - 1) . '">';
+                        '<link rel=First href="' . $self->RelativeIndexFileOf($type, 1) . '">'
+                        . '<link rel=Previous href="' . $self->RelativeIndexFileOf($type, $page - 1) . '">';
                     };
                 if ($page < $pageLocation[-1])
                     {
                     $linkTags .=
-                        '<link rel=Last href="' . $self->IndexFileOf($type, $pageLocation[-1]) . '">'
-                        . '<link rel=Next href="' . $self->IndexFileOf($type, $page + 1) . '">';
+                        '<link rel=Last href="' . $self->RelativeIndexFileOf($type, $pageLocation[-1]) . '">'
+                        . '<link rel=Next href="' . $self->RelativeIndexFileOf($type, $page + 1) . '">';
                     };
 
                 my $endOfHead = index($beginPage, '</head>');
@@ -1288,8 +1284,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
     # Build a dummy page so there's something at least.
     else
         {
-        $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                           $self->IndexFileOf($type, 1));
+        $indexFileName = $self->IndexFileOf($type, 1);
 
         open(INDEXFILEHANDLE, '>' . $indexFileName)
             or die "Couldn't create output file " . $indexFileName . ".\n";
@@ -1336,7 +1331,7 @@ sub BuildIndexNavigationBar #(type, page, locations)
             $output .= '<a href="';
 
             if ($locations->[$i] != $page)
-                {  $output .= $self->IndexFileOf($type, $locations->[$i]);  };
+                {  $output .= $self->RelativeIndexFileOf($type, $locations->[$i]);  };
 
             $output .= '#' . $indexAnchors[$i] . '">' . $indexHeadings[$i] . '</a>';
             }
@@ -1735,11 +1730,9 @@ sub PurgeIndexFiles #(type, startingPage)
     if (!defined $page)
         {  $page = 1;  };
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
-
     for (;;)
         {
-        my $file = NaturalDocs::File->JoinPath($outputDirectory, $self->IndexFileOf($type, $page));
+        my $file = $self->IndexFileOf($type, $page);
 
         if (-e $file)
             {
@@ -1763,20 +1756,36 @@ sub OutputFileOf #(sourceFile)
     {
     my ($self, $sourceFile) = @_;
 
+    my ($inputDirectory, $relativeSourceFile) = NaturalDocs::Settings->SplitFromInputDirectory($sourceFile);
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
+
+    # We need to keep output files from multiple input directories from overwriting each other.  To do that, we use the input
+    # directory names with a "ND-" prefix.  We don't do this with "default" since we want to maintain compatibility with pre-1.16
+    # releases.  The prefix should make it less likely files from "default" will collide with those from other directories.
+
+    my $inputDirectoryName = NaturalDocs::Settings->InputDirectoryNameOf($inputDirectory);
+
+    if ($inputDirectoryName ne 'default')
+        {
+        $outputDirectory = NaturalDocs::File->JoinPaths($outputDirectory, 'ND-' . $inputDirectoryName, 1);
+        };
+
     # We need to change any extensions to dashes because Apache will think file.pl.html is a script.
     # We also need to add a dash if the file doesn't have an extension so there'd be no conflicts with index.html,
     # FunctionIndex.html, etc.
 
-    if (!($sourceFile =~ s/\./-/g))
-        {  $sourceFile .= '-';  };
+    if (!($relativeSourceFile =~ s/\./-/g))
+        {  $relativeSourceFile .= '-';  };
 
-    $sourceFile =~ s/ /_/g;
+    $relativeSourceFile =~ s/ /_/g;
+    $relativeSourceFile .= '.html';
 
-    return $sourceFile . '.html';
+    return NaturalDocs::File->JoinPaths($outputDirectory, $relativeSourceFile);
     };
 
+
 #
-#   function:IndexFileOf
+#   function: IndexFileOf
 #
 #   Returns the output file name of the index file.
 #
@@ -1786,6 +1795,24 @@ sub OutputFileOf #(sourceFile)
 #       page  - The page number.  Undef is the same as one.
 #
 sub IndexFileOf #(type, page)
+    {
+    my ($self, $type, $page) = @_;
+
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
+                                                        $self->RelativeIndexFileOf($type, $page) );
+    };
+
+#
+#   function: RelativeIndexFileOf
+#
+#   Returns the output file name of the index file, relative to other index files.
+#
+#   Parameters:
+#
+#       type  - The type of index, or undef if general.
+#       page  - The page number.  Undef is the same as one.
+#
+sub RelativeIndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
 
@@ -2226,18 +2253,6 @@ sub ConvertAmpChars #(text)
 
 
 #
-#   Function: HiddenBreak
-#
-#   Returns a hidden word break in HTML.  Or more accurately, the best approximation of it I can make.
-#
-sub HiddenBreak
-    {
-    my $self = shift;
-    return '<span class=HB> </span>';
-    };
-
-
-#
 #   Function: AddHiddenBreaks
 #
 #   Adds hidden breaks to symbols.  Puts them after symbol and directory separators so long names won't screw up the layout.
@@ -2257,7 +2272,7 @@ sub AddHiddenBreaks #(string)
     # \.(?=.{5,}) instead of \. so file extensions don't get breaks.
     # :+ instead of :: because Mac paths are separated by a : and we want to get those too.
 
-    $string =~ s/(\w(?:\.(?=.{5,})|:+|->|\\|\/))(\w)/$1 . $self->HiddenBreak() . $2/ge;
+    $string =~ s/(\w(?:\.(?=.{5,})|:+|->|\\|\/))(\w)/$1 . '<span class=HB> <\/span>' . $2/ge;
 
     return $string;
     };

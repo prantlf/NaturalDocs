@@ -84,10 +84,9 @@ sub LanguageOf #(sourceFile)
 
     if (!defined $extension || $extension eq 'cgi')
         {
-        my $fullSourceFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->InputDirectory(), $sourceFile);
         my $shebangLine;
 
-        open(SOURCEFILEHANDLE, '<' . $fullSourceFile) or die 'Could not open ' . $sourceFile;
+        open(SOURCEFILEHANDLE, '<' . $sourceFile) or die 'Could not open ' . $sourceFile;
 
         read(SOURCEFILEHANDLE, $shebangLine, 2);
         if ($shebangLine eq '#!')

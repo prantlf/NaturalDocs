@@ -148,12 +148,22 @@ my %indexChanges;
 #
 #   Revisions:
 #
-#       Prior to 1.2, this file was called NaturalDocs.sym.
+#       1.16:
 #
-#       Prior to 1.1, there was no summary saved in the symbol definition lines.
+#           - All file names are now absolute.  Prior to 1.16 they were relative since there was only one input directory allowed.
 #
-#       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.  Other than that, the file format has not
-#       changed since its public release.
+#       1.14:
+#
+#           - The file was renamed from NaturalDocs.sym to SymbolTable.nd and moved to the project data subdirectory..
+#
+#       1.1:
+#
+#           - There was no summary saved in the symbol definition lines.
+#
+#       0.95:
+#
+#           - The file version is now the same as the app version.  Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0"
+#             to distinguish.
 #
 
 
@@ -179,9 +189,9 @@ sub LoadAndPurge
 
         my $version = NaturalDocs::Version->FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
-        # There were bugs in prototype detection until 1.15.  Need to regenerate the symbol table.
+        # The file format changed with 1.16.  Need to regenerate the symbol table.
 
-        if ($version >= NaturalDocs::Version->FromString('1.15') && $version <= NaturalDocs::Settings->AppVersion())
+        if ($version >= NaturalDocs::Version->FromString('1.16') && $version <= NaturalDocs::Settings->AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close(SYMBOLTABLEFILEHANDLE);  };

@@ -94,14 +94,26 @@ my %unbuiltFilesWithContent;
 #
 #       The second line is the last modification time of <Menu.txt>.
 #
-#       Each following line is [file name]\t[last modification time]\t[has ND content boolean]\t[default menu title].
+#       Each following line is
+#
+#       > [file name] tab [last modification time] tab [has ND content boolean] tab [default menu title]
+#
+#       The file name is absolute.
 #
 #   Revisions:
 #
-#       Prior to 1.2, the file was named NaturalDocs.files.
+#       1.16:
 #
-#       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.  Other that that, the file has not changed
-#       since its public release.
+#           - File names are now absolute.  Prior to 1.16, they were relative to the input directory since only one was allowed.
+#
+#       1.14:
+#
+#           - The file was renamed from NaturalDocs.files to FileInfo.nd and moved into the Data subdirectory.
+#
+#       0.95:
+#
+#           - The file version was changed to match the program version.  Prior to 0.95, the version line was 1.  Test for "1" instead
+#             of "1.0" to distinguish.
 #
 
 
@@ -135,14 +147,9 @@ sub LoadAndDetectChanges
         # Check if the file is in the right format.
         my $version = NaturalDocs::Version->FromTextFile(\*FILEINFOFILEHANDLE);
 
-        # The output needs to be rebuilt for 1.15.
+        # The output and the project file need to be rebuilt for 1.16.
 
-        if ($version < NaturalDocs::Version->FromString('1.15'))
-            {
-            $fileIsOkay = 1;
-            $rebuildOutput = 1;
-            }
-        elsif ($version <= NaturalDocs::Settings->AppVersion())
+        if ($version >= NaturalDocs::Version->FromString('1.16') && $version <= NaturalDocs::Settings->AppVersion())
             {
             $fileIsOkay = 1;
             }
@@ -208,28 +215,30 @@ sub LoadAndDetectChanges
                     $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
                     $filesToParse{$file} = 1;
 
+                    # If the file loses its content, this will be removed by SetHasContent().
                     if ($hasContent)
                         {  $filesToBuild{$file} = 1;  };
 
                     $hasChanged = 1;
                     }
 
-                # If the file hasn't changed...
+                # If the file hasn't changed but we want to rebuild its output...
+                elsif ($rebuildOutput && $hasContent)
+                    {
+                    $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
+
+                    # If the file loses its content, this will be removed by SetHasContent().
+                    $filesToBuild{$file} = 1;
+                    $hasChanged = 1;
+                    }
+
+                # If the file hasn't changed and we don't want to rebuild its output...
                 else
                     {
-                    if ($rebuildOutput && $hasContent)
-                        {
-                        $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
-                        $filesToBuild{$file} = 1;
-                        $hasChanged = 1;
-                        }
-                    else
-                        {
-                        $supportedFiles{$file}->SetStatus(::FILE_SAME());
+                    $supportedFiles{$file}->SetStatus(::FILE_SAME());
 
-                        if ($hasContent)
-                            {  $unbuiltFilesWithContent{$file} = 1;  };
-                        };
+                    if ($hasContent)
+                        {  $unbuiltFilesWithContent{$file} = 1;  };
                     };
 
                 $supportedFiles{$file}->SetHasContent($hasContent);
@@ -364,7 +373,7 @@ sub RebuildEverything
 #
 #   Function: MigrateOldFiles
 #
-#   If the project uses the old file names used prior to 1.2, it converts them to the new file names.
+#   If the project uses the old file names used prior to 1.14, it converts them to the new file names.
 #
 sub MigrateOldFiles
     {
@@ -373,18 +382,20 @@ sub MigrateOldFiles
     my $projectDirectory = NaturalDocs::Settings->ProjectDirectory();
 
     # We use the menu file as a test to see if we're using the new format.
-    if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs_Menu.txt'))
+    if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs_Menu.txt'))
         {
-        rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs_Menu.txt'), $self->MenuFile() );
+        # The Data subdirectory would have been created by NaturalDocs::Settings.
 
-        if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.sym'))
-            {  rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.sym'), $self->SymbolTableFile() );  };
+        rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs_Menu.txt'), $self->MenuFile() );
 
-        if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.files'))
-            {  rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.files'), $self->FileInfoFile() );  };
+        if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.sym'))
+            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.sym'), $self->SymbolTableFile() );  };
 
-        if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.m'))
-            {  rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.m'), $self->PreviousMenuStateFile() );  };
+        if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.files'))
+            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.files'), $self->FileInfoFile() );  };
+
+        if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.m'))
+            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.m'), $self->PreviousMenuStateFile() );  };
         };
     };
 
@@ -395,32 +406,32 @@ sub MigrateOldFiles
 # Function: FileInfoFile
 # Returns the full path to the file information file.
 sub FileInfoFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDataDirectory(), 'FileInfo.nd' );  };
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'FileInfo.nd' );  };
 
 # Function: SymbolTableFile
 # Returns the full path to the symbol table's data file.
 sub SymbolTableFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDataDirectory(), 'SymbolTable.nd' );  };
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'SymbolTable.nd' );  };
 
 # Function: MenuFile
 # Returns the full path to the project's menu file.
 sub MenuFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
 
 # Function: SettingsFile
 # Returns the full path to the project's settings file.
 sub SettingsFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Settings.txt' );  };
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Settings.txt' );  };
 
 # Function: PreviousMenuStateFile
 # Returns the full path to the project's previous menu state file.
 sub PreviousMenuStateFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDataDirectory(), 'PreviousMenuState.nd' );  };
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'PreviousMenuState.nd' );  };
 
 # Function: MenuBackupFile
 # Returns the full path to the project's menu backup file, which is used to save the original menu in some situations.
 sub MenuBackupFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Menu_Backup.txt' );  };
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu_Backup.txt' );  };
 
 # Function: FilesToParse
 # Returns an existence hashref of the list of files to parse.  This is not a copy of the data, so don't change it.
@@ -571,7 +582,7 @@ sub GetAllSupportedFiles
     {
     my ($self) = @_;
 
-    my @directories = ( NaturalDocs::Settings->InputDirectory() );
+    my @directories = @{NaturalDocs::Settings->InputDirectories()};
     my $menuFile = $self->MenuFile();
     my $menuBackup = $self->MenuBackupFile();
 
@@ -587,24 +598,22 @@ sub GetAllSupportedFiles
 
         foreach my $entry (@entries)
             {
-            my $fullEntry = NaturalDocs::File->JoinPath($directory, $entry);
+            my $fullEntry = NaturalDocs::File->JoinPaths($directory, $entry);
 
             # If an entry is a directory, recurse.
             if (-d $fullEntry)
                 {
                 # Join again with the noFile flag set in case the platform handles them differently.
-                push @directories, NaturalDocs::File->JoinPath($directory, $entry, 1);
+                push @directories, NaturalDocs::File->JoinPaths($directory, $entry, 1);
                 }
 
             # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
             # their syntax is similar to Natural Docs content.
             else
                 {
-                my $relativeName = NaturalDocs::File->MakeRelativePath(NaturalDocs::Settings->InputDirectory(), $fullEntry);
-
-                if (NaturalDocs::Languages->IsSupported($relativeName) && $fullEntry ne $menuFile && $fullEntry ne $menuBackup)
+                if (NaturalDocs::Languages->IsSupported($fullEntry) && $fullEntry ne $menuFile && $fullEntry ne $menuBackup)
                     {
-                    $supportedFiles{$relativeName} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
+                    $supportedFiles{$fullEntry} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
                     };
                 };
             };

@@ -13,7 +13,8 @@
 #       - Prior to initialization, <NaturalDocs::Project> must be initialized, and all files that have been changed must be run
 #         through <NaturalDocs::Parser->ParseForInformation()>.
 #
-#       - To initialize, call <LoadAndUpdate()>.  Afterwards, all other functions are available.
+#       - To initialize, call <LoadAndUpdate()>.  Afterwards, all other functions are available.  Also, <LoadAndUpdate()> will
+#         call <NaturalDocs::Settings->GenerateDirectoryNames()>.
 #
 #       - To save the changes back to disk, call <Save()>.
 #
@@ -216,7 +217,12 @@ my %bannedIndexes;
 #
 #   Revisions:
 #
-#       1.2:
+#       1.16:
+#
+#           - File names are now absolute instead of relative.  Prior to 1.16 only one input directory was allowed, so they could be
+#             relative.
+#
+#       1.14:
 #
 #           - Renamed this file from NaturalDocs_Menu.txt to Menu.txt.
 #
@@ -275,14 +281,27 @@ my %bannedIndexes;
 #
 #   Revisions:
 #
-#       Prior to 1.2, the file was named NaturalDocs.m.
+#       1.16:
 #
-#       Prior to 1.0, the file was a text file consisting of the app version and a line which was a tab-separated list of the indexes
-#       present in the menu.  * meant the general index.
+#           - The file targets are now absolute.  Prior to 1.16, they were relative to the input directory since only one was allowed.
 #
-#       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.
+#       1.14:
 #
-#       Prior to 0.9, this file didn't exist.
+#           - The file was renamed from NaturalDocs.m to PreviousMenuState.nd and moved into the Data subdirectory.
+#
+#       1.0:
+#
+#           - The file's format was completely redone.  Prior to 1.0, the file was a text file consisting of the app version and a line
+#             which was a tab-separated list of the indexes present in the menu.  * meant the general index.
+#
+#       0.95:
+#
+#           - Change the file version to match the app version.  Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to
+#             distinguish.
+#
+#       0.9:
+#
+#           - The file was added to the project.  Prior to 0.9, it didn't exist.
 #
 
 
@@ -298,6 +317,8 @@ my %bannedIndexes;
 sub LoadAndUpdate
     {
     my ($self) = @_;
+
+    NaturalDocs::Settings->GenerateDirectoryNames(); # XXX - temporary
 
     my ($filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
 
@@ -406,6 +427,8 @@ sub LoadAndUpdate
 sub LoadUnchanged
     {
     my ($self) = @_;
+
+    NaturalDocs::Settings->GenerateDirectoryNames(); # XXX - temporary
 
     my ($filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
 
@@ -606,11 +629,11 @@ sub LoadMenuFile
         my $version;
 
         if ($menuFileContent =~ /^[ \t]*format:[ \t]+([0-9\.]+)/mi)
-            {  $version = $1;  }
+            {  $version = NaturalDocs::Version->FromString($1);  }
         else
             {
             # If there's no format tag, the menu version is 0.95 or earlier.
-            $version = '0.95';
+            $version = NaturalDocs::Version->FromString('0.95');
             };
 
         # Strip tabs.
@@ -753,7 +776,7 @@ sub LoadMenuFile
 
                             no integer;
 
-                            if ($version >= 1.0)
+                            if ($version >= NaturalDocs::Version->FromString('1.0'))
                                 {
                                 if (lc($extras[0]) eq 'no auto-title')
                                     {
@@ -954,7 +977,7 @@ sub LoadMenuFile
 
         no integer;
 
-        if ($version < 1.0)
+        if ($version < NaturalDocs::Version->FromString('1.0'))
             {
             # Prior to 1.0, there was no auto-placement.  New entries were either tacked onto the end of the menu, or if there were
             # groups, added to a top-level group named "Other".  Since we have auto-placement now, delete "Other" so that its
@@ -2310,236 +2333,6 @@ sub CreateDirectorySubGroups
 
 
 #
-#   Function: CreatePrefixSubGroups
-#
-#   Where possible, creates sub-groups based on name prefix for any long groups that have the
-#   <MENU_GROUP_UPDATESTRUCTURE> flag set.  Clears the flag for any group that becomes short enough to not need any more
-#   sub-groups, but leaves it for the rest.
-#
-#   Important:
-#
-#       This function isn't ready for prime time yet.  While it works somewhat on its own, it needs to be improved and to integrate
-#       better with the directory sub-groups.  Probably most importantly, <AutoPlaceNewFiles()> needs to be aware of it.
-#
-sub CreatePrefixSubGroups
-    {
-    my ($self) = @_;
-
-    # XXX This function hasn't been converted to use PushToGroup(), DeleteFromGroup(), MarkEndOfOriginal() etc. which would
-    # improve readability.
-    my @groupStack = ( $menu );
-
-    while (scalar @groupStack)
-        {
-        my $groupEntry = pop @groupStack;
-
-        if ($groupEntry->Flags() & ::MENU_GROUP_UPDATESTRUCTURE())
-            {
-            # Count the files and find the global prefixes, if any.
-
-            my $fileCount = 0;
-            my @globalPrefixes;
-            my $noGlobalPrefixes;
-
-            foreach my $entry (@{$groupEntry->GroupContent()})
-                {
-                if ($entry->Type() == ::MENU_FILE())
-                    {
-                    $fileCount++;
-
-                    # We want to ignore titles with spaces in them.  Otherwise we'll group on manual titles starting with "The" or
-                    # something.  This is meant for code only.
-                    if (!$noGlobalPrefixes &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) !~ / /)
-                        {
-                        my @tokens = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target())
-#                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
-                                                                                                            =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
-
-                        if (!scalar @globalPrefixes)
-                            {  @globalPrefixes = @tokens;  }
-                        else
-                            {
-                            ::ShortenToMatchStrings(\@globalPrefixes, \@tokens);
-                            if (!scalar @globalPrefixes)
-                                {  $noGlobalPrefixes = 1;  };
-                            };
-                        };
-                    };
-                };
-
-
-            if ($fileCount > MAXFILESINGROUP)
-                {
-                # Count the number of files that start with each prefix.
-
-                # The keys are the first prefixes of the titles after the globally shared prefixes.  The values in %prefixCounts are the
-                # number of files that have it, and the values in %sharedPrefixes are arrayrefs of all the shared prefixes including that
-                # one.
-                my %prefixCounts;
-                my %sharedPrefixes;
-
-                foreach my $entry (@{$groupEntry->GroupContent()})
-                    {
-                    if ($entry->Type() == ::MENU_FILE() &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) !~ / /)
-                        {
-                        my @tokens = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target())
-#                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
-                                                                                                            =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
-
-                        if (scalar @tokens > scalar @globalPrefixes)
-                            {
-                            my $leadToken = $tokens[scalar @globalPrefixes];
-
-                            if (!exists $prefixCounts{$leadToken})
-                                {
-                                $prefixCounts{$leadToken} = 1;
-                                $sharedPrefixes{$leadToken} = [ @tokens ];
-                                }
-                            else
-                                {
-                                $prefixCounts{$leadToken}++;
-                                ::ShortenToMatchStrings($sharedPrefixes{$leadToken}, \@tokens);
-                                };
-                            };
-                        };
-                    };
-
-
-                # Create the sub-groups if they have enough entries and if the shared prefix isn't merely a package prefix.  We don't
-                # want to deal with package prefixes here because combining it with directory grouping gets really messy and hard.
-
-                # The keys are the first prefixes of the titles after the globally shared prefixes.  The values are the groups they should
-                # go into.  There will only be entries for groups that have at least MINFILESINNEWGROUP entries.
-                my %prefixGroups;
-
-                while (my ($leadPrefix, $count) = each %prefixCounts)
-                    {
-                    if ($count >= MINFILESINNEWGROUP)# && $sharedPrefixes{$leadPrefix}->[-1] !~ /(?:\.|::)$/)
-                        {
-                        my @newTitle = @{$sharedPrefixes{$leadPrefix}};
-
-                        if (scalar @globalPrefixes)
-                            {
-                            # If the last section is text, we keep it as is because the following section is either distinctive text
-                            # (WindowText and WindowBorder) or symbols.  In that case, grouping with the word (Window) is appropriate.
-                            if ($newTitle[-1] =~ /[a-zA-Z0-9]$/)
-                                {
-                                splice(@newTitle, 0, scalar @globalPrefixes);
-                                }
-                            # However, if the last section is a symbol (PackageName::) we want to keep the leading word complete
-                            # (PackageName:: as opposed to Name::)  This could happen if you have PackageName and a number of
-                            # PackageName::X's being grouped this way.  You'd have one group for PackageName and a sub-group
-                            # Name:: for all the X's.
-                            else #if ($newTitle[scalar @globalPrefixes] !~ /[a-zA-Z0-9]$/)
-                                {
-                                my $index = scalar @globalPrefixes;
-
-                                while ($index > 0 && $newTitle[$index - 1] =~ /[a-zA-Z0-9]$/)
-                                    {  $index--;  };
-
-                                if ($index > 0)
-                                    {  splice(@newTitle, 0, $index);  };
-                                };
-                            };
-
-                        #$newTitle[-1] =~ s/[:\.]+$//;
-
-                        my $newGroup = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), join('', @newTitle),
-                                                                                                 undef, ::MENU_GROUP_UPDATETITLES());
-                        if ($count > MAXFILESINGROUP)
-                            {
-                            $newGroup->SetFlags( $newGroup->Flags() | ::MENU_GROUP_UPDATESTRUCTURE() );
-                            };
-
-                        if (($groupEntry->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
-                            {
-                            push @{$groupEntry->GroupContent()},
-                                    NaturalDocs::Menu::Entry->New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
-                            $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
-                            };
-
-                        push @{$groupEntry->GroupContent()}, $newGroup;
-                        $prefixGroups{$leadPrefix} = $newGroup;
-
-                        $fileCount -= $count;
-                        };
-                    };
-
-
-                # Fill the new sub-groups.
-
-                my $index = 0;
-                my $afterOriginal;
-
-                while ($index < scalar @{$groupEntry->GroupContent()})
-                    {
-                    my $entry = $groupEntry->GroupContent()->[$index];
-
-                    if ($entry->Type() == ::MENU_FILE() &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target() &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) !~ / /)
-                        {
-                        my @tokens =  NaturalDocs::Project->DefaultMenuTitleOf($entry->Target())
-#                                                                                                            =~ /[A-Z]+[a-z0-9]*(?:\.|::)?|[a-z0-9]+(?:\.|::)?|./g;
-                                                                                                            =~ /([A-Z]+[a-z0-9]*|[a-z0-9]+|.)(?:\.|::)?/g;
-
-                        my $leadToken = $tokens[scalar @globalPrefixes];
-
-                        if (defined $leadToken && exists $prefixGroups{$leadToken})
-                            {
-                            my $targetGroup = $prefixGroups{$leadToken};
-
-                            if ($afterOriginal && ($targetGroup->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
-                                {
-                                push @{$targetGroup->GroupContent()},
-                                        NaturalDocs::Menu::Entry->New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
-                                $targetGroup->SetFlags( $targetGroup->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
-                                };
-
-                            push @{$targetGroup->GroupContent()}, $entry;
-                            splice(@{$groupEntry->GroupContent()}, $index, 1);
-                            }
-                        else
-                            {  $index++;  };
-                        }
-
-                    elsif ($entry->Type() == ::MENU_ENDOFORIGINAL())
-                        {
-                        $afterOriginal = 1;
-                        $index++;
-                        }
-
-                    else
-                        {  $index++;  };
-                    };
-
-                if ($fileCount <= MAXFILESINGROUP)
-                    {
-                    $groupEntry->SetFlags( $groupEntry->Flags() & ~::MENU_GROUP_UPDATESTRUCTURE() );
-                    };
-
-                $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() | ::MENU_GROUP_UPDATEORDER() );
-
-                };  # if count >MAXFILESINGROUP
-            };  # if group has UPDATESTRUCTURE
-
-
-        # Check any sub-groups.
-
-        foreach my $entry (@{$groupEntry->GroupContent()})
-            {
-            if ($entry->Type() == ::MENU_GROUP())
-                {  push @groupStack, $entry;  };
-            };
-        };
-    };
-
-
-#
 #   Function: DetectOrder
 #
 #   Detects the order of the entries in all groups that have the <MENU_GROUP_UPDATEORDER> flag set.  Will set one of the
@@ -2792,7 +2585,7 @@ sub GenerateAutoFileTitles #(forceAll)
                             {  @directories = ( $directories[0], '...', $directories[-1] );  };
 
                         $directoryString = NaturalDocs::File->JoinDirectories(@directories);
-                        $title = NaturalDocs::File->JoinPath($directoryString, $file);
+                        $title = NaturalDocs::File->JoinPaths($directoryString, $file);
                         }
                     else
                         {

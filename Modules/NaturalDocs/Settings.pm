@@ -39,6 +39,10 @@ package NaturalDocs::Settings;
 # An array of input directories.
 my @inputDirectories;
 
+# array: inputDirectoryNames
+# An array of the input directory names.  Each name corresponds to the directory of the same index in <inputDirectories>.
+my @inputDirectoryNames;
+
 # var: projectDirectory
 # The project directory.
 my $projectDirectory;
@@ -163,19 +167,97 @@ sub Save
     };
 
 
+#
+#   Function: GenerateDirectoryNames
+#
+#   Generates names for each of the input directories, which can later be retrieved with <InputDirectoryNameOf()>.
+#
+sub GenerateDirectoryNames
+    {
+    my ($self) = @_;
+
+    my %usedNames;
+
+    for (my $i = 0; $i < scalar @inputDirectories; $i++)
+        {
+        my $name;
+
+        if ($i == 0)
+            {  $name = 'default';  }
+        else
+            {
+            # The first attempt at a name is the last directory that isn't already used.
+
+            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($inputDirectories[$i], 1);
+            my @directories = NaturalDocs::File->SplitDirectories($dirString);
+
+            while (scalar @directories && !defined $name)
+                {
+                my $directory = pop @directories;
+                if (!exists $usedNames{$directory})
+                    {  $name = $directory;  };
+                };
+
+            if (!defined $name)
+                {
+                # If that didn't work, the second attempt is a number.
+
+                my $number = 1;
+                while (!exists $usedNames{$number})
+                    {  $number++;  };
+
+                $name = $number;
+                };
+            };
+
+        $inputDirectoryNames[$i] = $name;
+        $usedNames{$name} = 1;
+        };
+    };
+
+
 ###############################################################################
 # Group: Information Functions
 
-
-# Function: InputDirectory
-# Returns the input directory.
-sub InputDirectory
-    {  return $inputDirectories[0];  };
 
 # Function: InputDirectories
 # Returns an arrayref of input directories.  Do not change.
 sub InputDirectories
     {  return \@inputDirectories;  };
+
+# Function: InputDirectoryNameOf
+# Returns the generated name of the passed input directory.  <GenerateDirectoryNames()> must be called once before this
+# function is available.  One possible directory name is "default", and it will always be used if there has never been more than
+# one input directory.
+sub InputDirectoryNameOf #(directory)
+    {
+    my ($self, $directory) = @_;
+
+    my $name;
+
+    for (my $i = 0; $i < scalar @inputDirectories && !defined $name; $i++)
+        {
+        if ($directory eq $inputDirectories[$i])
+            {  $name = $inputDirectoryNames[$i];  };
+        };
+
+    return $name;
+    };
+
+# Function: SplitFromInputDirectory
+# Takes an input file name and returns the array ( inputDirectory, relativePath ).
+sub SplitFromInputDirectory #(file)
+    {
+    my ($self, $file) = @_;
+
+    foreach my $directory (@inputDirectories)
+        {
+        if (NaturalDocs::File->IsSubPathOf($directory, $file))
+            {  return ( $directory, NaturalDocs::File->MakeRelativePath($directory, $file) );  };
+        };
+
+    return ( );
+    };
 
 # Function: BuildTargets
 # Returns an arrayref of <NaturalDocs::Settings::BuildTarget>s.  Do not change.
@@ -243,12 +325,12 @@ sub ProjectDirectory
 # Function: ProjectDataDirectory
 # Returns the project data directory.
 sub ProjectDataDirectory
-    {  return NaturalDocs::File->JoinPath($projectDirectory, 'Data', 1);  };
+    {  return NaturalDocs::File->JoinPaths($projectDirectory, 'Data', 1);  };
 
 # Function: StyleDirectory
 # Returns the main style directory.
 sub StyleDirectory
-    {  return NaturalDocs::File->JoinPath($FindBin::RealBin, 'Styles', 1);  };
+    {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'Styles', 1);  };
 
 # Function: TabLength
 # Returns the number of spaces tabs should be expanded to.
@@ -271,7 +353,7 @@ sub IsQuiet
     {  return $isQuiet;  };
 
 # Function: HeadersOnly
-# Returns whether to only check the header files in C/C++;
+# Returns whether to only check the header files in C/C++.
 sub HeadersOnly
     {  return $headersOnly;  };
 
@@ -511,7 +593,7 @@ sub ParseCommandLine
         {
         if (lc($defaultStyle) ne 'custom')
             {
-            my $cssFile = NaturalDocs::File->JoinPath( $self->StyleDirectory(), $defaultStyle . '.css' );
+            my $cssFile = NaturalDocs::File->JoinPaths( $self->StyleDirectory(), $defaultStyle . '.css' );
             if (! -e $cssFile)
                 {  push @errorMessages, 'The style ' . $defaultStyle . ' does not exist.';  };
             };
@@ -533,7 +615,7 @@ sub ParseCommandLine
         else
             {
             if (!NaturalDocs::File->PathIsAbsolute($directory))
-                {  $directory = NaturalDocs::File->JoinPath(Cwd::cwd(), $directory);  };
+                {  $directory = NaturalDocs::File->JoinPaths(Cwd::cwd(), $directory);  };
 
             $directory = NaturalDocs::File->CanonizePath($directory);
 
@@ -582,7 +664,7 @@ sub ParseCommandLine
         for (my $i = 0; $i < scalar @inputDirectories; $i++)
             {
             if (!NaturalDocs::File->PathIsAbsolute($inputDirectories[$i]))
-                {  $inputDirectories[$i] = NaturalDocs::File->JoinPath(Cwd::cwd(), $inputDirectories[$i]);  };
+                {  $inputDirectories[$i] = NaturalDocs::File->JoinPaths(Cwd::cwd(), $inputDirectories[$i]);  };
 
             $inputDirectories[$i] = NaturalDocs::File->CanonizePath($inputDirectories[$i]);
 
@@ -596,7 +678,7 @@ sub ParseCommandLine
     if (defined $projectDirectory)
         {
         if (!NaturalDocs::File->PathIsAbsolute($projectDirectory))
-            {  $projectDirectory = NaturalDocs::File->JoinPath(Cwd::cwd(), $projectDirectory);  };
+            {  $projectDirectory = NaturalDocs::File->JoinPaths(Cwd::cwd(), $projectDirectory);  };
 
         $projectDirectory = NaturalDocs::File->CanonizePath($projectDirectory);
 
@@ -604,7 +686,7 @@ sub ParseCommandLine
             {  push @errorMessages, 'The project directory ' . $projectDirectory . ' does not exist.';  };
 
         # Create the Data subdirectory if it doesn't exist.
-        NaturalDocs::File->CreatePath( NaturalDocs::File->JoinPath($projectDirectory, 'Data', 1) );
+        NaturalDocs::File->CreatePath( NaturalDocs::File->JoinPaths($projectDirectory, 'Data', 1) );
         }
     else
         {  push @errorMessages, 'You did not specify a project directory.';  };
