@@ -2116,9 +2116,9 @@ sub BuildEMailLink #(address)
 
     return
     "<a href=\"#\" onClick=\"location.href='mai' + 'lto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>"
-        . $splitAddress[0] . '<span style="display: none">(delete this)</span>' . $splitAddress[1]
+        . $splitAddress[0] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[1]
         . '<span>@</span>'
-        . $splitAddress[3] . '<span style="display: none">(delete this)</span>' . $splitAddress[4]
+        . $splitAddress[3] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[4]
     . '</a>';
     };
 
