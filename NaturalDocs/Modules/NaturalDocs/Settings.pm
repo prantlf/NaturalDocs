@@ -432,7 +432,7 @@ sub IsQuiet
 #   Returns a string of the current version number of Natural Docs.
 #
 sub AppVersion
-    {  return '0.85';  };
+    {  return '0.9';  };
 
 #
 #   Function: AppURL
