@@ -735,6 +735,7 @@ sub MergeAutoTopics #(language, autoTopics)
 
     my %functionsInLists;
     my %variablesInLists;
+    my %propertiesInLists;
 
     while ($topicIndex < scalar @parsedFile && $autoTopicIndex < scalar @$autoTopics)
         {
@@ -754,6 +755,12 @@ sub MergeAutoTopics #(language, autoTopics)
                 {
                 delete $variablesInLists{$autoTopic->Name()};
                 }
+            # We want to accept variables documented as properties.
+            elsif ( ($autoTopic->Type() == ::TOPIC_PROPERTY() || $autoTopic->Type() == ::TOPIC_VARIABLE()) &&
+                    exists $propertiesInLists{$autoTopic->Name()})
+                {
+                delete $propertiesInLists{$autoTopic->Name()};
+                }
             elsif (!NaturalDocs::Settings->DocumentedOnly())
                 {
                 splice(@parsedFile, $topicIndex, 0, $autoTopic);
@@ -763,10 +770,12 @@ sub MergeAutoTopics #(language, autoTopics)
             $autoTopicIndex++;
             }
 
-        # Transfer information if we have a match.
-        elsif ($topic->Type() == $autoTopic->Type() &&
+        # Transfer information if we have a match.  We want to accept variables documented as properties.
+        elsif ( ($topic->Type() == $autoTopic->Type() ||
+                   ($topic->Type() == ::TOPIC_PROPERTY() && $autoTopic->Type() == ::TOPIC_VARIABLE()) ) &&
                 index($topic->Name(), $language->MakeSortableSymbol($autoTopic->Name(), $autoTopic->Type())) != -1)
             {
+            $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
             $topic->SetClass($autoTopic->Class());
             $topic->SetScope($autoTopic->Scope());
@@ -775,7 +784,7 @@ sub MergeAutoTopics #(language, autoTopics)
             $autoTopicIndex++;
             }
 
-        # Extract functions and variables in lists.
+        # Extract functions, variables, and properties in lists.
         elsif ($topic->Type() == ::TOPIC_FUNCTION_LIST())
             {
             my $body = $topic->Body();
@@ -791,6 +800,15 @@ sub MergeAutoTopics #(language, autoTopics)
 
             while ($body =~ /<ds>([^<]+)<\/ds>/g)
                 {  $variablesInLists{$1} = 1;  };
+
+            $topicIndex++;
+            }
+        elsif ($topic->Type() == ::TOPIC_PROPERTY_LIST())
+            {
+            my $body = $topic->Body();
+
+            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+                {  $propertiesInLists{$1} = 1;  };
 
             $topicIndex++;
             }
