@@ -1,5 +1,5 @@
 Title: Natural Docs
-SubTitle: Version 0.85
+SubTitle: Version 0.9
 
 Footer: Copyright (c) 2003 Greg Valure
 
@@ -20,6 +20,10 @@ Footer: Copyright (c) 2003 Greg Valure
 # 
 # You can add text and web links to the menu by adding "Text: [text]" and
 # "Link: [text] ([URL])" lines, respectively.
+# 
+# You can add indexes to the menu by adding "Index: [name]" or
+# "[type] Index: [name]" to the menu.  The types are Class, Function, and
+# File.  If you don't add a type, it will be an index of everything.
 # 
 # The formatting and comments are auto-generated, so don't worry about
 # neatness when editing the file.  Natural Docs will clean it up the next
@@ -45,6 +49,7 @@ Group: Packages  {
       File: Constants  (Modules\NaturalDocs\Constants.pm)
       File: File  (Modules\NaturalDocs\File.pm)
       File: NDMarkup  (Modules\NaturalDocs\NDMarkup.pm)
+      File: StringSort  (Modules\NaturalDocs\StringSort.pm)
       }  # Group: Support
 
    }  # Group: Packages
@@ -71,10 +76,20 @@ Group: Objects  {
       File: Reference  (Modules\NaturalDocs\SymbolTable\Reference.pm)
       File: ReferenceTarget  (Modules\NaturalDocs\SymbolTable\ReferenceTarget.pm)
       File: File  (Modules\NaturalDocs\SymbolTable\File.pm)
+      File: IndexElement  (Modules\NaturalDocs\SymbolTable\IndexElement.pm)
       }  # Group: SymbolTable
 
    File: Parser::ParsedTopic  (Modules\NaturalDocs\Parser\ParsedTopic.pm)
    }  # Group: Objects
+
+
+Group: Indexes  {
+
+   Function Index: Functions
+   Class Index: Packages and Classes
+   File Index: Files
+   Index: Everything
+   }  # Group: Indexes
 
 File: CSS Guide  (auto-title, CSSGuide.txt)
 Link: Web Site  (http://www.naturaldocs.org/)
