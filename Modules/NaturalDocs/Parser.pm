@@ -105,9 +105,9 @@ sub ParseForInformation #(file)
 
         # If it's a list topic, add a symbol for each description list entry.
 
-        if (NaturalDocs::Topics->IsList($topic->Type()))
+        if ($topic->IsList())
             {
-            my $listType = NaturalDocs::Topics->IsListOf($topic->Type());
+            my $scope = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();
 
             while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
                 {
@@ -119,9 +119,11 @@ sub ParseForInformation #(file)
                 $listSummary = $1 . $2;
 
                 my $listSymbol = NaturalDocs::SymbolString->FromText($listTextSymbol);
-                $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);
 
-                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $listType, undef, $listSummary);
+                if ($scope != ::SCOPE_ALWAYS_GLOBAL())
+                    {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);  };
+
+                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $topic->Type(), undef, $listSummary);
                 };
             };
 
@@ -302,9 +304,6 @@ sub Parse
     if (defined $autoTopics)
         {  $self->AddPackageDelineators();  };
 
-    if (defined $exportedSymbols)
-        {  $self->MatchExportedSymbols($exportedSymbols);  };
-
     if (NaturalDocs::Settings->AutoGroupLevel() != ::AUTOGROUP_NONE())
         {  $self->MakeAutoGroups($autoTopics);  };
 
@@ -315,9 +314,8 @@ sub Parse
 
     if (scalar @parsedFile)
         {
-        # If there's only one topic, it's title overrides the file name.  If there's more than one topic but the first one is a section, file,
-        # or class, it's title overrides the file name as well.
-        if (scalar @parsedFile == 1 || NaturalDocs::Topics->CanBePageTitle( $parsedFile[0]->Type() ))
+        # If there's only one topic, it's title overrides the file name.  Certain topic types override the file name as well.
+        if (scalar @parsedFile == 1 || NaturalDocs::Topics->TypeInfo( $parsedFile[0]->Type() )->PageTitleIfFirst() )
             {
             $defaultMenuTitle = $parsedFile[0]->Title();
             }
@@ -342,7 +340,7 @@ sub Parse
                 }
 
             unshift @parsedFile,
-                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), $name, undef, undef, undef, undef, undef, 1);
+                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), $name, undef, undef, undef, undef, undef, 1, undef);
             };
 
         # We only want to call the hook if it has content.
@@ -594,7 +592,9 @@ sub RepairPackages #(autoTopics, scopeRecord)
         # Finally try to handle the topic, since it has the lowest line number.
         else
             {
-            if (NaturalDocs::Topics->HasScope($topic->Type()) || NaturalDocs::Topics->EndsScope($topic->Type()))
+            my $scope = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();
+
+            if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
                 {
                 # They should already have the correct class and scope.
                 $currentPackage = $topic->Package();
@@ -638,9 +638,8 @@ sub MergeAutoTopics #(language, autoTopics)
     my $topicIndex = 0;
     my $autoTopicIndex = 0;
 
-    my %functionsInLists;
-    my %variablesInLists;
-    my %propertiesInLists;
+    # Keys are topic types, values are existence hashrefs of titles.
+    my %topicsInLists;
 
     while ($topicIndex < scalar @parsedFile && $autoTopicIndex < scalar @$autoTopics)
         {
@@ -650,21 +649,11 @@ sub MergeAutoTopics #(language, autoTopics)
         # Add the auto-topic if it's higher in the file than the current topic.
         if ($autoTopic->LineNumber < $topic->LineNumber())
             {
-            if ($autoTopic->Type() == ::TOPIC_FUNCTION() &&
-                exists $functionsInLists{$autoTopic->Title()})
+            if (exists $topicsInLists{$autoTopic->Type()} &&
+                exists $topicsInLists{$autoTopic->Type()}->{$autoTopic->Title()})
                 {
-                delete $functionsInLists{$autoTopic->Title()};
-                }
-            elsif ($autoTopic->Type() == ::TOPIC_VARIABLE() &&
-                    exists $variablesInLists{$autoTopic->Title()})
-                {
-                delete $variablesInLists{$autoTopic->Title()};
-                }
-            # We want to accept variables documented as properties.
-            elsif ( ($autoTopic->Type() == ::TOPIC_PROPERTY() || $autoTopic->Type() == ::TOPIC_VARIABLE()) &&
-                    exists $propertiesInLists{$autoTopic->Title()})
-                {
-                delete $propertiesInLists{$autoTopic->Title()};
+                # Remove it from the list so a second one with the same name will be added.
+                delete $topicsInLists{$autoTopic->Type()}->{$autoTopic->Title()};
                 }
             elsif (!NaturalDocs::Settings->DocumentedOnly())
                 {
@@ -675,46 +664,30 @@ sub MergeAutoTopics #(language, autoTopics)
             $autoTopicIndex++;
             }
 
-        # Transfer information if we have a match.  We want to accept variables documented as properties.
-        elsif ( ($topic->Type() == $autoTopic->Type() ||
-                   ($topic->Type() == ::TOPIC_PROPERTY() && $autoTopic->Type() == ::TOPIC_VARIABLE()) ) &&
+        # Transfer information if we have a match.
+        elsif ($topic->Type() == $autoTopic->Type() &&
                 index($topic->Title(), $language->MakeSortableSymbol($autoTopic->Title(), $autoTopic->Type())) != -1)
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
 
-            if (!NaturalDocs::Topics->HasScope($topic->Type()))
+            if (NaturalDocs::Topics->TypeInfo($topic->Type())->Scope() != ::SCOPE_START())
                 {  $topic->SetPackage($autoTopic->Package());  };
 
             $topicIndex++;
             $autoTopicIndex++;
             }
 
-        # Extract functions, variables, and properties in lists.
-        elsif ($topic->Type() == ::TOPIC_FUNCTION_LIST())
+        # Extract topics in lists.
+        elsif ($topic->IsList())
             {
+            if (!exists $topicsInLists{$topic->Type()})
+                {  $topicsInLists{$topic->Type()} = { };  };
+
             my $body = $topic->Body();
 
             while ($body =~ /<ds>([^<]+)<\/ds>/g)
-                {  $functionsInLists{$1} = 1;  };
-
-            $topicIndex++;
-            }
-        elsif ($topic->Type() == ::TOPIC_VARIABLE_LIST())
-            {
-            my $body = $topic->Body();
-
-            while ($body =~ /<ds>([^<]+)<\/ds>/g)
-                {  $variablesInLists{$1} = 1;  };
-
-            $topicIndex++;
-            }
-        elsif ($topic->Type() == ::TOPIC_PROPERTY_LIST())
-            {
-            my $body = $topic->Body();
-
-            while ($body =~ /<ds>([^<]+)<\/ds>/g)
-                {  $propertiesInLists{$1} = 1;  };
+                {  $topicsInLists{$topic->Type()}->{NaturalDocs::NDMarkup->RestoreAmpChars($1)} = 1;  };
 
             $topicIndex++;
             }
@@ -785,8 +758,8 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
     {
     my ($self, $startIndex, $endIndex) = @_;
 
-    # Skip the first entry if its a file.  We don't want to group it, since it should be the title of the file rather than an entry in it.
-    if ($startIndex == 0 && $parsedFile[0]->Type() == ::TOPIC_FILE())
+    # Skip the first entry if it can be the page title.  Grouping it would prevent it from working.
+    if ($startIndex == 0 && NaturalDocs::Topics->TypeInfo($parsedFile[0]->Type())->PageTitleIfFirst())
         {  $startIndex++;  };
 
     if ($startIndex >= $endIndex)
@@ -795,7 +768,7 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
     # No groups if any are defined already.
     for (my $i = $startIndex; $i < $endIndex; $i++)
         {
-        if ($parsedFile[$i]->Type() == ::TOPIC_GROUP())
+        if ($parsedFile[$i]->Type() eq ::TOPIC_GROUP())
             {  return 0;  };
         };
 
@@ -806,14 +779,16 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
         {
         my $topic = $parsedFile[$startIndex];
         my $type = $topic->Type();
+        my $typeInfo = NaturalDocs::Topics->TypeInfo($type);
 
-        if (NaturalDocs::Topics->IsList($type))
-            {  $type = NaturalDocs::Topics->IsListOf($type);  };
-
-        if ($type != $currentType && NaturalDocs::Topics->IsAutoGroupable($type))
+        if ($typeInfo->Scope() == ::SCOPE_START() || $typeInfo->Scope() == ::SCOPE_END())
+            {
+            $currentType = undef;
+            }
+        elsif ($type ne $currentType && NaturalDocs::Topics->ShouldAutoGroup($type))
             {
             splice(@parsedFile, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
-                                                                                                                          NaturalDocs::Topics->PluralNameOf($type),
+                                                                                                                          NaturalDocs::Topics->NameOfType($type, 1),
                                                                                                                           $topic->Package(), $topic->Using(),
                                                                                                                           undef, undef, undef,
                                                                                                                           $topic->LineNumber()) );
@@ -822,11 +797,6 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
             $startIndex++;
             $endIndex++;
             $groupCount++;
-            }
-
-        elsif (NaturalDocs::Topics->HasScope($type) || NaturalDocs::Topics->EndsScope($type))
-            {
-            $currentType = undef;
             };
 
         $startIndex++;
@@ -848,59 +818,21 @@ sub AddToClassHierarchy
 
     foreach my $topic (@parsedFile)
         {
-        if ($topic->Type() == ::TOPIC_CLASS())
+        if ($topic->Type() eq ::TOPIC_CLASS())
             {
-            $self->OnClass($topic->Package());
-            }
-        elsif ($topic->Type() == ::TOPIC_CLASS_LIST())
-            {
-            my $body = $topic->Body();
-
-            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+            if ($topic->IsList())
                 {
-                $self->OnClass( NaturalDocs::SymbolString->FromText($1) );
-                };
-            };
-        };
-    };
+                my $body = $topic->Body();
 
-
-#
-#   Function: MatchExportedSymbols
-#
-#   Determines which topics should be exported and sets <NaturalDocs::Parser::ParsedTopic->SetIsExported()> on them.
-#
-#   Parameters:
-#
-#       exportedSymbols - An existence hashref of exported symbols.  *The original memory will be changed.*
-#
-sub MatchExportedSymbols #(exportedSymbols)
-    {
-    my ($self, $exportedSymbols) = @_;
-
-    foreach my $topic (@parsedFile)
-        {
-        if (NaturalDocs::Topics->IsList( $topic->Type() ))
-            {
-            # The regexp doesn't work directly on a function call.  It must be a variable.
-            my $body = $topic->Body();
-
-            while ($body =~ /<ds>([^<]+)<\/ds>/g)
-                {
-                my $listSymbol = NaturalDocs::NDMarkup->RestoreAmpChars($1);
-
-                if (exists $exportedSymbols->{$listSymbol})
+                while ($body =~ /<ds>([^<]+)<\/ds>/g)
                     {
-                    delete $exportedSymbols->{$listSymbol};
-                    $topic->SetIsExported(1);
-                    $topic->AddExportedListSymbol($listSymbol);
+                    $self->OnClass( NaturalDocs::SymbolString->FromText( NaturalDocs::NDMarkup->RestoreAmpChars($1) ) );
                     };
+                }
+            else
+                {
+                $self->OnClass($topic->Package());
                 };
-            }
-        elsif (exists $exportedSymbols->{ $topic->Title() })
-            {
-            delete $exportedSymbols->{ $topic->Title() };
-            $topic->SetIsExported(1);
             };
         };
     };
@@ -929,12 +861,13 @@ sub AddPackageDelineators
         if ($topic->Package() ne $currentPackage)
             {
             $currentPackage = $topic->Package();
+            my $scopeType = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();
 
-            if (NaturalDocs::Topics->HasScope($topic->Type()))
+            if ($scopeType == ::SCOPE_START())
                 {
                 $usedPackages{$currentPackage} = [ $topic->Title(), $topic->Type() ];
                 }
-            elsif (!NaturalDocs::Topics->EndsScope($topic->Type()))
+            elsif ($scopeType == ::SCOPE_END())
                 {
                 my $newTopic;
 
@@ -943,7 +876,7 @@ sub AddPackageDelineators
                     $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), 'Global',
                                                                                                    undef, undef,
                                                                                                    undef, undef, undef,
-                                                                                                   $topic->LineNumber());
+                                                                                                   $topic->LineNumber(), undef);
                     }
                 else
                     {
@@ -974,7 +907,7 @@ sub AddPackageDelineators
                     $newTopic = NaturalDocs::Parser::ParsedTopic->New($type, $title,
                                                                                                    NaturalDocs::SymbolString->Join(@packageIdentifiers), undef,
                                                                                                    undef, $summary, $body,
-                                                                                                   $topic->LineNumber());
+                                                                                                   $topic->LineNumber(), undef);
                     }
 
                 splice(@parsedFile, $index, 0, $newTopic);
