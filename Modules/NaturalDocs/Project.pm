@@ -110,20 +110,30 @@ sub LoadAndDetectChanges
 
     my $indexFile;
     my $fileIsOkay;
+    my $rebuildOutput = NaturalDocs::Settings::RebuildOutput();
 
-    if (!NaturalDocs::Settings::RebuildAll() && open($indexFile, '<' . ProjectFile()))
+    if (!NaturalDocs::Settings::RebuildData() && open($indexFile, '<' . ProjectFile()))
         {
         # Check if the file is in the right format.
         my $version = <$indexFile>;
         chomp($version);
 
-        # Currently, the file format hasn't changed in public releases, so anything <= the current version is fine.
-        # If the version is "1" with no ".x", that means 0.91 and prior because we were using a separate FileVersion() function then.
+        # The output needs to be rebuilt for 0.95, but the data formats haven't changed.
+        # If the version is "1" with no ".0", that means 0.91 and prior because we were using a separate FileVersion() function then.
 
-        if ($version <= NaturalDocs::Settings::AppVersion() || $version eq '1')
+        no integer;
+
+        if ($version < 0.95)
+            {
+            $fileIsOkay = 1;
+            $rebuildOutput = 1;
+            }
+        elsif ($version <= NaturalDocs::Settings::AppVersion() || $version eq '1')
             {  $fileIsOkay = 1;  }
         else
             {  close($indexFile);  };
+
+        use integer;
         };
 
 
@@ -180,10 +190,18 @@ sub LoadAndDetectChanges
                 # If the file hasn't changed...
                 else
                     {
-                    $supportedFiles{$file}->SetStatus(::FILE_SAME());
+                    if ($rebuildOutput && $hasContent)
+                        {
+                        $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
+                        $filesToBuild{$file} = 1;
+                        }
+                    else
+                        {
+                        $supportedFiles{$file}->SetStatus(::FILE_SAME());
 
-                    if ($hasContent)
-                        {  $unbuiltFilesWithContent{$file} = 1;  };
+                        if ($hasContent)
+                            {  $unbuiltFilesWithContent{$file} = 1;  };
+                        };
                     };
 
                 $supportedFiles{$file}->SetHasContent($hasContent);
@@ -281,7 +299,7 @@ sub RebuildFile #(file)
 #
 #   Function: ReparseEverything
 #
-#   Adds all supported files to the list of files to parse.
+#   Adds all supported files to the list of files to parse.  This does not necessarily mean these files are going to be rebuilt.
 #
 sub ReparseEverything
     {
@@ -289,6 +307,21 @@ sub ReparseEverything
         {
         $filesToParse{$file} = 1;
         };
+    };
+
+#
+#   Function: RebuildEverything
+#
+#   Adds all supported files to the list of files to build.  This does not necessarily mean these files are going to be reparsed.
+#
+sub RebuildEverything
+    {
+    foreach my $file (keys %unbuiltFilesWithContent)
+        {
+        $filesToBuild{$file} = 1;
+        };
+
+    %unbuiltFilesWithContent = ( );
     };
 
 
