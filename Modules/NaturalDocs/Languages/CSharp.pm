@@ -118,22 +118,6 @@ my %impossibleTypeWords = ( 'abstract' => 1, 'as' => 1, 'base' => 1, 'break' => 
 
 
 ###############################################################################
-# Group: Information Functions
-
-
-# Function: Name
-# Returns the language's name.
-sub Name
-    {  return 'C#';  };
-
-# Function: Extensions
-# Returns an arrayref of the extensions of the language's files.
-sub Extensions
-    {  return [ 'cs' ];  };
-
-
-
-###############################################################################
 # Group: Interface Functions
 
 
@@ -158,7 +142,7 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*' ], [ '*/' ] );
+    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*', '*/' ] );
 
     my $tokens = $self->Tokens();
     my $index = 0;
@@ -209,23 +193,6 @@ sub ParseFile #(sourceFile, topicsList)
 
     return ( $autoTopics, $scopeRecord );
     };
-
-
-#
-#   Function: MakeSortableSymbol
-#
-#   C#'s identifiers are allowed to start with @, although they don't usually because this is a convention to allow reserved words
-#   to be used as identifier names.
-#
-sub MakeSortableSymbol #(name, type)
-    {
-    my ($self, $name, $type) = @_;
-
-    $name =~ s/^\@//;
-
-    return $name;
-    };
-
 
 
 

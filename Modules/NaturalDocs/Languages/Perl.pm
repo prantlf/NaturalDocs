@@ -35,32 +35,6 @@ use base 'NaturalDocs::Languages::Advanced';
 
 
 ###############################################################################
-# Group: Information Functions
-
-
-# Function: Name
-# Returns the language's name.
-sub Name
-    {  return 'Perl';  };
-
-# Function: Extensions
-# Returns an arrayref of the extensions of the language's files.
-sub Extensions
-    {  return [ 'pm', 'pl' ];  };
-
-# Function: ShebangStrings
-# Returns an arrayref of the strings that can appear in the language's shebang string.
-sub ShebangStrings
-    {  return [ 'perl' ];  };
-
-# Function: PackageSeparator
-# Returns the package separator symbol.
-sub PackageSeparator
-    {  return '::';  };
-
-
-
-###############################################################################
 # Group: Interface Functions
 
 
@@ -85,7 +59,7 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef, undef);
+    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef);
 
     my $tokens = $self->Tokens();
     my $index = 0;

@@ -58,8 +58,6 @@ sub New
     $object->[SCOPE_STACK] = undef;
     $object->[SCOPE_RECORD] = undef;
 
-    NaturalDocs::Languages->Add($object);
-
     return $object;
     };
 
@@ -134,8 +132,8 @@ sub ScopeRecord
 #
 #       sourceFile - The source <FileName> to load and parse.
 #       lineCommentSymbols - An arrayref of symbols that designate line comments, or undef if none.
-#       openingCommentSymbols - An arrayref of symbols that designate the start of multiline comments, or undef if none.
-#       closingCommentSymbols - An arrayref of symbols that designate the end of multiline comments, or undef if none.
+#       blockCommentSymbols - An arrayref of symbol pairs that designate multiline comments, or undef if none.  Symbol pairs are
+#                                            designated as two consecutive array entries, the opening symbol appearing first.
 #
 #   Notes:
 #
@@ -144,9 +142,9 @@ sub ScopeRecord
 #       - To save parsing time, all comment lines sent to <NaturalDocs::Parser->OnComment()> will be replaced with blank lines
 #         in <Tokens()>.  It's all the same to most languages.
 #
-sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, openingCommentSymbols, closingCommentSymbols)
+sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymbols)
     {
-    my ($self, $sourceFile, $lineCommentSymbols, $openingCommentSymbols, $closingCommentSymbols) = @_;
+    my ($self, $sourceFile, $lineCommentSymbols, $blockCommentSymbols) = @_;
 
     open(SOURCEFILEHANDLE, '<' . $sourceFile)
         or die "Couldn't open input file " . $sourceFile . "\n";
@@ -167,11 +165,12 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, openingCommentSy
         {
         ::XChomp(\$line);
         my $originalLine = $line;
+        my $closingSymbol;
 
 
         # Retrieve single line comments.  This leaves $line at the next line.
 
-        if ($self->StripOpeningSymbol(\$line, $lineCommentSymbols))
+        if ($self->StripOpeningSymbols(\$line, $lineCommentSymbols))
             {
             do
                 {
@@ -184,7 +183,7 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, openingCommentSy
 
                 ::XChomp(\$line);
                 }
-            while ($self->StripOpeningSymbol(\$line, $lineCommentSymbols));
+            while ($self->StripOpeningSymbols(\$line, $lineCommentSymbols));
 
             EndDo:  # I hate Perl sometimes.
             }
@@ -192,7 +191,7 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, openingCommentSy
 
         # Retrieve multiline comments.  This leaves $line at the next line.
 
-        elsif ($self->StripOpeningSymbol(\$line, $openingCommentSymbols))
+        elsif ($closingSymbol = $self->StripOpeningBlockSymbols(\$line, $blockCommentSymbols))
             {
             # Note that it is possible for a multiline comment to start correctly but not end so.  We want those comments to stay in
             # the code.  For example, look at this prototype with this splint annotation:
@@ -206,7 +205,7 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, openingCommentSy
 
             for (;;)
                 {
-                ($symbol, $lineRemainder) = $self->StripClosingSymbol(\$line, $closingCommentSymbols);
+                ($symbol, $lineRemainder) = $self->StripClosingSymbol(\$line, $closingSymbol);
 
                 push @commentLines, $line;
 
