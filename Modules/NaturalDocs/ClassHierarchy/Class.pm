@@ -4,35 +4,12 @@
 #
 ###############################################################################
 #
-#   An object that stores information about a class in the hierarchy.  It does not store its name; it assumes that it will be
-#   stored in a hashref where the key is the name.
-#
-#   Topic: Architecture
-#
-#   This class is designed to handle multiple definitions of classes, even though that shouldn't be typical.  Some language may
-#   allow a package to be defined in one file and continued in another.  It's also possible that a class may be predeclared
-#   somewhere, or there is an interface/header declaration and a later source definition.
-#
-#   The end result is that all of these definitions are coalesced into one simply by adding each's parents
-#   to the list.  This is why the functions <AddParent()> and <DeleteParent()> return whether they resulted in an actual change
-#   to the list of parents.  The answer is not always yes.  The class will handle all of the parent definitions internally.
-#
-#   However, the same is _not_ true for the children.  Since every language defines the hierarchy via each class declaring its
-#   parents, that's where all the internal management is focused.  Doing the same for the children would be redundant and can
-#   be avoided if the calling code handles everything correctly.
-#
-#   *Important:* The calling code is responsible for detecting when <AddParent()> and <DeleteParent()> return true, and
-#   adjusting the parent's children list accordingly.  The parent will _not_ keep track of how many times it is declared the parent
-#   of the child.
-#
-#   Note that it's possible for these objects to exist, and even have children, without any definitions defined.  This is because
-#   a class may be found to have a parent before that parent has been found in the source.  Also, it's possible that some
-#   parents simply won't be in the documentation, such as those inherent to the language or in frameworks not documented
-#   with Natural Docs.
+#   An object that stores information about a class in the hierarchy.  It does not store its <SymbolString>; it assumes that it will
+#   be stored in a hashref where the key is the <SymbolString>.
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright © 2004 Greg Valure
+# This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
 use strict;
@@ -46,14 +23,13 @@ package NaturalDocs::ClassHierarchy::Class;
 #
 #   The class is implemented as a blessed arrayref.  The keys are the constants below.
 #
-#   DEFINITIONS - An existence hashref of all the files which define this class.  Undef if none.
-#   PARENTS - A hashref of parents this class has.  The keys are the names, and the values are existence hashrefs of all the
-#                   files that define this class as having the parent.  Undef if none.
-#   CHILDREN - An existence hashref of children this class has.  Undef if none.  It does *not* keep track of all the files which
-#                     define this relationship.  It is up to <NaturalDocs::ClassHierarchy> to manage this when adding or deleting
-#                     the child's parents.
+#   DEFINITIONS - An existence hashref of all the <FileNames> which define this class.  Undef if none.
+#   PARENTS - An existence hashref of the <SymbolStrings> of all the parents this class has.
+#   CHILDREN - An existence hashref of the <SymbolStrings> of all the children this class has.
+#   PARENT_REFERENCES - A hashref of the parent <ReferenceStrings> this class has.  The keys are the <ReferenceStrings>,
+#                                      and the values are existence hashrefs of all the <FileNames> that define them.  Undef if none.
 #
-use NaturalDocs::DefineMembers 'DEFINITIONS', 'PARENTS', 'CHILDREN';
+use NaturalDocs::DefineMembers 'DEFINITIONS', 'PARENTS', 'CHILDREN', 'PARENT_REFERENCES';
 # Dependency: New() depends on the order of these constants, as well as the class not being derived from any other.
 
 
@@ -71,30 +47,57 @@ sub New
     # Dependency: This function depends on the order of the constants, as well as the class not being derived from any other.
     my ($package, $definitionFile) = @_;
 
-    my $object = [ undef, undef, undef ];
+    my $object = [ undef, undef, undef, undef ];
     bless $object, $package;
 
     return $object;
     };
 
+
 #
 #   Function: AddDefinition
-#   Adds a rew file that defines this class.
+#
+#   Adds a rew definition of this class and returns if that was the first definition.
+#
+#   Parameters:
+#
+#       file - The <FileName> the definition appears in.
+#
+#   Returns:
+#
+#       Whether this was the first definition of this class.
 #
 sub AddDefinition #(file)
     {
     my ($self, $file) = @_;
 
+    my $wasFirst;
+
     if (!defined $self->[DEFINITIONS])
-        {  $self->[DEFINITIONS] = { };  };
+        {
+        $self->[DEFINITIONS] = { };
+        $wasFirst = 1;
+        };
 
     $self->[DEFINITIONS]->{$file} = 1;
+
+    return $wasFirst;
     };
+
 
 #
 #   Function: DeleteDefinition
-#   Removes the file definition of this class and returns true if there are no more definitions.  Note that if there are no more
+#
+#   Removes the definition of this class and returns if there are no more definitions.  Note that if there are no more
 #   definitions, you may still want to keep the object around if <HasChildren()> returns true.
+#
+#   Parameters:
+#
+#       file - The <FileName> the definition appears in.
+#
+#   Returns:
+#
+#       Whether this deleted the last definition of this class.
 #
 sub DeleteDefinition #(file)
     {
@@ -114,58 +117,124 @@ sub DeleteDefinition #(file)
     return undef;
     };
 
-#
-#   Function: AddParent
-#   Adds a parent definition to the class.  Returns whether this was the first definition of that parent.
-#
-sub AddParent #(file, parent)
-    {
-    my ($self, $file, $parent) = @_;
 
+#
+#   Function: AddParentReference
+#
+#   Adds a parent reference to the class and return whether it resulted in a new parent class.
+#
+#   Parameters:
+#
+#       reference - The <ReferenceString> used to determine the parent.
+#       file - The <FileName> the parent reference is in.
+#       referenceTranslations - A hashref of what each reference currently resolves to.  The keys are the
+#                                         <ReferenceStrings> and the values are class <SymbolStrings>.  It should include an entry for
+#                                         the reference parameter above.
+#
+#   Returns:
+#
+#       If the reference adds a new parent, it will return that parent's <SymbolString>.  Otherwise it will return undef.
+#
+sub AddParentReference #(reference, file, referenceTranslations)
+    {
+    my ($self, $reference, $file, $referenceTranslations) = @_;
+
+    if (!defined $self->[PARENT_REFERENCES])
+        {  $self->[PARENT_REFERENCES] = { };  };
     if (!defined $self->[PARENTS])
         {  $self->[PARENTS] = { };  };
 
-    if (!exists $self->[PARENTS]->{$parent})
+
+    if (!exists $self->[PARENT_REFERENCES]->{$reference})
         {
-        $self->[PARENTS]->{$parent} = { $file => 1 };
-        return 1;
+        $self->[PARENT_REFERENCES]->{$reference} = { $file => 1 };
+
+        my $symbol = $referenceTranslations->{$reference};
+
+        if (!exists $self->[PARENTS]->{$symbol})
+            {
+            $self->[PARENTS]->{$symbol} = 1;
+            return $symbol;
+            }
+        else
+            {  return undef;  };
         }
     else
         {
-        $self->[PARENTS]->{$parent}->{$file} = 1;
+        $self->[PARENT_REFERENCES]->{$reference}->{$file} = 1;
         return undef;
         };
     };
 
 #
-#   Function: DeleteParent
-#   Deletes a parent definition from the class.  Returns if this deleted the last definition of that parent.
+#   Function: DeleteParentReference
 #
-sub DeleteParent #(file, parent)
+#   Deletes a parent reference from the class and return whether it resulted in a loss of a parent class.
+#
+#   Parameters:
+#
+#       reference - The <ReferenceString> used to determine the parent.
+#       file - The <FileName> the parent declaration is in.
+#       referenceTranslations - A hashref of what each reference currently resolves to.  The keys are the
+#                                         <ReferenceStrings> and the values are class <SymbolStrings>.  It should include an entry for
+#                                         the reference parameter above.
+#
+#   Returns:
+#
+#       If this causes a parent class to be lost, it will return that parent's <SymbolString>.  Otherwise it will return undef.
+#
+sub DeleteParentReference #(reference, file, referenceTranslations)
     {
-    my ($self, $file, $parent) = @_;
+    my ($self, $reference, $file, $referenceTranslations) = @_;
 
-    if (defined $self->[PARENTS] && exists $self->[PARENTS]->{$parent})
+    if (defined $self->[PARENT_REFERENCES] && exists $self->[PARENT_REFERENCES]->{$reference} &&
+        exists $self->[PARENT_REFERENCES]->{$reference}->{$file})
         {
-        delete $self->[PARENTS]->{$parent}->{$file};
+        delete $self->[PARENT_REFERENCES]->{$reference}->{$file};
 
-        if (!scalar keys %{$self->[PARENTS]->{$parent}})
+        # Quit if there are other definitions of this reference.
+        if (scalar keys %{$self->[PARENT_REFERENCES]->{$reference}})
+            {  return undef;  };
+
+        delete $self->[PARENT_REFERENCES]->{$reference};
+
+        if (!scalar keys %{$self->[PARENT_REFERENCES]})
+            {  $self->[PARENT_REFERENCES] = undef;  };
+
+        my $parent = $referenceTranslations->{$reference};
+
+        # Check if any other references resolve to the same parent.
+        if (defined $self->[PARENT_REFERENCES])
             {
-            delete $self->[PARENTS]->{$parent};
-
-            if (!scalar keys %{$self->[PARENTS]})
-                {  $self->[PARENTS] = undef;  };
-
-            return 1;
+            foreach my $parentReference (keys %{$self->[PARENT_REFERENCES]})
+                {
+                if ($referenceTranslations->{$parentReference} eq $parent)
+                    {  return undef;  };
+                };
             };
-        };
 
-    return undef;
+        # If we got this far, no other parent references resolve to this symbol.
+
+        delete $self->[PARENTS]->{$parent};
+
+        if (!scalar keys %{$self->[PARENTS]})
+            {  $self->[PARENTS] = undef;  };
+
+        return $parent;
+        }
+    else
+        {  return undef;  };
     };
+
 
 #
 #   Function: AddChild
-#   Adds a child to the class.  This only keeps track of if it has the child, not of the definitions.  See <Architecture>.
+#   Adds a child <SymbolString> to the class.  Unlike <AddParentReference()>, this does not keep track of anything other than
+#   whether it has it or not.
+#
+#   Parameters:
+#
+#       child - The <SymbolString> to add.
 #
 sub AddChild #(child)
     {
@@ -179,7 +248,12 @@ sub AddChild #(child)
 
 #
 #   Function: DeleteChild
-#   Deletes a child from the class.  This only keeps track of if it has the child, not of the definitions.  See <Architecture>.
+#   Deletes a child <SymbolString> from the class.  Unlike <DeleteParentReference()>, this does not keep track of anything other
+#   than whether it has it or not.
+#
+#   Parameters:
+#
+#       child - The <SymbolString> to delete.
 #
 sub DeleteChild #(child)
     {
@@ -192,80 +266,16 @@ sub DeleteChild #(child)
         if (!scalar keys %{$self->[CHILDREN]})
             {  $self->[CHILDREN] = undef;  };
         };
-
-    return undef;
     };
+
 
 
 ###############################################################################
 # Group: Information Functions
 
-
-#
-#   Function: Parents
-#   Returns an array of the parent classes, or an empty array if none.
-#
-sub Parents
-    {
-    my ($self) = @_;
-
-    if (defined $self->[PARENTS])
-        {  return keys %{$self->[PARENTS]};  }
-    else
-        {  return ( );  };
-    };
-
-#
-#   Function: HasParents
-#   Returns whether any parent classes are defined.
-#
-sub HasParents
-    {
-    my ($self) = @_;
-    return defined $self->[PARENTS];
-    };
-
-#
-#   Function: ParentDefinitions
-#   Returns an array of all the files that define the parent as part of the class, or an empty array if none.
-#
-sub ParentDefinitions #(parent)
-    {
-    my ($self, $parent) = @_;
-
-    if (defined $self->[PARENTS] && exists $self->[PARENTS]->{$parent})
-        {  return keys %{$self->[PARENTS]->{$parent}};  }
-    else
-        {  return ( );  };
-    };
-
-#
-#   Function: Children
-#   Returns an array of the child classes, or an empty array if none.
-#
-sub Children
-    {
-    my ($self) = @_;
-
-    if (defined $self->[CHILDREN])
-        {  return keys %{$self->[CHILDREN]};  }
-    else
-        {  return ( );  };
-    };
-
-#
-#   Function: HasChildren
-#   Returns whether any child classes are defined.
-#
-sub HasChildren
-    {
-    my ($self) = @_;
-    return defined $self->[CHILDREN];
-    };
-
 #
 #   Function: Definitions
-#   Returns an array of the files that define this class, or an empty array if none.
+#   Returns an array of the <FileNames> that define this class, or an empty array if none.
 #
 sub Definitions
     {
@@ -279,7 +289,7 @@ sub Definitions
 
 #
 #   Function: IsDefinedIn
-#   Returns whether the class is defined in the passed file.
+#   Returns whether the class is defined in the passed <FileName>.
 #
 sub IsDefinedIn #(file)
     {
@@ -299,6 +309,103 @@ sub IsDefined
     {
     my ($self) = @_;
     return defined $self->[DEFINITIONS];
+    };
+
+#
+#   Function: ParentReferences
+#   Returns an array of the parent <ReferenceStrings>, or an empty array if none.
+#
+sub ParentReferences
+    {
+    my ($self) = @_;
+
+    if (defined $self->[PARENT_REFERENCES])
+        {  return keys %{$self->[PARENT_REFERENCES]};  }
+    else
+        {  return ( );  };
+    };
+
+#
+#   Function: HasParentReference
+#   Returns whether the class has the passed parent <ReferenceString>.
+#
+sub HasParentReference #(reference)
+    {
+    my ($self, $reference) = @_;
+    return (defined $self->[PARENT_REFERENCES] && exists $self->[PARENT_REFERENCES]->{$reference});
+    };
+
+#
+#   Function: HasParentReferences
+#   Returns whether the class has any parent <ReferenceStrings>.
+#
+sub HasParentReferences
+    {
+    my ($self) = @_;
+    return defined $self->[PARENT_REFERENCES];
+    };
+
+#
+#   Function: Parents
+#   Returns an array of the parent <SymbolStrings>, or an empty array if none.
+#
+sub Parents
+    {
+    my ($self) = @_;
+
+    if (defined $self->[PARENTS])
+        {  return keys %{$self->[PARENTS]};  }
+    else
+        {  return ( );  };
+    };
+
+#
+#   Function: HasParents
+#   Returns whether the class has any parent <SymbolStrings> defined.
+#
+sub HasParents
+    {
+    my ($self) = @_;
+    return defined $self->[PARENTS];
+    };
+
+#
+#   Function: Children
+#   Returns an array of the child <SymbolStrings>, or an empty array if none.
+#
+sub Children
+    {
+    my ($self) = @_;
+
+    if (defined $self->[CHILDREN])
+        {  return keys %{$self->[CHILDREN]};  }
+    else
+        {  return ( );  };
+    };
+
+#
+#   Function: HasChildren
+#   Returns whether any child <SymbolStrings> are defined.
+#
+sub HasChildren
+    {
+    my ($self) = @_;
+    return defined $self->[CHILDREN];
+    };
+
+
+#
+#   Function: ParentReferenceDefinitions
+#   Returns an array of the <FileNames> which define the passed parent <ReferenceString>, or an empty array if none.
+#
+sub ParentReferenceDefinitions #(reference)
+    {
+    my ($self, $reference) = @_;
+
+    if (defined $self->[PARENT_REFERENCES] && exists $self->[PARENT_REFERENCES]->{$reference})
+        {  return keys %{$self->[PARENT_REFERENCES]->{$reference}};  }
+    else
+        {  return ( );  };
     };
 
 
