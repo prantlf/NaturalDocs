@@ -207,7 +207,7 @@ Topic: Content Structure
     specific titles with .CType .CTitle.
 
 
-Styles: Content Styles
+List: Content Styles
 
     CTopic - An individual topic.
 
@@ -293,7 +293,7 @@ Topic: Menu Structure
     .MFile#MSelected.
 
 
-Styles: Menu Styles
+List: Menu Styles
 
     MTitle - The title of the menu.
     MSubTitle - The subtitle of the menu.  Will appear within <MTitle>.
@@ -375,7 +375,7 @@ Topic: Summary Structure
     style to .SGroup.  Or, you could apply a style to all the entries by applying it to .SEntry.  And so on.
 
 
-Styles: Summary Styles
+List: Summary Styles
 
     Summary - The topmost style containing the entire summary.
 
@@ -425,7 +425,7 @@ Topic: Link Structure
     links to classes bold, except when appearing in summary entries.  You can combine this with other styles to be even more
     specific.  For example, you can apply a style to function links appearing in summary descriptions with .SDescription .LFunction.
 
-Styles: Link Styles
+List: Link Styles
 
     LClass - Link to a class.
     LSection - Link to a section.
@@ -520,7 +520,7 @@ Topic: Index Structure
     It's called <IParent> instead of <IClass> because class entries are <ISymbols>. <IParent>s are only used when the symbol
     has a class.  If the symbol _is_ a class, the symbol is global.
 
-Styles: Index Styles
+List: Index Styles
 
     Index - Surrounds the entire index.
 
