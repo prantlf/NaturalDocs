@@ -362,6 +362,8 @@ eval {
     # - Specify line breaks as follows: "\n".  You MUST use quotes instead of apostrophes.  You don't have to worry about \r.
     # - Specify backslashes as follows: "\\".  You MUST use quotes instead of apostrophes.
     # - Follow the documentation on the parameters closely.  You don't want to skip one or put them in the wrong order.
+    # - Don't worry that some lines use something like PLSQL->New() instead of Language->New().  This is only necessary
+    #   when the language's syntax needs special handling.  Language->New() should be fine in most cases.
 
     NaturalDocs::Languages::Language->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
@@ -369,12 +371,12 @@ eval {
     NaturalDocs::Languages::Language->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
-    NaturalDocs::Languages::Language->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
-                                                                   [ ';', ':=', 'default', 'DEFAULT' ], undef );
+    NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
+                                                              [ ';', ':=', 'default', 'DEFAULT' ], undef );
     NaturalDocs::Languages::Language->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
-    NaturalDocs::Languages::Language->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Pascal->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
-    NaturalDocs::Languages::Language->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
+    NaturalDocs::Languages::Ada->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
     NaturalDocs::Languages::Language->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
 
 
