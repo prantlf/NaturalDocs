@@ -1074,7 +1074,7 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
     if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y|)$/i &&
          ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*\-]$/) )
         {  $isRegexp = 1;  }
-    elsif ($tokens->[$$indexRef] eq '/' || $tokens->[$$indexRef] eq '?')
+    elsif ( ($tokens->[$$indexRef] eq '/' || $tokens->[$$indexRef] eq '?') && !$self->IsStringed($$indexRef) )
         {
         my $index = $$indexRef - 1;
 
