@@ -106,7 +106,7 @@ sub PackageSeparator
 #
 #   Parameters:
 #
-#       type - The topic type.
+#       type - The <TopicType>.
 #       prototype - The text prototype.
 #
 #   Returns:
@@ -131,7 +131,7 @@ sub FormatPrototype #(type, prototype)
     $prototype =~ s/ $//;
 
     # Cut out early if it's not a function.
-    if ($type != ::TOPIC_FUNCTION())
+    if ($type ne ::TOPIC_FUNCTION())
         {  return ( $prototype, undef, undef, undef, undef );  };
 
     # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look

@@ -466,11 +466,11 @@ sub HasPrototype #(type)
     {
     my ($self, $type) = @_;
 
-    if ($type == ::TOPIC_FUNCTION())
+    if ($type eq ::TOPIC_FUNCTION())
         {  return defined $self->FunctionEnders();  }
-    elsif ($type == ::TOPIC_VARIABLE())
+    elsif ($type eq ::TOPIC_VARIABLE())
         {  return defined $self->VariableEnders();  }
-    elsif ($type == ::TOPIC_PROPERTY())
+    elsif ($type eq ::TOPIC_PROPERTY())
         {  return defined $self->PropertyEnders();  }
     else
         {  return undef;  };
@@ -484,7 +484,7 @@ sub HasPrototype #(type)
 #
 #   Parameters:
 #
-#       type - The topic type of the prototype.
+#       type - The <TopicType> of the prototype.
 #       stringRef  - A reference to the string.
 #       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
 #                              ignored.  This is for use by derived classes only, so set to undef.
@@ -498,11 +498,11 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
     {
     my ($self, $type, $stringRef, $falsePositives) = @_;
 
-    if ($type == ::TOPIC_FUNCTION() && defined $self->FunctionEnders())
+    if ($type eq ::TOPIC_FUNCTION() && defined $self->FunctionEnders())
         {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->FunctionEnders());  }
-    elsif ($type == ::TOPIC_VARIABLE() && defined $self->VariableEnders())
+    elsif ($type eq ::TOPIC_VARIABLE() && defined $self->VariableEnders())
         {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
-    elsif ($type == ::TOPIC_PROPERTY() && defined $self->PropertyEnders())
+    elsif ($type eq ::TOPIC_PROPERTY() && defined $self->PropertyEnders())
         {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->PropertyEnders());  }
     else
         {  return -1;  };

@@ -70,12 +70,12 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
     my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
 
     my $falsePositives;
-    if ($type == ::TOPIC_FUNCTION())
+    if ($type eq ::TOPIC_FUNCTION())
         {  $falsePositives = $self->FalsePositivesForSemicolonsInParenthesis($stringRef);  };
 
     my $endOfPrototype = $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
 
-    if ($type == ::TOPIC_FUNCTION() && $endOfPrototype != -1)
+    if ($type eq ::TOPIC_FUNCTION() && $endOfPrototype != -1)
         {
         my $pastPrototype = substr($$stringRef, $endOfPrototype);
 
@@ -144,7 +144,7 @@ sub FormatPrototype #(type, prototype)
 
     my ($pre, $open, $params, $close, $post) = $self->SUPER::FormatPrototype($type, $prototype);
 
-    if ($type == ::TOPIC_FUNCTION() && $post =~ /^[ \t\n]*;/)
+    if ($type eq ::TOPIC_FUNCTION() && $post =~ /^[ \t\n]*;/)
         {
         $close .= '; ';
         $post =~ s/[ \t\n]*;[ \t\n]*//;

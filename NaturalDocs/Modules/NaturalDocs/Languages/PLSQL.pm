@@ -53,7 +53,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
 
     my $falsePositives;
 
-    if ($type == ::TOPIC_FUNCTION() || $type == ::TOPIC_VARIABLE() || $type == ::TOPIC_PROPERTY())
+    if ($type eq ::TOPIC_FUNCTION() || $type eq ::TOPIC_VARIABLE() || $type eq ::TOPIC_PROPERTY())
         {
         $falsePositives = { };
 
@@ -109,7 +109,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
             }
 
         # If there are no parenthesis, the prototype is a function, and it contains an @ character, all commas are false positives.
-        elsif ($type == ::TOPIC_FUNCTION() && index($$stringRef, '@') != -1)
+        elsif ($type eq ::TOPIC_FUNCTION() && index($$stringRef, '@') != -1)
             {
             my $index = index($$stringRef, ',');
 
@@ -143,7 +143,7 @@ sub FormatPrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type == ::TOPIC_FUNCTION() && $prototype !~ /\(/ && $prototype =~ /@/)
+    if ($type eq ::TOPIC_FUNCTION() && $prototype !~ /\(/ && $prototype =~ /@/)
         {
         $prototype =~ tr/\t\n /   /s;
         $prototype =~ s/^ //;

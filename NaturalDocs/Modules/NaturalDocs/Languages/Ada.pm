@@ -34,7 +34,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
     my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
 
     my $falsePositives;
-    if ($type == ::TOPIC_FUNCTION())
+    if ($type eq ::TOPIC_FUNCTION())
         {  $falsePositives = $self->FalsePositivesForSemicolonsInParenthesis($stringRef);  };
 
     return $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
