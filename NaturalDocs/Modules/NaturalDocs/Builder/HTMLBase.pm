@@ -1081,7 +1081,7 @@ sub BuildPrototype #(type, prototype, file)
             # A surrounding table as a hack to make the div form-fit.
             . '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
                 . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
-            . '</tr></td></table>'
+            . '</td></tr></table>'
         . '</blockquote>';
         }
 
