@@ -465,6 +465,7 @@ eval {
     if (!NaturalDocs::Settings->HeadersOnly())
         {  push @$cExtensions, 'c', 'cpp';  };
 
+
     # Notes for people unfamiliar with Perl:
     # - Use single values as follows: 'value'
     # - Use multiple values as follows: [  'value1', 'value2', 'value3' ].  You MUST include the brackets.
@@ -478,7 +479,6 @@ eval {
     NaturalDocs::Languages::Simple->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
-    NaturalDocs::Languages::Perl->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
 
     # Doesn't detect escapement yet.
@@ -494,6 +494,9 @@ eval {
     NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], undef );
     NaturalDocs::Languages::Ruby->New( 'Ruby', 'rb', 'ruby', '#', undef, undef, [ ';', "\n" ], [ ';', '=', "\n" ], "\\" );
     NaturalDocs::Languages::Simple->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
+
+    # This one has full language support, hence no parameters.
+    NaturalDocs::Languages::Perl->New();
 
 
     # Migrate from the old file names that were used prior to 1.14.
