@@ -279,8 +279,7 @@ sub Load
 
     # Add the special General topic type.
 
-    $types{::TOPIC_GENERAL()} = NaturalDocs::Topics::Type->New('General', 'General', 1, ::SCOPE_NORMAL(),
-                                                                                                   ::AUTO_GROUP_NO(), undef);
+    $types{::TOPIC_GENERAL()} = NaturalDocs::Topics::Type->New('General', 'General', 1, ::SCOPE_NORMAL(), undef);
     $names{'general'} = ::TOPIC_GENERAL();
     $indexable{::TOPIC_GENERAL()} = 1;
     # There are no keywords for the general topic.
@@ -394,8 +393,8 @@ sub LoadFile #(isMain)
                     }
                 else
                     {
-                    $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, 1,
-                                                                                                  ::AUTO_GROUP_NO(), ::SCOPE_NORMAL(), 0, 0);
+                    $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, 1, ::SCOPE_NORMAL(),
+                                                                                                  0, 0);
 
                     $types{$topicType} = $topicTypeObject;
                     $names{$lcTopicTypeName} = $topicType;
@@ -1205,34 +1204,6 @@ sub AllIndexableTypes
     {
     my ($self) = @_;
     return keys %indexable;
-    };
-
-
-#
-#   Function: ShouldAutoGroup
-#
-#   Returns whether the passed <TopicType> should be auto-grouped, taking into account both the <TopicType's> setting and
-#   <NaturalDocs::Settings->AutoGroupLevel()>.
-#
-sub ShouldAutoGroup #(type)
-    {
-    my ($self, $type) = @_;
-
-    my $level = NaturalDocs::Settings->AutoGroupLevel();
-
-    if ($level == ::AUTOGROUP_NONE())
-        {  return undef;  };
-
-    my $topicLevel = $self->TypeInfo($type)->AutoGroup();
-
-    if ($topicLevel == ::AUTO_GROUP_NO())
-        {  return 0;  }
-    elsif ($topicLevel == ::AUTO_GROUP_YES())
-        {  return 1;  }
-    elsif ($topicLevel == ::AUTO_GROUP_FULL_ONLY() && $level == ::AUTOGROUP_FULL())
-        {  return 1;  }
-    else
-        {  return 0;  };
     };
 
 
