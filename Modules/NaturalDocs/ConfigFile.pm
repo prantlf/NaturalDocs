@@ -54,7 +54,7 @@ package NaturalDocs::ConfigFile;
 
 
 #
-#   Topic: CFChars
+#   Type: CFChars
 #
 #   The characters that can appear in configuration file keywords and user-defined element names: letters, numbers, spaces,
 #   dashes, slashes, apostrophes, and periods.
