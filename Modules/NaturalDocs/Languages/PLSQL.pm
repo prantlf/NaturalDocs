@@ -64,39 +64,96 @@ sub OnPrototypeEnd #(type, prototypeRef, ender)
 
 
 #
-#   Function: FormatPrototype
+#   Function: ParsePrototype
 #
-#   Microsoft's SQL implementation doesn't require parenthesis.  Instead, parameters are specified with the @ symbol as
-#   below:
+#   Overridden to handle Microsoft's parenthesisless version.  Otherwise just throws to the parent.
 #
-#   > CREATE PROCEDURE Test @as int, @foo int AS ...
+#   Parameters:
 #
-#   If the prototype doesn't have parenthesis but does have @text, it makes sure it is still formatted correctly.
+#       type - The <TopicType>.
+#       prototype - The text prototype.
 #
-sub FormatPrototype #(type, prototype)
+#   Returns:
+#
+#       A <NaturalDocs::Languages::Prototype> object.
+#
+sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type eq ::TOPIC_FUNCTION() && $prototype !~ /\(/ && $prototype =~ /@/)
+    my $atIndex = index($prototype, '@');
+    my $openParenIndex = index($prototype, '(');
+
+    if ( !( $type eq ::TOPIC_FUNCTION() && $atIndex != -1 && ($openParenIndex == -1 || $atIndex < $openParenIndex) ))
         {
-        $prototype =~ tr/\t\n /   /s;
-        $prototype =~ s/^ //;
-        $prototype =~ s/ $//;
+        return $self->SUPER::ParsePrototype($type, $prototype);
+        };
 
-        my $atIndex = index($prototype, '@');
 
-        my $pre = substr($prototype, 0, $atIndex, '');
-        $pre =~ s/ $//;
+    # Skip to the first @ sign.
 
-        my $params = [ ];
+    $prototype =~ /^([^\@]*)(\@.*)$/;
+    my ($beforeParameters, $parameterString) = ($1, $2);
 
-        while ($prototype =~ /(\@[^\@,]+,?) ?/g)
-            {  push @$params, $1;  };
+    my @tokens = $parameterString =~ /([^\(\)\[\]\{\}\<\>\,]+|.)/g;
 
-        return ( $pre, ' ', $params, ' ', undef );
-        }
-    else
-        {  return $self->SUPER::FormatPrototype($type, $prototype);  };
+    my $parameter;
+    my @parameterLines;
+
+    my @symbolStack;
+
+    foreach my $token (@tokens)
+        {
+        if ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+            {
+            $parameter .= $token;
+            push @symbolStack, $token;
+            }
+
+        elsif ( ($token eq ')' && $symbolStack[-1] eq '(') ||
+                 ($token eq ']' && $symbolStack[-1] eq '[') ||
+                 ($token eq '}' && $symbolStack[-1] eq '{') ||
+                 ($token eq '>' && $symbolStack[-1] eq '<') )
+            {
+            $parameter .= $token;
+            pop @symbolStack;
+            }
+
+        elsif ($token eq ',')
+            {
+            if (!scalar @symbolStack)
+                {
+                push @parameterLines, $parameter . $token;
+                $parameter = undef;
+                }
+            else
+                {
+                $parameter .= $token;
+                };
+            }
+
+        else
+            {
+            $parameter .= $token;
+            };
+        };
+
+    push @parameterLines, $parameter;
+
+    $beforeParameters =~ s/^ //;
+    $beforeParameters =~ s/ $//;
+
+    my $prototypeObject = NaturalDocs::Languages::Prototype->New($beforeParameters, undef);
+
+
+    # Parse the actual parameters.
+
+    foreach my $parameterLine (@parameterLines)
+        {
+        $prototypeObject->AddParameter( $self->ParseParameterLine($parameterLine) );
+        };
+
+    return $prototypeObject;
     };
 
 

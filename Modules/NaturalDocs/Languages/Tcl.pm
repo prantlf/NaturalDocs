@@ -86,69 +86,137 @@ sub OnPrototypeEnd #(type, prototypeRef, ender)
 
 
 #
-#   Function: FormatPrototype
+#   Function: ParsePrototype
 #
-#   Tcl specifies parameters as a space-separated list in braces.  It's also possible to nest braces in the parameters.
+#   Parses the prototype and returns it as a <NaturalDocs::Languages::Prototype> object.
 #
-#   > proc name { param1 param2 { seconds 20 } }
+#   Parameters:
 #
-#   This function makes sure the parameters format correctly.
+#       type - The <TopicType>.
+#       prototype - The text prototype.
 #
-sub FormatPrototype #(type, prototype)
+#   Returns:
+#
+#       A <NaturalDocs::Languages::Prototype> object.
+#
+sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type eq ::TOPIC_FUNCTION() && $prototype =~ /^([^\{\}]+)\{(.*)\}([^\{\}]*)$/)
+    if ($type ne ::TOPIC_FUNCTION())
         {
-        my ($pre, $paramString, $post) = ($1, $2, $3);
+        my $object = NaturalDocs::Languages::Prototype->New($prototype);
+        return $object;
+        };
 
-        $paramString =~ tr/\t /  /s;
-        $paramString =~ s/^ //;
-        $paramString =~ s/ $//;
 
-        my $params = [ ];
+    # Parse the parameters out of the prototype.
 
-        my $nest = 0;
+    my @tokens = $prototype =~ /([^\{\}\ ]+|.)/g;
 
-        while ($paramString =~ /(\{|\}|\ |[^\{\}\ ]+)/g)
+    my $parameter;
+    my @parameterLines;
+
+    my $braceLevel = 0;
+
+    my ($beforeParameters, $afterParameters, $finishedParameters);
+
+    foreach my $token (@tokens)
+        {
+        if ($finishedParameters)
+            {  $afterParameters .= $token;  }
+
+        elsif ($token eq '{')
             {
-            my $segment = $1;
+            if ($braceLevel == 0)
+                {  $beforeParameters .= $token;  }
 
-            if ($segment eq '{')
+            else # braceLevel > 0
+                {  $parameter .= $token;   };
+
+            $braceLevel++;
+            }
+
+        elsif ($token eq '}')
+            {
+            if ($braceLevel == 1)
                 {
-                if ($nest > 0)
-                    {  $params->[-1] .= '{';  }
-                else
-                    {  push @$params, '{';  };
+                if ($parameter && $parameter ne ' ')
+                    {  push @parameterLines, $parameter;  };
 
-                $nest++;
+                $finishedParameters = 1;
+                $afterParameters .= $token;
+
+                $braceLevel--;
                 }
-            elsif ($segment eq '}')
+            elsif ($braceLevel > 1)
                 {
-                if ($nest > 0)
-                    {  $nest--;  };
+                $parameter .= $token;
+                $braceLevel--;
+                };
+            }
 
-                $params->[-1] .= '}';
-                }
-            elsif ($segment eq ' ')
+        elsif ($token eq ' ')
+            {
+            if ($braceLevel == 1)
                 {
-                if ($nest > 0)
-                    {  $params->[-1] .= ' ';  };
+                if ($parameter && $parameter ne ' ')
+                    {  push @parameterLines, $parameter;  };
+
+                $parameter = undef;
+                }
+            elsif ($braceLevel > 1)
+                {
+                $parameter .= $token;
                 }
             else
                 {
-                if ($nest > 0)
-                    {  $params->[-1] .= $segment;  }
-                else
-                    {  push @$params, $segment;  };
+                $beforeParameters .= $token;
                 };
+            }
+
+        else
+            {
+            if ($braceLevel > 0)
+                {  $parameter .= $token;  }
+            else
+                {  $beforeParameters .= $token;  };
             };
+        };
 
-        return ( $pre, ' {', $params, '} ', $post );
-        }
+    foreach my $part (\$beforeParameters, \$afterParameters)
+        {
+        $$part =~ s/^ //;
+        $$part =~ s/ $//;
+        };
 
-    else
-        {  return $self->SUPER::FormatPrototype($type, $prototype);  }
+    my $prototypeObject = NaturalDocs::Languages::Prototype->New($beforeParameters, $afterParameters);
+
+
+    # Parse the actual parameters.
+
+    foreach my $parameterLine (@parameterLines)
+        {
+        $prototypeObject->AddParameter( $self->ParseParameterLine($parameterLine) );
+        };
+
+    return $prototypeObject;
+    };
+
+
+#
+#   Function: ParseParameterLine
+#
+#   Parses a prototype parameter line and returns it as a <NaturalDocs::Languages::Prototype::Parameter> object.
+#
+sub ParseParameterLine #(line)
+    {
+    my ($self, $line) = @_;
+
+    $line =~ s/^ //;
+    $line =~ s/ $//;
+
+    return NaturalDocs::Languages::Prototype::Parameter->New(undef, undef, $line, undef);
     };
 
 
