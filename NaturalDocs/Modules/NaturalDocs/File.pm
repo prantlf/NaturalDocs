@@ -5,8 +5,8 @@
 ###############################################################################
 #
 #   A package to manage file access across platforms.  Incorporates functions from various standard File:: packages, but more
-#   importantly, works around the glorious suckage present in File::Spec.  Read the "Why oh why?" sections for why this package
-#   was necessary.
+#   importantly, works around the glorious suckage present in File::Spec, at least in version 0.82 and earlier.  Read the "Why oh
+#   why?" sections for why this package was necessary.
 #
 #   Usage and Dependencies:
 #
@@ -62,6 +62,8 @@ sub CheckCompatibility
 #       Because File::Spec->canonpath doesn't strip quotes on Windows.  So if you pass in "a b\c" or "a b"\c, they still end up as
 #       different strings even though they're logically the same.
 #
+#       It also doesn't remove things like "..", so "a/b/../c" doesn't simplify to "a/c" like it should.
+#
 sub CanonizePath #(path)
     {
     my ($self, $path) = @_;
@@ -73,7 +75,33 @@ sub CanonizePath #(path)
         $path =~ s/\"//g;
         };
 
-    return File::Spec->canonpath($path);
+    $path = File::Spec->canonpath($path);
+
+    # Condense a/b/../c into a/c.
+
+    my $upDir = File::Spec->updir();
+    if (index($path, $upDir) != -1)
+        {
+        my ($volume, $directoryString, $file) = $self->SplitPath($path);
+        my @directories = $self->SplitDirectories($directoryString);
+
+        my $i = 1;
+        while ($i < scalar @directories)
+            {
+            if ($i > 0 && $directories[$i] eq $upDir)
+                {
+                splice(@directories, $i - 1, 2);
+                $i--;
+                }
+            else
+                {  $i++;  };
+            };
+
+        $directoryString = $self->JoinDirectories(@directories);
+        $path = $self->JoinPath($volume, $directoryString, $file);
+        };
+
+    return $path;
     };
 
 
@@ -411,7 +439,7 @@ sub IsCaseSensitive
     {
     return !(File::Spec->case_tolerant());
     };
-    
+
 
 
 ###############################################################################
