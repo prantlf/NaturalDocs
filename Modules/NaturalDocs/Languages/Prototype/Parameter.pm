@@ -14,8 +14,9 @@ use integer;
 package NaturalDocs::Languages::Prototype::Parameter;
 
 use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
-                                                 'SUFFIX', 'Suffix()', 'SetSuffix()',
+                                                 'TYPE_PREFIX', 'TypePrefix()', 'SetTypePrefix()',
                                                  'NAME', 'Name()', 'SetName()',
+                                                 'NAME_PREFIX', 'NamePrefix()', 'SetNamePrefix()',
                                                  'DEFAULT_VALUE', 'DefaultValue()', 'SetDefaultValue()';
 # Dependency: New() depends on the order of these constants and that they don't inherit from another class.
 
@@ -28,11 +29,12 @@ use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
 #   Parameters:
 #
 #       type - The parameter type, if any.
-#       suffix - The suffix, if any.  This is for whichever item is on the left, the type or the name.
+#       typePrefix - The parameter type prefix which should be aligned separately, if any.
 #       name - The parameter name.
+#       namePrefix - The parameter name prefix which should be aligned separately, if any.
 #       defaultValue - The default value expression, if any.
 #
-sub New
+sub New #(type, typePrefix, name, namePrefix, defaultValue)
     {
     my ($package, @params) = @_;
 
@@ -51,10 +53,12 @@ sub New
 #
 #   Type - The parameter type, if any.
 #   SetType - Replaces the parameter type.
-#   Suffix - The suffix for whatever is on the left, type or name, if any.
-#   SetSuffix - Replaces the suffix.
+#   TypePrefix - The parameter type prefix, which should be aligned separately, if any.
+#   SetTypePrefix - Replaces the parameter type prefix.
 #   Name - The parameter name.
 #   SetName - Replaces the parameter name.
+#   NamePrefix - The parameter name prefix, which should be aligned separately, if any.
+#   SetNamePrefix - Replaces the parameter name prefix.
 #   DefaultValue - The default value expression, if any.
 #   SetDefaultValue - Replaces the default value expression.
 #

@@ -437,10 +437,10 @@ Topic: Prototype Structure
 
     Everything is enclosed in a <Prototype>.  All other styles are prefixed with a P.
 
-    Type First Style:
+    Parameter Type First Style:
 
         For prototypes such as
-        > void Function (int* a, int b = 0)
+        > void Function (unsigned int* a, int b = 0)
         where the types come first.
 
         (start diagram)
@@ -451,17 +451,21 @@ Topic: Prototype Structure
                 "void Function ("
             </td PBeforeParameters>
 
-            <td PLeftType>
+            <td PTypePrefix>
+                "unsigned "
+            </td PTypePrefix>
+
+            <td PType>
                 "int"
-            </td PLeftType>
+            </td PType>
 
-            <td PLeftSuffix>
+            <td PParameterPrefix>
                 "*"
-            </td PLeftSuffix>
+            </td PParameterPrefix>
 
-            <td PRightParameter>
+            <td PParameter>
                 "a", "b"
-            </td PRightParameter>
+            </td PParameter>
 
             <td PDefaultValue>
                 "= 0"
@@ -478,7 +482,7 @@ Topic: Prototype Structure
         (end diagram)
 
 
-    Parameter First Style:
+    Parameter Name First Style:
 
         For prototypes such as
         > function Function (a, b: int; c: int := 0)
@@ -492,17 +496,13 @@ Topic: Prototype Structure
                 "function Function ("
             </td PBeforeParameters>
 
-            <td PLeftParameter>
+            <td PParameter>
                 "a,", "b:", "c:"
-            </td PLeftParameter>
+            </td PParameter>
 
-            <td PLeftSuffix>
-                (not applicable in this example)
-            </td PLeftSuffix>
-
-            <td PRightType>
+            <td PType>
                 "int"
-            </td PRightType>
+            </td PType>
 
             <td PDefaultValue>
                 ":= 0"
@@ -518,7 +518,9 @@ Topic: Prototype Structure
 
         (end diagram)
 
-        Note that <PLeftSuffix> can apply to either a type or a parameter.
+
+    Note that any section may not exist.  For example, there will be no <PTypePrefix> cells generated if none of the parameters
+    have it.
 
 
 Styles: Prototype Styles
@@ -528,13 +530,10 @@ Styles: Prototype Styles
     PBeforeParameters - The part of the prototype that comes before the parameters.
     PAfterParameters - The part of the prototype that comes after the parameters.
 
-    PLeftType - The type of a parameter when it appears before the name.
-    PRightType - The type of a parameter when it appears after the name.
-
-    PLeftParameter - The parameter name when it appears before the type.
-    PRightParameter - The parameter name when it appears after the type.
-
-    PLeftSuffix - Some suffix symbols split off from <PLeftType> or <PLeftParameter> so that they align in their own cell.
+    PType - The parameter type.
+    PTypePrefix - The prefix of a parameter type.
+    PParameter - The parameter name.
+    PParameterPrefix - The prefix of a parameter name.
 
     PDefaultValue - The default value expression for a parameter.
 
