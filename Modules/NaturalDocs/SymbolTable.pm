@@ -792,7 +792,7 @@ sub AnalyzeChanges
                         foreach my $reference (@references)
                             {
                             if ($references{$reference}->CurrentInterpretation() eq $symbol)
-                                {  $self->OnTargetInformationChange($reference);  };
+                                {  $self->OnTargetSymbolChange($reference);  };
                             }; # While references
                         }; # If global definition is watched file
                     }; # If the symbol definition changed
@@ -1288,7 +1288,7 @@ sub DeleteSymbol #(symbol, file)
                     {
                     if ($references{$reference}->CurrentInterpretation() eq $symbol)
                         {
-                        $self->OnTargetInformationChange($reference);
+                        $self->OnTargetSymbolChange($reference);
                         };
                     };
                 }
