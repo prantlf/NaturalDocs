@@ -24,7 +24,6 @@ use NaturalDocs::Languages::CSharp;
 
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
-use NaturalDocs::Languages::Ada;
 use NaturalDocs::Languages::Tcl;
 
 use strict;
