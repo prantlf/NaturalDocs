@@ -20,16 +20,11 @@ use NaturalDocs::Languages::Advanced::ScopeChange;
 
 package NaturalDocs::Languages::Advanced;
 
+use base 'NaturalDocs::Languages::Base';
+
 
 #############################################################################
 # Group: Implementation
-
-#
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Base>
-#
-use base 'NaturalDocs::Languages::Base';
 
 #
 #   Constants: Members
@@ -304,21 +299,33 @@ sub TokenizeLine #(line)
 #
 #       indexRef - A reference to the position's index into <Tokens()>.
 #       lineNumberRef - A reference to the position's line number.
-#       delimiter - The string delimiter, such as a quote or an apostrophe.
+#       openingDelimiter - The opening string delimiter, such as a quote or an apostrophe.
+#       closingDelimiter - The closing string delimiter, if different.  If not defined, assumes the same as openingDelimiter.
+#       startContentIndexRef - A reference to a variable in which to store the index of the first token of the string's content.
+#                                         May be undef.
+#       endContentIndexRef - A reference to a variable in which to store the index of the end of the string's content, which is one
+#                                        past the last index of content.  May be undef.
 #
 #   Returns:
 #
-#       Whether the position was on the passed delimiter or not.  The index and line number will be updated only if true.
+#       Whether the position was on the passed delimiter or not.  The index, line number, and content index ref variables will be
+#       updated only if true.
 #
-sub TryToSkipString #(indexRef, lineNumberRef, delimiter)
+sub TryToSkipString #(indexRef, lineNumberRef, openingDelimiter, closingDelimiter, startContentIndexRef, endContentIndexRef)
     {
-    my ($self, $index, $lineNumber, $delimiter) = @_;
+    my ($self, $index, $lineNumber, $openingDelimiter, $closingDelimiter, $startContentIndexRef, $endContentIndexRef) = @_;
     my $tokens = $self->Tokens();
 
-    if ($tokens->[$$index] ne $delimiter)
+    if (!defined $closingDelimiter)
+        {  $closingDelimiter = $openingDelimiter;  };
+
+    if ($tokens->[$$index] ne $openingDelimiter)
         {  return undef;  };
 
+
     $$index++;
+    if (defined $startContentIndexRef)
+        {  $$startContentIndexRef = $$index;  };
 
     while ($$index < scalar @$tokens)
         {
@@ -332,8 +339,11 @@ sub TryToSkipString #(indexRef, lineNumberRef, delimiter)
             $$lineNumber++;
             $$index++;
             }
-        elsif ($tokens->[$$index] eq $delimiter)
+        elsif ($tokens->[$$index] eq $closingDelimiter)
             {
+            if (defined $endContentIndexRef)
+                {  $$endContentIndexRef = $$index;  };
+
             $$index++;
             last;
             }
@@ -342,6 +352,9 @@ sub TryToSkipString #(indexRef, lineNumberRef, delimiter)
             $$index++;
             };
         };
+
+    if ($$index >= scalar @$tokens && defined $endContentIndexRef)
+        {  $$endContentIndexRef = scalar @$tokens;  };
 
     return 1;
     };
