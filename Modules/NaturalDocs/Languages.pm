@@ -15,6 +15,8 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
+use NaturalDocs::Languages::Prototype;
+
 use NaturalDocs::Languages::Base;
 use NaturalDocs::Languages::Simple;
 use NaturalDocs::Languages::Advanced;
@@ -22,6 +24,7 @@ use NaturalDocs::Languages::Advanced;
 use NaturalDocs::Languages::Perl;
 use NaturalDocs::Languages::CSharp;
 
+use NaturalDocs::Languages::Ada;
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
 use NaturalDocs::Languages::Tcl;
