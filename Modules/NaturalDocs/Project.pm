@@ -436,30 +436,50 @@ sub LoadConfigFileInfo
             {  close(FH_CONFIGFILEINFO);  };
         };
 
+    my @configFiles = ( $self->MenuFile(), \$menuFileStatus,
+                                 $self->MainTopicsFile(), \$mainTopicsFileStatus,
+                                 $self->UserTopicsFile(), \$userTopicsFileStatus,
+                                 $self->MainLanguagesFile(), \$mainLanguagesFileStatus,
+                                 $self->UserLanguagesFile(), \$userLanguagesFileStatus );
+
     if ($fileIsOkay)
         {
         my $raw;
 
         read(FH_CONFIGFILEINFO, $raw, 20);
-        my ($menuDate, $mainTopicsDate, $userTopicsDate, $mainLanguagesDate, $userLanguagesDate) = unpack('NNNNN', $raw);
+        my @configFileDates = unpack('NNNNN', $raw);
 
-        $menuFileStatus         = ($menuDate         == (stat($self->MenuFile()         ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
-        $mainTopicsFileStatus = ($mainTopicsDate == (stat($self->MainTopicsFile() ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
-        $userTopicsFileStatus  = ($userTopicsDate  == (stat($self->UserTopicsFile()))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
-        $mainLanguagesFileStatus =
-            ($mainLanguagesDate == (stat($self->MainLanguagesFile() ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
-        $userLanguagesFileStatus  =
-            ($userLanguagesDate  == (stat($self->UserLanguagesFile()))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
+        while (scalar @configFiles)
+            {
+            my $file = shift @configFiles;
+            my $fileStatus = shift @configFiles;
+            my $fileDate = shift @configFileDates;
+
+            if (-e $file)
+                {
+                if ($fileDate == (stat($file))[9])
+                    {  $$fileStatus = ::FILE_SAME();  }
+                else
+                    {  $$fileStatus = ::FILE_CHANGED();  };
+                }
+            else
+                {  $$fileStatus = ::FILE_DOESNTEXIST();  };
+            };
 
         close(FH_CONFIGFILEINFO);
         }
     else
         {
-        $menuFileStatus = ::FILE_CHANGED();
-        $mainTopicsFileStatus = ::FILE_CHANGED();
-        $userTopicsFileStatus = ::FILE_CHANGED();
-        $mainLanguagesFileStatus = ::FILE_CHANGED();
-        $userLanguagesFileStatus = ::FILE_CHANGED();
+        while (scalar @configFiles)
+            {
+            my $file = shift @configFiles;
+            my $fileStatus = shift @configFiles;
+
+            if (-e $file)
+                {  $$fileStatus = ::FILE_CHANGED();  }
+            else
+                {  $$fileStatus = ::FILE_DOESNTEXIST();  };
+            };
         };
     };
 
@@ -553,7 +573,7 @@ sub MenuFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
 
 # Function: MenuFileStatus
-# Returns the <FileStatus> of the project's menu file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+# Returns the <FileStatus> of the project's menu file.
 sub MenuFileStatus
     {  return $menuFileStatus;  };
 
@@ -563,7 +583,7 @@ sub MainTopicsFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), 'Topics.txt' );  };
 
 # Function: MainTopicsFileStatus
-# Returns the <FileStatus> of the project's main topics file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+# Returns the <FileStatus> of the project's main topics file.
 sub MainTopicsFileStatus
     {  return $mainTopicsFileStatus;  };
 
@@ -573,7 +593,7 @@ sub UserTopicsFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Topics.txt' );  };
 
 # Function: UserTopicsFileStatus
-# Returns the <FileStatus> of the project's user topics file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+# Returns the <FileStatus> of the project's user topics file.
 sub UserTopicsFileStatus
     {  return $userTopicsFileStatus;  };
 
@@ -583,7 +603,7 @@ sub MainLanguagesFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), 'Languages.txt' );  };
 
 # Function: MainLanguagesFileStatus
-# Returns the <FileStatus> of the project's main languages file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+# Returns the <FileStatus> of the project's main languages file.
 sub MainLanguagesFileStatus
     {  return $mainLanguagesFileStatus;  };
 
@@ -593,7 +613,7 @@ sub UserLanguagesFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Languages.txt' );  };
 
 # Function: UserLanguagesFileStatus
-# Returns the <FileStatus> of the project's user languages file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+# Returns the <FileStatus> of the project's user languages file.
 sub UserLanguagesFileStatus
     {  return $userLanguagesFileStatus;  };
 
