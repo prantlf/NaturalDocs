@@ -259,6 +259,7 @@ use NaturalDocs::Settings;
 use NaturalDocs::Project;
 use NaturalDocs::Menu;
 use NaturalDocs::SymbolTable;
+use NaturalDocs::ClassHierarchy;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
 use NaturalDocs::Extensions;
@@ -512,7 +513,10 @@ eval {
     NaturalDocs::Project->LoadAndDetectChanges();
 
     NaturalDocs::SymbolTable->Load();
+    NaturalDocs::ClassHierarchy->Load();
+
     NaturalDocs::SymbolTable->Purge();
+    NaturalDocs::ClassHierarchy->Purge();
 
 
     # Parse any supported files that have changed.
@@ -553,6 +557,7 @@ eval {
     NaturalDocs::Menu->Save();
     NaturalDocs::Project->Save();
     NaturalDocs::SymbolTable->Save();
+    NaturalDocs::ClassHierarchy->Save();
     NaturalDocs::Settings->Save();
 
     if (!NaturalDocs::Settings->IsQuiet())
