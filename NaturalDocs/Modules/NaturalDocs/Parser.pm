@@ -72,6 +72,22 @@ my $defaultMenuTitle;
 #
 my @parsedFile;
 
+#
+#   hash: functionListIgnoredHeadings
+#
+#   An existence hash of all the headings that prevent the parser from creating function list symbols.  Whenever one of
+#   these headings are used in a function list topic, symbols are not created from definition lists until the next heading.  The keys
+#   are in all lowercase.
+#
+my %functionListIgnoredHeadings = ( 'parameters' => 1,
+                                                       'parameter' => 1,
+                                                       'params' => 1,
+                                                       'param' => 1,
+                                                       'arguments' => 1,
+                                                       'argument' => 1,
+                                                       'args' => 1,
+                                                       'arg' => 1 );
+
 
 ###############################################################################
 # Group: Functions
@@ -832,6 +848,8 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     my $prevCodeLineBlank = 1;
     my $removedCodeSpaces;
 
+    my $ignoreListSymbols;
+
     my $index = $startingIndex;
 
     while ($index < $endingIndex)
@@ -972,7 +990,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                     $topLevelTag = TAG_DESCRIPTIONLIST;
                     };
 
-                if (NaturalDocs::Topics->IsList($type))
+                if (NaturalDocs::Topics->IsList($type) && !$ignoreListSymbols)
                     {
                     $output .= '<ds>' . NaturalDocs::NDMarkup->ConvertAmpChars($entry) . '</ds><dd>';
                     }
@@ -1001,6 +1019,11 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 $topLevelTag = TAG_NONE;
 
                 $output .= '<h>' . $self->RichFormatTextBlock($headerText) . '</h>';
+
+                if ($type == ::TOPIC_FUNCTION_LIST())
+                    {
+                    $ignoreListSymbols = exists $functionListIgnoredHeadings{lc($headerText)};
+                    };
 
                 $prevLineBlank = undef;
                 }
