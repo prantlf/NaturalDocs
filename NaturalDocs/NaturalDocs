@@ -347,6 +347,56 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 
 
 #
+#   Function: DefineMembers
+#
+#   Defines member constants for use in Natural Docs objects.
+#
+#   Each parameter will be defined as a numeric constant which should be used as that variable's index into the object arrayref.
+#   They will be assigned sequentially from zero, and take into account any members defined this way in parent classes.  Note that
+#   you can *not* use multiple inheritance with this method.
+#
+#   Example:
+#
+#   > package MyPackage;
+#   >
+#   > ::DefineMembers('VAR_A', 'VAR_B', 'VAR_C');
+#   >
+#   > sub SetA #(A)
+#   >    {
+#   >    my ($self, $a) = @_;
+#   >    $self->[VAR_A] = $a;
+#   >    };
+#
+sub DefineMembers #(member, member, member ...)
+    {
+    my (@constants) = @_;
+    my $package = caller();
+
+    no strict 'refs';
+    my $isa = ${$package . '::ISA'}[0];
+    use strict 'refs';
+
+    my $member = 0;
+
+    if (defined $isa && $isa->can('END_OF_MEMBERS'))
+        {  $member = $isa->END_OF_MEMBERS();  };
+
+    my $code = '{ package ' . $package . ";\n";
+
+    foreach my $constant (@constants)
+        {
+        $code .= 'use constant ' . $constant . ' => ' . $member . ";\n";
+        $member++;
+        };
+
+    $code .= 'use constant END_OF_MEMBERS => ' . $member . ";\n";
+    $code .= '};';
+
+    eval $code;
+    };
+
+
+#
 #   Function: UseDirectory
 #
 #   Does the equivalent of "use [module]" for every .pm file in a directory and all its subdirectories.  You *must* call this function
