@@ -293,7 +293,7 @@ sub PrintSyntax
 
     my $output =
 
-    "Natural Docs, version " . AppVersion() . "\n"
+    "Natural Docs, version " . TextAppVersion() . "\n"
     . AppURL() . "\n"
     . "This program is licensed under the GPL\n"
     . "--------------------------------------\n"
@@ -442,10 +442,18 @@ sub IsQuiet
 #
 #   Function: AppVersion
 #
-#   Returns a string of the current version number of Natural Docs.
+#   Returns Natural Docs' version number as an integer.  Use <TextAppVersion()> to get a printable version.
 #
 sub AppVersion
-    {  return '0.95';  };
+    {  return NaturalDocs::Version::FromString(TextAppVersion());  };
+    
+#
+#   Function: TextAppVersion
+#
+#   Returns Natural Docs' version number as plain text.
+#
+sub TextAppVersion
+    {  return '1.0';  };
 
 #
 #   Function: AppURL
