@@ -254,10 +254,12 @@ body.FramedContentPage,
     .CVariable .Prototype {
         background-color: #FFFFF0; border-color: #E0E0A0 }
 
+    .CDatabaseIndex .Prototype,
     .CConstant .Prototype {
         background-color: #D0D0D0; border-color: #000000 }
     .CType .Prototype {
         background-color: #FFF8F8; border-color: #E8C8C8 }
+    .CDatabaseTrigger .Prototype,
     .CEvent .Prototype,
     .CDelegate .Prototype {
         background-color: #F0FCF0; border-color: #B8E4B8 }
