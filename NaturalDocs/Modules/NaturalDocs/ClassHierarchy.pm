@@ -190,9 +190,9 @@ sub Load
             {
             my $version = NaturalDocs::Version->FromBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE);
 
-            # The file format changed is 1.22.
+            # Minor bugs were fixed in 1.33 that may affect the stored data.
 
-            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.22'))
+            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
                 {
                 close(CLASS_HIERARCHY_FILEHANDLE);
                 $fileIsOkay = undef;
