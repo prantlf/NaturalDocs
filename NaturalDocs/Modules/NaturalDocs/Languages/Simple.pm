@@ -346,6 +346,8 @@ sub ParseFile #(sourceFile, topicsList)
         };
 
     close(SOURCEFILEHANDLE);
+
+    $self->OnEndParse($topicsList);
     };
 
 
@@ -406,6 +408,22 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
         };
     };
 
+
+#
+#   Function: OnEndParse
+#
+#   Called after parsing is over.
+#
+#   Parameters:
+#
+#       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> that was built by the file.
+#
+sub OnEndParse #(topicList)
+    {
+    my ($self, $topicList) = @_;
+
+    $self->MakeAutoGroups($topicList);
+    };
 
 
 ###############################################################################
