@@ -20,6 +20,8 @@ use NaturalDocs::Languages::Simple;
 use NaturalDocs::Languages::Advanced;
 
 use NaturalDocs::Languages::Perl;
+use NaturalDocs::Languages::CSharp;
+
 use NaturalDocs::Languages::PHP;
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
