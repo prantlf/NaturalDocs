@@ -960,7 +960,7 @@ sub BuildPrototype #(type, prototype, file)
 
     else # (!defined $params || scalar @$params == 1)
         {
-        my $string = $pre . $open . (defined $params ? $params->[1] : '') . $close . $post;
+        my $string = $pre . $open . (defined $params ? $params->[0] : '') . $close . $post;
 
         $output =
         # A surrounding table as a hack to make the div form-fit.
