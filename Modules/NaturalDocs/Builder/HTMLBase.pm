@@ -1781,7 +1781,7 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
     else
         {
         my $symbolText = $self->StringToHTML($element->SortableSymbol(), ADD_HIDDEN_BREAKS);
-        my $symbolPrefix = $self->StringToHTML($element->StrippedPrefix());
+        my $symbolPrefix = $self->StringToHTML($element->IgnoredPrefix());
 
         $output .=
         '<tr>'

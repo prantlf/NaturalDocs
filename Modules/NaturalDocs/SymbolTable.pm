@@ -1771,7 +1771,7 @@ sub MakeIndex #(type)
                 my $result = ::StringCompare($a->SortableSymbol(), $b->SortableSymbol());
 
                 if ($result == 0)
-                    {  $result = ::StringCompare($a->StrippedPrefix(), $b->StrippedPrefix());  };
+                    {  $result = ::StringCompare($a->IgnoredPrefix(), $b->IgnoredPrefix());  };
 
                 return $result;
                 }
