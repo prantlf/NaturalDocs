@@ -228,14 +228,7 @@ sub LoadSourceFileInfo
     my $version;
     my $hasChanged;
 
-    if (NaturalDocs::Settings->RebuildOutput())
-        {
-        $rebuildEverything = 1;
-        $hasChanged = 1;
-        };
-
-
-    if (!NaturalDocs::Settings->RebuildData() && open(FH_FILEINFO, '<' . $self->FileInfoFile()))
+    if (open(FH_FILEINFO, '<' . $self->FileInfoFile()))
         {
         # Check if the file is in the right format.
         $version = NaturalDocs::Version->FromTextFile(\*FH_FILEINFO);
@@ -435,7 +428,7 @@ sub LoadConfigFileInfo
     my $version;
     my $fileName = NaturalDocs::Project->ConfigFileInfoFile();
 
-    if (!NaturalDocs::Settings->RebuildData() && open(FH_CONFIGFILEINFO, '<' . $fileName))
+    if (open(FH_CONFIGFILEINFO, '<' . $fileName))
         {
         # See if it's binary.
         binmode(FH_CONFIGFILEINFO);
@@ -747,6 +740,8 @@ sub RebuildEverything
 
         %unbuiltFilesWithContent = ( );
         $rebuildEverything = 1;
+
+        NaturalDocs::SymbolTable->RebuildAllIndexes();
         };
     };
 
