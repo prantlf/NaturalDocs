@@ -460,7 +460,7 @@ sub AppVersion
 #   Returns Natural Docs' version number as plain text.
 #
 sub TextAppVersion
-    {  return '1.11';  };
+    {  return '1.12';  };
 
 #
 #   Function: AppURL
