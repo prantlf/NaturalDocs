@@ -224,11 +224,16 @@ body.FramedContentPage,
 
 
 .Prototype {
-    font: 10pt "Courier New", Courier, monospace;
+    font: 8pt "Courier New", Courier, monospace;
     padding: 5px 3ex;
     border-width: 1px; border-style: solid;
     margin: 0 5ex 1.5em 5ex;
     }
+
+    .Prototype td {
+        font-size: 8pt;
+        vertical-align: bottom;
+        }
 
     .PLeftType,
     .PLeftParameter {
