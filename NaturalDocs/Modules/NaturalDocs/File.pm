@@ -426,7 +426,8 @@ sub ExtensionOf #(path)
 
     my ($pathVolume, $pathDirString, $pathFile) = File::Spec->splitpath($path);
 
-    if ($pathFile =~ /\.([^\.]+)$/)
+    # We need the leading dot in the regex so files that start with a dot but don't have an extension count as extensionless files.
+    if ($pathFile =~ /.\.([^\.]+)$/)
         {  return $1;  }
     else
         {  return undef;  };
