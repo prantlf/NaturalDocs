@@ -11,12 +11,12 @@
 #
 #       - <NaturalDocs::Settings>, <NaturalDocs::Languages>, and <NaturalDocs::Project> must be initialized before use.
 #
-#       - <LoadAndPurge()> must be called to initialize the package.  No other functions can be called beforehand.  Afterwards
-#         the <Modification Functions> like <AddSymbol()> are available, but the symbol table still isn't fully resolved to the
-#         changes in the source tree so the <Information Functions> are still out.
+#       - <Load()> must be called to initialize the package.  At this point, the <Information Functions> will return the symbol
+#         table as of the last time Natural Docs was run.
 #
-#       - <NaturalDocs::Parser->ParseForInformation()> must be called on all files that have changed to fully resolve the symbol
-#         table.  Afterwards <PurgeResolvingInfo()> can be called and the <Information Functions> are available.
+#       - <Purge()> must be called, and then <NaturalDocs::Parser->ParseForInformation()> on all files that have changed so it
+#         can fully resolve the symbol table via the <Modification Functions>.  Afterwards <PurgeResolvingInfo()> can be called
+#         to reclaim some memory, and the symbol table will reflect the current state of the code.
 #
 #       - <Save()> must be called to commit any changes to the symbol table back to disk.
 #
@@ -172,11 +172,11 @@ my %indexChanges;
 
 
 #
-#   Function: LoadAndPurge
+#   Function: Load
 #
-#   Loads the symbol table from disk, and purges everything associated with files that no longer have Natural Docs content.
+#   Loads the symbol table from disk.
 #
-sub LoadAndPurge
+sub Load
     {
     my ($self) = @_;
 
@@ -291,9 +291,49 @@ sub LoadAndPurge
 
 
     close(SYMBOLTABLEFILEHANDLE);
-
-    $self->Purge();
     };
+
+
+#
+#   Function: Purge
+#
+#   Purges the symbol table of all symbols and references from files that no longer have Natural Docs content.
+#
+sub Purge
+    {
+    my ($self) = @_;
+
+    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
+
+    # We do this in two stages.  First we delete all the references, and then we delete all the definitions.  This causes us to go
+    # through the list twice, but it makes sure no purged files get added to the build list.  For example, if we deleted all of
+    # Purge File A's references and definitions, and Purge File B had a reference to one of those symbols, Purge File B
+    # would be added to the build list because one of its references changed.  By removing all the references in all the files
+    # before removing the definitions, we avoid this.
+
+    foreach my $file (keys %$filesToPurge)
+        {
+        if (exists $files{$file})
+            {
+            my @references = $files{$file}->References();
+            foreach my $reference (@references)
+                {  $self->DeleteReference($reference, $file);  };
+            };
+        };
+
+    foreach my $file (keys %$filesToPurge)
+        {
+        if (exists $files{$file})
+            {
+            my @symbols = $files{$file}->Symbols();
+            foreach my $symbol (@symbols)
+                {  $self->DeleteSymbol($symbol, $file);  };
+
+            delete $files{$file};
+            };
+        };
+    };
+
 
 #
 #   Function: Save
@@ -880,47 +920,6 @@ sub IndexChanged #(type)
 
 ###############################################################################
 # Group: Support Functions
-
-#
-#   Function: Purge
-#
-#   Purges the symbol table of all symbols and references from files that no longer have Natural Docs content.
-#
-sub Purge
-    {
-    my ($self) = @_;
-
-    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
-
-    # We do this in two stages.  First we delete all the references, and then we delete all the definitions.  This causes us to go
-    # through the list twice, but it makes sure no purged files get added to the build list.  For example, if we deleted all of
-    # Purge File A's references and definitions, and Purge File B had a reference to one of those symbols, Purge File B
-    # would be added to the build list because one of its references changed.  By removing all the references in all the files
-    # before removing the definitions, we avoid this.
-
-    foreach my $file (keys %$filesToPurge)
-        {
-        if (exists $files{$file})
-            {
-            my @references = $files{$file}->References();
-            foreach my $reference (@references)
-                {  $self->DeleteReference($reference, $file);  };
-            };
-        };
-
-    foreach my $file (keys %$filesToPurge)
-        {
-        if (exists $files{$file})
-            {
-            my @symbols = $files{$file}->Symbols();
-            foreach my $symbol (@symbols)
-                {  $self->DeleteSymbol($symbol, $file);  };
-
-            delete $files{$file};
-            };
-        };
-    };
-
 
 #
 #   Function: MakeSymbolString
