@@ -117,15 +117,17 @@ my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions'
 #
 my %constants = (
 
-                            'class'         => TOPIC_CLASS,
-                            'structure'   => TOPIC_CLASS,
-                            'struct'        => TOPIC_CLASS,
-                            'package'    => TOPIC_CLASS,
+                            'class'          => TOPIC_CLASS,
+                            'structure'    => TOPIC_CLASS,
+                            'struct'         => TOPIC_CLASS,
+                            'package'     => TOPIC_CLASS,
+                            'namespace' => TOPIC_CLASS,
 
-                            'classes'       => TOPIC_CLASS_LIST,
-                            'structures'   => TOPIC_CLASS_LIST,
-                            'structs'        => TOPIC_CLASS_LIST,
-                            'packages'   => TOPIC_CLASS_LIST,
+                            'classes'        => TOPIC_CLASS_LIST,
+                            'structures'    => TOPIC_CLASS_LIST,
+                            'structs'         => TOPIC_CLASS_LIST,
+                            'packages'     => TOPIC_CLASS_LIST,
+                            'namespaces' => TOPIC_CLASS_LIST,
 
                             'section'      => TOPIC_SECTION,
                             'title'           => TOPIC_SECTION,
