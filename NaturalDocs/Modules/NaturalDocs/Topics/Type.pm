@@ -17,7 +17,6 @@ package NaturalDocs::Topics::Type;
 use NaturalDocs::DefineMembers 'NAME',                         'Name()',
                                                  'PLURAL_NAME',             'PluralName()',      'SetPluralName()',
                                                  'INDEX',                        'Index()',              'SetIndex()',
-                                                 'AUTO_GROUP',             'AutoGroup()',        'SetAutoGroup()',
                                                  'SCOPE',                       'Scope()',              'SetScope()',
                                                  'PAGE_TITLE_IF_FIRST', 'PageTitleIfFirst()', 'SetPageTitleIfFirst()',
                                                  'BREAK_LISTS',             'BreakLists()',        'SetBreakLists()',
@@ -37,7 +36,6 @@ our @EXPORT = ('AUTO_GROUP_YES', 'AUTO_GROUP_NO', 'AUTO_GROUP_FULL_ONLY',
 #   NAME - The topic's name.
 #   PLURAL_NAME - The topic's plural name.
 #   INDEX - Whether the topic is indexed.
-#   AUTO_GROUP - The topic's <AutoGroupType>.
 #   SCOPE - The topic's <ScopeType>.
 #   PAGE_TITLE_IF_FIRST - Whether the topic becomes the page title if it's first in a file.
 #   BREAK_LISTS - Whether list topics should be broken into individual topics in the output.
@@ -49,19 +47,6 @@ our @EXPORT = ('AUTO_GROUP_YES', 'AUTO_GROUP_NO', 'AUTO_GROUP_FULL_ONLY',
 ###############################################################################
 # Group: Types
 
-
-#
-#   Constants: AutoGroupType
-#
-#   The possible values for <AutoGroup()>.
-#
-#   AUTO_GROUP_NO - There is no auto-grouping on this topic.
-#   AUTO_GROUP_YES - There is auto-grouping in basic and in full mode.
-#   AUTO_GROUP_FULL_ONLY - There is auto-grouping in full mode only.
-#
-use constant AUTO_GROUP_NO => 1;
-use constant AUTO_GROUP_YES => 2;
-use constant AUTO_GROUP_FULL_ONLY => 3;
 
 #
 #   Constants: ScopeType
@@ -94,12 +79,11 @@ use constant SCOPE_ALWAYS_GLOBAL => 4;
 #       name - The topic name.
 #       pluralName - The topic's plural name.
 #       index - Whether the topic is indexed.
-#       autoGroup - The topic's <AutoGroupType>.
 #       scope - The topic's <ScopeType>.
 #       pageTitleIfFirst - Whether the topic becomes the page title if it's the first one in a file.
 #       breakLists - Whether list topics should be broken into individual topics in the output.
 #
-sub New #(name, pluralName, index, autoGroup, scope, pageTitleIfFirst, breakLists)
+sub New #(name, pluralName, index, scope, pageTitleIfFirst, breakLists)
     {
     my ($self, @params) = @_;
 
@@ -120,8 +104,6 @@ sub New #(name, pluralName, index, autoGroup, scope, pageTitleIfFirst, breakList
 #   SetPluralName - Replaces the topic's plural name.
 #   Index - Whether the topic is indexed.
 #   SetIndex - Sets whether the topic is indexed.
-#   AutoGroup - Returns the topic's <AutoGroupType>.
-#   SetAutoGroup - Replaces the topic's <AutoGroupType>.
 #   Scope - Returns the topic's <ScopeType>.
 #   SetScope - Replaces the topic's <ScopeType>.
 #   PageTitleIfFirst - Returns whether the topic becomes the page title if it's first in the file.
