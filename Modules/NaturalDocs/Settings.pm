@@ -41,9 +41,13 @@ my $projectDirectory;
 # corresponding directories.
 my %outputFormats;
 
-# bool: rebuildAll
-# Whether the script should rebuild all output and data files from scratch.
-my $rebuildAll;
+# bool: rebuildData
+# Whether the script should rebuild all data files from scratch.
+my $rebuildData;
+
+# bool: rebuildOutput
+# Whether the script should rebuild all output files from scratch.
+my $rebuildOutput;
 
 # bool: isQuiet
 # Whether the script should be run in quiet mode or not.
@@ -75,6 +79,7 @@ sub ParseCommandLine
                                   '--project' => '-p',
                                   '--style'    => '-s',
                                   '--rebuild' => '-r',
+                                  '--rebuildoutput' => '-ro',
                                   '--quiet'    => '-q',
                                   '--help'     => '-h' );
 
@@ -141,7 +146,12 @@ sub ParseCommandLine
                 $valueRef = undef;
 
                 if ($option eq '-r')
-                    {  $rebuildAll = 1;  }
+                    {
+                    $rebuildData = 1;
+                    $rebuildOutput = 1;
+                    }
+                elsif ($option eq '-ro')
+                    {  $rebuildOutput = 1;  }
                 elsif ($option eq '-q')
                     {  $isQuiet = 1;  }
                 elsif ($option eq '-h')
@@ -337,6 +347,9 @@ sub PrintSyntax
     . "     Rebuilds all output and data files from scratch.\n"
     . "     Does not affect the menu file.\n"
     . "\n"
+    . "-ro, --rebuildoutput\n"
+    . "     Rebuilds all output files from scratch.\n"
+    . "\n"
     . "-q, --quiet\n"
     . "     Suppresses all non-error output.\n"
     . "\n"
@@ -407,10 +420,15 @@ sub ProjectDirectory
 sub StyleDirectory
     {  return NaturalDocs::File::JoinPath($FindBin::Bin, 'Styles', 1);  };
 
-# Function: RebuildAll
-# Returns whether the script should rebuild all output and data files from scratch.
-sub RebuildAll
-    {  return $rebuildAll;  };
+# Function: RebuildData
+# Returns whether the script should rebuild all data files from scratch.
+sub RebuildData
+    {  return $rebuildData;  };
+
+# Function: RebuildOutput
+# Returns whether the script should rebuild all output files from scratch.
+sub RebuildOutput
+    {  return $rebuildOutput;  };
 
 # Function: IsQuiet
 # Returns whether the script should be run in quiet mode or not.
@@ -427,7 +445,7 @@ sub IsQuiet
 #   Returns a string of the current version number of Natural Docs.
 #
 sub AppVersion
-    {  return '0.91';  };
+    {  return '0.95';  };
 
 #
 #   Function: AppURL
