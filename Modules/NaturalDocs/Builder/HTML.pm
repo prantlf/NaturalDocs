@@ -54,7 +54,7 @@ sub INIT
 #
 sub CommandLineOption
     {
-    return 'html';
+    return 'HTML';
     };
 
 
