@@ -6,6 +6,22 @@
 #
 #   A subclass to handle the language variations of Perl.
 #
+#
+#   Topic: Language Support
+#
+#       Supported:
+#
+#       - Packages
+#       - Inheritance via "use base" and "@ISA =".
+#       - Functions
+#       - Variables
+#       - Exporting via @EXPORT
+#
+#       Not supported yet:
+#
+#       - Constants
+#       - Exporting via @EXPORT_OK
+#
 ###############################################################################
 
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
