@@ -681,7 +681,7 @@ sub BuildContent #(sourceFile, parsedFile)
         {
         my $anchor = $self->SymbolToHTMLSymbol($parsedFile->[$i]->Symbol());
 
-        my $scope = NaturalDocs::Topics->TypeInfo($parsedFile->[$i]->Type());
+        my $scope = NaturalDocs::Topics->TypeInfo($parsedFile->[$i]->Type())->Scope();
 
 
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
@@ -792,17 +792,15 @@ sub BuildSummary #(sourceFile, parsedFile, index)
         $index++;
         };
 
+    if ($index + 1 >= scalar @$parsedFile)
+        {  return undef;  };
+
 
     my $scope = NaturalDocs::Topics->TypeInfo($parsedFile->[$index]->Type())->Scope();
 
     # Return nothing if there's only one entry.
-    if ($index + 1 >= scalar @$parsedFile ||
-        ( !$completeSummary &&
-          ( $scope == ::SCOPE_START() || $scope == ::SCOPE_END() )
-        ))
-        {
-        return undef;
-        };
+    if (!$completeSummary && ($scope == ::SCOPE_START() || $scope == ::SCOPE_END()) )
+        {  return undef;  };
 
 
     my $indent = 0;
