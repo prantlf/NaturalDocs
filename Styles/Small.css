@@ -34,7 +34,7 @@ p {
 
 
 /*  Can't use something like display: none or it won't break.  */
-.HiddenBreak {
+.HB {
     font-size: 1px }
 
 
@@ -71,6 +71,10 @@ body.FramedMenuPage,
     .MGroup {
         font-variant: small-caps; font-weight: bold;
         margin: 1em 0 1em 10px }
+
+    /*  Konqueror just can't do margins.  */
+    .KHTML .MGroup {
+        margin-bottom: 0; padding-bottom: 1em }
 
     .MGroupContent {
         font-variant: normal; font-weight: normal }
@@ -127,7 +131,9 @@ body.FramedContentPage,
 
     .CTopic {
         font-size: 8pt;
-        margin-bottom: 3em }
+        /*  This should be a margin but Konq 3.1.1 sucks.  */
+        padding-bottom: 3em }
+
 
     .CTitle {
         font-size: 11pt; font-weight: bold;
@@ -161,10 +167,15 @@ body.FramedContentPage,
 
     .CToolTip {
         position: absolute; visibility: hidden;
-        left: 0; top: 0;
+        left: 0; top: 0; max-width: 50%;
         background-color: #FFFFE0;
         padding: 5px;
-        border-width: 1px 2px 2px 1px; border-style: solid; border-color: #000000 }
+        border-width: 1px 2px 2px 1px; border-style: solid; border-color: #000000;
+        font-size: 8pt }
+
+    /*  Opera 6 gives it a huge height otherwise.  */
+    .Opera6 .CTooltip, .Opera5 .CTooltip {
+        max-width: 100% }
 
 
     .CPrototype {
@@ -182,10 +193,16 @@ body.FramedContentPage,
     .CVariable .CPrototype {
         background-color: #FFFFF0; border-color: #E0E0A0 }
     .CToolTip .CPrototype {
-        margin: 0 }
+        margin: 0 0 .5em 0 }
+
+     /*  Weird bugs.  Prototype will collapse too much otherwise.  */
+    .KHTML .CPrototype,
     .Gecko .CToolTip .CPrototype {
-        /*  Weird Gecko bug.  Prototype will collapse too much otherwise.  */
         width: 100% }
+    .KHTML .CToolTip {
+        margin-top: 8px }
+    .KHTML .CToolTip .CPrototype {
+        width: auto }
 
     .CHeading {
         font-weight: bold; font-size: 9pt;
@@ -204,8 +221,9 @@ body.FramedContentPage,
     .CDescriptionList {
         margin: .5em 5ex 0 5ex }
 
-    /* IE 4 always makes it too long.  */
-    .IE4 .CDescriptionList {
+    /* IE 4 and Konqueror always makes it too long.  */
+    .IE4 .CDescriptionList,
+    .KHTML .CDescriptionList {
         width: 85% }
 
         .CDLEntry {
@@ -349,7 +367,7 @@ body.FramedIndexPage,
     /*  While it may cause some entries to look like links when they aren't, I found it's much easier to read the
          index if everything's the same color.  */
     .ISymbol {
-        font-weight: bold; color: #900000 }
+        font-weight: bold; color: #900000  }
 
 
 
