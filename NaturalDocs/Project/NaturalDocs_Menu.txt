@@ -26,6 +26,12 @@ Footer: Copyright (c) 2003 Greg Valure
 
 # ------------------------------------------------------------------------ #
 
+# These are indexes you deleted, so Natural Docs will not add them again
+# unless you remove them from this line.
+
+Don't Index: Variable
+
+
 File: Natural Docs  (NaturalDocs)
 
 Group: Packages  {
@@ -94,11 +100,10 @@ Group: Documentation  {
 Group: Indexes  {
 
    Index: Everything
-   File Index: File
-   Class Index: Class
-   Variable Index: Variable
-   Function Index: Function
-   Constant Index: Constant
+   Class Index: Packages and Classes
+   Function Index: Functions
+   File Index: Files
+   Constant Index: Constants
    }  # Group: Indexes
 
 Link: Web Site  (http://www.naturaldocs.org/)
