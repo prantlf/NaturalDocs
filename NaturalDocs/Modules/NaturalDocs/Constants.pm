@@ -59,7 +59,7 @@ require Exporter;
 #
 #   Dependency:
 #
-#       <NaturalDocs.m> depends on these values all being able to fit into a UInt8, i.e. <= 255.
+#       <PreviousMenuState.nd> depends on these values all being able to fit into a UInt8, i.e. <= 255.
 #
 use constant MENU_TITLE => 1;
 use constant MENU_SUBTITLE => 2;

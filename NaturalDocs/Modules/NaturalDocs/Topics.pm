@@ -67,7 +67,7 @@ require Exporter;
 #
 #   Dependency:
 #
-#       <NaturalDocs.m> depends on these values all being able to fit into a UInt8, i.e. <= 255.
+#       <PreviousMenuState.nd> depends on these values all being able to fit into a UInt8, i.e. <= 255.
 #
 use constant TOPIC_CLASS => 1;
 use constant TOPIC_SECTION => 2;
@@ -273,7 +273,7 @@ my %constants = (
                             'typedefs'    => TOPIC_TYPE_LIST
 
              );
-             
+
 #
 #   hash: indexable
 #
@@ -286,7 +286,7 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_TYPE() => 1,
                              TOPIC_CONSTANT() => 1 );
 
-             
+
 
 ###############################################################################
 # Group: Functions
@@ -312,8 +312,8 @@ sub IsListOf #(topic)
     my ($self, $topic) = @_;
     return ($topic - TOPIC_LIST_BASE);
     };
-    
-    
+
+
 #
 #   Function: IsIndexable
 #
@@ -324,8 +324,8 @@ sub IsIndexable #(topic)
     my ($self, $topic) = @_;
     return $indexable{$topic};
     };
-    
-    
+
+
 #
 #   Function: AllIndexable
 #
@@ -336,8 +336,8 @@ sub AllIndexable
     my ($self) = @_;
     return keys %indexable;
     };
-    
-    
+
+
 #
 #   Function: NameOf
 #
@@ -346,13 +346,13 @@ sub AllIndexable
 sub NameOf #(topic)
     {
     my ($self, $topic) = @_;
-    
+
     if ($self->IsList($topic))
         {  return $names[ $self->IsListOf($topic) ] . 'List';  }
     else
         {  return $names[ $topic ];  };
     };
-    
+
 #
 #   Function: PluralNameOf
 #
@@ -362,7 +362,7 @@ sub NameOf #(topic)
 sub PluralNameOf #(topic)
     {
     my ($self, $topic) = @_;
-    
+
     if ($self->IsList($topic))
         {  return $names[ $self->IsListOf($topic) ] . 'Lists';  }
     else
@@ -372,7 +372,7 @@ sub PluralNameOf #(topic)
 #
 #   Function: ConstantOf
 #
-#   Returns the <Topic Types> associated with the string, or undef if none.  This supports every Natural Docs synonym the parser 
+#   Returns the <Topic Types> associated with the string, or undef if none.  This supports every Natural Docs synonym the parser
 #   supports.  Note that if the string is plural, it will return a list type.  If that's not desired, use <NonListConstantOf()> instead.
 #
 sub ConstantOf #(string)
@@ -380,7 +380,7 @@ sub ConstantOf #(string)
     my ($self, $string) = @_;
     return $constants{ lc($string) };
     };
-    
+
 #
 #   Function: NonListConstantOf
 #
@@ -390,14 +390,14 @@ sub ConstantOf #(string)
 sub NonListConstantOf #(string)
     {
     my ($self, $string) = @_;
-    
+
     my $topic = $self->ConstantOf($string);
-    
+
     if ($self->IsList($topic))
         {  return $self->IsListOf($topic);  }
     else
         {  return $topic;  };
     };
-    
+
 
 1;

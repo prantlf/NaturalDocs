@@ -36,6 +36,13 @@ package NaturalDocs::Project;
 # Group: Variables
 
 #
+#   handle: FILEINFOFILEHANDLE
+#
+#   The file handle for the file information file, <FileInfo.nd>.
+#
+
+
+#
 #   hash: supportedFiles
 #
 #   A hash of all the supported files in the input directory.  The keys are the file names, and the values are
@@ -76,7 +83,7 @@ my %unbuiltFilesWithContent;
 # Group: Files
 
 #
-#   File: NaturalDocs.files
+#   File: FileInfo.nd
 #
 #   An index of the state of the files as of the last parse.  Used to determine if files were added, deleted, or changed.
 #
@@ -85,11 +92,13 @@ my %unbuiltFilesWithContent;
 #       The beginning of the file is the version it was generated with.  Use the text file functions in <NaturalDocs::Version> to
 #       deal with it.
 #
-#       The second line is the last modification time of <NaturalDocs_Menu.txt>.
+#       The second line is the last modification time of <Menu.txt>.
 #
 #       Each following line is [file name]\t[last modification time]\t[has ND content boolean]\t[default menu title].
 #
 #   Revisions:
+#
+#       Prior to 1.2, the file was named NaturalDocs.files.
 #
 #       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.  Other that that, the file has not changed
 #       since its public release.
@@ -103,7 +112,7 @@ my %unbuiltFilesWithContent;
 #   Function: LoadAndDetectChanges
 #
 #   Loads the project file from disk and compares it against the files in the input directory.  Project is loaded from
-#   <NaturalDocs.files>.  New and changed files will be added to <FilesToParse()>, and if they have content,
+#   <FileInfo.nd>.  New and changed files will be added to <FilesToParse()>, and if they have content,
 #   <FilesToBuild()>.
 #
 #   Returns:
@@ -121,10 +130,10 @@ sub LoadAndDetectChanges
 
     my $hasChanged = $rebuildOutput;
 
-    if (!NaturalDocs::Settings->RebuildData() && open(PROJECTFILEHANDLE, '<' . $self->ProjectFile()))
+    if (!NaturalDocs::Settings->RebuildData() && open(FILEINFOFILEHANDLE, '<' . $self->FileInfoFile()))
         {
         # Check if the file is in the right format.
-        my $version = NaturalDocs::Version->FromTextFile(\*PROJECTFILEHANDLE);
+        my $version = NaturalDocs::Version->FromTextFile(\*FILEINFOFILEHANDLE);
 
         # The output needs to be rebuilt for 1.13 because there were bugs in the prototype detection and changes to the output.
 
@@ -139,7 +148,7 @@ sub LoadAndDetectChanges
             }
         else
             {
-            close(PROJECTFILEHANDLE);
+            close(FILEINFOFILEHANDLE);
             $hasChanged = 1;
             };
         };
@@ -151,9 +160,9 @@ sub LoadAndDetectChanges
         my %indexedFiles;
 
 
-        # Check if NaturalDocs_Menu.txt changed.
+        # Check if Menu.txt changed.
 
-        $line = <PROJECTFILEHANDLE>;
+        $line = <FILEINFOFILEHANDLE>;
 
         if (! -e $self->MenuFile())
             {
@@ -174,7 +183,7 @@ sub LoadAndDetectChanges
 
         # Parse the rest of the file.
 
-        while ($line = <PROJECTFILEHANDLE>)
+        while ($line = <FILEINFOFILEHANDLE>)
             {
             chomp($line);
             my ($file, $modification, $hasContent, $menuTitle) = split(/\t/, $line, 4);
@@ -228,7 +237,7 @@ sub LoadAndDetectChanges
                 };
             };
 
-        close(PROJECTFILEHANDLE);
+        close(FILEINFOFILEHANDLE);
 
 
         # Check for added files.
@@ -250,7 +259,7 @@ sub LoadAndDetectChanges
             };
         }
 
-    # If something's wrong with NaturalDocs.files, everything is new.
+    # If something's wrong with FileInfo.nd, everything is new.
     else
         {
         NaturalDocs::Menu->OnFileChange();
@@ -274,29 +283,29 @@ sub LoadAndDetectChanges
 #
 #   Function: Save
 #
-#   Saves the project file to disk.  Everything is saved in <NaturalDocs.files>.  <NaturalDocs::Menu->Save()> should
+#   Saves the project file to disk.  Everything is saved in <FileInfo.nd>.  <NaturalDocs::Menu->Save()> should
 #   be called prior to this function because its last modification time is saved here.
 #
 sub Save
     {
     my ($self) = @_;
 
-    open(PROJECTFILEHANDLE, '>' . $self->ProjectFile())
-        or die "Couldn't save project file " . $self->ProjectFile() . "\n";
+    open(FILEINFOFILEHANDLE, '>' . $self->FileInfoFile())
+        or die "Couldn't save project file " . $self->FileInfoFile() . "\n";
 
-    NaturalDocs::Version->ToTextFile(\*PROJECTFILEHANDLE, NaturalDocs::Settings->AppVersion());
+    NaturalDocs::Version->ToTextFile(\*FILEINFOFILEHANDLE, NaturalDocs::Settings->AppVersion());
 
-    print PROJECTFILEHANDLE '' . (stat($self->MenuFile()))[9] . "\n";
+    print FILEINFOFILEHANDLE '' . (stat($self->MenuFile()))[9] . "\n";
 
     while (my ($fileName, $file) = each %supportedFiles)
         {
-        print PROJECTFILEHANDLE $fileName . "\t"
+        print FILEINFOFILEHANDLE $fileName . "\t"
                               . $file->LastModified() . "\t"
                               . ($file->HasContent() || '0') . "\t"
                               . $file->DefaultMenuTitle() . "\n";
         };
 
-    close(PROJECTFILEHANDLE);
+    close(FILEINFOFILEHANDLE);
     };
 
 
@@ -342,7 +351,7 @@ sub ReparseEverything
 #
 sub RebuildEverything
     {
-    my (@self) = @_;
+    my ($self) = @_;
 
     foreach my $file (keys %unbuiltFilesWithContent)
         {
@@ -352,29 +361,56 @@ sub RebuildEverything
     %unbuiltFilesWithContent = ( );
     };
 
+#
+#   Function: MigrateOldFiles
+#
+#   If the project uses the old file names used prior to 1.2, it converts them to the new file names.
+#
+sub MigrateOldFiles
+    {
+    my ($self) = @_;
+
+    my $projectDirectory = NaturalDocs::Settings->ProjectDirectory();
+
+    # We use the menu file as a test to see if we're using the new format.
+    if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs_Menu.txt'))
+        {
+        rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs_Menu.txt'), $self->MenuFile() );
+
+        if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.sym'))
+            {  rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.sym'), $self->SymbolTableFile() );  };
+
+        if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.files'))
+            {  rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.files'), $self->FileInfoFile() );  };
+
+        if (-e NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.m'))
+            {  rename( NaturalDocs::File->JoinPath($projectDirectory, 'NaturalDocs.m'), $self->PreviousMenuStateFile() );  };
+        };
+    };
+
 
 ###############################################################################
 # Group: Information Functions
 
-# Function: ProjectFile
-# Returns the full path to the project's data file.
-sub ProjectFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'NaturalDocs.files' );  };
+# Function: FileInfoFile
+# Returns the full path to the file information file.
+sub FileInfoFile
+    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDataDirectory(), 'FileInfo.nd' );  };
 
 # Function: SymbolTableFile
 # Returns the full path to the symbol table's data file.
 sub SymbolTableFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'NaturalDocs.sym' );  };
+    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDataDirectory(), 'SymbolTable.nd' );  };
 
 # Function: MenuFile
 # Returns the full path to the project's menu file.
 sub MenuFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'NaturalDocs_Menu.txt' );  };
+    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
 
 # Function: PreviousMenuStateFile
 # Returns the full path to the project's previous menu state file.
 sub PreviousMenuStateFile
-    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDirectory(), 'NaturalDocs.m' );  };
+    {  return NaturalDocs::File->JoinPath( NaturalDocs::Settings->ProjectDataDirectory(), 'PreviousMenuState.nd' );  };
 
 # Function: MenuBackupFile
 # Returns the full path to the project's menu backup file, which is used to save the original menu in some situations.
