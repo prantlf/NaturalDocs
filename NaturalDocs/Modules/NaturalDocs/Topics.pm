@@ -30,19 +30,21 @@ require Exporter;
 
 
 ###############################################################################
-# Group: Constants
-# All are exported by default.
+# Group: Virtual Types
+# These are only groups of constants, but should be treated like typedefs or enums.  Each one represents a distinct type and
+# their values should only be one of their constants or undef.  All values are exported by default.
 
 #
 #   Note: Assumptions
 #
-#   No constant here will ever be zero.
+#   - No constant here will ever be zero.
+#   - All constants are exported by default.
 #
 
 #
-#   Constants: Type Constants
+#   Constants: TopicType
 #
-#   Constants representing all the types of Natural Docs sections.
+#   The type of a Natural Docs topic.
 #
 #       TOPIC_CLASS      - A class.  All topics until the next class or section become its members.
 #       TOPIC_SECTION  - A main section of code or text.  Formats like a class but doesn't provide scope.  Also ends the
@@ -67,9 +69,10 @@ require Exporter;
 #       TOPIC_CONSTANT_LIST - A list of constants.
 #       TOPIC_TYPE_LIST - A list of types.
 #
-#   Dependency:
+#   Dependencies:
 #
-#       <PreviousMenuState.nd> and <SymbolTable.nd> depend on these values all being able to fit into a UInt8, i.e. <= 255.
+#       - <PreviousMenuState.nd> and <SymbolTable.nd> depend on these values all being able to fit into a UInt8, i.e. <= 255.
+#       - Most of the variables below depend on the order of the values.
 #
 use constant TOPIC_CLASS => 1;
 use constant TOPIC_SECTION => 2;
@@ -100,7 +103,7 @@ use constant TOPIC_PROPERTY_LIST => (TOPIC_PROPERTY + TOPIC_LIST_BASE);
 #
 #   array: names
 #
-#   An array of the topic names.  Use the <Type Constants> as indexes, except for list types.
+#   An array of the topic names.  Use the <TopicTypes> as indexes, except for list types.
 #
 my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant', 'Property' );
 # The string order must match the constant values.
@@ -108,7 +111,7 @@ my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable'
 #
 #   array: pluralNames
 #
-#   An array of the topic names, but plural.  Use the <Type Constants> as indexes, except for list types.
+#   An array of the topic names, but plural.  Use the <TopicTypes> as indexes, except for list types.
 #
 my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions', 'Variables', 'Generics', 'Types', 'Constants',
                                 'Properties' );
@@ -117,7 +120,7 @@ my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions'
 #
 #   hash: constants
 #
-#   A hash where the keys are the names in all lowercase, and the values are the <Type Constants>.  Note that this contains
+#   A hash where the keys are the names in all lowercase, and the values are the <TopicTypes>.  Note that this contains
 #   every synonym used in the parser.  If the name is plural, it will be a list type.
 #
 my %constants = (
@@ -290,7 +293,7 @@ my %constants = (
 #
 #   hash: indexable
 #
-#   An existence hash of the <Type Constants> that should be indexed.
+#   An existence hash of the <TopicTypes> that should be indexed.
 #
 my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_CLASS() => 1,
@@ -303,7 +306,7 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
 #
 #   hash: basicAutoGroupable
 #
-#   An existence hash of the <Type Constants> that auto-groups should be created for when using <AUTOGROUP_BASIC>.
+#   An existence hash of the <TopicTypes> that auto-groups should be created for when using <AUTOGROUP_BASIC>.
 #
 my %basicAutoGroupable = ( TOPIC_FUNCTION() => 1,
                                            TOPIC_VARIABLE() => 1,
@@ -312,7 +315,7 @@ my %basicAutoGroupable = ( TOPIC_FUNCTION() => 1,
 #
 #   hash: fullAutoGroupable
 #
-#   An existence hash of the <Type Constants> that auto-groups should be created for when using <AUTOGROUP_FULL> *in
+#   An existence hash of the <TopicTypes> that auto-groups should be created for when using <AUTOGROUP_FULL> *in
 #   addition to* those found in <basicAutoGroupable>.
 #
 my %fullAutoGroupable = ( TOPIC_FILE() => 1,
