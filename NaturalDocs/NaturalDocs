@@ -84,7 +84,7 @@ use integer;
 #           -i [dir]            - The input (source) directory.  Required.  Also --input, --source.
 #
 #           -o [fmt] [dir]   - The output format and directory.  Required.  See <Supported Output Formats> for a list of
-#                                   options.  This can be specified multiple times, but only once per output format.  Also --output.
+#                                   options.  This can be specified multiple times, but only once per directory.  Also --output.
 #
 #           -p [dir]           - The project directory.  Required.  There should be a unique project directory for each
 #                                   input directory.  Also --project.
@@ -209,6 +209,14 @@ use integer;
 #       - By placing the file in the Modules/NaturalDocs/Builder directory, it will automatically be included by Natural Docs.  You
 #         do not have to add a 'use' statement anywhere in the code, which makes it easy to keep custom output formats whenever
 #         you upgrade Natural Docs.
+#
+#
+#   Topic: How to Add Topics
+#
+#       - If you'd like to add a synonym for an existing topic type, edit <NaturalDocs::Topics::constants>.  Note that it must be in
+#         all lowercase.
+#       - If you'd like to add a new topic type, read through <NaturalDocs::Topics'> source.  It should be obvious what needs to
+#         be edited, just don't skip anything.  You can stop when you reach the functions.
 #
 #
 #   Topic: How to Add Extensions
