@@ -218,8 +218,12 @@ my @legacyTypes = ( TOPIC_GENERAL, TOPIC_CLASS, TOPIC_SECTION, TOPIC_FILE, TOPIC
 #       > [keyword]
 #       > [keyword], [plural keyword]
 #
-#       Each line is the keyword and optionally its plural form.  Keywords can only have letters and numbers.  No punctuation or
-#       spaces are allowed.  Keywords are not case sensitive.
+#       Each line is the keyword and optionally its plural form.
+#
+#       - Keywords can only have letters and numbers.  No punctuation or spaces are allowed.
+#       - Keywords are not case sensitive.
+#       - Subsequent keyword sections add to the list.  They don't replace it.
+#       - Keywords can be redefined by other keyword sections.
 #
 #
 #   Revisions:
@@ -674,7 +678,7 @@ sub KeywordInfo #(keyword)
 #
 #   Returns:
 #
-#       The array ( topicType, info ), or an empty array if the name doesn't exist.  Note that unlike <InfoFromKeyword()>, this
+#       The array ( topicType, info ), or an empty array if the name doesn't exist.  Note that unlike <KeywordInfo()>, this
 #       does *not* tell you whether the name is plural or not.
 #
 #       topicType - The <TopicType> of the name.
