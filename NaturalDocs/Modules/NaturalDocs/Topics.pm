@@ -149,6 +149,14 @@ my @legacyTypes = ( TOPIC_GENERAL, TOPIC_CLASS, TOPIC_SECTION, TOPIC_FILE, TOPIC
                                 TOPIC_VARIABLE, TOPIC_GENERIC, TOPIC_TYPE, TOPIC_CONSTANT, TOPIC_PROPERTY );
 
 
+#
+#   array: mainTopicNames
+#
+#   An array of the <TopicType> names that are defined in the main <Topics.txt>.
+#
+my @mainTopicNames;
+
+
 
 ###############################################################################
 # Group: Files
@@ -387,6 +395,9 @@ sub LoadFile #(isMain)
                         $types{$topicType} = $topicTypeObject;
                         $names{$lcTopicTypeName} = $topicType;
                         $names{$lcTopicTypeAName} = $topicType;
+
+                        if ($isMain)
+                            {  push @mainTopicNames, $topicTypeName;  };
                         };
                     }
                 else # ($topicTypeKeyword eq 'alter topic type')
@@ -706,7 +717,9 @@ sub SaveFile #(isMain)
         }
     else
         {
-        if (NaturalDocs::Project->UserTopicsFileStatus() == ::FILE_SAME())
+        # We have to check the main one two because this lists the topics defined in it.
+        if (NaturalDocs::Project->UserTopicsFileStatus() == ::FILE_SAME() &&
+            NaturalDocs::Project->MainTopicsFileStatus() == ::FILE_SAME())
             {  return;  };
         $file = NaturalDocs::Project->UserTopicsFile();
         };
@@ -849,7 +862,9 @@ sub SaveFile #(isMain)
     . "#   Alters an existing topic type so you can override its settings.\n"
     . "#\n"
     . "#\n"
-    . "###############################################################################\n"
+    . "#------------------------------------------------------------------------------\n"
+    . "#   Properties\n"
+    . "#------------------------------------------------------------------------------\n"
     . "#\n"
     . "#   Plural: [name]\n"
     . "#\n"
@@ -899,11 +914,54 @@ sub SaveFile #(isMain)
     . "#\n"
     . "###############################################################################\n";
 
+    my $listToPrint;
+
     if ($isMain)
         {
         print FH_TOPICS "\n"
         . "# The following topics MUST be defined in this file:\n"
-        . "# " . join(', ', @requiredTypeNames) . "\n";
+        . "#\n";
+        $listToPrint = \@requiredTypeNames;
+        }
+    else
+        {
+        print FH_TOPICS "\n"
+        . "# The following topics are defined in the main file, if you'd like to alter\n"
+        . "# them or add keywords:\n"
+        . "#\n";
+        $listToPrint = \@mainTopicNames;
+        }
+
+    my $i = 0;
+
+    while ($i < scalar @$listToPrint)
+        {
+        print FH_TOPICS "#    " . $listToPrint->[$i];
+        my $characters = 5 + length($listToPrint->[$i]);
+
+        $i++;
+
+        if ($i < scalar @$listToPrint)
+            {
+            print FH_TOPICS ', ';
+            $characters += 2;
+
+            while ($i < scalar @$listToPrint && $characters + length($listToPrint->[$i]) + 1 < 80)
+                {
+                print FH_TOPICS $listToPrint->[$i];
+                $characters += length($listToPrint->[$i]);
+
+                $i++;
+
+                if ($i < scalar @$listToPrint)
+                    {
+                    print FH_TOPICS ', ';
+                    $characters += 2;
+                    };
+                };
+            };
+
+        print FH_TOPICS "\n";
         };
 
     # Existence hash.  We do this because we want the required ones to go first by adding them to @topicTypeOrder, but we don't
