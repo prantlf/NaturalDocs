@@ -56,6 +56,26 @@ sub OutputPackages
     };
 
 
+#
+#   Function: OutputPackageOf
+#
+#   Returns the output package corresponding to the passed command line option, or undef if none.
+#
+sub OutputPackageOf #(commandLineOption)
+    {
+    my $commandLineOption = shift;
+    $commandLineOption = lc($commandLineOption);
+
+    foreach my $package (@outputPackages)
+        {
+        if (lc($package->CommandLineOption()) eq $commandLineOption)
+            {  return $package;  };
+        };
+
+    return undef;
+    };
+
+
 
 #
 #   Function: Add
