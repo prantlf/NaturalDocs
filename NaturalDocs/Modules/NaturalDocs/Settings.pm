@@ -55,6 +55,15 @@ my @inputDirectoryNames;
 # An array of input directories to exclude.
 my @excludedInputDirectories;
 
+# array: removedInputDirectories
+# An array of input directories that were once in the command line but are no longer.
+my @removedInputDirectories;
+
+# array: removedInputDirectoryNames
+# An array of the removed input directories names.  Each name corresponds to the directory of the same index in
+# <removedInputDirectories>.
+my @removedInputDirectoryNames;
+
 # var: projectDirectory
 # The project directory.
 my $projectDirectory;
@@ -236,82 +245,91 @@ sub Save
 #   Parameters:
 #
 #       hints - A hashref of suggested names, where the keys are the directories and the values are the names.  These take
-#                 precedence over anything generated.  Directories here that aren't on the list of input directories are ignored.
-#                 This parameter may be undef.
+#                 precedence over anything generated.  You should include names for directories that are no longer in the command
+#                 line.  This parameter may be undef.
 #
 sub GenerateDirectoryNames #(hints)
     {
     my ($self, $hints) = @_;
 
-    # First, we have to convert all non-numeric names to numbers, since they may come from a pre-1.32 menu file.  We do it here
-    # instead of there to keep the naming scheme centralized.
-
-    my @names = values %$hints;
-    my $hasNonNumeric;
-
-    foreach my $name (@names)
-        {
-        if ($name !~ /^[0-9]+$/)
-            {
-            $hasNonNumeric = 1;
-            last;
-            };
-        };
-
-    # If there was non-numeric names, we convert them to numbers.
-
-    if ($hasNonNumeric)
-        {
-        # Hash mapping old names to new names.
-        my %conversion;
-
-        # The sequential number to use.  Starts at two because we want 'default' to be one.
-        my $currentNumber = 2;
-
-        # If there's only one name, we set it to one no matter what it was set to before.
-        if (scalar @names == 1)
-            {  $conversion{$names[0]} = 1;  }
-        else
-            {
-            # We sort the list first because we want the end result to be predictable.  This conversion could be happening on many
-            # machines, and they may not all specify the input directories in the same order.  They need to all come up with the same
-            # result.
-            @names = sort @names;
-
-            foreach my $name (@names)
-                {
-                if ($name eq 'default')
-                    {  $conversion{$name} = 1;  }
-                else
-                    {
-                    $conversion{$name} = $currentNumber;
-                    $currentNumber++;
-                    };
-                };
-            };
-
-        # Convert them to the new names.
-        foreach my $directory (keys %$hints)
-            {
-            $hints->{$directory} = $conversion{ $hints->{$directory} };
-            };
-        };
-
-
-
-    # Now we apply all the names from the hints.
-
     my %usedNames;
+
 
     if (defined $hints)
         {
+        # First, we have to convert all non-numeric names to numbers, since they may come from a pre-1.32 menu file.  We do it
+        # here instead of in NaturalDocs::Menu to keep the naming scheme centralized.
+
+        my @names = values %$hints;
+        my $hasNonNumeric;
+
+        foreach my $name (@names)
+            {
+            if ($name !~ /^[0-9]+$/)
+                {
+                $hasNonNumeric = 1;
+                last;
+                };
+            };
+
+
+        if ($hasNonNumeric)
+            {
+            # Hash mapping old names to new names.
+            my %conversion;
+
+            # The sequential number to use.  Starts at two because we want 'default' to be one.
+            my $currentNumber = 2;
+
+            # If there's only one name, we set it to one no matter what it was set to before.
+            if (scalar @names == 1)
+                {  $conversion{$names[0]} = 1;  }
+            else
+                {
+                # We sort the list first because we want the end result to be predictable.  This conversion could be happening on many
+                # machines, and they may not all specify the input directories in the same order.  They need to all come up with the
+                # same result.
+                @names = sort @names;
+
+                foreach my $name (@names)
+                    {
+                    if ($name eq 'default')
+                        {  $conversion{$name} = 1;  }
+                    else
+                        {
+                        $conversion{$name} = $currentNumber;
+                        $currentNumber++;
+                        };
+                    };
+                };
+
+            # Convert them to the new names.
+            foreach my $directory (keys %$hints)
+                {
+                $hints->{$directory} = $conversion{ $hints->{$directory} };
+                };
+            };
+
+
+        # Now we apply all the names from the hints.
+
         for (my $i = 0; $i < scalar @inputDirectories; $i++)
             {
             if (exists $hints->{$inputDirectories[$i]})
                 {
                 $inputDirectoryNames[$i] = $hints->{$inputDirectories[$i]};
                 $usedNames{ $hints->{$inputDirectories[$i]} } = 1;
+                delete $hints->{$inputDirectories[$i]};
                 };
+            };
+
+
+        # Any remaining hints are saved as removed directories.
+
+        while (my ($directory, $name) = each %$hints)
+            {
+            push @removedInputDirectories, $directory;
+            push @removedInputDirectoryNames, $name;
             };
         };
 
@@ -341,15 +359,24 @@ sub GenerateDirectoryNames #(hints)
 # Group: Information Functions
 
 
-# Function: InputDirectories
-# Returns an arrayref of input directories.  Do not change.
+#
+#   Function: InputDirectories
+#
+#   Returns an arrayref of input directories.  Do not change.
+#
+#   This will not return any removed input directories.
+#
 sub InputDirectories
     {  return \@inputDirectories;  };
 
-# Function: InputDirectoryNameOf
-# Returns the generated name of the passed input directory.  <GenerateDirectoryNames()> must be called once before this
-# function is available.  One possible directory name is "default", and it will always be used if there has never been more than
-# one input directory.
+#
+#   Function: InputDirectoryNameOf
+#
+#   Returns the generated name of the passed input directory.  <GenerateDirectoryNames()> must be called once before this
+#   function is available.
+#
+#   If a name for a removed input directory is available, it will be returned as well.
+#
 sub InputDirectoryNameOf #(directory)
     {
     my ($self, $directory) = @_;
@@ -362,16 +389,28 @@ sub InputDirectoryNameOf #(directory)
             {  $name = $inputDirectoryNames[$i];  };
         };
 
+    for (my $i = 0; $i < scalar @removedInputDirectories && !defined $name; $i++)
+        {
+        if ($directory eq $removedInputDirectories[$i])
+            {  $name = $removedInputDirectoryNames[$i];  };
+        };
+
     return $name;
     };
 
-# Function: SplitFromInputDirectory
-# Takes an input file name and returns the array ( inputDirectory, relativePath ).
+
+#
+#   Function: SplitFromInputDirectory
+#
+#   Takes an input file name and returns the array ( inputDirectory, relativePath ).
+#
+#   If the file cannot be split from an input directory, it will try to do it with the removed input directories.
+#
 sub SplitFromInputDirectory #(file)
     {
     my ($self, $file) = @_;
 
-    foreach my $directory (@inputDirectories)
+    foreach my $directory (@inputDirectories, @removedInputDirectories)
         {
         if (NaturalDocs::File->IsSubPathOf($directory, $file))
             {  return ( $directory, NaturalDocs::File->MakeRelativePath($directory, $file) );  };
