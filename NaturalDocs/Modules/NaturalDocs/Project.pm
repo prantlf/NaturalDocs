@@ -82,11 +82,17 @@ my %unbuiltFilesWithContent;
 #
 #   Format:
 #
-#       The first line is <NaturalDocs::Settings::AppVersion()>.
+#       The beginning of the file is the version it was generated with.  Use the text file functions in <NaturalDocs::Version> to
+#       deal with it.
 #
 #       The second line is the last modification time of <NaturalDocs_Menu.txt>.
 #
 #       Each following line is [file name]\t[last modification time]\t[has ND content boolean]\t[default menu title].
+#
+#   Revisions:
+#
+#       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.  Other that that, the file has not changed
+#       since its public release.
 #
 
 
@@ -115,25 +121,19 @@ sub LoadAndDetectChanges
     if (!NaturalDocs::Settings::RebuildData() && open($indexFile, '<' . ProjectFile()))
         {
         # Check if the file is in the right format.
-        my $version = <$indexFile>;
-        chomp($version);
+        my $version = NaturalDocs::Version::FromTextFile($indexFile);
 
-        # The output needs to be rebuilt for 0.95, but the data formats haven't changed.
-        # If the version is "1" with no ".0", that means 0.91 and prior because we were using a separate FileVersion() function then.
+        # The output needs to be rebuilt for 1.0, but the data format hasn't changed.
 
-        no integer;
-
-        if ($version < 0.95)
+        if ($version < NaturalDocs::Version::FromString('1.0'))
             {
             $fileIsOkay = 1;
             $rebuildOutput = 1;
             }
-        elsif ($version <= NaturalDocs::Settings::AppVersion() || $version eq '1')
+        elsif ($version <= NaturalDocs::Settings::AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close($indexFile);  };
-
-        use integer;
         };
 
 
@@ -261,8 +261,9 @@ sub Save
     open($indexFile, '>' . ProjectFile())
         or die "Couldn't save project file " . ProjectFile() . "\n";
 
-    print $indexFile '' . NaturalDocs::Settings::AppVersion() . "\n"
-                             . (stat(MenuFile()))[9] . "\n";
+    NaturalDocs::Version::ToTextFile($indexFile, NaturalDocs::Settings::AppVersion());
+
+    print $indexFile '' . (stat(MenuFile()))[9] . "\n";
 
     while (my ($fileName, $file) = each %supportedFiles)
         {
@@ -402,14 +403,14 @@ sub HasContent #(file)
 #
 #   Function: StatusOf
 #
-#   Returns the status of the passed file.  Will be onen of the <File Status Constants>.
+#   Returns the status of the passed file.  Will be one of the <File Status Constants>.
 #
 sub StatusOf #(file)
     {
     my $file = shift;
 
     if (exists $supportedFiles{$file})
-        {  return $supportedFiles{$file}->HasContent();  }
+        {  return $supportedFiles{$file}->Status();  }
     else
         {  return ::FILE_DOESNTEXIST();  };
     };
@@ -486,7 +487,7 @@ sub SetDefaultMenuTitle #(file, menuTitle)
     if (exists $supportedFiles{$file} && $supportedFiles{$file}->DefaultMenuTitle() ne $menuTitle)
         {
         $supportedFiles{$file}->SetDefaultMenuTitle($menuTitle);
-        NaturalDocs::Menu::OnDefaultTitleChange($file, $menuTitle);
+        NaturalDocs::Menu::OnDefaultTitleChange($file);
         };
     };
 
