@@ -1414,9 +1414,9 @@ sub RichFormatTextBlock #(text)
                     };
                 # Index will be incremented again at the end of the loop.
 
-                if ($linkText =~ /^(?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z0-9]{2,4}$/i)
-                    {  $output .= '<email>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText) . '</email>';  }
-                elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:[a-z0-9\-\~\@\#\%\&\_\+\/\?\.\,]+$/i)
+                if ($linkText =~ /^(?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
+                    {  $output .= '<email>' . NaturalDocs::NDMarkup::ConvertAmpChars($1) . '</email>';  }
+                elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:[a-z0-9\-\=\~\@\#\%\&\_\+\/\?\.\,]+$/i)
                     {  $output .= '<url>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText ). '</url>';  }
                 else
                     {  $output .= '<link>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText) . '</link>';  };
@@ -1483,7 +1483,14 @@ sub RichFormatTextBlock #(text)
             {
             my $text = NaturalDocs::NDMarkup::ConvertAmpChars($textBlocks[$index]);
 
-            $text =~ s{   # Begin capture
+            $text =~ s{
+                                # The previous character can't be an alphanumeric.
+                                (?<!  [a-z0-9]  )
+
+                                # Optional mailto:.  Ignored in output.
+                                (?:mailto\:)?
+
+                                # Begin capture
                                 (
 
                                 # The user portion.  Alphanumeric and - _.  Dots can appear between, but not at the edges or more than
@@ -1494,13 +1501,13 @@ sub RichFormatTextBlock #(text)
 
                                 # The domain.  Alphanumeric and -.  Dots same as above, however, there must be at least two sections
                                 # and the last one must be two to four alphanumeric characters (.com, .uk, .info, .203 for IP addresses)
-                                (?:  [a-z0-9\-]+  \.  )+  [a-z0-9]{2,4}
+                                (?:  [a-z0-9\-]+  \.  )+  [a-z]{2,4}
 
                                 # End capture.
                                 )
 
                                 # The next character can't be an alphanumeric, which should prevent .abcde from matching the two to
-                                # for character requirement.
+                                # four character requirement.
                                 (?!  [a-z0-9]  )
 
                                 }
@@ -1518,7 +1525,7 @@ sub RichFormatTextBlock #(text)
                                 (?:http|https|ftp|news|file)\:
 
                                 # The acceptable URL characters as far as I know.
-                                [a-z0-9\-\~\@\#\%\&\_\+\/\?\.\,]*
+                                [a-z0-9\-\=\~\@\#\%\&\_\+\/\?\.\,]*
 
                                 # The URL characters minus period, comma, and question mark.  If it ends on them, they're probably
                                 # intended as punctuation.
