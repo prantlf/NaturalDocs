@@ -826,8 +826,9 @@ sub BuildContent #(sourceFile, parsedFile)
 
         if (defined $parsedFile->[$i]->Body())
             {
-            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Package(),
-                                                                   $parsedFile->[$i]->Using() );
+            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Symbol(),
+                                                                  $parsedFile->[$i]->Package(), $parsedFile->[$i]->Type(),
+                                                                  $parsedFile->[$i]->Using() );
             };
 
         $output .= $summary;
@@ -993,7 +994,8 @@ sub BuildSummary #(sourceFile, parsedFile, index)
             if (defined $parsedFile->[$index]->Body())
                 {
                 $output .= $self->NDMarkupToHTML($sourceFile, $parsedFile->[$index]->Summary(),
-                                                                     $parsedFile->[$index]->Package(), $parsedFile->[$index]->Using());
+                                                                     $parsedFile->[$index]->Symbol(), $parsedFile->[$index]->Package(),
+                                                                     $parsedFile->[$index]->Type(), $parsedFile->[$index]->Using());
                 };
 
 
@@ -1285,7 +1287,7 @@ sub BuildToolTip #(symbol, file, type, prototype, summary)
                 $summary =~ s/<\/?(?:link|url)>//g;
 
                 # The fact that we don't have scope or using shouldn't matter because we removed the links.
-                $summary = $self->NDMarkupToHTML($file, $summary, undef, undef);
+                $summary = $self->NDMarkupToHTML($file, $summary, undef, undef, $type, undef);
 
                 # XXX - Hack.  We want to remove e-mail links as well, but keep their obfuscation.  So we leave the tags in there for
                 # the NDMarkupToHTML call, then strip out the link part afterwards.  The text obfuscation should still be in place.
@@ -2263,16 +2265,27 @@ sub SymbolToHTMLSymbol #(symbol)
 #
 #       sourceFile - The source <FileName> the <NDMarkup> appears in.
 #       text    - The <NDMarkup> text to convert.
+#       symbol - The topic <SymbolString> the <NDMarkup> appears in.
 #       package  - The package <SymbolString> the <NDMarkup> appears in.
+#       type - The <TopicType> the <NDMarkup> appears in.
 #       using - An arrayref of scope <SymbolStrings> the <NDMarkup> also has access to, or undef if none.
 #
 #   Returns:
 #
 #       The text in HTML.
 #
-sub NDMarkupToHTML #(sourceFile, text, package, using)
+sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
     {
-    my ($self, $sourceFile, $text, $package, $using) = @_;
+    my ($self, $sourceFile, $text, $symbol, $package, $type, $using) = @_;
+
+    my $dlSymbolBehavior;
+
+    if ($type == ::TOPIC_ENUMERATION())
+        {  $dlSymbolBehavior = NaturalDocs::Languages->LanguageOf($sourceFile)->EnumValues();  }
+    elsif (NaturalDocs::Topics->TypeInfo($type)->Scope() == ::SCOPE_ALWAYS_GLOBAL())
+        {  $dlSymbolBehavior = ::ENUM_GLOBAL();  }
+    else
+        {  $dlSymbolBehavior = ::ENUM_UNDER_PARENT();  };
 
     my $output;
     my $inCode;
@@ -2335,7 +2348,13 @@ sub NDMarkupToHTML #(sourceFile, text, package, using)
 
             $text =~ s/<de>/<tr><td class=CDLEntry>/g;
             $text =~ s/<\/de>/<\/td>/g;
-            $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol($package, $1)/ge;
+
+            if ($dlSymbolBehavior == ::ENUM_GLOBAL())
+                {  $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol(undef, $1)/ge;  }
+            elsif ($dlSymbolBehavior == ::ENUM_UNDER_PARENT())
+                {  $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol($package, $1)/ge;  }
+            else # ($dlSymbolBehavior == ::ENUM_UNDER_TYPE())
+                {  $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol($symbol, $1)/ge;  }
 
             sub MakeDescriptionListSymbol #(package, text)
                 {
@@ -2343,7 +2362,9 @@ sub NDMarkupToHTML #(sourceFile, text, package, using)
 
                 $text = NaturalDocs::NDMarkup->RestoreAmpChars($text);
                 my $symbol = NaturalDocs::SymbolString->FromText($text);
-                $symbol = NaturalDocs::SymbolString->Join($package, $symbol);
+
+                if (defined $package)
+                    {  $symbol = NaturalDocs::SymbolString->Join($package, $symbol);  };
 
                 return
                 '<tr>'
