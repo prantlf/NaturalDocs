@@ -147,11 +147,14 @@ sub LoadAndDetectChanges
         # Check if the file is in the right format.
         my $version = NaturalDocs::Version->FromTextFile(\*FILEINFOFILEHANDLE);
 
-        # The output and the project file need to be rebuilt for 1.16.
+        # The project file need to be rebuilt for 1.16.  The output files need to be rebuilt for 1.2.
 
         if ($version >= NaturalDocs::Version->FromString('1.16') && $version <= NaturalDocs::Settings->AppVersion())
             {
             $fileIsOkay = 1;
+
+            if ($version < NaturalDocs::Version->FromString('1.2'))
+                {  $rebuildOutput = 1;  };
             }
         else
             {
