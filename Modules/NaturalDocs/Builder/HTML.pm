@@ -1105,26 +1105,41 @@ sub UpdateIndex #(type)
     my $type = shift;
 
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory(__PACKAGE__);
-    my $outputFile =IndexFileOf($type);
-    my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
-    my $outputFileHandle;
+    my $page = 1;
 
-    if (open($outputFileHandle, '<' . $fullOutputFile))
+    my $outputFile = IndexFileOf($type, $page);
+    my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
+
+    my $newMenu = BuildMenu($outputFile);
+    my $newFooter = BuildFooter();
+
+    while (-e $fullOutputFile)
         {
+        my $outputFileHandle;
+
+        open($outputFileHandle, '<' . $fullOutputFile)
+            or die "Couldn't open output file " . $fullOutputFile . ".\n";
+
         my $content;
 
         read($outputFileHandle, $content, (stat($fullOutputFile))[7]);
         close($outputFileHandle);
 
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/BuildMenu($outputFile)/es;
+        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$newMenu/es;
 
-        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . BuildFooter() . "<\/div>"/e;
+        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $newFooter . "<\/div>"/e;
 
 
-        open($outputFileHandle, '>' . $fullOutputFile);
+        open($outputFileHandle, '>' . $fullOutputFile)
+            or die "Couldn't save output file " . $fullOutputFile . ".\n";
+
         print $outputFileHandle $content;
         close($outputFileHandle);
+
+        $page++;
+        $outputFile = IndexFileOf($type, $page);
+        $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
         };
     };
 
