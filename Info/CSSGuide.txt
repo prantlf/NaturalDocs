@@ -706,6 +706,8 @@ Styles: Miscellaneous Styles
                        in IE.
 
 
+Group: History
+
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
