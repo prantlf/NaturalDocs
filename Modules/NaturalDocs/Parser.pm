@@ -797,7 +797,7 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
 
     while ($i < $endIndex)
         {
-        if ($parsedFile[$i]->Type() ne $currentType)
+        if (!defined $currentType || ($parsedFile[$i]->Type() ne $currentType && $parsedFile[$i]->Type() ne ::TOPIC_GENERIC()) )
             {
             if (defined $currentType)
                 {  $groupIndex += SIZE;  };
@@ -814,26 +814,7 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
         };
 
 
-    # Second pass: Fold all generic groups into the previous one.  We skip the first group because there's nothing to fold it into.
-
-    $groupIndex = SIZE;
-
-    while ($groupIndex < scalar @groups)
-        {
-        if ($groups[$groupIndex + TYPE] eq ::TOPIC_GENERIC())
-            {
-            my $previousGroupIndex = $groupIndex - SIZE;
-
-            $groups[$previousGroupIndex + COUNT] += $groups[$groupIndex + COUNT];
-
-            splice(@groups, $groupIndex, SIZE);
-            }
-        else
-            {  $groupIndex += SIZE;  };
-        };
-
-
-    # Third pass: Combine groups based on "noise".  Noise means types go from A to B to A at least once, and there are at least
+    # Second pass: Combine groups based on "noise".  Noise means types go from A to B to A at least once, and there are at least
     # two groups in a row with three or less, and at least one of those groups is two or less.  So 3, 3, 3 doesn't count as noise, but
     # 3, 2, 3 does.
 
