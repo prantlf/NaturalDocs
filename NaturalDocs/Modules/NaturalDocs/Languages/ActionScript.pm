@@ -612,7 +612,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
                 {
                 $self->GenericSkip(\$index, \$lineNumber);
                 }
-            while ($tokens->[$index] ne ',' && $tokens->[$index] ne ';');
+            while ($tokens->[$index] ne ',' && $tokens->[$index] ne ';' && $index < scalar @$tokens);
             };
 
         push @names, $name;
