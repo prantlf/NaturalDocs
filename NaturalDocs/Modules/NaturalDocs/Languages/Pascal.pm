@@ -27,36 +27,24 @@ use base 'NaturalDocs::Languages::Language';
 
 
 #
-#   Function: EndOfFunction
+#   Function: EndOfPrototype
 #
-#   Returns the index of the end of the function prototype in a string.
+#   Pascal's syntax uses the semicolons and commas parameter style shown below, yet also uses semicolons to end
+#   function prototypes.
 #
-#   Parameters:
+#   > function MyFunction( param1: type; param2, param3: type; param4: type);
 #
-#       stringRef  - A reference to the string.
-#       falsePositives  - Ignored.  For consistency only.
+#   This function creates the false positives necessary to support this.
 #
-#   Returns:
-#
-#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from
-#       <FunctionEnders()>.
-#
-#   Language Issue:
-#
-#       Pascal's syntax uses the semicolons and commas parameter style shown below, yet also uses semicolons to end
-#       function prototypes.
-#
-#       > function MyFunction( param1: type; param2, param3: type; param4: type);
-#
-#       This function creates the false positives necessary to support this.
-#
-sub EndOfFunction #(stringRef, falsePositives)
+sub EndOfPrototype #(type, stringRef, falsePositives)
     {
-    my ($self, $stringRef) = @_;  # Passed falsePositives is ignored.
+    my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
 
-    my $falsePositives = $self->FalsePositivesForSemicolonsInParenthesis($stringRef);
+    my $falsePositives;
+    if ($type == ::TOPIC_FUNCTION())
+        {  $falsePositives = $self->FalsePositivesForSemicolonsInParenthesis($stringRef);  };
 
-    return $self->SUPER::EndOfFunction($stringRef, $falsePositives);
+    return $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
     };
 
 

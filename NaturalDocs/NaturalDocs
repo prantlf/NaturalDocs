@@ -12,6 +12,7 @@ sub INIT
     };
 
 use NaturalDocs::Constants;
+use NaturalDocs::Topics;
 use NaturalDocs::Version;
 use NaturalDocs::File;
 use NaturalDocs::NDMarkup;

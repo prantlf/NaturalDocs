@@ -36,168 +36,6 @@ use constant POSSIBLE_OPENING_TAG => 1;
 use constant POSSIBLE_CLOSING_TAG => 2;
 use constant NOT_A_TAG => 3;
 
-#   Hash: synonyms
-#
-#   A hash of the text synonyms for the tokens.  For example, "procedure", "routine", and "function" all map to
-#   <TOPIC_FUNCTION>.  The keys are the synonyms in all lowercase, and the values are one of the <Topic Types>.
-#
-my %synonyms = (
-
-                            'class'         => ::TOPIC_CLASS(),
-                            'structure'   => ::TOPIC_CLASS(),
-                            'struct'        => ::TOPIC_CLASS(),
-                            'package'    => ::TOPIC_CLASS(),
-
-                            'classes'       => ::TOPIC_CLASS_LIST(),
-                            'structures'   => ::TOPIC_CLASS_LIST(),
-                            'structs'        => ::TOPIC_CLASS_LIST(),
-                            'packages'   => ::TOPIC_CLASS_LIST(),
-
-                            'section'      => ::TOPIC_SECTION(),
-                            'title'           => ::TOPIC_SECTION(),
-
-                            'file'            => ::TOPIC_FILE(),
-                            'program'    => ::TOPIC_FILE(),
-                            'script'         => ::TOPIC_FILE(),
-                            'module'      => ::TOPIC_FILE(),
-                            'document'  => ::TOPIC_FILE(),
-                            'doc'           => ::TOPIC_FILE(),
-                            'header'      => ::TOPIC_FILE(),
-
-                            'files'            => ::TOPIC_FILE_LIST(),
-                            'programs'    => ::TOPIC_FILE_LIST(),
-                            'scripts'         => ::TOPIC_FILE_LIST(),
-                            'modules'      => ::TOPIC_FILE_LIST(),
-                            'documents'  => ::TOPIC_FILE_LIST(),
-                            'docs'           => ::TOPIC_FILE_LIST(),
-                            'headers'      => ::TOPIC_FILE_LIST(),
-
-                            'group'        => ::TOPIC_GROUP(),
-
-                            'function'     => ::TOPIC_FUNCTION(),
-                            'func'          => ::TOPIC_FUNCTION(),
-                            'procedure'  => ::TOPIC_FUNCTION(),
-                            'proc'          => ::TOPIC_FUNCTION(),
-                            'routine'      => ::TOPIC_FUNCTION(),
-                            'subroutine' => ::TOPIC_FUNCTION(),
-                            'sub'           => ::TOPIC_FUNCTION(),
-                            'method'     => ::TOPIC_FUNCTION(),
-                            'callback'     => ::TOPIC_FUNCTION(),
-
-                            'functions'     => ::TOPIC_FUNCTION_LIST(),
-                            'funcs'          => ::TOPIC_FUNCTION_LIST(),
-                            'procedures'  => ::TOPIC_FUNCTION_LIST(),
-                            'procs'          => ::TOPIC_FUNCTION_LIST(),
-                            'routines'      => ::TOPIC_FUNCTION_LIST(),
-                            'subroutines' => ::TOPIC_FUNCTION_LIST(),
-                            'subs'           => ::TOPIC_FUNCTION_LIST(),
-                            'methods'     => ::TOPIC_FUNCTION_LIST(),
-                            'callbacks'     => ::TOPIC_FUNCTION_LIST(),
-
-                            'variable'    => ::TOPIC_VARIABLE(),
-                            'var'           => ::TOPIC_VARIABLE(),
-                            'integer'     => ::TOPIC_VARIABLE(),
-                            'int'           => ::TOPIC_VARIABLE(),
-                            'float'        => ::TOPIC_VARIABLE(),
-                            'long'        => ::TOPIC_VARIABLE(),
-                            'double'     => ::TOPIC_VARIABLE(),
-                            'scalar'      => ::TOPIC_VARIABLE(),
-                            'array'       => ::TOPIC_VARIABLE(),
-                            'arrayref'   => ::TOPIC_VARIABLE(),
-                            'hash'        => ::TOPIC_VARIABLE(),
-                            'hashref'    => ::TOPIC_VARIABLE(),
-                            'bool'         => ::TOPIC_VARIABLE(),
-                            'boolean'    => ::TOPIC_VARIABLE(),
-                            'flag'          => ::TOPIC_VARIABLE(),
-                            'bit'            => ::TOPIC_VARIABLE(),
-                            'bitfield'      => ::TOPIC_VARIABLE(),
-                            'field'         => ::TOPIC_VARIABLE(),
-                            'pointer'     => ::TOPIC_VARIABLE(),
-                            'ptr'           => ::TOPIC_VARIABLE(),
-                            'reference' => ::TOPIC_VARIABLE(),
-                            'ref'           => ::TOPIC_VARIABLE(),
-                            'object'      => ::TOPIC_VARIABLE(),
-                            'obj'           => ::TOPIC_VARIABLE(),
-                            'character'  => ::TOPIC_VARIABLE(),
-                            'char'         => ::TOPIC_VARIABLE(),
-                            'string'       => ::TOPIC_VARIABLE(),
-                            'str'           => ::TOPIC_VARIABLE(),
-                            'property'  => ::TOPIC_VARIABLE(),
-                            'prop'        => ::TOPIC_VARIABLE(),
-                            'handle'     => ::TOPIC_VARIABLE(),
-
-                            'variables'   => ::TOPIC_VARIABLE_LIST(),
-                            'vars'          => ::TOPIC_VARIABLE_LIST(),
-                            'integers'    => ::TOPIC_VARIABLE_LIST(),
-                            'ints'          => ::TOPIC_VARIABLE_LIST(),
-                            'floats'       => ::TOPIC_VARIABLE_LIST(),
-                            'longs'       => ::TOPIC_VARIABLE_LIST(),
-                            'doubles'    => ::TOPIC_VARIABLE_LIST(),
-                            'scalars'     => ::TOPIC_VARIABLE_LIST(),
-                            'arrays'      => ::TOPIC_VARIABLE_LIST(),
-                            'arrayrefs'  => ::TOPIC_VARIABLE_LIST(),
-                            'hashes'      => ::TOPIC_VARIABLE_LIST(),
-                            'hashrefs'   => ::TOPIC_VARIABLE_LIST(),
-                            'bools'        => ::TOPIC_VARIABLE_LIST(),
-                            'booleans'   => ::TOPIC_VARIABLE_LIST(),
-                            'flags'         => ::TOPIC_VARIABLE_LIST(),
-                            'bits'           => ::TOPIC_VARIABLE_LIST(),
-                            'bitfields'     => ::TOPIC_VARIABLE_LIST(),
-                            'fields'        => ::TOPIC_VARIABLE_LIST(),
-                            'pointers'    => ::TOPIC_VARIABLE_LIST(),
-                            'ptrs'          => ::TOPIC_VARIABLE_LIST(),
-                            'references'=> ::TOPIC_VARIABLE_LIST(),
-                            'refs'          => ::TOPIC_VARIABLE_LIST(),
-                            'objects'     => ::TOPIC_VARIABLE_LIST(),
-                            'objs'          => ::TOPIC_VARIABLE_LIST(),
-                            'characters' => ::TOPIC_VARIABLE_LIST(),
-                            'chars'        => ::TOPIC_VARIABLE_LIST(),
-                            'strings'      => ::TOPIC_VARIABLE_LIST(),
-                            'strs'          => ::TOPIC_VARIABLE_LIST(),
-                            'properties' => ::TOPIC_VARIABLE_LIST(),
-                            'props'       => ::TOPIC_VARIABLE_LIST(),
-                            'handles'    => ::TOPIC_VARIABLE_LIST(),
-
-                            'topic'        => ::TOPIC_GENERIC(),
-                            'about'       => ::TOPIC_GENERIC(),
-                            'note'         => ::TOPIC_GENERIC(),
-
-                            'item'         => ::TOPIC_GENERIC(),
-                            'option'      => ::TOPIC_GENERIC(),
-                            'symbol'     => ::TOPIC_GENERIC(),
-                            'sym'         => ::TOPIC_GENERIC(),
-                            'definition'   => ::TOPIC_GENERIC(),
-                            'define'       => ::TOPIC_GENERIC(),
-                            'def'           => ::TOPIC_GENERIC(),
-                            'macro'      => ::TOPIC_GENERIC(),
-                            'format'      => ::TOPIC_GENERIC(),
-
-                            'list'                => ::TOPIC_GENERIC_LIST(),
-
-                            'items'        => ::TOPIC_GENERIC_LIST(),
-                            'options'      => ::TOPIC_GENERIC_LIST(),
-                            'symbols'     => ::TOPIC_GENERIC_LIST(),
-                            'syms'         => ::TOPIC_GENERIC_LIST(),
-                            'definitions'   => ::TOPIC_GENERIC_LIST(),
-                            'defines'       => ::TOPIC_GENERIC_LIST(),
-                            'defs'           => ::TOPIC_GENERIC_LIST(),
-                            'macros'      => ::TOPIC_GENERIC_LIST(),
-                            'formats'      => ::TOPIC_GENERIC_LIST(),
-
-                            'constant'   => ::TOPIC_CONSTANT(),
-                            'const'       => ::TOPIC_CONSTANT(),
-
-                            'constants'   => ::TOPIC_CONSTANT_LIST(),
-                            'consts'       => ::TOPIC_CONSTANT_LIST(),
-                            'enumeration'  => ::TOPIC_CONSTANT_LIST(),
-                            'enum'            => ::TOPIC_CONSTANT_LIST(),
-
-                            'type'         => ::TOPIC_TYPE(),
-                            'typedef'    => ::TOPIC_TYPE(),
-
-                            'types'         => ::TOPIC_TYPE_LIST(),
-                            'typedefs'    => ::TOPIC_TYPE_LIST()
-                            );
 
 #
 #   Handle: SOURCEFILEHANDLE
@@ -271,9 +109,9 @@ sub ParseForInformation #(file)
 
         # If it's a list topic, add a symbol for each description list entry.
 
-        if (::TopicIsList($topic->Type()))
+        if (NaturalDocs::Topics->IsList($topic->Type()))
             {
-            my $listType = ::TopicIsListOf($topic->Type());
+            my $listType = NaturalDocs::Topics->IsListOf($topic->Type());
 
             while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
                 {
@@ -352,8 +190,7 @@ sub ParseForBuild #(file)
 #   Function: Parse
 #
 #   Opens <SOURCEFILEHANDLE> and begins the parsing process.  Do not call directly; rather, call <ParseForInformation()> or
-#   <ParseForBuild()>.  <file> should be set prior to calling; it will set everything else itself.  It will close <SOURCEFILEHANDLE>
-#   as well.
+#   <ParseForBuild()>.  It will close <SOURCEFILEHANDLE> before returning, but it will be open during the other parser stages.
 #
 #   Parameters:
 #
@@ -490,12 +327,8 @@ sub ExtractComments
             elsif (defined $prototypeType)
                 {
                 $prototype .= $line . "\n";
-                my $endOfPrototype;
 
-                if ($prototypeType == ::TOPIC_FUNCTION())
-                    {  $endOfPrototype = $language->EndOfFunction(\$prototype);  }
-                else # ($prototypeType == ::TOPIC_VARIABLE())
-                    {  $endOfPrototype = $language->EndOfVariable(\$prototype);  };
+                my $endOfPrototype = $language->EndOfPrototype($prototypeType, \$prototype);
 
                 if ($endOfPrototype != -1)
                     {
@@ -540,7 +373,7 @@ sub ExtractComments
 
                     $prototypeType = $parsedFile[-1]->Type();
 
-                    if ($prototypeType != ::TOPIC_FUNCTION() && $prototypeType != ::TOPIC_VARIABLE())
+                    if (!$language->HasPrototype($prototypeType))
                         {  $prototypeType = undef;  }
                     else
                         {
@@ -813,9 +646,9 @@ sub ExtractTopics #(commentLines)
         # If the line has a recognized header and the previous line is blank...
         elsif ($prevLineBlank &&
                 $commentLines->[$index] =~ /^([^:]+): +([^ ].*)$/ &&
-                exists $synonyms{lc($1)})
+                defined NaturalDocs::Topics->ConstantOf($1))
             {
-            my $newType = $synonyms{lc($1)};
+            my $newType = NaturalDocs::Topics->ConstantOf($1);
             my $newName = $2;
 
             # Process the previous one, if any.
@@ -1109,7 +942,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                     $topLevelTag = TAG_DESCRIPTIONLIST;
                     };
 
-                if (::TopicIsList($type))
+                if (NaturalDocs::Topics->IsList($type))
                     {
                     $output .= '<ds>' . NaturalDocs::NDMarkup->ConvertAmpChars($entry) . '</ds><dd>';
                     }

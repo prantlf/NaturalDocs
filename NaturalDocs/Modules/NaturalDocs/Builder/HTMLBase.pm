@@ -29,29 +29,6 @@ use base 'NaturalDocs::Builder::Base';
 # Group: Variables
 
 #
-#   hash: topicNames
-#
-#   A hash of text equivalents of the <Topic Types>.  Makes output easier.  The keys
-#   are the tokens, and the values are their text equivalents.
-#
-my %topicNames = ( ::TOPIC_CLASS() => 'Class',
-                                ::TOPIC_SECTION() => 'Section',
-                                ::TOPIC_FILE() => 'File',
-                                ::TOPIC_GROUP() => 'Group',
-                                ::TOPIC_FUNCTION() => 'Function',
-                                ::TOPIC_VARIABLE() => 'Variable',
-                                ::TOPIC_GENERIC() => 'Generic',
-                                ::TOPIC_TYPE() => 'Type',
-                                ::TOPIC_CONSTANT() => 'Constant',
-                                ::TOPIC_CLASS_LIST() => 'ClassList',
-                                ::TOPIC_FILE_LIST() => 'FileList',
-                                ::TOPIC_FUNCTION_LIST() => 'FunctionList',
-                                ::TOPIC_VARIABLE_LIST() => 'VariableList',
-                                ::TOPIC_GENERIC_LIST() => 'GenericList',
-                                ::TOPIC_TYPE_LIST() => 'TypeList',
-                                ::TOPIC_CONSTANT_LIST() => 'ConstantList' );
-
-#
 #   Hash: abbreviations
 #
 #   An existence hash of acceptable abbreviations.  These are words that <AddDoubleSpaces()> won't put a second space
@@ -129,7 +106,7 @@ my $menuGroupNumber;
 #
 #   array: menuSelectionHierarchy
 #
-#   An array of the <NaturalDocs::Menu->Entry> objects of each group surrounding the selected menu item.  First entry is the
+#   An array of the <NaturalDocs::Menu::Entry> objects of each group surrounding the selected menu item.  First entry is the
 #   group immediately encompassing it, and each subsequent entries works its way towards the outermost group.
 #
 my @menuSelectionHierarchy;
@@ -147,7 +124,7 @@ my $menuLength;
 #   hash: menuGroupLengths
 #
 #   A hash of the length of each group, *not* including any subgroup contents.  The keys are references to each groups'
-#   <NaturalDocs::Menu->Entry> object, and the values are their lengths computed from the <Menu Length Constants>.
+#   <NaturalDocs::Menu::Entry> object, and the values are their lengths computed from the <Menu Length Constants>.
 #
 my %menuGroupLengths;
 tie %menuGroupLengths, 'Tie::RefHash';
@@ -157,7 +134,7 @@ tie %menuGroupLengths, 'Tie::RefHash';
 #   hash: menuGroupNumbers
 #
 #   A hash of the number of each group, as managed by <menuGroupNumber>.  The keys are references to each groups'
-#   <NaturalDocs::Menu->Entry> object, and the values are the number.
+#   <NaturalDocs::Menu::Entry> object, and the values are the number.
 #
 my %menuGroupNumbers;
 tie %menuGroupNumbers, 'Tie::RefHash';
@@ -628,7 +605,7 @@ sub BuildContent #(sourceFile, parsedFile)
             {
             $output .=
 
-            '<div class=C' . $topicNames{ $parsedFile->[$i]->Type() } . '>'
+            '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type() ) . '>'
                 . '<div class=CTopic>'
 
                 . '<h2 class=CTitle>'
@@ -640,7 +617,7 @@ sub BuildContent #(sourceFile, parsedFile)
             {
             $output .=
 
-            '<div class=C' . $topicNames{ $parsedFile->[$i]->Type() } . '>'
+            '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type() ) . '>'
                 . '<div class=CTopic>'
 
                 . '<h3 class=CTitle>'
@@ -658,7 +635,7 @@ sub BuildContent #(sourceFile, parsedFile)
                 $hasCBody = 1;
                 };
 
-            $output .= $self->BuildPrototype($parsedFile->[$i]->Prototype(), $sourceFile);
+            $output .= $self->BuildPrototype($parsedFile->[$i]->Type(), $parsedFile->[$i]->Prototype(), $sourceFile);
             };
 
 
@@ -784,7 +761,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             $output .=
              '<tr' . $isMarkedAttr . '><td' . $entrySizeAttr . '>'
-                . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$topic->Type()}) . '>'
+                . '<div class=S' . ($index == 0 ? 'Main' : NaturalDocs::Topics->NameOf($topic->Type())) . '>'
                     . '<div class=SEntry>';
 
 
@@ -827,7 +804,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             . '</td><td' . $descriptionSizeAttr . '>'
 
-                . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$topic->Type()}) . '>'
+                . '<div class=S' . ($index == 0 ? 'Main' : NaturalDocs::Topics->NameOf($topic->Type())) . '>'
                     . '<div class=SDescription>';
 
 
@@ -903,6 +880,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 #
 #   Parameters:
 #
+#       type - The type of prototype it is.
 #       prototype - The prototype to format.
 #       file - The file the prototype was defined in.
 #
@@ -910,12 +888,12 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 #
 #       The prototype in HTML.
 #
-sub BuildPrototype #(prototype, file)
+sub BuildPrototype #(type, prototype, file)
     {
-    my ($self, $prototype, $file) = @_;
+    my ($self, $type, $prototype, $file) = @_;
 
     my $language = NaturalDocs::Languages->LanguageOf($file);
-    my ($pre, $open, $params, $close, $post) = $language->FormatPrototype($prototype);
+    my ($pre, $open, $params, $close, $post) = $language->FormatPrototype($type, $prototype);
 
     my $output;
 
@@ -1313,7 +1291,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
         print INDEXFILEHANDLE
             $beginPage
             . $self->BuildIndexNavigationBar($type, 1, \@pageLocation)
-            . 'There are no entries in the ' . lc($topicNames{$type}) . ' index.'
+            . 'There are no entries in the ' . lc( NaturalDocs::Topics->NameOf($type) ) . ' index.'
             . $endPage;
 
         close(INDEXFILEHANDLE);
@@ -1371,7 +1349,7 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #
 #   Function: BuildToolTip
 #
-#   Builds the HTML for a symbol's tooltip and stores it in <tooltips>.
+#   Builds the HTML for a symbol's tooltip and stores it in <tooltipHTML>.
 #
 #   Parameters:
 #
@@ -1404,11 +1382,11 @@ sub BuildToolTip #(class, symbol, file, type, prototype, summary)
 
             $tooltipHTML .=
             '<div class=CToolTip id="tt' . $number . '">'
-                . '<div class=C' . $topicNames{$type} . '>';
+                . '<div class=C' . NaturalDocs::Topics->NameOf($type) . '>';
 
             if (defined $prototype)
                 {
-                $tooltipHTML .= $self->BuildPrototype($prototype, $file);
+                $tooltipHTML .= $self->BuildPrototype($type, $prototype, $file);
                 };
 
             if (defined $summary)
@@ -1805,7 +1783,8 @@ sub IndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
 
-    return (defined $type ? $topicNames{$type} : 'General') . 'Index' . (defined $page && $page != 1 ? $page : '') . '.html';
+    return (defined $type ? NaturalDocs::Topics->NameOf($type) : 'General') . 'Index'
+            . (defined $page && $page != 1 ? $page : '') . '.html';
     };
 
 #
@@ -1821,7 +1800,7 @@ sub IndexTitleOf #(type)
     {
     my ($self, $type) = @_;
 
-    return (defined $type ? $topicNames{$type} . ' ' : '') . 'Index';
+    return (defined $type ? NaturalDocs::Topics->NameOf($type) . ' ' : '') . 'Index';
     };
 
 #
@@ -2066,7 +2045,7 @@ sub BuildLink #(scope, text, sourceFile)
         my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
         return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '" '
-                    . 'class=L' . $topicNames{$target->Type()} . ' ' . $toolTipProperties . '>' . $text . '</a>';
+                    . 'class=L' . NaturalDocs::Topics->NameOf($target->Type()) . ' ' . $toolTipProperties . '>' . $text . '</a>';
         }
     else
         {

@@ -54,18 +54,6 @@ Footer: Copyright (c) 2003 Greg Valure
 
 
 
-# These are indexes you deleted, so Natural Docs will not add them again
-
-# unless you remove them from this line.
-
-
-
-Don't Index: Variable
-
-
-
-
-
 File: Natural Docs  (NaturalDocs)
 
 
@@ -73,6 +61,8 @@ File: Natural Docs  (NaturalDocs)
 Group: Packages  {
 
 
+
+   File: Topics  (Modules\NaturalDocs\Topics.pm)
 
    File: Settings  (Modules\NaturalDocs\Settings.pm)
 
@@ -87,6 +77,8 @@ Group: Packages  {
    File: Parser  (Modules\NaturalDocs\Parser.pm)
 
    File: Builder  (Modules\NaturalDocs\Builder.pm)
+
+   File: Extensions  (Modules\NaturalDocs\Extensions.pm)
 
 
 
@@ -106,61 +98,7 @@ Group: Packages  {
 
 
 
-   File: Extensions  (Modules\NaturalDocs\Extensions.pm)
-
-   File: Settings::BuildTarget  (Modules\NaturalDocs\Settings\BuildTarget.pm)
-
-   File: Extensions::Base  (Modules\NaturalDocs\Extensions\Base.pm)
-
    }  # Group: Packages
-
-
-
-
-
-Group: Output Formats  {
-
-
-
-   File: Base  (Modules\NaturalDocs\Builder\Base.pm)
-
-
-
-   Group: HTML  {
-
-
-
-      File: HTML  (Modules\NaturalDocs\Builder\HTML.pm)
-
-      File: FramedHTML  (Modules\NaturalDocs\Builder\FramedHTML.pm)
-
-      File: HTMLBase  (Modules\NaturalDocs\Builder\HTMLBase.pm)
-
-      }  # Group: HTML
-
-
-
-   }  # Group: Output Formats
-
-
-
-
-
-Group: Languages  {
-
-
-
-   File: Base  (no auto-title, Modules\NaturalDocs\Languages\Language.pm)
-
-   File: Ada  (Modules\NaturalDocs\Languages\Ada.pm)
-
-   File: Pascal  (Modules\NaturalDocs\Languages\Pascal.pm)
-
-   File: PL/SQL  (no auto-title, Modules\NaturalDocs\Languages\PLSQL.pm)
-
-   File: Tcl  (Modules\NaturalDocs\Languages\Tcl.pm)
-
-   }  # Group: Languages
 
 
 
@@ -169,6 +107,8 @@ Group: Languages  {
 Group: Objects  {
 
 
+
+   File: Settings::BuildTarget  (Modules\NaturalDocs\Settings\BuildTarget.pm)
 
    File: Project::File  (Modules\NaturalDocs\Project\File.pm)
 
@@ -206,6 +146,70 @@ Group: Objects  {
 
 
 
+Group: Languages  {
+
+
+
+   File: Base  (no auto-title, Modules\NaturalDocs\Languages\Language.pm)
+
+   File: Ada  (Modules\NaturalDocs\Languages\Ada.pm)
+
+   File: Pascal  (Modules\NaturalDocs\Languages\Pascal.pm)
+
+   File: PL/SQL  (no auto-title, Modules\NaturalDocs\Languages\PLSQL.pm)
+
+   File: Tcl  (Modules\NaturalDocs\Languages\Tcl.pm)
+
+   }  # Group: Languages
+
+
+
+
+
+Group: Output Formats  {
+
+
+
+   File: Base  (Modules\NaturalDocs\Builder\Base.pm)
+
+
+
+   Group: HTML  {
+
+
+
+      File: HTML  (Modules\NaturalDocs\Builder\HTML.pm)
+
+      File: FramedHTML  (Modules\NaturalDocs\Builder\FramedHTML.pm)
+
+      File: HTMLBase  (Modules\NaturalDocs\Builder\HTMLBase.pm)
+
+      }  # Group: HTML
+
+
+
+   }  # Group: Output Formats
+
+
+
+
+
+Group: Extensions  {
+
+
+
+   File: Base  (Modules\NaturalDocs\Extensions\Base.pm)
+
+   File: Test  (Modules\NaturalDocs\Extensions\Test.pm)
+
+   File: Test2  (Modules\NaturalDocs\Extensions\Test2.pm)
+
+   }  # Group: Extensions
+
+
+
+
+
 Group: Documentation  {
 
 
@@ -233,6 +237,8 @@ Group: Indexes  {
    File Index: Files
 
    Constant Index: Constants
+
+   Variable Index: Variables
 
    }  # Group: Indexes
 
