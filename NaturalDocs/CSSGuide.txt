@@ -230,11 +230,15 @@ List: Content Styles
     CGroup - A group topic.
     CFunction - A function topic.
     CVariable - A variable topic.
+    CConstant - A constant topic.
+    CType - A type topic.
     CGeneric - A generic topic.
     CClassList - A class list topic.
     CFileList - A file list topic.
     CFunctionList - A function list topic.
     CVariableList - A variable list topic.
+    CConstantList - A constant list topic.
+    CTypeList - A type list topic.
     CGenericList - A generic list topic.
 
 
@@ -581,6 +585,7 @@ Topic: Revisions
 
         - Added <Tool Tip Styles>.
         - Renamed HiddenBreak to <HB>.
+        - Added types <CConstant>, <CConstantList>, <CType>, <CTypeList>.
 
     1.0:
 
