@@ -670,6 +670,9 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
     {
     my ($comment, $functionPrototype, $variablePrototype) = @_;
 
+    $language->RemoveExtenders(\$functionPrototype);
+    $language->RemoveExtenders(\$variablePrototype);
+
     my @lines = split(/\n/, $comment);
     $comment = undef;
 
