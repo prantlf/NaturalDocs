@@ -1091,58 +1091,101 @@ sub BuildPrototype #(type, prototype, file)
         my $beforeParams = $prototypeObject->BeforeParameters();
         my $afterParams = $prototypeObject->AfterParameters();
 
+
+        # Determine what features the prototype has and its length.
+
+        my ($hasType, $hasTypePrefix, $hasNamePrefix, $hasDefaultValue, $hasDefaultValuePrefix);
+        my $maxParamLength = 0;
+
+        foreach my $param (@$params)
+            {
+            my $paramLength = length($param->Name());
+
+            if ($param->Type())
+                {
+                $hasType = 1;
+                $paramLength += length($param->Type()) + 1;
+                };
+            if ($param->TypePrefix())
+                {
+                $hasTypePrefix = 1;
+                $paramLength += length($param->TypePrefix()) + 1;
+                };
+            if ($param->NamePrefix())
+                {
+                $hasNamePrefix = 1;
+                $paramLength += length($param->NamePrefix());
+                };
+            if ($param->DefaultValue())
+                {
+                $hasDefaultValue = 1;
+
+                # The length of the default value part is either the longest word, or 1/3 the total, whichever is longer.  We do this
+                # because we don't want parameter lines wrapping to more than three lines, and there's no guarantee that the line will
+                # wrap at all.  There's a small possibility that it could still wrap to four lines with this code, but we don't need to go
+                # crazy(er) here.
+
+                my $thirdLength = length($param->DefaultValue()) / 3;
+
+                my @words = split(/ +/, $param->DefaultValue());
+                my $maxWordLength = 0;
+
+                foreach my $word (@words)
+                    {
+                    if (length($word) > $maxWordLength)
+                        {  $maxWordLength = length($word);  };
+                    };
+
+                $paramLength += ($maxWordLength > $thirdLength ? $maxWordLength : $thirdLength) + 1;
+                };
+            if ($param->DefaultValuePrefix())
+                {
+                $hasDefaultValuePrefix = 1;
+                $paramLength += length($param->DefaultValuePrefix()) + 1;
+                };
+
+            if ($paramLength > $maxParamLength)
+                {  $maxParamLength = $paramLength;  };
+            };
+
+        my $useCondensed = (length($beforeParams) + $maxParamLength + length($afterParams) > 80 ? 1 : 0);
+        my $parameterColumns = 1 + $hasType + $hasTypePrefix + $hasNamePrefix +
+                                               $hasDefaultValue + $hasDefaultValuePrefix + $useCondensed;
+
         $output =
         '<blockquote><table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
 
             # Stupid hack to get it to work right in IE.
             . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
-            . '<td class=PBeforeParameters nowrap>' . $self->ConvertAmpChars($beforeParams);
+            . '<td class=PBeforeParameters ' . ($useCondensed ? 'colspan=' . $parameterColumns : 'nowrap') . '>'
+                . $self->ConvertAmpChars($beforeParams);
 
-            if ($beforeParams && $beforeParams !~ /[\(\[\{\<]$/)
-                {  $output .= '&nbsp;';  };
+                if ($beforeParams && $beforeParams !~ /[\(\[\{\<]$/)
+                    {  $output .= '&nbsp;';  };
 
             $output .=
             '</td>';
 
-            my ($hasType, $hasTypePrefix, $hasNamePrefix, $hasDefaultValue);
-
-            foreach my $param (@$params)
-                {
-                if ($param->Type())
-                    {  $hasType = 1;  };
-                if ($param->TypePrefix())
-                    {  $hasTypePrefix = 1;  };
-                if ($param->NamePrefix())
-                    {  $hasNamePrefix = 1;  };
-                if ($param->DefaultValue())
-                    {  $hasDefaultValue = 1;  };
-                };
-
             for (my $i = 0; $i < scalar @$params; $i++)
                 {
-                if ($i > 0)
+                if ($useCondensed)
                     {
-                    # Skip the AfterParameters cell, go to the next row, and skip the BeforeParameters cell.
-                    $output .= '<td></td></tr><tr><td></td>';
+                    $output .= '</tr><tr><td>&nbsp;&nbsp;&nbsp;</td>';
+                    }
+                elsif ($i > 0)
+                    {
+                    # Go to the next row and and skip the BeforeParameters cell.
+                    $output .= '</tr><tr><td></td>';
                     };
 
                 if ($language->TypeBeforeParameter())
                     {
                     if ($hasTypePrefix)
                         {
-                        my $typePrefix = $params->[$i]->TypePrefix();
-                        my $afterTypePrefix;
-
-                        if ($typePrefix =~ / $/)
-                            {
-                            $typePrefix =~ s/ $//;
-                            $afterTypePrefix = '&nbsp;';
-                            };
-
                         $output .=
                         '<td class=PTypePrefix nowrap>'
-                            . $self->ConvertAmpChars($typePrefix) . $afterTypePrefix
+                            . $self->ConvertAmpChars($params->[$i]->TypePrefix()) . '&nbsp;'
                         . '</td>';
                         };
 
@@ -1163,7 +1206,7 @@ sub BuildPrototype #(type, prototype, file)
                         };
 
                     $output .=
-                    '<td class=PParameter nowrap>'
+                    '<td class=PParameter nowrap' . ($useCondensed && !$hasDefaultValue ? ' width=100%' : '') . '>'
                         . $self->ConvertAmpChars($params->[$i]->Name())
                     . '</td>';
                     }
@@ -1177,24 +1220,39 @@ sub BuildPrototype #(type, prototype, file)
 
                     if ($hasType || $hasTypePrefix)
                         {
+                        my $typePrefix = $params->[$i]->TypePrefix();
+                        if ($typePrefix)
+                            {  $typePrefix .= ' ';  };
+
                         $output .=
-                        '<td class=PType nowrap>'
-                            . '&nbsp;' . $self->ConvertAmpChars( $params->[$i]->TypePrefix() . $params->[$i]->Type() )
+                        '<td class=PType nowrap' . ($useCondensed && !$hasDefaultValue ? ' width=100%' : '') . '>'
+                            . '&nbsp;' . $self->ConvertAmpChars( $typePrefix . $params->[$i]->Type() )
                         . '</td>';
                         };
+                    };
+
+                if ($hasDefaultValuePrefix)
+                    {
+                    $output .=
+                    '<td class=PDefaultValuePrefix>'
+                        . '&nbsp;' . $self->ConvertAmpChars( $params->[$i]->DefaultValuePrefix() ) . '&nbsp;'
+                    . '</td>';
                     };
 
                 if ($hasDefaultValue)
                     {
                     $output .=
-                    '<td class=PDefaultValue nowrap>'
-                        . '&nbsp;' . $self->ConvertAmpChars($params->[$i]->DefaultValue())
+                    '<td class=PDefaultValue width=100%>'
+                        . ($hasDefaultValuePrefix ? '' : '&nbsp;') . $self->ConvertAmpChars( $params->[$i]->DefaultValue() )
                     . '</td>';
                     };
                 };
 
+            if ($useCondensed)
+                {  $output .= '</tr><tr>';  };
+
             $output .=
-            '<td class=PAfterParameters nowrap>'
+            '<td class=PAfterParameters ' . ($useCondensed ? 'colspan=' . $parameterColumns : 'nowrap') . '>'
                  . $self->ConvertAmpChars($afterParams);
 
                 if ($afterParams && $afterParams !~ /^[\)\]\}\>]/)
