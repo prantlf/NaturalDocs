@@ -804,7 +804,8 @@ sub BuildContent #(sourceFile, parsedFile)
 
         $output .=
             '</div>' # CTopic
-        . '</div>'; # CType
+        . '</div>' # CType
+        . "\n\n";
 
         $i++;
         };
@@ -868,7 +869,8 @@ sub BuildSummary #(sourceFile, parsedFile, index)
     my $descriptionSizeAttr = ' class=SDescriptionSize';
 
     my $output =
-    '<div class=Summary><div class=STitle>Summary</div>'
+    '<!--START_ND_SUMMARY-->'
+    . '<div class=Summary><div class=STitle>Summary</div>'
 
         # Not all browsers get table padding right, so we need a div to apply the border.
         . '<div class=SBorder>'
@@ -1004,7 +1006,8 @@ sub BuildSummary #(sourceFile, parsedFile, index)
         $output .=
         '</table>'
     . '</div>' # Border
-    . '</div>'; # Summary
+    . '</div>' # Summary
+    . "<!--END_ND_SUMMARY-->";
 
     return $output;
     };
@@ -1274,7 +1277,7 @@ sub BuildToolTip #(symbol, file, type, prototype, summary)
 sub BuildToolTips
     {
     my $self = shift;
-    return $tooltipHTML;
+    return "\n<!--START_ND_TOOLTIPS-->\n" . $tooltipHTML . "<!--END_ND_TOOLTIPS-->\n\n";
     };
 
 #
