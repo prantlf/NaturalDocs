@@ -385,6 +385,7 @@ sub AddSymbol #(class, symbol, file, type, prototype, summary)
     my ($self, $class, $symbol, $file, $type, $prototype, $summary) = @_;
 
     my $symbolString = $self->MakeSymbolString($class, $symbol);
+    $prototype = $self->PreparePrototype($prototype);
 
 
     # If the symbol doesn't exist...
@@ -1563,5 +1564,31 @@ sub MakeIndex #(type)
 
     return $sections;
     };
+
+
+#
+#   Function: PreparePrototype
+#
+#   Converts a prototype string for internal use.  Specifically, it strips out tabs and line breaks so that they can be saved in
+#   <SymbolTable.nd> properly.
+#
+#   Parameters:
+#
+#       prototype - The original prototype string.
+#
+#   Returns:
+#
+#       The prepared prototype.
+#
+sub PreparePrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+
+    $prototype =~ s/\r\n|[\r\n]/ /g;
+    $prototype =~ tr/\t/ /;
+
+    return $prototype;
+    };
+
 
 1;
