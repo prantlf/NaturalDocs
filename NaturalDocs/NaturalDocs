@@ -56,6 +56,8 @@
 #         <NaturalDocs::SymbolString->FromBinaryFile()> are used to manipulate it, and the underlying format should be treated
 #         as opaque.
 #
+#
+
 
 use strict;
 use integer;
@@ -90,7 +92,6 @@ use NaturalDocs::ClassHierarchy;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
 use NaturalDocs::Extensions;
-
 
 
 ###############################################################################
@@ -328,47 +329,7 @@ eval {
     NaturalDocs::Project->LoadConfigFileInfo();
 
     NaturalDocs::Topics->Load();
-
-
-    # Add the supported languages.
-
-    my $cExtensions = [ 'h', 'hpp' ];
-
-    if (!NaturalDocs::Settings->HeadersOnly())
-        {  push @$cExtensions, 'c', 'cpp';  };
-
-
-    # Notes for people unfamiliar with Perl:
-    # - Use single values as follows: 'value'
-    # - Use multiple values as follows: [  'value1', 'value2', 'value3' ].  You MUST include the brackets.
-    # - Specify line breaks as follows: "\n".  You MUST use quotes instead of apostrophes.  You don't have to worry about \r.
-    # - Specify backslashes as follows: "\\".  You MUST use quotes instead of apostrophes.
-    # - Follow the documentation on the parameters closely.  You don't want to skip one or put them in the wrong order.
-    # - Don't worry that some lines use something like PLSQL->New() instead of Simple->New().  This is only necessary
-    #   when the language's syntax needs special handling.  Simple->New() should be fine in most cases.
-
-    NaturalDocs::Languages::Simple->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef, '::' );
-    NaturalDocs::Languages::Simple->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
-    NaturalDocs::Languages::Simple->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
-    NaturalDocs::Languages::Simple->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
-
-    # Doesn't detect escapement yet.
-    NaturalDocs::Languages::PHP->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
-                                                          [ '//', '#' ], '/*', '*/', [ '{', ';' ], [ ';', '=' ], undef );
-
-    NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ',', ';', ')', 'as', 'AS', 'is', 'IS' ],
-                                                              [ ',', ';', ')', ':=', 'default', 'DEFAULT' ], undef );
-    NaturalDocs::Languages::Simple->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
-    NaturalDocs::Languages::Pascal->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Simple->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
-    NaturalDocs::Languages::Ada->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
-    NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], "\\", '::' );
-    NaturalDocs::Languages::Ruby->New( 'Ruby', 'rb', 'ruby', '#', undef, undef, [ ';', "\n" ], [ ';', '=', "\n" ], "\\" );
-    NaturalDocs::Languages::Simple->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
-
-    # These have full language support, hence no parameters.
-    NaturalDocs::Languages::Perl->New();
-    NaturalDocs::Languages::CSharp->New();
+    NaturalDocs::Languages->Load();
 
 
     # Migrate from the old file names that were used prior to 1.14.

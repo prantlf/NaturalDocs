@@ -16,12 +16,12 @@ use integer;
 
 package NaturalDocs::Languages::Base;
 
+use NaturalDocs::DefineMembers 'NAME', 'Name()',
+                                                 'EXTENSIONS', 'Extensions()', 'SetExtensions() duparrayref',
+                                                 'SHEBANG_STRINGS', 'ShebangStrings()', 'SetShebangStrings() duparrayref',
+                                                 'PACKAGE_SEPARATOR', 'PackageSeparator()', 'SetPackageSeparator()',
+                                                 'IGNORED_PREFIXES';
 
-#
-#   Topic: Implementation
-#
-#   The class is implemented as a blessed arrayref.  There are no members in this base class, however.
-#
 
 #
 #   Handle: SOURCEFILEHANDLE
@@ -35,40 +35,78 @@ package NaturalDocs::Languages::Base;
 #
 #   Creates and returns a new object.
 #
-sub New
+#   Parameters:
+#
+#       name - The name of the language.
+#
+sub New #(name)
     {
-    my ($package) = @_;
+    my ($selfPackage, $name) = @_;
 
     my $object = [ ];
-    bless $object, $package;
 
+    $object->[NAME] = $name;
+    $object->[PACKAGE_SEPARATOR] = '.';
+
+    bless $object, $selfPackage;
     return $object;
     };
 
 
-###############################################################################
-# Group: Information Functions
-
-
-# Function: Name
-# Returns the name of the language.  This *must* be defined by a subclass.
-
-# Function: Extensions
-# Returns all the possible extensions of the language's files as an arrayref.  Each one must be in all lowercase.  This function
-# *must* be defined by a subclass.
-
-# Function: ShebangStrings
-# Returns all the possible strings that can appear in a shebang line (#!) of the language's files.  It is returned as an arrayref,
-# or undef if not applicable, and all the strings must be in all lowercase.
 #
-# The default implementation returns undef.
-sub ShebangStrings
-    {  return undef;  };
+#   Functions: Members
+#
+#   Name - Returns the language's name.
+#   Extensions - Returns an arrayref of the language's file extensions, or undef if none.
+#   SetExtensions - Replaces the arrayref of the language's file extensions.
+#   ShebangStrings - Returns an arrayref of the language's shebang strings, or undef if none.
+#   SetShebangStrings - Replaces the arrayref of the language's shebang strings.
+#   PackageSeparator - Returns the language's package separator string.
+#   SetPackageSeparator - Replaces the language's package separator string.
+#
 
-# Function: PackageSeparator
-# Returns the package separator symbol.  The default is a dot.
-sub PackageSeparator
-    {  return '.';  };
+
+#
+#   Function: IgnoredPrefixesFor
+#
+#   Returns an arrayref of ignored prefixes for the passed <TopicType>, or undef if none.  The array is sorted so that the longest
+#   prefixes are first.
+#
+sub IgnoredPrefixesFor #(type)
+    {
+    my ($self, $type) = @_;
+
+    if (defined $self->[IGNORED_PREFIXES])
+        {  return $self->[IGNORED_PREFIXES]->{$type};  }
+    else
+        {  return undef;  };
+    };
+
+
+#
+#   Function: SetIgnoredPrefixesFor
+#
+#   Replaces the arrayref of ignored prefixes for the passed <TopicType>.
+#
+sub SetIgnoredPrefixesFor #(type, prefixes)
+    {
+    my ($self, $type, $prefixesRef) = @_;
+
+    if (!defined $self->[IGNORED_PREFIXES])
+        {  $self->[IGNORED_PREFIXES] = { };  };
+
+    if (!defined $prefixesRef)
+        {  delete $self->[IGNORED_PREFIXES]->{$type};  }
+    else
+        {
+        my $prefixes = [ @$prefixesRef ];
+
+        # Sort prefixes to be longest to shortest.
+        @$prefixes = sort { length $b <=> length $a } @$prefixes;
+
+        $self->[IGNORED_PREFIXES]->{$type} = $prefixes;
+        };
+    };
 
 
 
@@ -230,6 +268,20 @@ sub FormatPrototype #(type, prototype)
 sub MakeSortableSymbol #(name, type)
     {
     my ($self, $name, $type) = @_;
+
+    foreach my $prefixes ($self->IgnoredPrefixesFor($type), $self->IgnoredPrefixesFor(::TOPIC_GENERAL()))
+        {
+        if (defined $prefixes)
+            {
+            foreach my $prefix (@$prefixes)
+                {
+                if (substr($name, 0, length($prefix)) eq $prefix)
+                    {  return substr($name, length($prefix));  };
+                };
+            };
+        };
+
+
     return $name;
     };
 
@@ -238,8 +290,9 @@ sub MakeSortableSymbol #(name, type)
 ###############################################################################
 # Group: Support Functions
 
+
 #
-#   Function: StripOpeningSymbol
+#   Function: StripOpeningSymbols
 #
 #   Determines if the line starts with any of the passed symbols, and if so, replaces it with spaces.  This only happens
 #   if the only thing before it on the line is whitespace.
@@ -254,7 +307,7 @@ sub MakeSortableSymbol #(name, type)
 #       If the line starts with any of the passed comment symbols, it will replace it in the line with spaces and return the symbol.
 #       If the line doesn't, it will leave the line alone and return undef.
 #
-sub StripOpeningSymbol #(lineRef, symbols)
+sub StripOpeningSymbols #(lineRef, symbols)
     {
     my ($self, $lineRef, $symbols) = @_;
 
@@ -276,6 +329,45 @@ sub StripOpeningSymbol #(lineRef, symbols)
 
 
 #
+#   Function: StripOpeningBlockSymbols
+#
+#   Determines if the line starts with any of the opening symbols in the passed symbol pairs, and if so, replaces it with spaces.
+#   This only happens if the only thing before it on the line is whitespace.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#       symbolPairs - An arrayref of the symbol pairs to check for.  Pairs are specified as two consecutive array entries, with the
+#                            opening symbol first.
+#
+#   Returns:
+#
+#       If the line starts with any of the opening symbols, it will replace it in the line with spaces and return the closing symbol.
+#       If the line doesn't, it will leave the line alone and return undef.
+#
+sub StripOpeningBlockSymbols #(lineRef, symbolPairs)
+    {
+    my ($self, $lineRef, $symbolPairs) = @_;
+
+    if (!defined $symbolPairs)
+        {  return undef;  };
+
+    for (my $i = 0; $i < scalar @$symbolPairs; $i += 2)
+        {
+        my $index = index($$lineRef, $symbolPairs->[$i]);
+
+        if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
+            {
+            substr($$lineRef, $index, length($symbolPairs->[$i]), ' ' x length($symbolPairs->[$i]));
+            return $symbolPairs->[$i + 1];
+            };
+        };
+
+    return undef;
+    };
+
+
+#
 #   Function: StripClosingSymbol
 #
 #   Determines if the line contains a symbol, and if so, truncates it just before the symbol.
@@ -283,39 +375,24 @@ sub StripOpeningSymbol #(lineRef, symbols)
 #   Parameters:
 #
 #       lineRef - A reference to the line to check.
-#       symbols - An arrayref of the symbols to check for.
+#       symbol - The symbol to check for.
 #
 #   Returns:
 #
-#       The array ( symbol, lineRemainder ), or undef if the symbol was not found.
+#       The remainder of the line, or undef if the symbol was not found.
 #
-#       symbol - The symbol that was found.
-#       lineRemainder - Everything on the line following the symbol.
-#
-sub StripClosingSymbol #(lineRef, symbols)
+sub StripClosingSymbol #(lineRef, symbol)
     {
-    my ($self, $lineRef, $symbols) = @_;
+    my ($self, $lineRef, $symbol) = @_;
 
-    my $index = -1;
-    my $symbol;
-
-    foreach my $testSymbol (@$symbols)
-        {
-        my $testIndex = index($$lineRef, $testSymbol);
-
-        if ($testIndex != -1 && ($index == -1 || $testIndex < $index))
-            {
-            $index = $testIndex;
-            $symbol = $testSymbol;
-            };
-        };
+    my $index = index($$lineRef, $symbol);
 
     if ($index != -1)
         {
         my $lineRemainder = substr($$lineRef, $index + length($symbol));
         $$lineRef = substr($$lineRef, 0, $index);
 
-        return ($symbol, $lineRemainder);
+        return $lineRemainder;
         }
     else
         {  return undef;  };

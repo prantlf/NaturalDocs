@@ -21,208 +21,61 @@ package NaturalDocs::Languages::Simple;
 use base 'NaturalDocs::Languages::Base';
 
 
-#############################################################################
-# Group: Implementation
+use NaturalDocs::DefineMembers 'LINE_COMMENT_SYMBOLS', 'LineCommentSymbols()', 'SetLineCommentSymbols() duparrayref',
+                                                 'BLOCK_COMMENT_SYMBOLS', 'BlockCommentSymbols()',
+                                                                                              'SetBlockCommentSymbols() duparrayref',
+                                                 'PROTOTYPE_ENDERS',
+                                                 'LINE_EXTENDER', 'LineExtender()', 'SetLineExtender()';
 
 #
-#   Constants: Members
+#   Functions: Members
 #
-#   The class is implemented as a blessed arrayref.  The following constants are used as indexes.
-#
-#   NAME                             - The name of the language.
-#   EXTENSIONS                  - An arrayref of the all-lowercase extensions of the language's files.
-#   SHEBANG_STRINGS        - An arrayref of the all-lowercase strings that can appear in the language's shebang lines.
-#   LINE_COMMENT_SYMBOLS         - An arrayref of symbols that start a single line comment.  Undef if none.
-#   OPENING_COMMENT_SYMBOLS  - An arrayref of symbols that start a multi-line comment.  Undef if none.
-#   CLOSING_COMMENT_SYMBOLS  - An arrayref of symbols that ends a multi-line comment.  Undef if none.
-#   FUNCTION_ENDERS        - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
-#   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
-#   PROPERTY_ENDERS        - An arrayref of symbols that can end a property declaration.  Undef if not applicable.
-#   PACKAGE_SEPARATOR   - The symbol that separate packages.
-#   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
+#   LineCommentSymbols - Returns an arrayref of symbols that start a line comment, or undef if none.
+#   SetLineCommentSymbols - Replaces the arrayref of symbols that start a line comment.
+#   BlockCommentSymbols - Returns an arrayref of start/end symbol pairs that specify a block comment, or undef if none.  Pairs
+#                                        are specified with two consecutive array entries.
+#   SetBlockCommentSymbols - Replaces the arrayref of start/end symbol pairs that specify a block comment.  Pairs are
+#                                             specified with two consecutive array entries.
+#   LineExtender - Returns the symbol to ignore a line break in languages where line breaks are significant.
+#   SetLineExtender - Replaces the symbol to ignore a line break in languages where line breaks are significant.
 #
 
-use NaturalDocs::DefineMembers 'NAME', 'EXTENSIONS', 'SHEBANG_STRINGS',
-                                                 'LINE_COMMENT_SYMBOLS', 'OPENING_COMMENT_SYMBOLS', 'CLOSING_COMMENT_SYMBOLS',
-                                                 'FUNCTION_ENDERS', 'VARIABLE_ENDERS', 'PROPERTY_ENDERS', 'PACKAGE_SEPARATOR',
-                                                 'LINE_EXTENDER';
-
-
-#############################################################################
-# Group: Creation Functions
 
 #
-#   Function: New
+#   Function: PrototypeEndersFor
 #
-#   Returns a new language object and adds it to <NaturalDocs::Languages>.
+#   Returns an arrayref of prototype ender symbols for the passed <TopicType>, or undef if none.
 #
-#   Parameters:
-#
-#       name                - The name of the language.
-#       extensions         - The extensions of the language's files.  A string or an arrayref of strings.
-#       shebangStrings  - The strings to search for in the #! line of the language's files.  Only used when the file has a .cgi
-#                                 extension or no extension at all.  A string, an arrayref of strings, or undef if not applicable.
-#       lineCommentSymbols        - The symbols that start a single-line comment.  A string, an arrayref of strings, or undef if none.
-#       openingCommentSymbols  - The symbols that start a multi-line comment.  A string, an arrayref of strings, or undef if none.
-#       closingCommentSymbols   - The symbols that end a multi-line comment.  A string, an arrayref of strings, or undef if none.
-#       functionEnders   - The symbols that can end a function prototype.  A string, an arrayref of strings, or undef if not applicable.
-#       variableEnders   - The symbols that can end a variable declaration.  A string, an arrayref of strings, or undef if not applicable.
-#       lineExtender      - The symbel to extend a line of code past a line break.  A string or undef if not applicable.
-#
-#       The following two parameters are optional to keep compatibility with pre-1.22 lines.  They will be assigned default values
-#       if not specified.
-#
-#       packageSeparator - The symbol that separates packages.
-#       propertyEnders - The symbols that can end a property prototype.  A string, an arrayref of strings, or undef.
-#
-#       Note that if neither opening/closingCommentSymbols or lineCommentSymbols are specified, the file will be interpreted
-#       as one big comment.
-#
-sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSymbols, closingCommentSymbols, functionEnders, variableEnders, lineExtender, packageSeparator, propertyEnders)
+sub PrototypeEndersFor #(type)
     {
-    my ($self, $name, $extensions, $shebangStrings, $lineCommentSymbols, $openingCommentSymbols,
-           $closingCommentSymbols, $functionEnders, $variableEnders, $lineExtender, $packageSeparator, $propertyEnders) = @_;
+    my ($self, $type) = @_;
 
-    # Since these function calls are the most likely piece of code to be changed by people unfamiliar with Perl, do some extra
-    # checking.
-
-    if (scalar @_ < 10 || scalar @_ > 12)
-        {
-        die "You didn't pass the correct number of parameters to " . $self . "->New().  "
-           . "Check your code against the documentation and try again.\n";
-        };
-
-
-    # Convert everything to arrayrefs.
-
-    foreach my $parameterRef (\$extensions, \$shebangStrings, \$lineCommentSymbols, \$openingCommentSymbols,
-                                             \$closingCommentSymbols, \$functionEnders, \$variableEnders, \$propertyEnders)
-        {
-        if (!ref($$parameterRef) && defined $$parameterRef)
-            {  $$parameterRef = [ $$parameterRef ];  };
-        };
-
-
-    # Convert extensions and shebang strings to lowercase.
-
-    if (defined $extensions)
-        {
-        for (my $i = 0; $i < scalar @$extensions; $i++)
-            {  $extensions->[$i] = lc( $extensions->[$i] );  };
-        };
-
-    if (defined $shebangStrings)
-        {
-        for (my $i = 0; $i < scalar @$shebangStrings; $i++)
-            {  $shebangStrings->[$i] = lc( $shebangStrings->[$i] );  };
-        };
-
-
-    # Generate property symbols.
-
-    if (!defined $propertyEnders)
-        {
-        if (defined $functionEnders && defined $variableEnders)
-            {  $propertyEnders = [ @$functionEnders, @$variableEnders ];  }
-        elsif (defined $functionEnders)
-            {  $propertyEnders = $functionEnders;  }
-        else
-            {  $propertyEnders = $variableEnders;  }  # May be undef.
-        };
-
-
-    if (!defined $packageSeparator)
-        {  $packageSeparator = '.';  };
-
-
-    my $object = $self->SUPER::New();
-
-    $object->[NAME] = $name;
-    $object->[EXTENSIONS] = $extensions;
-    $object->[SHEBANG_STRINGS] = $shebangStrings;
-    $object->[LINE_COMMENT_SYMBOLS] = $lineCommentSymbols;
-    $object->[OPENING_COMMENT_SYMBOLS] = $openingCommentSymbols;
-    $object->[CLOSING_COMMENT_SYMBOLS] = $closingCommentSymbols;
-    $object->[FUNCTION_ENDERS] = $functionEnders;
-    $object->[VARIABLE_ENDERS] = $variableEnders;
-    $object->[PROPERTY_ENDERS] = $propertyEnders;
-    $object->[LINE_EXTENDER] = $lineExtender;
-    $object->[PACKAGE_SEPARATOR] = $packageSeparator;
-
-    NaturalDocs::Languages->Add($object);
-
-    return $object;
+    if (defined $self->[PROTOTYPE_ENDERS])
+        {  return $self->[PROTOTYPE_ENDERS]->{$type};  }
+    else
+        {  return undef;  };
     };
 
 
-
-###############################################################################
-# Group: Information Functions
-
-
-# Function: Name
-# Returns the name of the language.
-sub Name
-    {  return $_[0]->[NAME];  };
-
-# Function: Extensions
-# Returns all the possible extensions of the language's files as an arrayref.  Each one is in all lowercase.
-sub Extensions
-    {  return $_[0]->[EXTENSIONS];  };
-
-# Function: ShebangStrings
-# Returns all the possible strings that can appear in a shebang line (#!) of the language's files.  It is returned as an arrayref,
-# or undef if not applicable, and all the strings are in all lowercase.
-sub ShebangStrings
-    {  return $_[0]->[SHEBANG_STRINGS];  };
-
-# Function: LineCommentSymbols
-# Returns an arrayref of symbols used to start a single line comment, or undef if none.
-sub LineCommentSymbols
-    { return $_[0]->[LINE_COMMENT_SYMBOLS];  };
-
-# Function: OpeningCommentSymbols
-# Returns an arrayref of symbols used to start a multi-line comment, or undef if none.
-sub OpeningCommentSymbols
-    {  return $_[0]->[OPENING_COMMENT_SYMBOLS];  };
-
-# Function: ClosingCommentSymbols
-# Returns an arrayref of symbols used to end a multi-line comment, or undef if none.
-sub ClosingCommentSymbols
-    {  return $_[0]->[CLOSING_COMMENT_SYMBOLS];  };
-
-# Function: FileIsComment
-# Returns whether the entire file should be treated as one big comment.
-sub FileIsComment
+#
+#   Function: SetPrototypeEndersFor
+#
+#   Replaces the arrayref of prototype ender symbols for the passed <TopicType>.
+#
+sub SetPrototypeEndersFor #(type, enders)
     {
-    my $self = $_[0];
-    return (!defined $self->LineCommentSymbols() && !defined $self->OpeningCommentSymbols() );
+    my ($self, $type, $enders) = @_;
+
+    if (!defined $self->[PROTOTYPE_ENDERS])
+        {  $self->[PROTOTYPE_ENDERS] = { };  };
+
+    if (!defined $enders)
+        {  delete $self->[PROTOTYPE_ENDERS]->{$type};  }
+    else
+        {
+        $self->[PROTOTYPE_ENDERS]->{$type} = [ @$enders ];
+        };
     };
-
-# Function: FunctionEnders
-# Returns an arrayref of the symbols that end a function prototype, or undef if not applicable.
-sub FunctionEnders
-    {  return $_[0]->[FUNCTION_ENDERS];  };
-
-# Function: VariableEnders
-# Returns an arrayref of the symbols that end a variable declaration, or undef if not applicable.
-sub VariableEnders
-    {  return $_[0]->[VARIABLE_ENDERS];  };
-
-# Function: PropertyEnders
-# Returns an arrayref of the symbols that end a property declaration, or undef if not applicable.
-sub PropertyEnders
-    {  return $_[0]->[PROPERTY_ENDERS];  };
-
-# Function: PackageSeparator
-# Returns the symbol that separates packages.
-sub PackageSeparator
-    {  return $_[0]->[PACKAGE_SEPARATOR];  };
-
-# Function: LineExtender
-# Returns the symbol used to extend a line of code past a line break, or undef if not applicable.
-sub LineExtender
-    {  return $_[0]->[LINE_EXTENDER];  };
 
 
 
@@ -256,7 +109,7 @@ sub ParseFile #(sourceFile, topicsList)
     my @codeLines;
     my $lastCommentTopicCount = 0;
 
-    if ($self->FileIsComment())
+    if ($self->Name() eq 'Text File')
         {
         my $line;
 
@@ -282,7 +135,7 @@ sub ParseFile #(sourceFile, topicsList)
 
             # Retrieve single line comments.  This leaves $line at the next line.
 
-            if ($self->StripOpeningSymbol(\$line, $self->LineCommentSymbols()))
+            if ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()))
                 {
                 do
                     {
@@ -294,7 +147,7 @@ sub ParseFile #(sourceFile, topicsList)
 
                     ::XChomp(\$line);
                     }
-                while ($self->StripOpeningSymbol(\$line, $self->LineCommentSymbols()));
+                while ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()));
 
                 EndDo:  # I hate Perl sometimes.
                 }
@@ -302,7 +155,7 @@ sub ParseFile #(sourceFile, topicsList)
 
             # Retrieve multiline comments.  This leaves $line at the next line.
 
-            elsif ($self->StripOpeningSymbol(\$line, $self->OpeningCommentSymbols()))
+            elsif (my $closingSymbol = $self->StripOpeningBlockSymbols(\$line, $self->BlockCommentSymbols()))
                 {
                 # Note that it is possible for a multiline comment to start correctly but not end so.  We want those comments to stay in
                 # the code.  For example, look at this prototype with this splint annotation:
@@ -312,16 +165,16 @@ sub ParseFile #(sourceFile, topicsList)
                 #
                 # The annotation starts correctly but doesn't end so because it is followed by code on the same line.
 
-                my ($symbol, $lineRemainder);
+                my $lineRemainder;
 
                 for (;;)
                     {
-                    ($symbol, $lineRemainder) = $self->StripClosingSymbol(\$line, $self->ClosingCommentSymbols());
+                    $lineRemainder = $self->StripClosingSymbol(\$line, $closingSymbol);
 
                     push @commentLines, $line;
 
                     #  If we found an end comment symbol...
-                    if (defined $symbol)
+                    if (defined $lineRemainder)
                         {  last;  };
 
                     $line = <SOURCEFILEHANDLE>;
@@ -464,15 +317,7 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
 sub HasPrototype #(type)
     {
     my ($self, $type) = @_;
-
-    if ($type eq ::TOPIC_FUNCTION())
-        {  return defined $self->FunctionEnders();  }
-    elsif ($type eq ::TOPIC_VARIABLE())
-        {  return defined $self->VariableEnders();  }
-    elsif ($type eq ::TOPIC_PROPERTY())
-        {  return defined $self->PropertyEnders();  }
-    else
-        {  return undef;  };
+    return ( defined $self->PrototypeEndersFor($type) );
     };
 
 
@@ -497,67 +342,9 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
     {
     my ($self, $type, $stringRef, $falsePositives) = @_;
 
-    if ($type eq ::TOPIC_FUNCTION() && defined $self->FunctionEnders())
-        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->FunctionEnders());  }
-    elsif ($type eq ::TOPIC_VARIABLE() && defined $self->VariableEnders())
-        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
-    elsif ($type eq ::TOPIC_PROPERTY() && defined $self->PropertyEnders())
-        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->PropertyEnders());  }
-    else
+    my $symbols = $self->PrototypeEndersFor($type);
+    if (!defined $symbols)
         {  return -1;  };
-    };
-
-
-#
-#   Function: RemoveExtenders
-#
-#   Strips any <LineExtender()> symbols out of the prototype.
-#
-#   Parameters:
-#
-#       stringRef - A reference to the string.  It will be altered rather than a new one returned.
-#
-sub RemoveExtenders #(stringRef)
-    {
-    my ($self, $stringRef) = @_;
-
-    if (defined $self->LineExtender())
-        {
-        my @lines = split(/\n/, $$stringRef);
-
-        for (my $i = 0; $i < scalar @lines; $i++)
-            {
-            my $extenderIndex = rindex($lines[$i], $self->LineExtender());
-
-            if ($extenderIndex != -1 && substr($lines[$i], $extenderIndex + length($self->LineExtender())) =~ /^[ \t]*$/)
-                {  $lines[$i] = substr($lines[$i], 0, $extenderIndex);  };
-            };
-
-        $$stringRef = join(' ', @lines);
-        };
-    };
-
-
-#
-#   Function: FindEndOfPrototype
-#
-#   Returns the index of the end of an arbitrary prototype in a string.
-#
-#   Parameters:
-#
-#       stringRef        - A reference to the string.
-#       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
-#                              ignored.  Undef if none.
-#       symbols         - An arrayref of the symbols that can end the prototype.
-#
-#   Returns:
-#
-#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from the
-#       arrayref.
-#
-sub FindEndOfPrototype #(stringRef, falsePositives, symbols)
-    {
-    my ($self, $stringRef, $falsePositives, $symbols) = @_;
 
     if (!defined $falsePositives)
         {  $falsePositives = { };  };
@@ -693,6 +480,36 @@ sub FalsePositivesForSemicolonsInParenthesis #(stringRef)
         };
 
     return $falsePositives;
+    };
+
+
+#
+#   Function: RemoveExtenders
+#
+#   Strips any <LineExtender()> symbols out of the prototype.
+#
+#   Parameters:
+#
+#       stringRef - A reference to the string.  It will be altered rather than a new one returned.
+#
+sub RemoveExtenders #(stringRef)
+    {
+    my ($self, $stringRef) = @_;
+
+    if (defined $self->LineExtender())
+        {
+        my @lines = split(/\n/, $$stringRef);
+
+        for (my $i = 0; $i < scalar @lines; $i++)
+            {
+            my $extenderIndex = rindex($lines[$i], $self->LineExtender());
+
+            if ($extenderIndex != -1 && substr($lines[$i], $extenderIndex + length($self->LineExtender())) =~ /^[ \t]*$/)
+                {  $lines[$i] = substr($lines[$i], 0, $extenderIndex);  };
+            };
+
+        $$stringRef = join(' ', @lines);
+        };
     };
 
 

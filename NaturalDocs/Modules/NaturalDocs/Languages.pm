@@ -8,7 +8,7 @@
 #
 #   Usage and Dependencies:
 #
-#       - Prior to use, <NaturalDocs::Settings> must be initialized and all supported languages need to be added via <Add()>.
+#       - Prior to use, <NaturalDocs::Settings> must be initialized and <Load()> must be called.
 #
 ###############################################################################
 
@@ -20,14 +20,12 @@ use NaturalDocs::Languages::Simple;
 use NaturalDocs::Languages::Advanced;
 
 use NaturalDocs::Languages::Perl;
-use NaturalDocs::Languages::CSharp;
+puse NaturalDocs::Languages::CSharp;
 
-use NaturalDocs::Languages::PHP;
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
 use NaturalDocs::Languages::Ada;
 use NaturalDocs::Languages::Tcl;
-use NaturalDocs::Languages::Ruby;
 
 use strict;
 use integer;
@@ -39,36 +37,653 @@ package NaturalDocs::Languages;
 # Group: Variables
 
 #
-#   array: languages
+#   hash: languages
 #
-#   An array of all the defined languages.  Each entry is a <NaturalDocs::Languages::Base>-derived object.
+#   A hash of all the defined languages.  The keys are the all-lowercase language names, and the values are
+#   <NaturalDocs::Languages::Base>-derived objects.
 #
-my @languages;
+my %languages;
 
 #
 #   hash: extensions
 #
-#   A hash of all the defined languages' extensions.  The keys are the all-lowercase extensions, and the values are indexes into
-#   <languages>.
+#   A hash of all the defined languages' extensions.  The keys are the all-lowercase extensions, and the values are the
+#   all-lowercase names of the languages that defined them.
 #
 my %extensions;
 
 #
-#   hash: shebangs
+#   hash: shebangStrings
 #
 #   A hash of all the defined languages' strings to search for in the shebang (#!) line.  The keys are the all-lowercase strings, and
-#   the values are indexes into <languages>.
+#   the values are the all-lowercase names of the languages that defined them.
 #
-my %shebangs;
+my %shebangStrings;
 
 #
 #   hash: shebangFiles
 #
 #   A hash of all the defined languages for files where it needs to be found via shebang strings.  The keys are the file names,
-#   and the values are indexes into <languages>, or -1 if the file isn't supported.  These values should be filled in the first time
+#   and the values are language names, or undef if the file isn't supported.  These values should be filled in the first time
 #   each file is parsed for a shebang string so that it doesn't have to be done multiple times.
 #
 my %shebangFiles;
+
+
+
+###############################################################################
+# Group: Files
+
+
+#
+#   File: Languages.txt
+#
+#   The configuration file that defines or overrides the language definitions for Natural Docs.  One version sits in Natural Docs'
+#   configuration directory, and another can be in a project directory to add to or override them.
+#
+#   > # [comments]
+#
+#   Everything after a # symbol is ignored.  However, for this particular file, comments can only appear on their own lines.
+#   They cannot appear after content on the same line.
+#
+#   > Format: [version]
+#
+#   Specifies the file format version of the file.
+#
+#
+#   Sections:
+#
+#       > Ignore Extension[s]: [extension] [extension] ...
+#
+#       Causes the listed file extensions to be ignored, even if they were previously defined to be part of a language.  The list is
+#       space-separated.  ex.  “Ignore Extensions: cvs txt”
+#
+#
+#       > Language: [name]
+#
+#       Creates a new language.  Everything underneath applies to this language until the next one.  Names can use any
+#       characters.
+#
+#       The languages "Text File" and "Shebang Script" have special meanings.  Text files are considered all comment and don't
+#       have comment symbols.  Shebang scripts have their language determined by the shebang string and automatically
+#       include files with no extension in addition to the extensions defined.
+#
+#
+#       > Alter Language: [name]
+#
+#       Alters an existing language.  Everything underneath it overrides the previous settings until the next one.  Note that if a
+#       property has an [Add/Replace] form and that property has already been defined, you have to specify whether you're adding
+#       to or replacing the defined list.
+#
+#
+#   Language Properties:
+#
+#       > Extension[s]: [extension] [extension] ...
+#       > [Add/Replace] Extension[s]: ...
+#
+#       Defines file extensions for the language's source files.  The list is space-separated.  ex. "Extensions: c cpp".  You can use
+#       extensions that were previously used by another language to redefine them.
+#
+#
+#       > Shebang String[s]: [string] [string] ...
+#       > [Add/Replace] Shebang String[s]: ...
+#
+#       Defines a list of strings that can appear in the shebang (#!) line to designate that it's part of this language.  They can
+#       appear anywhere in the line, so "php" will work for "#!/user/bin/php4".  You can use strings that were previously used by
+#       another language to redefine them.
+#
+#
+#       > Package Separator: [symbol]
+#
+#       Defines the default package separator symbol, such as . or ::.  This is for presentation only and will not affect how
+#       Natural Docs links are parsed.  The default is a dot.
+#
+#
+#       > Ignore[d] Prefix[es] in Index: [prefix] [prefix] ...
+#       > Ignore[d] [Topic Type] Prefix[es] in Index: [prefix] [prefix] ...
+#       > [Add/Replace] Ignore[d] Prefix[es] in Index: ...
+#       > [Add/Replace] Ignore[d] [Topic Type] Prefix[es] in Index: ...
+#
+#       Specifies prefixes that should be ignored when sorting symbols for an index.  Can be specified in general or for a specific
+#       <TopicType>.  The prefixes will still appear, the symbols will just be sorted as if they're not there.  For example, specifying
+#       "ADO_" for functions will mean that "ADO_DoSomething" will appear under D instead of A.
+#
+#
+#   Basic Language Support Properties:
+#
+#       These attributes are only available for languages with basic language support.
+#
+#
+#       > Line Comment[s]: [symbol] [symbol] ...
+#
+#       Defines a space-separated list of symbols that are used for line comments, if any.  ex. "Line Comment: //".
+#
+#
+#       > Block Comment[s]: [opening symbol] [closing symbol] [opening symbol] [closing symbol] ...
+#
+#       Defines a space-separated list of symbol pairs that are used for block comments, if any.  ex. "Block Comment: /* */".
+#
+#
+#       > [Topic Type] Prototype Ender[s]: [symbol] [symbol] ...
+#
+#       When defined, Natural Docs will attempt to collect prototypes from the code following the specified <TopicType>.  It grabs
+#       code until the first ender symbol or the next Natural Docs comment, and if it contains the topic name, it serves as its
+#       prototype.  Use \n to specify a line break.  ex. "Function Prototype Enders: { ;", "Variable Prototype Enders: = ;".
+#
+#
+#       > Line Extender: [symbol]
+#
+#       Defines the symbol that allows a prototype to span multiple lines if normally a line break would end it.
+#
+#
+#       > Perl Package: [perl package]
+#
+#       Specifies the Perl package used to fine-tune the language behavior in ways too complex to do in this file.
+#
+#
+#   Full Language Support Properties:
+#
+#       These attributes are only available for languages with full language support.
+#
+#
+#       > Full Language Support: [perl package]
+#
+#       Specifies the Perl package that has the parsing routines necessary for full language support.
+#
+
+
+
+###############################################################################
+# Group: File Functions
+
+
+#
+#   Function: Load
+#
+#   Loads both the master and the project version of <Languages.txt>.
+#
+sub Load
+    {
+    my $self = shift;
+
+    # Hashrefs where the keys are all-lowercase extensions/shebang strings, and the values are arrayrefs of the languages
+    # that defined them, earliest first, all lowercase.
+    my %tempExtensions;
+    my %tempShebangStrings;
+
+    $self->LoadFile(1, \%tempExtensions, \%tempShebangStrings);  # Main
+
+    if (!exists $languages{'shebang script'})
+        {
+        NaturalDocs::ConfigFile->AddError('You must define "Shebang Script" in the main languages file.');
+        };
+
+    if (NaturalDocs::ConfigFile->ErrorCount())
+        {
+        NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
+        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
+           . ' in ' . NaturalDocs::Project->MainLanguagesFile() . "\n";
+        }
+
+
+    $self->LoadFile(0, \%tempExtensions, \%tempShebangStrings);  # User
+
+    if (NaturalDocs::ConfigFile->ErrorCount())
+        {
+        NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
+        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
+           . ' in ' . NaturalDocs::Project->UserLanguagesFile() . "\n";
+        };
+
+
+    # Convert the temp hashes into the real ones.
+
+    while (my ($extension, $languages) = each %tempExtensions)
+        {
+        $extensions{$extension} = $languages->[-1];
+        };
+    while (my ($shebangString, $languages) = each %tempShebangStrings)
+        {
+        $shebangStrings{$shebangString} = $languages->[-1];
+        };
+    };
+
+
+#
+#   Function: LoadFile
+#
+#   Loads a particular version of <Languages.txt>.
+#
+#   Parameters:
+#
+#       isMain - Whether the file is the main file or not.
+#       tempExtensions - A hashref where the keys are all-lowercase extensions, and the values are arrayrefs of the all-lowercase
+#                                 names of the languages that defined them, earliest first.  It will be changed by this function.
+#       tempShebangStrings - A hashref where the keys are all-lowercase shebang strings, and the values are arrayrefs of the
+#                                        all-lowercase names of the languages that defined them, earliest first.  It will be changed by this
+#                                        function.
+#
+sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
+    {
+    my ($self, $isMain, $tempExtensions, $tempShebangStrings) = @_;
+
+    my ($file, $status);
+
+    if ($isMain)
+        {
+        $file = NaturalDocs::Project->MainLanguagesFile();
+        $status = NaturalDocs::Project->MainLanguagesFileStatus();
+        }
+    else
+        {
+        $file = NaturalDocs::Project->UserLanguagesFile();
+        $status = NaturalDocs::Project->UserLanguagesFileStatus();
+        };
+
+
+    my $version;
+
+    # An array of properties for the current language.  Each entry is the three consecutive values ( lineNumber, keyword, value ).
+    my @properties;
+
+    if ($version = NaturalDocs::ConfigFile->Open($file))
+        {
+        # The format hasn't changed since the file was introduced.
+
+        if ($status == ::FILE_CHANGED())
+            {  NaturalDocs::Project->ReparseEverything();  };
+
+        my ($keyword, $value, $comment);
+
+        while (($keyword, $value, $comment) = NaturalDocs::ConfigFile->GetLine())
+            {
+            $value .= $comment;
+            $value =~ s/^ //;
+
+            # Process previous properties.
+            if (($keyword eq 'language' || $keyword eq 'alter language') && scalar @properties)
+                {
+                $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);
+                @properties = ( );
+                };
+
+            if ($keyword =~ /^ignore extensions?$/)
+                {
+                $value =~ tr/.*//d;
+                my @extensions = split(/ /, lc($value));
+
+                foreach my $extension (@extensions)
+                    {  delete $tempExtensions->{$extension};  };
+                }
+            else
+                {
+                push @properties, NaturalDocs::ConfigFile->LineNumber(), $keyword, $value;
+                };
+            };
+
+        if (scalar @properties)
+            {  $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);  };
+        }
+
+    else # couldn't open file
+        {
+        if ($isMain)
+            {  die "Couldn't open languages file " . $file . "\n";  };
+        };
+    };
+
+
+#
+#   Function: ProcessProperties
+#
+#   Processes an array of language properties from <Languages.txt>.
+#
+#   Parameters:
+#
+#       properties - An arrayref of properties where each entry is the three consecutive values ( lineNumber, keyword, value ).
+#                         It must start with the Language or Alter Language property.
+#       tempExtensions - A hashref where the keys are all-lowercase extensions, and the values are arrayrefs of the all-lowercase
+#                                 names of the languages that defined them, earliest first.  It will be changed by this function.
+#       tempShebangStrings - A hashref where the keys are all-lowercase shebang strings, and the values are arrayrefs of the
+#                                        all-lowercase names of the languages that defined them, earliest first.  It will be changed by this
+#                                        function.
+#
+sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
+    {
+    my ($self, $properties, $tempExtensions, $tempShebangStrings) = @_;
+
+
+    # First validate the name and check whether the language has full support.
+
+    my $language;
+    my $fullLanguageSupport;
+    my ($lineNumber, $languageKeyword, $languageName) = @$properties[0..2];
+    my $lcLanguageName = lc($languageName);
+    my ($keyword, $value);
+
+    if ($languageKeyword eq 'alter language')
+        {
+        $language = $languages{$lcLanguageName};
+
+        if (!defined $language)
+            {
+            NaturalDocs::ConfigFile->AddError('The language ' . $languageName . ' is not defined.', $lineNumber);
+            return;
+            }
+        else
+            {
+            $fullLanguageSupport = (!$language->isa('NaturalDocs::Languages::Simple'));
+            };
+        }
+
+    else # ($languageKeyword eq 'language')
+        {
+        if (exists $languages{$lcLanguageName})
+            {
+            NaturalDocs::ConfigFile->AddError('The language ' . $value . ' is already defined.  Use "Alter Language" if you want '
+                                                             . 'to override its settings.', $lineNumber);
+            return;
+            };
+
+        for (my $i = 3; $i < scalar @$properties; $i += 3)
+            {
+            ($lineNumber, $keyword, $value) = @$properties[$i..$i+2];
+
+            if ($keyword eq 'full language support')
+                {
+                $fullLanguageSupport = 1;
+
+                eval
+                    {
+                    $language = $value->New($languageName);
+                    };
+                if ($::EVAL_ERROR)
+                    {
+                    NaturalDocs::ConfigFile->AddError('Could not create ' . $value . ' object.', $lineNumber);
+                    return;
+                    };
+
+                last;
+                }
+
+            elsif ($keyword eq 'perl package')
+                {
+                eval
+                    {
+                    $language = $value->New($languageName);
+                    };
+                if ($::EVAL_ERROR)
+                    {
+                    NaturalDocs::ConfigFile->AddError('Could not create ' . $value . ' object.', $lineNumber);
+                    return;
+                    };
+                };
+            };
+
+        # If $language was not created by now, it's a generic basic support language.
+        if (!defined $language)
+            {  $language = NaturalDocs::Languages::Simple->New($languageName);  };
+
+        $languages{$lcLanguageName} = $language;
+        };
+
+
+    # Decode the properties.
+
+    for (my $i = 3; $i < scalar @$properties; $i += 3)
+        {
+        ($lineNumber, $keyword, $value) = @$properties[$i..$i+2];
+
+        if ($keyword =~ /^(?:(add|replace) )?extensions?$/)
+            {
+            my $command = $1;
+
+
+            # Remove old extensions.
+
+            if (defined $language->Extensions() && $command eq 'replace')
+                {
+                foreach my $extension (@{$language->Extensions()})
+                    {
+                    if (exists $tempExtensions->{$extension})
+                        {
+                        my $languages = $tempExtensions->{$extension};
+                        my $i = 0;
+
+                        while ($i < scalar @$languages)
+                            {
+                            if ($languages->[$i] eq $lcLanguageName)
+                                {  splice(@$languages, $i, 1);  }
+                            else
+                                {  $i++;  };
+                            };
+
+                        if (!scalar @$languages)
+                            {  delete $tempExtensions->{$extension};  };
+                        };
+                    };
+                };
+
+
+            # Add new extensions.
+
+            # Ignore stars and dots so people could use .ext or *.ext.
+            $value =~ tr/*.//d;
+
+            my @extensions = split(/ /, lc($value));
+
+            foreach my $extension (@extensions)
+                {
+                if (!exists $tempExtensions->{$extension})
+                    {  $tempExtensions->{$extension} = [ ];  };
+
+                push @{$tempExtensions->{$extension}}, $lcLanguageName;
+                };
+
+
+            # Set the extensions for the language object.
+
+            if (defined $language->Extensions())
+                {
+                if ($command eq 'add')
+                    {  push @extensions, @{$language->Extensions()};  }
+                elsif (!$command)
+                    {
+                    NaturalDocs::ConfigFile->AddError('You need to specify whether you are adding to or replacing the list of extensions.',
+                                                                       $lineNumber);
+                    };
+                };
+
+            $language->SetExtensions(\@extensions);
+            }
+
+        elsif ($keyword =~ /^(?:(add|replace) )?shebang strings?$/)
+            {
+            my $command = $1;
+
+
+            # Remove old strings.
+
+            if (defined $language->ShebangStrings() && $command eq 'replace')
+                {
+                foreach my $shebangString (@{$language->ShebangStrings()})
+                    {
+                    if (exists $tempShebangStrings->{$shebangString})
+                        {
+                        my $languages = $tempShebangStrings->{$shebangString};
+                        my $i = 0;
+
+                        while ($i < scalar @$languages)
+                            {
+                            if ($languages->[$i] eq $lcLanguageName)
+                                {  splice(@$languages, $i, 1);  }
+                            else
+                                {  $i++;  };
+                            };
+
+                        if (!scalar @$languages)
+                            {  delete $tempShebangStrings->{$shebangString};  };
+                        };
+                    };
+                };
+
+
+            # Add new strings.
+
+            my @shebangStrings = split(/ /, lc($value));
+
+            foreach my $shebangString (@shebangStrings)
+                {
+                if (!exists $tempShebangStrings->{$shebangString})
+                    {  $tempShebangStrings->{$shebangString} = [ ];  };
+
+                push @{$tempShebangStrings->{$shebangString}}, $lcLanguageName;
+                };
+
+
+            # Set the strings for the language object.
+
+            if (defined $language->ShebangStrings())
+                {
+                if ($command eq 'add')
+                    {  push @shebangStrings, @{$language->ShebangStrings()};  }
+                elsif (!$command)
+                    {
+                    NaturalDocs::ConfigFile->AddError('You need to specify whether you are adding to or replacing the list of shebang '
+                                                                     . 'strings.', $lineNumber);
+                    };
+                };
+
+            $language->SetShebangStrings(\@shebangStrings);
+            }
+
+        elsif ($keyword eq 'package separator')
+            {
+            $language->SetPackageSeparator($value);
+            }
+
+        elsif ($keyword =~ /^(?:(add|replace) )?ignored? (?:(.+) )?prefix(?:es)? in index$/)
+            {
+            my ($command, $topicName) = ($1, $2);
+            my $topicType;
+
+            if ($topicName)
+                {
+                if (!( ($topicType, undef) = NaturalDocs::Topics->NameInfo($topicName) ))
+                    {
+                    NaturalDocs::ConfigFile->AddError($topicName . ' is not a defined topic type.', $lineNumber);
+                    };
+                }
+            else
+                {  $topicType = ::TOPIC_GENERAL();  };
+
+            if ($topicType)
+                {
+                my @prefixes;
+
+                if (defined $language->IgnoredPrefixesFor($topicType))
+                    {
+                    if ($command eq 'add')
+                        {  @prefixes = @{$language->IgnoredPrefixesFor($topicType)};  }
+                    elsif (!$command)
+                        {
+                        NaturalDocs::ConfigFile->AddError('You need to specify whether you are adding to or replacing the list of '
+                                                                         . 'ignored prefixes.', $lineNumber);
+                        };
+                    };
+
+                push @prefixes, split(/ /, $value);
+                $language->SetIgnoredPrefixesFor($topicType, \@prefixes);
+                };
+            }
+
+        elsif ($keyword eq 'full language support' || $keyword eq 'perl package')
+            {
+            if ($languageKeyword eq 'alter language')
+                {
+                NaturalDocs::ConfigFile->AddError('You cannot use ' . $keyword . ' with Alter Language.', $lineNumber);
+                };
+            # else ignore it.
+            }
+
+        elsif ($keyword =~ /^line comments?$/)
+            {
+            if ($fullLanguageSupport)
+                {
+                NaturalDocs::ConfigFile->AddError('You cannot define this property when using full language support.', $lineNumber);
+                }
+            else
+                {
+                my @symbols = split(/ /, $value);
+                $language->SetLineCommentSymbols(\@symbols);
+                };
+            }
+
+        elsif ($keyword =~ /^block comments?$/)
+            {
+            if ($fullLanguageSupport)
+                {
+                NaturalDocs::ConfigFile->AddError('You cannot define this property when using full language support.', $lineNumber);
+                }
+            else
+                {
+                my @symbols = split(/ /, $value);
+
+                if ((scalar @symbols) % 2 == 0)
+                    {  $language->SetBlockCommentSymbols(\@symbols);  }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('Block comment symbols must appear in pairs.', $lineNumber);  };
+                };
+            }
+
+        elsif ($keyword =~ /^(?:(.+) )?prototype enders?$/)
+            {
+            if ($fullLanguageSupport)
+                {
+                NaturalDocs::ConfigFile->AddError('You cannot define this property when using full language support.', $lineNumber);
+                }
+            else
+                {
+                my $topicName = $1;
+                my $topicType;
+
+                if ($topicName)
+                    {
+                    if (!( ($topicType, undef) = NaturalDocs::Topics->NameInfo($topicName) ))
+                        {
+                        NaturalDocs::ConfigFile->AddError($topicName . ' is not a defined topic type.', $lineNumber);
+                        };
+                    }
+                else
+                    {  $topicType = ::TOPIC_GENERAL();  };
+
+                if ($topicType)
+                    {
+                    my @symbols = split(/ /, $value);
+                    $language->SetPrototypeEndersFor($topicType, \@symbols);
+                    };
+                };
+            }
+
+        elsif ($keyword eq 'line extender')
+            {
+            if ($fullLanguageSupport)
+                {
+                NaturalDocs::ConfigFile->AddError('You cannot define this property when using full language support.', $lineNumber);
+                }
+            else
+                {
+                $language->SetLineExtender($value);
+                };
+            }
+
+        else
+            {
+            NaturalDocs::ConfigFile->AddError($keyword . ' is not a valid keyword.', $lineNumber);
+            };
+        };
+    };
+
 
 
 ###############################################################################
@@ -96,60 +711,67 @@ sub LanguageOf #(sourceFile)
     if (defined $extension)
         {  $extension = lc($extension);  };
 
-    if (!defined $extension || $extension eq 'cgi')
-        {
-        if (exists $shebangFiles{$sourceFile})
-            {
-            my $index = $shebangFiles{$sourceFile};
+    my $languageName;
 
-            if ($index != -1)
-                {  return $languages[$index];  }
-            else
-                {  return undef;  };
+    if (!defined $extension)
+        {  $languageName = 'Shebang Script';  }
+    else
+        {  $languageName = $extensions{$extension};  };
+
+    if (defined $languageName)
+        {
+        if ($languageName eq 'Shebang Script')
+            {
+            if (exists $shebangFiles{$sourceFile})
+                {
+                if (defined $shebangFiles{$sourceFile})
+                    {  return $languages{$shebangFiles{$sourceFile}};  }
+                else
+                    {  return undef;  };
+                }
+
+            else # (!exists $shebangFiles{$sourceFile})
+                {
+                my $shebangLine;
+
+                open(SOURCEFILEHANDLE, '<' . $sourceFile) or die 'Could not open ' . $sourceFile;
+
+                read(SOURCEFILEHANDLE, $shebangLine, 2);
+                if ($shebangLine eq '#!')
+                    {  $shebangLine = <SOURCEFILEHANDLE>;  }
+                else
+                    {  $shebangLine = undef;  };
+
+                close (SOURCEFILEHANDLE);
+
+                if (!defined $shebangLine)
+                    {
+                    $shebangFiles{$sourceFile} = undef;
+                    return undef;
+                    }
+                else
+                    {
+                    $shebangLine = lc($shebangLine);
+
+                    foreach my $shebangString (keys %shebangStrings)
+                        {
+                        if (index($shebangLine, $shebangString) != -1)
+                            {
+                            $shebangFiles{$sourceFile} = $shebangStrings{$shebangString};
+                            return $languages{$shebangStrings{$shebangString}};
+                            };
+                        };
+
+                    $shebangFiles{$sourceFile} = undef;
+                    return undef;
+                    };
+                };
             }
 
-        else # (!exists $shebangFiles{$sourceFile})
-            {
-            my $shebangLine;
-
-            open(SOURCEFILEHANDLE, '<' . $sourceFile) or die 'Could not open ' . $sourceFile;
-
-            read(SOURCEFILEHANDLE, $shebangLine, 2);
-            if ($shebangLine eq '#!')
-                {  $shebangLine = <SOURCEFILEHANDLE>;  }
-            else
-                {  $shebangLine = undef;  };
-
-            close (SOURCEFILEHANDLE);
-
-            if (!defined $shebangLine)
-                {
-                $shebangFiles{$sourceFile} = -1;
-                return undef;
-                }
-            else
-                {
-                $shebangLine = lc($shebangLine);
-
-                foreach my $shebangString (keys %shebangs)
-                    {
-                    if (index($shebangLine, $shebangString) != -1)
-                        {
-                        $shebangFiles{$sourceFile} = $shebangs{$shebangString};
-                        return $languages[ $shebangs{$shebangString} ];
-                        };
-                    };
-
-                $shebangFiles{$sourceFile} = -1;
-                return undef;
-                };
-            };
+        else # language name ne 'Shebang Script'
+            {  return $languages{$languageName};  };
         }
-    elsif (exists $extensions{$extension})
-        {
-        return $languages[ $extensions{$extension} ];
-        }
-    else
+    else # !defined $language
         {
         return undef;
         };
@@ -177,59 +799,6 @@ sub IsSupported #(file)
     # shebangs, it's really not worth it.
 
     return (defined $self->LanguageOf($file));
-    };
-
-
-###############################################################################
-# Group: Interface Functions
-# These functions are not for general use.  They're interfaces between specific packages and should only be used where noted.
-
-
-#
-#   Function: Add
-#
-#   Adds a <NaturalDocs::Languages::Base>-derived object to the package.
-#
-#   Usage:
-#
-#       This function is *only* to be called by <NaturalDocs::Languages::Base->New()>.  Languages self-add when
-#       created, so there is no need to call anywhere else.
-#
-#   Parameters:
-#
-#       languageObject  - A reference to the <NaturalDocs::Languages::Base>-derived object.
-#
-sub Add #(languageObject)
-    {
-    my ($self, $languageObject) = @_;
-
-    # Prior to 1.13, Add() was called from the main script to add languages.  Since people may be cutting and pasting old code,
-    # they may not be aware that the method changed.  We want to throw a specific error message for this situation so it's clear.
-    # We can detect an old Add() call because it had many more parameters.
-    if (scalar @_ != 2)
-        {
-        die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Simple->New().\n";
-        };
-
-    my $languageIndex = scalar @languages;
-    push @languages, $languageObject;
-
-    my $extensions = $languageObject->Extensions();
-
-    foreach my $extension (@$extensions)
-        {
-        $extensions{$extension} = $languageIndex;
-        };
-
-    my $shebangStrings = $languageObject->ShebangStrings();
-
-    if (defined $shebangStrings)
-        {
-        foreach my $shebangString (@$shebangStrings)
-            {
-            $shebangs{$shebangString} = $languageIndex;
-            };
-        };
     };
 
 
