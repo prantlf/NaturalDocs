@@ -91,7 +91,6 @@ use NaturalDocs::SymbolTable;
 use NaturalDocs::ClassHierarchy;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
-use NaturalDocs::Extensions;
 use NaturalDocs::Error;
 
 
