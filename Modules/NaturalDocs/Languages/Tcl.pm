@@ -27,102 +27,77 @@ use base 'NaturalDocs::Languages::Language';
 
 
 #
-#   Function: EndOfFunction
+#   Function: EndOfPrototype
 #
-#   Returns the index of the end of the function prototype in a string.
+#   Tcl's function syntax is shown below.
 #
-#   Parameters:
+#   > proc [name] { [params] } { [code] }
 #
-#       stringRef  - A reference to the string.
-#       falsePositives  - Ignored.  For consistency only.
+#   This function creates a false positive to skip the first opening brace.  If there are no parameters, empty braces are usually
+#   used, although I don't know if that's a hard requirement.
 #
-#   Returns:
+#   Also, the parameters may have braces within them.  I've seen one that used { seconds 20 } as a parameter.
 #
-#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from
-#       <FunctionEnders()>.
-#
-#   Language Issue:
-#
-#       Tcl's function syntax is shown below.
-#
-#       > proc [name] { [params] } { [code] }
-#
-#       This function creates a false positive to skip the first opening brace.  If there are no parameters, empty braces are usually
-#       used, although I don't know if that's a hard requirement.
-#
-#       Also, the parameters may have braces within them.  I've seen one that used { seconds 20 } as a parameter.
-#
-sub EndOfFunction #(stringRef, falsePositives)
+sub EndOfPrototype #(type, stringRef, falsePositives)
     {
-    my ($self, $stringRef) = @_;  # Passed falsePositives is ignored.
+    my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
 
-    my $falsePositives = { };
+    my $falsePositives;
 
-    my $level = 0;
-    my $stringIndex = 0;
-
-    while ($$stringRef =~ /(\{|\}|[^\{\}]+)/g)
+    if ($type == ::TOPIC_FUNCTION())
         {
-        my $segment = $1;
+        $falsePositives = { };
 
-        if ($segment eq '{')
-            {
-            $level++;
-            $falsePositives->{$stringIndex} = 1;
-            $stringIndex++;
-            }
-        elsif ($segment eq '}')
-            {
-            # End if we got out of the first top level brace group we were in.
-            if ($level == 1)
-                {  last;  };
+        my $level = 0;
+        my $stringIndex = 0;
 
-            $level--;;
-            $stringIndex--;
-            }
-        else
+        while ($$stringRef =~ /(\{|\}|[^\{\}]+)/g)
             {
-            $stringIndex += length($segment);
+            my $segment = $1;
+
+            if ($segment eq '{')
+                {
+                $level++;
+                $falsePositives->{$stringIndex} = 1;
+                $stringIndex++;
+                }
+            elsif ($segment eq '}')
+                {
+                # End if we got out of the first top level brace group we were in.
+                if ($level == 1)
+                    {  last;  };
+
+                $level--;;
+                $stringIndex--;
+                }
+            else
+                {
+                $stringIndex += length($segment);
+                };
             };
+
+        if (!scalar keys %$falsePositives)
+            {  $falsePositives = undef;  };
         };
 
-    return $self->SUPER::EndOfFunction($stringRef, $falsePositives);
+    return $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
     };
 
 
 #
 #   Function: FormatPrototype
 #
-#   Parses a prototype so that it can be formatted nicely in the output.  By default, this function assumes the parameter list is
-#   enclosed in parenthesis and parameters are separated by commas and semicolons.
+#   Tcl specifies parameters as a space-separated list in braces.  It's also possible to nest braces in the parameters.
 #
-#   Parameters:
+#   > proc name { param1 param2 { seconds 20 } }
 #
-#       prototype - The text prototype.
+#   This function makes sure the parameters format correctly.
 #
-#   Returns:
-#
-#       The array ( preParam, opening, params, closing, postParam ).
-#
-#       pre - The part of the prototype prior to the parameter list.
-#       open - The opening symbol to the parameter list, such as parenthesis.  If there is none, it will be a space.
-#       params - An arrayref of parameters, one per entry.  Will be undef if none.
-#       close - The closing symbol to the parameter list, such as parenthesis.  If there is none, it will be space.
-#       post - The part of the prototype after the parameter list, or undef if none.
-#
-#   Language Issue:
-#
-#       Tcl specifies parameters as a space-separated list in braces.  It's also possible to nest braces in the parameters.
-#
-#       > proc name { param1 param2 { seconds 20 } }
-#
-#       This function makes sure the parameters format correctly.
-#
-sub FormatPrototype #(prototype)
+sub FormatPrototype #(type, prototype)
     {
-    my ($self, $prototype) = @_;
+    my ($self, $type, $prototype) = @_;
 
-    if ($prototype =~ /^([^\{\}]+)\{(.*)\}([^\{\}]*)$/)
+    if ($type == ::TOPIC_FUNCTION() && $prototype =~ /^([^\{\}]+)\{(.*)\}([^\{\}]*)$/)
         {
         my ($pre, $paramString, $post) = ($1, $2, $3);
 
@@ -172,7 +147,7 @@ sub FormatPrototype #(prototype)
         }
 
     else
-        {  return $self->SUPER::FormatPrototype($prototype);  }
+        {  return $self->SUPER::FormatPrototype($type, $prototype);  }
     };
 
 
