@@ -229,6 +229,11 @@ body.FramedContentPage,
     margin: 0 5ex 1.5em 5ex;
     }
 
+    .Prototype td {
+        font-size: 10pt;
+        vertical-align: bottom;
+        }
+
     .PLeftType,
     .PLeftParameter {
         text-align: right;
