@@ -45,6 +45,24 @@ my %memberModifiers = ( 'public' => 1,
                                         'static' => 1 );
 
 
+#
+#   hash: declarationEnders
+#   An existence hash of all the tokens that can end a declaration.  This is important because statements don't require a semicolon
+#   to end.  The keys are in all lowercase.
+#
+my %declarationEnders = ( ';' => 1,
+                                        '}' => 1,
+                                        '{' => 1,
+                                        'public' => 1,
+                                        'private' => 1,
+                                        'static' => 1,
+                                        'class' => 1,
+                                        'interface' => 1,
+                                        'var' => 1,
+                                        'function' => 1,
+                                        'import' => 1 );
+
+
 
 ################################################################################
 # Group: Interface Functions
@@ -139,7 +157,7 @@ sub ParseFile #(sourceFile, topicsList)
 
         else
             {
-            $self->SkipRestOfStatement(\$index, \$lineNumber);
+            $self->SkipToNextStatement(\$index, \$lineNumber);
             };
         };
 
@@ -502,7 +520,8 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
     if ($tokens->[$index] ne '(')
         {  return undef;  };
 
-    $self->SkipUntilAfter(\$index, \$lineNumber, ')');
+    $index++;
+    $self->GenericSkipUntilAfter(\$index, \$lineNumber, ')');
 
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
@@ -517,10 +536,15 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         $self->TryToSkipWhitespace(\$index, \$lineNumber);
         };
 
-    if ($tokens->[$index] ne '{' && $tokens->[$index] ne ';')
-        {  return undef;  };
 
     my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+
+    if ($tokens->[$index] eq '{')
+        {  $self->GenericSkip(\$index, \$lineNumber);  }
+    elsif (!exists $declarationEnders{$tokens->[$index]})
+        {  return undef;  };
+
+
     my $scope = $self->CurrentScope();
 
     if ($name =~ s/^_global.//)
@@ -530,8 +554,6 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
                                                                                               $scope, $self->CurrentUsing(),
                                                                                               $prototype,
                                                                                               undef, undef, $startLine));
-
-    $self->SkipRestOfStatement(\$index, \$lineNumber);
 
 
     # We succeeded if we got this far.
@@ -612,22 +634,19 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
                 {
                 $self->GenericSkip(\$index, \$lineNumber);
                 }
-            while ($tokens->[$index] ne ',' && $tokens->[$index] ne ';' && $index < scalar @$tokens);
+            while ($tokens->[$index] ne ',' && !exists $declarationEnders{$tokens->[$index]} && $index < scalar @$tokens);
             };
 
         push @names, $name;
         push @types, $type;
 
-        if ($tokens->[$index] eq ';')
-            {
-            $index++;
-            last;
-            }
-        elsif ($tokens->[$index] eq ',')
+        if ($tokens->[$index] eq ',')
             {
             $index++;
             $self->TryToSkipWhitespace(\$index, \$lineNumber);
             }
+        elsif (exists $declarationEnders{$tokens->[$index]})
+            {  last;  }
         else
             {  return undef;  };
         };
@@ -730,27 +749,22 @@ sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token)
 
 
 #
-#   Function: SkipRestOfStatement
+#   Function: SkipToNextStatement
 #
-#   Advances the position via <GenericSkip()> until after the end of the current statement, which is defined as a semicolon or
-#   a brace group.  Of course, either of those appearing inside parenthesis, a nested brace group, etc. don't count.
+#   Advances the position via <GenericSkip()> until the next statement, which is defined as anything in <declarationEnders> not
+#   appearing in brackets or strings.  It will always advance at least one token.
 #
-sub SkipRestOfStatement #(indexRef, lineNumberRef)
+sub SkipToNextStatement #(indexRef, lineNumberRef)
     {
     my ($self, $indexRef, $lineNumberRef) = @_;
     my $tokens = $self->Tokens();
 
-    while ($$indexRef < scalar @$tokens &&
-             $tokens->[$$indexRef] ne ';' &&
-             $tokens->[$$indexRef] ne '{')
+    do
         {
         $self->GenericSkip($indexRef, $lineNumberRef);
-        };
-
-    if ($tokens->[$$indexRef] eq ';')
-        {  $$indexRef++;  }
-    elsif ($tokens->[$$indexRef] eq '{')
-        {  $self->GenericSkip($indexRef, $lineNumberRef);  };
+        }
+    while ( $$indexRef < scalar @$tokens &&
+              !exists $declarationEnders{$tokens->[$$indexRef]} );
     };
 
 
