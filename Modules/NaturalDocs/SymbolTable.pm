@@ -828,6 +828,42 @@ sub References #(scope, reference, file)
 
 
 #
+#   Function: GlobalDefinition
+#
+#   Returns the global definition of the passed symbol.  This does not require <AddReference()> to have been called beforehand.
+#   However, the symbol must be an exact match, and anything generated from it will not be automatically updated by this
+#   package if the definition changes.
+#
+#   Parameters:
+#
+#       class - The class of the symbol, or undef if none.
+#       symbol - The exact name of the symbol.
+#
+#   Returns:
+#
+#       A <NaturalDocs::SymbolTable::ReferenceTarget> object, or undef if the symbol doesn't exist.
+#
+sub GlobalDefinition #(class, symbol)
+    {
+    my ($self, $class, $symbol) = @_;
+
+    my $symbolString = $self->MakeSymbolString($class, $symbol);
+
+    if (exists $symbols{$symbolString} && $symbols{$symbolString}->IsDefined())
+        {
+        my $object = $symbols{$symbolString};
+
+        return NaturalDocs::SymbolTable::ReferenceTarget->New($class, $symbol, $object->GlobalDefinition(),
+                                                                                             $object->GlobalType(), $object->GlobalPrototype(),
+                                                                                             $object->GlobalSummary());
+        }
+
+    else
+        {  return undef;  };
+    };
+
+
+#
 #   Function: Index
 #
 #   Returns a symbol index.
