@@ -10,11 +10,137 @@ The diagrams are designed for clarity.  In the actual HTML, you'd obviously see 
 shouldn't rely on what HTML element it is.  Just refer to them as .Style in your CSS file instead of Element.Style.
 
 
-Group: Content
+Topic: Page Structure
+
+    The body tag is used to distinguish between the types of pages.  For framed pages, its style will be <FramedMenuPage>,
+    <FramedContentPage>, or <FramedIndexPage> depending on what it is.  Non-framed pages have a body style of
+    <UnframedPage>.
+
+    On unframed pages, the menu will be contained in a <MenuSection> td and the content or index in <ContentSection> or
+    <IndexSection> tds.  Tables are used instead of CSS positioning for better compatibility with older browsers and because they
+    have the ability to stretch when its content is too wide and collapse when the browser window is too small.
+
+    Unframed Page:
+
+    >   <body UnframedPage>
+    >   <browser styles>
+    >
+    >       <table><tr>
+    >
+    >           <td MenuSection>
+    >               Menu
+    >           </td MenuSection>
+    >
+    >           <td ContentSection/IndexSection>
+    >               Content or Index
+    >           </td ContentSection/IndexSection>
+    >
+    >       </tr></table>
+    >
+    >       <Footer>
+    >           Footer
+    >       </Footer>
+    >
+    >   </browser styles>
+    >   </body UnframedPage>
+
+    Framed Menu Page:
+
+    >   <body FramedMenuPage>
+    >   <browser styles>
+    >
+    >       Menu
+    >
+    >       <Footer>
+    >           Footer
+    >       </Footer>
+    >
+    >   </browser styles>
+    >   </body FramedMenuPage>
+
+    Framed Content/Index Page:
+
+    >   <body FramedContentPage/FramedIndexPage>
+    >   <browser styles>
+    >
+    >       Content or Index
+    >
+    >   </browser styles>
+    >   </body FramedContentPage/FramedIndexPage>
+
+
+List: Page Styles
+
+    UnframedPage - An unframed page.  Will be applied to a body tag.
+
+    FramedMenuPage - A framed menu page.  Will be applied to a body tag.
+    FramedContentPage - A framed content page.  Will be applied to a body tag.
+    FramedIndexPage - A framed index page.  Will be applied to a body tag.
+
+    MenuSection - The menu section in a non-framed page.  Will be applied to a td tag.
+    ContentSection - The content section in a non-framed page.  Will be applied to a td tag.
+    IndexSection - The index section in a non-framed page.  Will be applied to a td tag.
+
+    Footer - The page footer.  Will be in a framed menu page or on its own in a non-framed page.
+
+
+List: Browser Styles
+
+    Natural Docs pages include JavaScript to detect which browser the user is running and apply styles so that you can work
+    around browser quirks right in the CSS file.
+
+    Immediately after the body tag, the browser type and version styles will be applied.  However, neither are guaranteed to be
+    there; the user may have JavaScript turned off or be using a browser that isn't detected.  These styles should only be used to
+    correct minor flaws and should not be heavily relied on.
+
+    >   <body>
+    >
+    >       <browser type>?
+    >           <browser version>?
+    >
+    >               Page Content
+    >
+    >           </browser version>?
+    >       </browser type>?
+    >
+    >   </body>
+
+    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 4, override it with .IE4 .CTopic.  If a <MTitle>'s
+    style gives you a problem in Opera 5 but only in frames, override it with .FramedMenuPage .Opera5 .MTitle.
+
+    Browser Types:
+
+        If the browser is not one of the types below, neither this nor the browser version will be present.  There's the possibility that
+        some obscure browser will appear as one of the others by spoofing, but the most prominent of these, Opera, Konquerer, and
+        Safari, are taken care of.
+
+        IE - Internet Explorer
+        Gecko - The Gecko rendering engine, which includes Mozilla, Netscape 6+, etc.
+        Opea - Opera
+        KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
+        Netscape - The pre-Gecko Netscape rendering engine, which is 4.x and earlier.
+
+    Browser Versions:
+
+        If the browser is not one of the versions below, this style will not be present.  The browser type still may be.  Gecko and
+        KHTML-based browsers are not broken out into sub-versions.
+
+        IE4 - Internet Explorer 4.x
+        IE5 - Internet Explorer 5.x.  Yes, 5.0 and 5.5 are grouped together.
+        IE6 - Internet Explorer 6.x.
+
+        Opera5 - Opera 5.x.
+        Opera6 - Opera 6.x.
+        Opera7 - Opera 7.x
+
+        Netscape4 - Netscape 4.x.
+
+
 
 Topic: Content Structure
 
-    All the content of a given file is contained in a single <Content>.  All other content styles are prefixed with a C.
+    All the content of a given file is either contained in a <ContentSection> or a <FramedContentPage>.  All other content styles are
+    prefixed with a C.
 
     Each piece of content is a <CTopic>, and inside each of those is the type.  For example, <CFunction> for a function.  Inside
     that are analogues to all the top-level <NDMarkup> tags: <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so
@@ -78,8 +204,6 @@ Topic: Content Structure
 
 Styles: Content Styles
 
-    Content - One <Content> surrounds all <CTopic>s.
-
     CTopic - An individual topic.
 
     CTitle - The title of a topic.
@@ -108,13 +232,9 @@ Styles: Content Styles
     CGenericList - A generic list topic.
 
 
-_______________________________________________________________________________
-
-Group: Menu
-
 Topic: Menu Structure
 
-    Everything is enclosed in a single <Menu>.  All other menu styles are prefixed with an M.
+    Everything is enclosed in a <MenuSection> or a <FramedMenuPage>.  All other menu styles are prefixed with an M.
 
     The title is an <MTitle> and will always be at the beginning of the <Menu> if it exists.  If a subtitle exists as well, it will appear
     as an <MSubTitle> inside <MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
@@ -169,8 +289,6 @@ Topic: Menu Structure
 
 Styles: Menu Styles
 
-    Menu - One <Menu> holds the entire menu.
-
     MTitle - The title of the menu.
     MSubTitle - The subtitle of the menu.  Will appear within <MTitle>.
 
@@ -184,10 +302,6 @@ Styles: Menu Styles
 
     #MSelected - The ID of the currently selected <MFile>.
 
-
-_______________________________________________________________________________
-
-Group: Summaries
 
 Topic: Summary Structure
 
@@ -288,9 +402,6 @@ Styles: Summary Styles
     SGenericList - For generic list summaries.
 
 
-_______________________________________________________________________________
-
-Group: Links
 
 Topic: Link Structure
 
@@ -322,13 +433,11 @@ Styles: Link Styles
     LURL - Link to an external URL.
     LEMail - Link to an e-mail address.
 
-_______________________________________________________________________________
 
-Group: Indexes
 
 Topic: Index Structure
 
-    Everything is enclosed in a single <Index>.  All index styles are prefixed with an I.
+    Everything is enclosed in a <IndexSection> or an <FramedIndexPage>.  All other index styles are prefixed with an I.
 
     >   <Index>
     >
