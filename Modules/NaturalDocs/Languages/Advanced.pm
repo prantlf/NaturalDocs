@@ -422,7 +422,7 @@ sub SkipRestOfLine #(indexRef, lineNumberRef)
 #   Moves the position to the token following the next occurance of a particular token sequence, or past the end of the tokens
 #   array if it never occurs.  Useful for multiline comments.
 #
-#   Note that it skips blindly.  It assumes there cannot be anything gof interest, such as a string delimiter, between the position
+#   Note that it skips blindly.  It assumes there cannot be anything of interest, such as a string delimiter, between the position
 #   and the end of the line.
 #
 #   Parameters:
@@ -431,7 +431,7 @@ sub SkipRestOfLine #(indexRef, lineNumberRef)
 #       lineNumberRef - A reference to the position's line number.
 #       token - A token that must be matched.  Can be specified multiple times to match a sequence of tokens.
 #
-sub SkipUntilAfter #(indexRef, lineNumberRef, token, token, token ...)
+sub SkipUntilAfter #(indexRef, lineNumberRef, token, token, ...)
     {
     my ($self, $index, $lineNumber, @target) = @_;
     my $tokens = $self->Tokens();

@@ -562,7 +562,7 @@ sub CleanComment #(commentLines)
 
 
 #
-#   Function: RepairPackage
+#   Function: RepairPackages
 #
 #   Recalculates the packages for all comment topics using the auto-topics and the scope record.  Call this *before* calling
 #   <MergeAutoTopics()>.
