@@ -303,7 +303,7 @@ sub Parse
     if (defined $autoTopics)
         {  $self->AddPackageDelineators();  };
 
-    if (NaturalDocs::Settings->AutoGroupLevel() != ::AUTOGROUP_NONE())
+    if (!NaturalDocs::Settings->NoAutoGroup())
         {  $self->MakeAutoGroups($autoTopics);  };
 
 
@@ -341,9 +341,6 @@ sub Parse
             unshift @parsedFile,
                        NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), $name, undef, undef, undef, undef, undef, 1, undef);
             };
-
-        # We only want to call the hook if it has content.
-        NaturalDocs::Extensions->AfterFileParsed($sourceFile, \@parsedFile);
         };
 
     return $defaultMenuTitle;
@@ -721,22 +718,33 @@ sub MakeAutoGroups
         {  return;  };
 
     my $index = 0;
-    my $currentPackage;
-    my $currentPackageIndex = 0;
+    my $startStretch = 0;
 
+    # Skip the first entry if its the page title.
+    if (NaturalDocs::Topics->TypeInfo( $parsedFile[0]->Type() )->PageTitleIfFirst())
+        {
+        $index = 1;
+        $startStretch = 1;
+        };
+
+    # Make auto-groups for each stretch between scope-altering topics.
     while ($index < scalar @parsedFile)
         {
-        if ($parsedFile[$index]->Package() ne $currentPackage)
+        my $scope = NaturalDocs::Topics->TypeInfo($parsedFile[$index]->Type())->Scope();
+
+        if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
             {
-            $index += $self->MakeAutoGroupsFor($currentPackageIndex, $index);
-            $currentPackage = $parsedFile[$index]->Package();
-            $currentPackageIndex = $index;
+            if ($index > $startStretch)
+                {  $index += $self->MakeAutoGroupsFor($startStretch, $index);  };
+
+            $startStretch = $index + 1;
             };
 
         $index++;
         };
 
-    $self->MakeAutoGroupsFor($currentPackageIndex, $index);
+    if ($index > $startStretch)
+        {  $self->MakeAutoGroupsFor($startStretch, $index);  };
     };
 
 
@@ -758,13 +766,6 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
     {
     my ($self, $startIndex, $endIndex) = @_;
 
-    # Skip the first entry if it can be the page title.  Grouping it would prevent it from working.
-    if ($startIndex == 0 && NaturalDocs::Topics->TypeInfo($parsedFile[0]->Type())->PageTitleIfFirst())
-        {  $startIndex++;  };
-
-    if ($startIndex >= $endIndex)
-        {  return 0;  };
-
     # No groups if any are defined already.
     for (my $i = $startIndex; $i < $endIndex; $i++)
         {
@@ -772,37 +773,173 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
             {  return 0;  };
         };
 
+
+    use constant COUNT => 0;
+    use constant TYPE => 1;
+    use constant SECOND_TYPE => 2;
+    use constant SIZE => 3;
+
+    # This is an array of ( count, type, secondType ) triples.  Count and Type will always be filled in; count is the number of
+    # consecutive topics of type.  On the second pass, if small groups are combined secondType will be filled in.  There will not be
+    # more than two types per group.
+    my @groups;
+    my $groupIndex = 0;
+
+
+    # First pass: Determine all the groups.
+
+    my $i = $startIndex;
     my $currentType;
-    my $groupCount = 0;
 
-    while ($startIndex < $endIndex)
+    while ($i < $endIndex)
         {
-        my $topic = $parsedFile[$startIndex];
-        my $type = $topic->Type();
-        my $typeInfo = NaturalDocs::Topics->TypeInfo($type);
-
-        if ($typeInfo->Scope() == ::SCOPE_START() || $typeInfo->Scope() == ::SCOPE_END())
+        if ($parsedFile[$i]->Type() ne $currentType)
             {
-            $currentType = undef;
+            if (defined $currentType)
+                {  $groupIndex += SIZE;  };
+
+            $currentType = $parsedFile[$i]->Type();
+
+            $groups[$groupIndex + COUNT] = 1;
+            $groups[$groupIndex + TYPE] = $currentType;
             }
-        elsif ($type ne $currentType && NaturalDocs::Topics->ShouldAutoGroup($type))
-            {
-            splice(@parsedFile, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
-                                                                                                                          NaturalDocs::Topics->NameOfType($type, 1),
-                                                                                                                          $topic->Package(), $topic->Using(),
-                                                                                                                          undef, undef, undef,
-                                                                                                                          $topic->LineNumber()) );
+        else
+            {  $groups[$groupIndex + COUNT]++;  };
 
-            $currentType = $type;
-            $startIndex++;
-            $endIndex++;
-            $groupCount++;
-            };
-
-        $startIndex++;
+        $i++;
         };
 
-    return $groupCount;
+
+    # Second pass: Fold all generic groups into the previous one.  We skip the first group because there's nothing to fold it into.
+
+    $groupIndex = SIZE;
+
+    while ($groupIndex < scalar @groups)
+        {
+        if ($groups[$groupIndex + TYPE] eq ::TOPIC_GENERIC())
+            {
+            my $previousGroupIndex = $groupIndex - SIZE;
+
+            $groups[$previousGroupIndex + COUNT] += $groups[$groupIndex + COUNT];
+
+            splice(@groups, $groupIndex, SIZE);
+            }
+        else
+            {  $groupIndex += SIZE;  };
+        };
+
+
+    # Third pass: Combine groups based on "noise".  Noise means types go from A to B to A at least once, and there are at least
+    # two groups in a row with three or less, and at least one of those groups is two or less.  So 3, 3, 3 doesn't count as noise, but
+    # 3, 2, 3 does.  Also, there is no stretch with seven or more.
+
+    $groupIndex = 0;
+
+    # While there are at least three groups left...
+    while ($groupIndex < scalar @groups - (2 * SIZE))
+        {
+        # If the group two places in front of this one has the same type...
+        if ($groups[$groupIndex + (2 * SIZE) + TYPE] eq $groups[$groupIndex + TYPE])
+            {
+            # It means we went from A to B to A, which partially qualifies as noise.
+
+            my $firstType = $groups[$groupIndex + TYPE];
+            my $secondType = $groups[$groupIndex + SIZE + TYPE];
+
+            my $hasNoise;
+
+            my $hasThrees;
+            my $hasTwosOrOnes;
+
+            my $endIndex = $groupIndex;
+
+            while ($endIndex < scalar @groups &&
+                     ($groups[$endIndex + TYPE] eq $firstType || $groups[$endIndex + TYPE] eq $secondType) &&
+                     $groups[$endIndex + COUNT] < 7 )
+                {
+                if ($groups[$endIndex + COUNT] > 3)
+                    {
+                    # They must be consecutive to count.
+                    $hasThrees = 0;
+                    $hasTwosOrOnes = 0;
+                    }
+                elsif ($groups[$endIndex + COUNT] == 3)
+                    {
+                    $hasThrees = 1;
+
+                    if ($hasTwosOrOnes)
+                        {  $hasNoise = 1;  };
+                    }
+                else # < 3
+                    {
+                    if ($hasThrees || $hasTwosOrOnes)
+                        {  $hasNoise = 1;  };
+
+                    $hasTwosOrOnes = 1;
+                    };
+
+                $endIndex += SIZE;
+                };
+
+            if (!$hasNoise)
+                {
+                # Skip everything we checked except the last one, since we may have A > B > A > C > A where A and B can't group
+                # but A and C can.  However, also check that this actually advances the index because we may have A > B > A where
+                # the first A is over seven.
+
+                if ($groupIndex + SIZE > $endIndex - SIZE)
+                    {  $groupIndex += SIZE;  }
+                else
+                    {  $groupIndex = $endIndex - SIZE;  }
+                }
+            else # hasNoise
+                {
+                $groups[$groupIndex + SECOND_TYPE] = $secondType;
+
+                for (my $noiseIndex = $groupIndex + SIZE; $noiseIndex < $endIndex; $noiseIndex += SIZE)
+                    {
+                    $groups[$groupIndex + COUNT] += $groups[$noiseIndex + COUNT];
+                    };
+
+                splice(@groups, $groupIndex + SIZE, $endIndex - $groupIndex - SIZE);
+
+                $groupIndex += SIZE;
+                };
+            }
+
+        else
+            {  $groupIndex += SIZE;  };
+        };
+
+
+    # Finally, create group topics for the parsed file.
+
+    $groupIndex = 0;
+    $i = $startIndex;
+
+    while ($groupIndex < scalar @groups)
+        {
+        if ($groups[$groupIndex + TYPE] ne ::TOPIC_GENERIC())
+            {
+            my $topic = $parsedFile[$i];
+            my $title = NaturalDocs::Topics->NameOfType($groups[$groupIndex + TYPE], 1);
+
+            if (defined $groups[$groupIndex + SECOND_TYPE])
+                {  $title .= ' and ' . NaturalDocs::Topics->NameOfType($groups[$groupIndex + SECOND_TYPE], 1);  };
+
+            splice(@parsedFile, $i, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
+                                                                                                            $title,
+                                                                                                            $topic->Package(), $topic->Using(),
+                                                                                                            undef, undef, undef,
+                                                                                                            $topic->LineNumber()) );
+            $i++;
+            };
+
+        $i += $groups[$groupIndex + COUNT];
+        $groupIndex += SIZE;
+        };
+
+    return (scalar @groups / SIZE);
     };
 
 
