@@ -1,0 +1,309 @@
+#!/usr/bin/perl
+
+use 5.005;  # When File::Spec was included by default
+
+use FindBin;
+use lib "$FindBin::Bin/Modules";
+
+sub INIT
+    {
+    # This function is just here so that when I start the debugger, it doesn't open a new file.  Normally it would jump to an INIT
+    # function in some other file since that's the first piece of code to execute.
+    };
+
+use NaturalDocs::Constants;
+use NaturalDocs::File;
+use NaturalDocs::NDMarkup;
+use NaturalDocs::Languages;
+use NaturalDocs::Settings;
+use NaturalDocs::Project;
+use NaturalDocs::Menu;
+use NaturalDocs::SymbolTable;
+use NaturalDocs::Parser;
+use NaturalDocs::Builder;
+
+use strict;
+use integer;
+
+#
+#   Script: Natural Docs
+#
+#       Version 0.85
+#
+#       Copyright © 2003 Greg Valure
+#
+#       http://www.naturaldocs.org
+#
+#   About: License
+#
+#       Licensed under the GNU General Public License
+#
+#       This program is free software; you can redistribute it and/or modify
+#       it under the terms of the GNU General Public License as published by
+#       the Free Software Foundation; either version 2 of the License, or
+#       (at your option) any later version.
+#
+#       This program is distributed in the hope that it will be useful,
+#       but WITHOUT ANY WARRANTY; without even the implied warranty of
+#       MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#       GNU General Public License for more details.
+#
+#       You should have received a copy of the GNU General Public License
+#       along with this program; if not, visit http://www.gnu.org/licenses/gpl.txt
+#       or write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
+#       Boston, MA  02111-1307  USA.
+#
+#
+#   About: Syntax
+#
+#       > NaturalDocs -i [input (source) directory]
+#       >             -o [output format] [output directory]
+#       >            (-o [output format] [output directory] ...)
+#       >             -p [project directory]
+#       >             [options]
+#
+#       Directory names with spaces are fine.  They don't need quotes on Windows.
+#
+#       Examples:
+#
+#           > NaturalDocs -i C:\My Project\Source
+#           >             -o HTML C:\My Project\Docs
+#           >             -p C:\My Project\Natural Docs
+#
+#           > NaturalDocs -i /src/project
+#           >             -o HTML /doc/project
+#           >             -p /etc/naturaldocs/project
+#           >             -s Small -q -m
+#
+#       Options:
+#
+#           -i, --input, --source     - The input (source) directory.  Required.
+#           -o, --output                - The output format and directory.  Required.  See <Supported Output Formats> for a list of
+#                                              options.  This can be specified multiple times, but only once per output format.
+#           -p, --project               - The project directory.  Required.  There should be a unique project directory for each
+#                                              input directory.
+#
+#           -s, --style                  - Sets the CSS style for HTML output.  It can either be a single value ("Small") that applies to all
+#                                             HTML output or a series of [format]=[style] lines ("HTML=Small") separated by spaces to
+#                                             distinguish between them.  If any style is set to "Custom", it will not sync the project's CSS file
+#                                             with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
+#                                             <HTML Styles> for options.
+#
+#           -r, --rebuild                - Rebuilds all output and data files from scratch.  Use whenever you add or change the output
+#                                              formats.  Does not affect the menu file.
+#
+#           -q, --quiet                  - Suppresses all non-error output.
+#
+#           -h, --help                   - Prints the syntax reference.
+#
+#
+#   About: Supported Code Formats
+#
+#       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Output Formats>.
+#
+#       - C++ (.h and .hpp files only)
+#       - Java
+#       - Perl (.pl and .pm files, plus .cgi and extensionless files if "perl" is in the #! line)
+#       - JavaScript (.js files only)
+#       - Text files
+#
+#
+#   About: Supported Output Formats
+#
+#       HTML    - Creates HTML output.  A directory tree will be created to mirror the source tree, and each source file will have a
+#                     corresponding HTML file of the same name, only with .html appended.  The files are self-contained and don't rely
+#                     on frames.  index.html forwards to the first file on the menu.
+#
+#
+#   About: HTML Styles
+#
+#       Default  - The standard Natural Docs appearence.  You're looking at it right now.
+#
+#       Small    - For people who prefer 8pt Verdana, aka people with good eyes.  You get more on the screen at once, but some
+#                     people hate it when web pages use tiny fonts.
+#
+#       Roman  - For people who prefer Roman fonts, aka people who use OS X, XP with ClearType, or some other decent
+#                     anti-aliasing system.  Most people don't and thus prefer Verdana.  It makes the fancy quotes (66 and 99, as
+#                     opposed to II) look especially nice, though.
+#
+#       Custom - Tells Natural Docs that the output directory is using its own custom CSS file.  Natural Docs will not sync the CSS
+#                     file at all with this option set.
+#
+#       You can also use any CSS file present in Natural Docs' styles directory.  Just use its name without the .css extension.  For
+#       example, if your style is Blue.css, use "Blue".
+#
+#       You can check for additional styles at http://www.naturaldocs.org.  If you would like to build your own, see
+#       <How to Add HTML Styles>.
+#
+#
+#   Topic: HTML Compatibility
+#
+#       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.3, my browser of choice.  Therefore it should be
+#                                        okay with Netscape 7, etc.
+#       Internet Explorer      - *Works on 4+.*  Tested on 4.0, 5.0 and 6.0.  I don't have a partition for 5.5 so I'm assuming it
+#                                        works.  4 can't collapse the menu and has minor layout issues.
+#       Opera                      - *Works on 5+.*  Tested on 5.12, 6.05, and 7.02.  Only 7.02 can collapse the menu.
+#       Konqueror (KHTML)   - *Probably.*  With the addition of Safari I'd like to be able to test this, but there's nothing for
+#                                        Windows and I haven't gotten around to setting up a Linux partition yet.  It should work as it's not
+#                                        doing anything exceptionally fancy except for the collapsing menu, which is still usable when the
+#                                        browser can't handle it.
+#       Netscape 4.x            - *Nope.*  Crashes 4.08 and mangled on 4.8.  Why did they ever drop this for Gecko?  I've stopped
+#                                        supporting NS4 in my projects and have found that my quality of life has improved considerably.
+#
+#       Note that a browser not being able to collapse the menu isn't a compatibility concern.  The menu defaults to completely open
+#       if the browser can't handle collapsing it, so it's always usable.  It's just better on browsers that support it.
+#
+#
+#   About: Contributors
+#
+#       - Greg Valure (gregvalure@naturaldocs.org)
+#
+
+###############################################################################
+#
+#   Group: Extending
+#
+###############################################################################
+#
+#   Topic: How to Add Source Formats
+#
+#       In the main script (NaturalDocs.pl) add a call to <NaturalDocs::Languages::Add()> after all the rest.  See
+#       <NaturalDocs::Languages::Add()>'s documentation for an explanation of the parameters.
+#
+#
+#   Topic: How to Add Output Formats
+#
+#       - Create a new <NaturalDocs::Builder> sub-package derived from <NaturalDocs::Builder::Base>.
+#       - See <NaturalDocs::Builder::Base>'s documentation for a list of the interface functions that should be implemented and
+#         examples of how to do so.
+#       - Add a 'use' statement for your package after the others in the main script (NaturalDocs.pl).
+#       - Document the additional option in <Supported Output Formats>.
+#
+#
+#   Topic: How to Add HTML Styles
+#
+#       Read the <CSS Guide> to understand the styles Natural Docs uses and how they fit together.
+#
+#       After you've created your own CSS file, drop it in the Natural Docs styles directory.  Then you can reference it via -s in the
+#       command line.  Its name is the CSS file name without the extension.  So if your file is Red.css, you use it by specifying
+#       "-s Red" in your projects.
+#
+#       If you ever change the CSS file in the Natural Docs styles directory, each project that uses it will get an updated copy
+#       automatically the next time Natural Docs is run on it.
+#
+#
+#   Topic: Code Conventions
+#
+#       - All top-level NaturalDocs:: packages (i.e. <NaturalDocs::Project>, <NaturalDocs::Languages>) have their functions called
+#         in Package::Function() notation.  You call <NaturalDocs::Project::FilesToBuild()>, *not*
+#         <NaturalDocs::Project->FilesToBuild()>.
+#
+#       - All output format packages (i.e. <NaturalDocs::Builder::HTML>) have their interface functions called in
+#         Package->Function() notation because they need to be affected by inheritance.  Since these functions are only called by
+#         <NaturalDocs::Builder>, you don't need to worry about this unless you're writing one.  How any other functions in these
+#         packages are called depends on the package, since they shouldn't be called externally anyway.
+#
+#       - All other lower-level NaturalDocs:: packages (i.e. <NaturalDocs::Project::File>, <NaturalDocs::Languages::Language>)
+#         are object packages.  You call New() as Package::Function(), and then everything else is called on the object with
+#         Object->Function().
+#
+
+
+###############################################################################
+#
+#   Main Code
+#
+#   The order in which functions are called here is critically important.  Read the "Usage and Dependencies" sections of all the
+#   packages before even thinking about rearranging these.
+#
+###############################################################################
+
+
+# Output packages are added to NaturalDocs::Builder just by including them.
+
+use NaturalDocs::Builder::HTML;
+
+
+eval {
+
+    # Add the supported languages.
+    NaturalDocs::Languages::Add( 'C++', [ 'h', 'hpp' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ] );
+    NaturalDocs::Languages::Add( 'Java', [ 'java' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ] );
+    NaturalDocs::Languages::Add( 'JavaScript', [ 'js' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ] );
+    NaturalDocs::Languages::Add( 'Perl', [ 'pl', 'pm' ], [ 'perl' ], '#', undef, undef, [ '{', ';' ], [ ';', '=' ] );
+    NaturalDocs::Languages::Add( 'Text', [ 'txt' ], undef, undef, undef, undef, undef, undef );
+
+
+    # Almost everything requires Settings to be initialized.
+
+    NaturalDocs::Settings::ParseCommandLine();
+
+    if (!NaturalDocs::Settings::IsQuiet())
+        {  print "Finding files and detecting changes...\n";  };
+
+    if (NaturalDocs::Project::LoadAndDetectChanges())
+        {
+        # We only load the symbol table if supported files have changed.
+
+        NaturalDocs::SymbolTable::LoadAndPurge();
+
+
+        # Parse any supported files that have changed.
+
+        my $filesToParse = NaturalDocs::Project::FilesToParse();
+        my $amount = scalar keys %$filesToParse;
+
+        if ($amount > 0)
+          {
+          if (!NaturalDocs::Settings::IsQuiet())
+              {  print 'Parsing ' . $amount . ' file' . ($amount > 1 ? 's' : '') . "...\n";  };
+
+          foreach my $file (keys %$filesToParse)
+              {  NaturalDocs::Parser::ParseForInformation($file);  };
+          };
+
+
+        # The symbol table is now fully resolved, so we can reduce its memory footprint.
+
+        NaturalDocs::SymbolTable::PurgeResolvingInfo();
+
+
+        # Load and update the menu file.  We need to do this after parsing so when it is updated, it will detect files where the
+        # default menu title has changed and files that have added or deleted Natural Docs content.
+
+        NaturalDocs::Menu::LoadAndUpdate();
+
+
+        # Build any files that need it.  This needs to be run regardless of whether there are any files to build.  It will handle its own
+        # output messages.
+
+        NaturalDocs::Builder::Run();
+
+
+        # Write the changes back to disk.  The menu must be saved before the project because the project file stores when the
+        # menu file was last changed.
+
+        NaturalDocs::Menu::Save();
+        NaturalDocs::Project::Save();
+        NaturalDocs::SymbolTable::Save();
+        }
+    else
+        {
+        # Builder needs to be run anyway.  Since there were no changes to the source tree, we don't need to worry about
+        # parsing or NaturalDocs::SymbolTable.
+
+        NaturalDocs::Builder::Run();
+        };
+
+    if (!NaturalDocs::Settings::IsQuiet())
+        {  print "Done.\n";  };
+
+};
+
+if ($@)  # Oops.
+    {
+    die
+         "\n"
+         . "Natural Docs encountered the following error and was stopped:\n"
+         . "     " . $@ . "\n";
+    };

@@ -1,0 +1,79 @@
+Title: Natural Docs
+SubTitle: Version 0.85
+
+Footer: Copyright (c) 2003 Greg Valure
+
+# ------------------------------------------------------------------------ #
+
+# Cut and paste the lines below to change the order in which your files
+# appear on the menu.  Don't worry about adding or removing files, Natural
+# Docs will take care of that.
+# 
+# If you change the title of a file, make sure you remove "auto-title,"
+# from the parenthesis or it won't stick.  Add "auto-title," to the
+# the parenthesis before the file name and Natural Docs will generate the
+# title from the source file and keep it updated automatically.
+# 
+# You can further organize the menu by grouping the entries.  Add a
+# "Group: [name] {" line to start a group, and add a "}" to end it.  Groups
+# can appear within each other.
+# 
+# You can add text and web links to the menu by adding "Text: [text]" and
+# "Link: [text] ([URL])" lines, respectively.
+# 
+# The formatting and comments are auto-generated, so don't worry about
+# neatness when editing the file.  Natural Docs will clean it up the next
+# time it is run.  When working with groups, just deal with the braces and
+# forget about the indentation and comments.
+
+# ------------------------------------------------------------------------ #
+
+File: Natural Docs  (auto-title, NaturalDocs)
+
+Group: Packages  {
+
+   File: Settings  (Modules\NaturalDocs\Settings.pm)
+   File: Languages  (Modules\NaturalDocs\Languages.pm)
+   File: Project  (Modules\NaturalDocs\Project.pm)
+   File: Menu  (Modules\NaturalDocs\Menu.pm)
+   File: SymbolTable  (Modules\NaturalDocs\SymbolTable.pm)
+   File: Parser  (Modules\NaturalDocs\Parser.pm)
+   File: Builder  (Modules\NaturalDocs\Builder.pm)
+
+   Group: Support  {
+
+      File: Constants  (Modules\NaturalDocs\Constants.pm)
+      File: File  (Modules\NaturalDocs\File.pm)
+      File: NDMarkup  (Modules\NaturalDocs\NDMarkup.pm)
+      }  # Group: Support
+
+   }  # Group: Packages
+
+
+Group: Output Formats  {
+
+   File: Base  (Modules\NaturalDocs\Builder\Base.pm)
+   File: HTML  (Modules\NaturalDocs\Builder\HTML.pm)
+   }  # Group: Output Formats
+
+
+Group: Objects  {
+
+   File: Languages::Language  (Modules\NaturalDocs\Languages\Language.pm)
+   File: Project::File  (Modules\NaturalDocs\Project\File.pm)
+   File: Menu::Entry  (Modules\NaturalDocs\Menu\Entry.pm)
+   File: Menu::Error  (Modules\NaturalDocs\Menu\Error.pm)
+
+   Group: SymbolTable  {
+
+      File: Symbol  (Modules\NaturalDocs\SymbolTable\Symbol.pm)
+      File: Reference  (Modules\NaturalDocs\SymbolTable\Reference.pm)
+      File: ReferenceTarget  (Modules\NaturalDocs\SymbolTable\ReferenceTarget.pm)
+      File: File  (Modules\NaturalDocs\SymbolTable\File.pm)
+      }  # Group: SymbolTable
+
+   File: Parser::ParsedTopic  (Modules\NaturalDocs\Parser\ParsedTopic.pm)
+   }  # Group: Objects
+
+File: CSS Guide  (auto-title, CSSGuide.txt)
+Link: Web Site  (http://www.naturaldocs.org/)
