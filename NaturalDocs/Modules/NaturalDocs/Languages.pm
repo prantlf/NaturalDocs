@@ -22,6 +22,7 @@ use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
 use NaturalDocs::Languages::Ada;
 use NaturalDocs::Languages::Tcl;
+use NaturalDocs::Languages::Ruby;
 
 use strict;
 use integer;

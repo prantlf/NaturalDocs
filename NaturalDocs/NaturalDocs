@@ -245,7 +245,7 @@ use integer;
 #
 #       - All NaturalDocs:: packages have their functions called in Package->Function() notation.  You call
 #         <NaturalDocs::Project->FilesToBuild()>, *not* <NaturalDocs::Project::FilesToBuild()>.  Note that this was not the case
-#         until version 1.2, so any custom modifications done before then probably need to be updated.
+#         until version 1.14, so any custom modifications done before then probably need to be updated.
 #
 #       - If you're wondering about some of the line lengths or the strange indentation, it's because I work on Natural Docs using
 #         8pt Verdana.
@@ -486,10 +486,11 @@ eval {
     NaturalDocs::Languages::Language->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
     NaturalDocs::Languages::Ada->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
     NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], undef );
+    NaturalDocs::Languages::Ruby->New( 'Ruby', 'rb', 'ruby', '#', undef, undef, [ ';', "\n" ], [ ';', '=', "\n" ], "\\" );
     NaturalDocs::Languages::Language->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
 
 
-    # Migrate from the old file names that were used prior to 1.2.
+    # Migrate from the old file names that were used prior to 1.14.
 
     NaturalDocs::Project->MigrateOldFiles();
 
