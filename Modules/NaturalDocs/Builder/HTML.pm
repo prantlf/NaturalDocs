@@ -243,9 +243,6 @@ sub UpdateMenu
 
     foreach my $index (keys %$indexes)
         {
-        if ($index eq '*')
-            {  $index = undef;  };
-
         if (!NaturalDocs::SymbolTable->IndexChanged($index))
             {
             $self->UpdateIndex($index);
