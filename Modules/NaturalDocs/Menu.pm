@@ -2194,8 +2194,8 @@ sub AddAndRemoveIndexes
     {
     my ($self) = @_;
 
-    my %validIndexes = ( '*' => 1 );
-    my @allIndexes = NaturalDocs::Topics->AllIndexable();
+    my %validIndexes = ( );
+    my @allIndexes = ( NaturalDocs::Topics->AllIndexable(), '*' );
 
     foreach my $index (@allIndexes)
         {
