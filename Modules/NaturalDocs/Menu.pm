@@ -771,17 +771,22 @@ sub LoadMenuFile
                 $value =~ /^(\d)\((.*)\)$/;
                 my ($number, $data) = ($1, $2);
 
-                $data = NaturalDocs::ConfigFile->Unobscure($data);
-
-                if ($number == 1)
+                # The only data prior to 1.32 was the directory names (data 1 and 2).  We're switching to numbers with the new output
+                # directory layout, so we ignore any generated names before then.
+                if ($version >= NaturalDocs::Version->FromString('1.32'))
                     {
-                    my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
-                    $inputDirectories->{$inputDir} = $dirName;
-                    }
-                elsif ($number == 2)
-                    {  $onlyDirectoryName = $data;  };
-                # Otherwise just ignore it, because it may be from a future format and we don't want to make the user delete it
-                # manually.
+                    $data = NaturalDocs::ConfigFile->Unobscure($data);
+
+                    if ($number == 1)
+                        {
+                        my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
+                        $inputDirectories->{$inputDir} = $dirName;
+                        }
+                    elsif ($number == 2)
+                        {  $onlyDirectoryName = $data;  };
+                    # Ignore other numbers because it may be from a future format and we don't want to make the user delete it
+                    # manually.
+                    };
                 }
 
             elsif ($keyword eq "don't index")
@@ -1010,11 +1015,11 @@ sub SaveMenuFile
                                                                               . '///' . $inputDir ) . ")\n";
             };
         }
-    elsif (lc(NaturalDocs::Settings->InputDirectoryNameOf($inputDirs->[0])) ne 'default')
+    elsif (lc(NaturalDocs::Settings->InputDirectoryNameOf($inputDirs->[0])) != 1)
         {
         print MENUFILEHANDLE
-        "\n\n##### Do not change or remove this line. #####\n";
-        'Data: 2(' . NaturalDocs::ConfigFile->Obscure( NaturalDocs::Settings->InputDirectoryNameOf($inputDirs->[0]) ) . ")\n";
+        "\n\n##### Do not change or remove this line. #####\n"
+        . 'Data: 2(' . NaturalDocs::ConfigFile->Obscure( NaturalDocs::Settings->InputDirectoryNameOf($inputDirs->[0]) ) . ")\n";
         }
 
     close(MENUFILEHANDLE);
