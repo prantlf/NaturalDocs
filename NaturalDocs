@@ -78,28 +78,31 @@ use integer;
 #
 #       Options:
 #
-#           -i, --input, --source     - The input (source) directory.  Required.
-#           -o, --output                - The output format and directory.  Required.  See <Supported Output Formats> for a list of
-#                                              options.  This can be specified multiple times, but only once per output format.
-#           -p, --project               - The project directory.  Required.  There should be a unique project directory for each
-#                                              input directory.
+#           -i [dir]            - The input (source) directory.  Required.  Also --input, --source.
 #
-#           -s, --style                  - Sets the CSS style for HTML output.  If set to "Custom", it will not sync the project's CSS file
-#                                             with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
-#                                             <HTML Styles> for options.
+#           -o [fmt] [dir]   - The output format and directory.  Required.  See <Supported Output Formats> for a list of
+#                                   options.  This can be specified multiple times, but only once per output format.  Also --output.
 #
-#           -t, --tablength             - Sets the number of spaces tabs should be expanded to.  This only needs to be set if you use tabs
-#                                              in example code and text diagrams.  The default is 4.
+#           -p [dir]           - The project directory.  Required.  There should be a unique project directory for each
+#                                   input directory.  Also --project.
 #
-#           -r, --rebuild                - Rebuilds all output and data files from scratch.  Does not affect the menu file.
+#           -s [style]        - Sets the CSS style for HTML output.  If set to "Custom", it will not sync the project's CSS file
+#                                   with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
+#                                   <HTML Styles> for options.  Also --style.
 #
-#           -ro, --rebuildoutput     - Rebuilds all output files from scratch.  Use this whenever you add or change output formats.
+#           -t [len]           - Sets the number of spaces tabs should be expanded to.  This only needs to be set if you use tabs
+#                                  in example code and text diagrams.  The default is 4.  Also --tablength.
 #
-#           -q, --quiet                  - Suppresses all non-error output.
+#           -r                   - Rebuilds all output and data files from scratch.  Does not affect the menu file.  Also --rebuild.
 #
-#           -ho, --headersonly      - For C and C++, only check the headers and not the source files.
+#           -ro                 - Rebuilds all output files from scratch.  Use this whenever you add or change output formats.
+#                                   Also --rebuildoutput.
 #
-#           -h, --help                   - Prints the syntax reference.
+#           -q                  - Suppresses all non-error output.  Also --quiet.
+#
+#           -ho                - For C and C++, only check the headers and not the source files.  Also --headersonly.
+#
+#           -h                  - Prints the syntax reference.  Also --help.
 #
 #
 #   About: Supported Languages
