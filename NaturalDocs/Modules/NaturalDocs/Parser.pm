@@ -51,20 +51,6 @@ use constant NOT_A_TAG => 3;
 my $language;
 
 #
-#   string: unescapedLine
-#
-#   The unescaped line of the file currently being parsed.
-#
-my $unescapedLine;
-
-#
-#   int: unescapedLineIndex
-#
-#   The index into <unescapedLine> where parsing left off.  -1 if the line is done.
-#
-my $unescapedLineIndex;
-
-#
 #   var: scope
 #
 #   The scope at the current point in the file.  This is a package variable because it needs to be preserved between function
@@ -209,11 +195,6 @@ sub Parse #(file)
     my ($self, $file) = @_;
 
     $language = NaturalDocs::Languages->LanguageOf($file);
-
-    $language->ResetEscapedLineExtraction();
-    $unescapedLine = undef;
-    $unescapedLineIndex = -1;
-
     $scope = undef;
     @parsedFile = ( );
 
@@ -278,7 +259,7 @@ sub ExtractComments
 
     else
         {
-        my $line = $self->ExtractLine();
+        my $line = <SOURCEFILEHANDLE>;
 
         my $prototype;
         my $prototypeType;
@@ -294,6 +275,7 @@ sub ExtractComments
 
         while (defined $line)
             {
+            chomp $line;
             my $originalLine = $line;
 
             # Retrieve single line comments.  This leaves $line at the next line.
@@ -308,9 +290,14 @@ sub ExtractComments
                 do
                     {
                     push @commentLines, $line;
-                    $line = $self->ExtractLine;
+                    $line = <SOURCEFILEHANDLE>;
+
+                    if (!defined $line)
+                        {  last;  };
+
+                    chomp($line);
                     }
-                while (defined $line && $language->StripLineCommentSymbol(\$line));
+                while ($language->StripLineCommentSymbol(\$line));
                 }
 
             # Retrieve multiline comments.  This leaves $line with whatever followed the closing comment symbol.
@@ -319,7 +306,7 @@ sub ExtractComments
                 {
                 my ($symbol, $lineRemainder, $multiline);
 
-                do
+                for (;;)
                     {
                     ($symbol, $lineRemainder) = $language->StripClosingCommentSymbol(\$line);
 
@@ -329,15 +316,17 @@ sub ExtractComments
                     if (defined $symbol)
                         {
                         $line = $lineRemainder;
-                        goto EndDo;
+                        last;
                         };
 
-                    $line = $self->ExtractLine();
+                    $line = <SOURCEFILEHANDLE>;
                     $multiline = 1;
-                    }
-                while (defined $line);
 
-                EndDo: # Perl's "do" isn't a real loop structure!  How totally non-braindead of them!
+                    if (!defined $line)
+                        {  last;  };
+
+                    chomp($line);
+                    };
 
                 if ($multiline)
                     {
@@ -379,13 +368,13 @@ sub ExtractComments
                     $possiblePrototypeLine = undef;
                     };
 
-                $line = $self->ExtractLine();
+                $line = <SOURCEFILEHANDLE>;
                 }
 
             # Otherwise just put $line on the next line.
 
             else
-                {  $line = $self->ExtractLine();  };
+                {  $line = <SOURCEFILEHANDLE>;  };
 
 
             # If there were comments, send them to CleanComment() and determine if we need to find a prototype.
@@ -414,7 +403,7 @@ sub ExtractComments
                         # that can end it.  Note that the current line in $line has already been chomped.
 
                         while (defined $line && $line =~ /^[ \t\n]*$/)
-                            {  $line = $self->ExtractLine();  };
+                            {  $line = <SOURCEFILEHANDLE>;  };
                         };
                     }
 
@@ -427,52 +416,6 @@ sub ExtractComments
 
             };  # while (defined $line)
         };
-    };
-
-
-#
-#   Function: ExtractLine
-#
-#   Retrieves the next line of code from the file.  If the file is escaped, this extracts it from its surrounding content.  If not, it
-#   simply returns the next line of the file.  All lines have the trailing line break removedd.  Returns undef if there are no more
-#   lines.
-#
-sub ExtractLine
-    {
-    my ($self) = @_;
-
-    if (!$language->FileIsEscaped())
-        {
-        $unescapedLine = <SOURCEFILEHANDLE>;
-        chomp $unescapedLine;
-
-        return $unescapedLine;
-        }
-    else
-        {
-        my $escapedLine;
-
-        for (;;)
-            {
-            if ($unescapedLineIndex == -1)
-                {
-                $unescapedLine = <SOURCEFILEHANDLE>;
-
-                if (!defined $unescapedLine)
-                    {  return undef;  };
-
-                chomp $unescapedLine;
-                $unescapedLineIndex = 0;
-                };
-
-            ( $escapedLine, $unescapedLineIndex ) = $language->ExtractEscapedLine(\$unescapedLine, $unescapedLineIndex);
-
-            if (defined $escapedLine)
-                {  return $escapedLine;  };
-
-            };  # for
-        };  # else
-
     };
 
 
