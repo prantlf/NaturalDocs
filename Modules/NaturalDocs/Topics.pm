@@ -12,6 +12,8 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
+use Text::Wrap ();
+
 use strict;
 use integer;
 
@@ -189,26 +191,23 @@ my @mainTopicNames;
 #
 #   Sections:
 #
+#       > Ignore[d] Keyword[s]: [keyword], [keyword] ...
+#       >    [keyword]
+#       >    [keyword], [keyword]
+#       >    ...
+#
+#       Ignores the keywords so that they're not recognized as Natural Docs topics anymore.  Can be specified as a list on the same
+#       line and/or following like a normal Keywords section.
+#
 #       > Topic Type: [name]
 #       > Alter Topic Type: [name]
 #
-#       Starts a topic type section.  The name can only contain <CFChars> and isn't case sensitive for matching, but the original
-#       case is remembered for presentation.  The section continues until another topic type section, a topic keyword section, or
-#       the end of the file.
+#       Creates a new topic type or alters an existing one.  The name can only contain <CFChars> and isn't case sensitive, although
+#       the original case is remembered for presentation.
 #
-#       Alter Topic Type is used to override existing topic type settings.  It's done so that users cannot accidentally override
-#       existing topic types.
-#
-#       The names General and Ignored are reserved.  The following default types must be defined in the main file: Generic, Group,
-#       Class, File, Section, Function, Variable, Property, Type, and Constant.  The default types can have their keywords or
-#       behaviors changed, though, either by editing the default file or by overriding them in the user file.
-#
-#       > Keywords: [topic type]
-#
-#       Starts a topic keyword section.  The name must correspond to a previously defined topic type or Ignored.  It cannot be
-#       General.
-#
-#       If Ignore or Ignored, all keywords following will be deleted from the list.
+#       The name General is reserved.  There are a number of default types that must be defined in the main file as well, but those
+#       are governed by <NaturalDocs::Topics> and are not included here..  The default types can have their keywords or behaviors
+#       changed, though, either by editing the default file or by overriding them in the user file.
 #
 #
 #   Topic Type Sections:
@@ -243,21 +242,13 @@ my @mainTopicNames;
 #
 #       Whether list topics should be broken into individual topics in the output.  Defaults to no.
 #
-#       > Auto Group: [yes|no|full only]
+#       > [Add] Keyword[s]:
+#       >    [keyword]
+#       >    [keyword], [plural keyword]
+#       >    ...
 #
-#       Whether this topic has groups created for it by default.  Defaults to no.
-#
-#       no - The topic will never be auto-grouped.
-#       yes - The topic will be auto-grouped when using --autogroup full AND --autogroup basic.
-#       full only - The topic will be auto-grouped when using --autogroup full but NOT --autogroup basic.
-#
-#
-#   Topic Keyword Sections:
-#
-#       > [keyword]
-#       > [keyword], [plural keyword]
-#
-#       Each line is the keyword and optionally its plural form.
+#       A list of the topic type's keywords.  Each line after the heading is the keyword and optionally its plural form.  This continues
+#       until the next line in "keyword: value" format.  "Add" isn't required.
 #
 #       - Keywords can only have letters and numbers.  No punctuation or spaces are allowed.
 #       - Keywords are not case sensitive.
@@ -306,21 +297,25 @@ sub Load
             {  NaturalDocs::ConfigFile->AddError('The ' . $name . ' topic type must be defined in the main topics file.');  };
         };
 
-    if (NaturalDocs::ConfigFile->ErrorCount())
+    my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
+
+    if ($errorCount)
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
-        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
-           . ' in ' . NaturalDocs::Project->MainTopicsFile() . "\n";
+        NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
+                                                    . ' in ' . NaturalDocs::Project->MainTopicsFile());
         }
 
 
     $self->LoadFile();  # User
 
-    if (NaturalDocs::ConfigFile->ErrorCount())
+    $errorCount = NaturalDocs::ConfigFile->ErrorCount();
+
+    if ($errorCount)
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
-        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
-           . ' in ' . NaturalDocs::Project->UserTopicsFile() . "\n";
+        NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
+                                                    . ' in ' . NaturalDocs::Project->UserTopicsFile());
         }
     };
 
@@ -360,346 +355,300 @@ sub LoadFile #(isMain)
         if ($status == ::FILE_CHANGED())
             {  NaturalDocs::Project->ReparseEverything();  };
 
-        my ($keyword, $value) = NaturalDocs::ConfigFile->GetLine();
+        my ($topicTypeKeyword, $topicTypeName, $topicType, $topicTypeObject, $inKeywords, $inIgnoredKeywords);
 
-        while ($value)
+        while (my ($keyword, $value) = NaturalDocs::ConfigFile->GetLine())
             {
-            if ($keyword eq 'topic type' || $keyword eq 'alter topic type')
+            if ($keyword)
                 {
-                my $topicTypeKeyword = $keyword;
-                my $topicTypeName = $value;
-                my $topicType;
-                my $topicTypeObject;
+                $inKeywords = 0;
+                $inIgnoredKeywords = 0;
+                };
+
+            if ($keyword eq 'topic type')
+                {
+                $topicTypeKeyword = $keyword;
+                $topicTypeName = $value;
 
                 # Resolve conflicts and create the type if necessary.
 
-                if ($topicTypeKeyword eq 'topic type')
+                $topicType = $self->MakeTopicType($topicTypeName);
+                my $lcTopicTypeName = lc($topicTypeName);
+
+                my $lcTopicTypeAName = $lcTopicTypeName;
+                $lcTopicTypeAName =~ tr/a-z0-9//cd;
+
+                if (!NaturalDocs::ConfigFile->HasOnlyCFChars($topicTypeName))
                     {
-                    $topicType = $self->MakeTopicType($topicTypeName);
-                    my $lcTopicTypeName = lc($topicTypeName);
-
-                    my $lcTopicTypeAName = $lcTopicTypeName;
-                    $lcTopicTypeAName =~ tr/a-z0-9//cd;
-
-                    if (!NaturalDocs::ConfigFile->HasOnlyCFChars($topicTypeName))
-                        {
-                        NaturalDocs::ConfigFile->AddError('Topic names can only have ' . NaturalDocs::ConfigFile->CFCharNames() . '.');
-                        }
-                    elsif ($topicType eq ::TOPIC_GENERAL())
-                        {
-                        NaturalDocs::ConfigFile->AddError('You cannot define a General topic type.');
-                        }
-                    elsif ($lcTopicTypeName =~ /^ignored?$/)
-                        {
-                        NaturalDocs::ConfigFile->AddError('You cannot define an ' . $topicTypeName . ' topic type.');
-                        }
-                    elsif (defined $types{$topicType} || defined $names{$lcTopicTypeName} || defined $names{$lcTopicTypeAName})
-                        {
-                        NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' is already defined or its name is too '
-                                                                         . 'similar to an existing name.  Use Alter Topic Type if you meant to override '
-                                                                         . 'its settings.');
-                        }
-                    else
-                        {
-                        $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, 1,
-                                                                                                      ::AUTO_GROUP_NO(), ::SCOPE_NORMAL(), 0, 0);
-
-                        $types{$topicType} = $topicTypeObject;
-                        $names{$lcTopicTypeName} = $topicType;
-                        $names{$lcTopicTypeAName} = $topicType;
-
-                        $indexable{$topicType} = 1;
-
-                        if ($isMain)
-                            {  push @mainTopicNames, $topicTypeName;  };
-                        };
+                    NaturalDocs::ConfigFile->AddError('Topic names can only have ' . NaturalDocs::ConfigFile->CFCharNames() . '.');
                     }
-                else # ($topicTypeKeyword eq 'alter topic type')
+                elsif ($topicType eq ::TOPIC_GENERAL())
                     {
-                    $topicType = $names{lc($topicTypeName)};
-
-                    if (!defined $topicType)
-                        {  NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' doesn\'t exist.');  }
-                    elsif ($topicType eq ::TOPIC_GENERAL())
-                        {  NaturalDocs::ConfigFile->AddError('You cannot alter the General topic type.');  }
-                    else
-                        {
-                        $topicTypeObject = $types{$topicType};
-                        };
-                    };
-
-                # We continue even if there are errors so that we can find any other errors in the file as well.  We'd rather them
-                # all show up at once instead of them showing up one at a time between Natural Docs runs.  So we just ignore the
-                # settings if $topicTypeObject is undef.
-
-
-                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
-                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
+                    NaturalDocs::ConfigFile->AddError('You cannot define a General topic type.');
+                    }
+                elsif (defined $types{$topicType} || defined $names{$lcTopicTypeName} || defined $names{$lcTopicTypeAName})
                     {
-                    if ($keyword eq 'plural')
-                        {
-                        my $pluralName = $value;
-
-                        my $lcPluralName = lc($pluralName);
-
-                        my $lcPluralAName = $lcPluralName;
-                        $lcPluralAName =~ tr/a-zA-Z0-9//cd;
-
-                        if (!NaturalDocs::ConfigFile->HasOnlyCFChars($pluralName))
-                            {
-                            NaturalDocs::ConfigFile->AddError('Plural names can only have '
-                                                                             . NaturalDocs::ConfigFile->CFCharNames() . '.');
-                            }
-                        elsif ($lcPluralAName eq 'general')
-                            {
-                            NaturalDocs::ConfigFile->AddError('You cannot use General as a plural name for ' . $topicTypeName . '.');
-                            }
-                        elsif ( (defined $names{$lcPluralName} && $names{$lcPluralName} ne $topicType) ||
-                                 (defined $names{$lcPluralAName} && $names{$lcPluralAName} ne $topicType) )
-                            {
-                            NaturalDocs::ConfigFile->AddError($topicTypeName . "'s plural name, " . $pluralName
-                                                                             . ', is already defined or is too similar to an existing name.');
-                            }
-
-                        elsif (defined $topicTypeObject)
-                            {
-                            $topicTypeObject->SetPluralName($pluralName);
-
-                            $names{$lcPluralName} = $topicType;
-                            $names{$lcPluralAName} = $topicType;
-                            };
-                        }
-
-                    elsif ($keyword eq 'index')
-                        {
-                        $value = lc($value);
-
-                        if ($value eq 'yes')
-                            {
-                            if (defined $topicTypeObject)
-                                {
-                                $topicTypeObject->SetIndex(1);
-                                $indexable{$topicType} = 1;
-                                };
-                            }
-                        elsif ($value eq 'no')
-                            {
-                            if (defined $topicTypeObject)
-                                {
-                                $topicTypeObject->SetIndex(0);
-                                delete $indexable{$topicType};
-                                };
-                            }
-                        else
-                            {
-                            NaturalDocs::ConfigFile->AddError('Index lines can only be "yes" or "no".');
-                            };
-                        }
-
-                    elsif ($keyword eq 'class hierarchy')
-                        {
-                        $value = lc($value);
-
-                        if ($value eq 'yes')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetClassHierarchy(1);  };
-                            }
-                        elsif ($value eq 'no')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetClassHierarchy(0);  };
-                            }
-                        else
-                            {
-                            NaturalDocs::ConfigFile->AddError('Class Hierarchy lines can only be "yes" or "no".');
-                            };
-                        }
-
-                    elsif ($keyword eq 'scope')
-                        {
-                        $value = lc($value);
-
-                        if ($value eq 'normal')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetScope(::SCOPE_NORMAL());  };
-                            }
-                        elsif ($value eq 'start')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetScope(::SCOPE_START());  };
-                            }
-                        elsif ($value eq 'end')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetScope(::SCOPE_END());  };
-                            }
-                        elsif ($value eq 'always global')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetScope(::SCOPE_ALWAYS_GLOBAL());  };
-                            }
-                        else
-                            {
-                            NaturalDocs::ConfigFile->AddError('Scope lines can only be "normal", "start", "end", or "always global".');
-                            };
-                        }
-
-                    elsif ($keyword eq 'page title if first')
-                        {
-                        $value = lc($value);
-
-                        if ($value eq 'yes')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetPageTitleIfFirst(1);  };
-                            }
-                        elsif ($value eq 'no')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetPageTitleIfFirst(undef);  };
-                            }
-                        else
-                            {
-                            NaturalDocs::ConfigFile->AddError('Page Title if First lines can only be "yes" or "no".');
-                            };
-                        }
-
-                    elsif ($keyword eq 'break lists')
-                        {
-                        $value = lc($value);
-
-                        if ($value eq 'yes')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetBreakLists(1);  };
-                            }
-                        elsif ($value eq 'no')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetBreakLists(undef);  };
-                            }
-                        else
-                            {
-                            NaturalDocs::ConfigFile->AddError('Break Lists lines can only be "yes" or "no".');
-                            };
-                        }
-
-                    elsif ($keyword =~ /auto[ -]?group/)
-                        {
-                        $value = lc($value);
-
-                        if ($value eq 'yes')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetAutoGroup(::AUTO_GROUP_YES());  };
-                            }
-                        elsif ($value eq 'no')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetAutoGroup(::AUTO_GROUP_NO());  };
-                            }
-                        elsif ($value eq 'full only')
-                            {
-                            if (defined $topicTypeObject)
-                                {  $topicTypeObject->SetAutoGroup(::AUTO_GROUP_FULL_ONLY());  };
-                            }
-                        else
-                            {
-                            NaturalDocs::ConfigFile->AddError('Index lines can only be "yes" or "no".');
-                            };
-                        }
-
-                    elsif (!defined $keyword)
-                        {
-                        NaturalDocs::ConfigFile->AddError('All lines in ' . $topicTypeKeyword . ' sections must begin with a keyword.');
-                        }
-                    else
-                        {  NaturalDocs::ConfigFile->AddError($keyword . ' is not a valid keyword.');  };
-                    };
-                }
-
-            elsif ($keyword eq 'keywords')
-                {
-                my $topicTypeName = $value;
-                my $ignored;
-                my $topicType;
-
-                if ($topicTypeName =~ /^ignored?$/i)
-                    {  $ignored = 1;  }
+                    NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' is already defined or its name is too '
+                                                                     . 'similar to an existing name.  Use Alter Topic Type if you meant to override '
+                                                                     . 'its settings.');
+                    }
                 else
                     {
-                    $topicType = $names{lc($topicTypeName)};
+                    $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, 1,
+                                                                                                  ::AUTO_GROUP_NO(), ::SCOPE_NORMAL(), 0, 0);
 
-                    if (!defined $topicType)
-                        {  NaturalDocs::ConfigFile->AddError($topicTypeName . ' is not a defined topic type.');  }
-                    elsif ($topicType eq ::TOPIC_GENERAL())
-                        {
-                        NaturalDocs::ConfigFile->AddError('You cannot define keywords for the General topic type.');
-                        $topicType = undef;
-                        };
-                    };
+                    $types{$topicType} = $topicTypeObject;
+                    $names{$lcTopicTypeName} = $topicType;
+                    $names{$lcTopicTypeAName} = $topicType;
 
+                    $indexable{$topicType} = 1;
 
-                # If the type doesn't exist and ignored isn't set, it means it's for an invalid topic type name.  We continue anyway
-                # so we can find any other errors in the file as well.  We'd rather them all show up at once instead of them showing up
-                # one at a time between Natural Docs runs.
-
-                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
-                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
-                    {
-                    $value = lc($value);
-
-                    if (defined $keyword)
-                        {
-                        NaturalDocs::ConfigFile->AddError($keyword . ' lines are not allowed in Keywords sections.');
-                        }
-                    elsif ($value =~ /^([a-z0-9 ]*[a-z0-9]) ?, ?([a-z0-9 ]+)$/)
-                        {
-                        my ($singular, $plural) = ($1, $2);
-
-                        if (defined $topicType)
-                            {
-                            $keywords{$singular} = $topicType;
-                            delete $pluralKeywords{$singular};
-
-                            $pluralKeywords{$plural} = $topicType;
-                            delete $keywords{$plural};
-                            }
-                        elsif ($ignored)
-                            {
-                            delete $keywords{$singular};
-                            delete $keywords{$plural};
-                            delete $pluralKeywords{$singular};
-                            delete $pluralKeywords{$plural};
-                            };
-                        }
-                    elsif ($value =~ /^[a-z0-9 ]+$/)
-                        {
-                        if (defined $topicType)
-                            {
-                            $keywords{$value} = $topicType;
-                            delete $pluralKeywords{$value};
-                            }
-                        elsif ($ignored)
-                            {
-                            delete $keywords{$value};
-                            delete $pluralKeywords{$value};
-                            };
-                        }
-                    else
-                        {
-                        NaturalDocs::ConfigFile->AddError('Keywords can only have letters, numbers, and spaces.  '
-                                                                         . 'Plurals must be separated by a comma.');
-                        };
+                    if ($isMain)
+                        {  push @mainTopicNames, $topicTypeName;  };
                     };
                 }
 
-            else
+            elsif ($keyword eq 'alter topic type')
                 {
-                NaturalDocs::ConfigFile->AddError('The file must start with a Topic Type, Alter Topic Type, or Keywords line.');
-                last;
+                $topicTypeKeyword = $keyword;
+                $topicTypeName = $value;
+
+                # Resolve conflicts and create the type if necessary.
+
+                $topicType = $names{lc($topicTypeName)};
+
+                if (!defined $topicType)
+                    {  NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' doesn\'t exist.');  }
+                elsif ($topicType eq ::TOPIC_GENERAL())
+                    {  NaturalDocs::ConfigFile->AddError('You cannot alter the General topic type.');  }
+                else
+                    {
+                    $topicTypeObject = $types{$topicType};
+                    };
+                }
+
+            elsif ($keyword =~ /^ignored? keywords?$/)
+                {
+                $inIgnoredKeywords = 1;
+
+                my @ignoredKeywords = split(/ ?, ?/, lc($value));
+
+                foreach my $ignoredKeyword (@ignoredKeywords)
+                    {
+                    delete $keywords{$ignoredKeyword};
+                    delete $pluralKeywords{$ignoredKeyword};
+                    };
+                }
+
+            # We continue even if there are errors in the topic type line so that we can find any other errors in the file as well.  We'd
+            # rather them all show up at once instead of them showing up one at a time between Natural Docs runs.  So we just ignore
+            # the settings if $topicTypeObject is undef.
+
+
+            elsif ($keyword eq 'plural')
+                {
+                my $pluralName = $value;
+                my $lcPluralName = lc($pluralName);
+
+                my $lcPluralAName = $lcPluralName;
+                $lcPluralAName =~ tr/a-zA-Z0-9//cd;
+
+                if (!NaturalDocs::ConfigFile->HasOnlyCFChars($pluralName))
+                    {
+                    NaturalDocs::ConfigFile->AddError('Plural names can only have '
+                                                                     . NaturalDocs::ConfigFile->CFCharNames() . '.');
+                    }
+                elsif ($lcPluralAName eq 'general')
+                    {
+                    NaturalDocs::ConfigFile->AddError('You cannot use General as a plural name for ' . $topicTypeName . '.');
+                    }
+                elsif ( (defined $names{$lcPluralName} && $names{$lcPluralName} ne $topicType) ||
+                         (defined $names{$lcPluralAName} && $names{$lcPluralAName} ne $topicType) )
+                    {
+                    NaturalDocs::ConfigFile->AddError($topicTypeName . "'s plural name, " . $pluralName
+                                                                     . ', is already defined or is too similar to an existing name.');
+                    }
+
+                elsif (defined $topicTypeObject)
+                    {
+                    $topicTypeObject->SetPluralName($pluralName);
+
+                    $names{$lcPluralName} = $topicType;
+                    $names{$lcPluralAName} = $topicType;
+                    };
+                }
+
+            elsif ($keyword eq 'index')
+                {
+                $value = lc($value);
+
+                if ($value eq 'yes')
+                    {
+                    if (defined $topicTypeObject)
+                        {
+                        $topicTypeObject->SetIndex(1);
+                        $indexable{$topicType} = 1;
+                        };
+                    }
+                elsif ($value eq 'no')
+                    {
+                    if (defined $topicTypeObject)
+                        {
+                        $topicTypeObject->SetIndex(0);
+                        delete $indexable{$topicType};
+                        };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Index lines can only be "yes" or "no".');
+                    };
+                }
+
+            elsif ($keyword eq 'class hierarchy')
+                {
+                $value = lc($value);
+
+                if ($value eq 'yes')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetClassHierarchy(1);  };
+                    }
+                elsif ($value eq 'no')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetClassHierarchy(0);  };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Class Hierarchy lines can only be "yes" or "no".');
+                    };
+                }
+
+            elsif ($keyword eq 'scope')
+                {
+                $value = lc($value);
+
+                if ($value eq 'normal')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetScope(::SCOPE_NORMAL());  };
+                    }
+                elsif ($value eq 'start')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetScope(::SCOPE_START());  };
+                    }
+                elsif ($value eq 'end')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetScope(::SCOPE_END());  };
+                    }
+                elsif ($value eq 'always global')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetScope(::SCOPE_ALWAYS_GLOBAL());  };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Scope lines can only be "normal", "start", "end", or "always global".');
+                    };
+                }
+
+            elsif ($keyword eq 'page title if first')
+                {
+                $value = lc($value);
+
+                if ($value eq 'yes')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetPageTitleIfFirst(1);  };
+                    }
+                elsif ($value eq 'no')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetPageTitleIfFirst(undef);  };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Page Title if First lines can only be "yes" or "no".');
+                    };
+                }
+
+            elsif ($keyword eq 'break lists')
+                {
+                $value = lc($value);
+
+                if ($value eq 'yes')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetBreakLists(1);  };
+                    }
+                elsif ($value eq 'no')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetBreakLists(undef);  };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Break Lists lines can only be "yes" or "no".');
+                    };
+                }
+
+            elsif ($keyword =~ /^(?:add )?keywords?$/)
+                {
+                $inKeywords = 1;
+                }
+
+            elsif (defined $keyword)
+                {  NaturalDocs::ConfigFile->AddError($keyword . ' is not a valid keyword.');  }
+
+            elsif (!$inKeywords && !$inIgnoredKeywords)
+                {
+                NaturalDocs::ConfigFile->AddError('All lines in ' . $topicTypeKeyword . ' sections must begin with a keyword.');
+                }
+
+            else # No keyword but in keyword section.
+                {
+                $value = lc($value);
+
+                if ($value =~ /^([a-z0-9 ]*[a-z0-9]) ?, ?([a-z0-9 ]+)$/)
+                    {
+                    my ($singular, $plural) = ($1, $2);
+
+                    if ($inIgnoredKeywords)
+                        {
+                        delete $keywords{$singular};
+                        delete $keywords{$plural};
+                        delete $pluralKeywords{$singular};
+                        delete $pluralKeywords{$plural};
+                        }
+                    elsif (defined $topicTypeObject)
+                        {
+                        $keywords{$singular} = $topicType;
+                        delete $pluralKeywords{$singular};
+
+                        $pluralKeywords{$plural} = $topicType;
+                        delete $keywords{$plural};
+                        };
+                    }
+                elsif ($value =~ /^[a-z0-9 ]+$/)
+                    {
+                    if ($inIgnoredKeywords)
+                        {
+                        delete $keywords{$value};
+                        delete $pluralKeywords{$value};
+                        }
+                    elsif (defined $topicType)
+                        {
+                        $keywords{$value} = $topicType;
+                        delete $pluralKeywords{$value};
+                        };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Keywords can only have letters, numbers, and spaces.  '
+                                                                     . 'Plurals must be separated by a comma.');
+                    };
                 };
             };
 
@@ -764,85 +713,77 @@ sub SaveFile #(isMain)
     # Array of topic type names in the order they appear in the file.  If Alter Topic Type is used, the name will end with an asterisk.
     my @topicTypeOrder;
 
-    # Array of topic type names in the order their keywords appear in the file.
-    my @keywordOrder;
-
     # Keys are topic type names, values are property hashrefs.  Hashref keys are the property names, values the value.
+    # For keywords, the key is Keywords and the values are arrayrefs of singular and plural pairs.  If no plural is defined, the entry
+    # will be undef.
     my %properties;
 
-    # Keys are topic type names, values are keyword arrayrefs.  Entries are singular and plural pairs.  If no plural is defined, the
-    # entry will be undef.
-    my %keywords;
+    # List of ignored keywords specified as Ignore Keywords: [keyword], [keyword], ...
+    my @inlineIgnoredKeywords;
+
+    # List of ignored keywords specified in [keyword], [plural keyword] lines.  Done in pairs, like for regular keywords.
+    my @separateIgnoredKeywords;
+
+    my $inIgnoredKeywords;
 
     if (NaturalDocs::ConfigFile->Open($file))
         {
         # We can assume the file is valid.
 
-        my ($keyword, $value) = NaturalDocs::ConfigFile->GetLine();
+        my ($keyword, $value, $topicTypeName);
 
-        while (defined $value)
+        while (($keyword, $value) = NaturalDocs::ConfigFile->GetLine())
             {
+            $keyword = lc($keyword);
+
             if ($keyword eq 'topic type' || $keyword eq 'alter topic type')
                 {
-                my $topicTypeName = $types{ $names{lc($value)} }->Name();
+                $topicTypeName = $types{ $names{lc($value)} }->Name();
 
                 if ($keyword eq 'alter topic type')
                     {  $topicTypeName .= '*';  };
 
                 push @topicTypeOrder, $topicTypeName;
 
-                if (!defined $properties{$topicTypeName})
-                    {  $properties{$topicTypeName} = { };  };
-
-                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
-                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
-                    {
-                    if ($keyword eq 'plural')
-                        {
-                        $properties{$topicTypeName}->{$keyword} = $value;
-                        }
-
-                    elsif ($keyword eq 'index' ||
-                            $keyword eq 'scope' ||
-                            $keyword eq 'page title if first' ||
-                            $keyword eq 'class hierarchy' ||
-                            $keyword eq 'break lists')
-                        {
-                        $properties{$topicTypeName}->{$keyword} = lc($value);
-                        }
-                    elsif ($keyword =~ /auto[ -]?group/)
-                        {
-                        $properties{$topicTypeName}->{'auto-group'} = lc($value);
-                        };
-                    };
+                if (!exists $properties{$topicTypeName})
+                    {  $properties{$topicTypeName} = { 'keywords' => [ ] };  };
                 }
 
-            elsif ($keyword eq 'keywords')
+            elsif ($keyword eq 'plural')
                 {
-                my $topicTypeName;
-                if ($value =~ /^ignored?$/i)
-                    {  $topicTypeName = 'Ignored';  }
-                else
-                    {  $topicTypeName = $types{ $names{lc($value)} }->Name();  };
-
-                if (!defined $keywords{$topicTypeName})
-                    {  $keywords{$topicTypeName} = [ ];  };
-
-                push @keywordOrder, $topicTypeName;
-
-                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
-                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
-                    {
-                    if (!defined $keyword)
-                        {
-                        my ($singular, $plural) = split(/ ?, ?/, lc($value));
-                        push @{$keywords{$topicTypeName}}, $singular, $plural;
-                        };
-                    };
+                $properties{$topicTypeName}->{$keyword} = $value;
                 }
 
-            else
-                {  ($keyword, $value) = NaturalDocs::ConfigFile->GetLine();  };
+            elsif ($keyword eq 'index' ||
+                    $keyword eq 'scope' ||
+                    $keyword eq 'page title if first' ||
+                    $keyword eq 'class hierarchy' ||
+                    $keyword eq 'break lists')
+                {
+                $properties{$topicTypeName}->{$keyword} = lc($value);
+                }
+
+            elsif ($keyword =~ /^(?:add )?keywords?$/)
+                {
+                $inIgnoredKeywords = 0;
+                }
+
+            elsif ($keyword =~ /^ignored? keywords?$/)
+                {
+                $inIgnoredKeywords = 1;
+                if ($value)
+                    {  push @inlineIgnoredKeywords, split(/ ?, ?/, $value);  };
+                }
+
+            elsif (!$keyword)
+                {
+                my ($singular, $plural) = split(/ ?, ?/, lc($value));
+
+                if ($inIgnoredKeywords)
+                    {  push @separateIgnoredKeywords, $singular, $plural;  }
+                else
+                    {  push @{$properties{$topicTypeName}->{'keywords'}}, $singular, $plural;  };
+                };
             };
 
         NaturalDocs::ConfigFile->Close();
@@ -869,159 +810,159 @@ sub SaveFile #(isMain)
         "# This is the Natural Docs topics file for this project.  If you change anything\n"
         . "# here, it will apply to THIS PROJECT ONLY.  If you'd like to change something\n"
         . "# for all your projects, edit the Topics.txt in Natural Docs' Config directory\n"
-        . "# instead.\n";
+        . "# instead.\n\n\n";
+
+        if (scalar @inlineIgnoredKeywords || scalar @separateIgnoredKeywords)
+            {
+            if (scalar @inlineIgnoredKeywords == 1 && !scalar @separateIgnoredKeywords)
+                {
+                print FH_TOPICS 'Ignore Keyword: ' . $inlineIgnoredKeywords[0] . "\n";
+                }
+            else
+                {
+                print FH_TOPICS
+                'Ignore Keywords: ' . join(', ', @inlineIgnoredKeywords) . "\n";
+
+                for (my $i = 0; $i < scalar @separateIgnoredKeywords; $i += 2)
+                    {
+                    print FH_TOPICS '   ' . $separateIgnoredKeywords[$i];
+
+                    if (defined $separateIgnoredKeywords[$i + 1])
+                        {  print FH_TOPICS ', ' . $separateIgnoredKeywords[$i + 1];  };
+
+                    print FH_TOPICS "\n";
+                    };
+                };
+            }
+        else
+            {
+            print FH_TOPICS
+            "# If you'd like to prevent keywords from being recognized by Natural Docs, you\n"
+            . "# can do it like this:\n"
+            . "# Ignore Keywords: [keyword], [keyword], ...\n"
+            . "#\n"
+            . "# Or you can use the list syntax like how they are defined:\n"
+            . "# Ignore Keywords:\n"
+            . "#    [keyword]\n"
+            . "#    [keyword], [plural keyword]\n"
+            . "#    ...\n";
+            };
         };
 
     print FH_TOPICS # [CFChars]
-    "\n"
-    . "# Also, if you add something that you think would be useful to other developers\n"
-    . "# and should be included in Natural Docs by default, please e-mail it to\n"
-    . "# topics [at] naturaldocs [dot] org.\n\n\n"
-
-
-    . "###############################################################################\n"
-    . "#\n"
-    . "#   Topic Type Syntax\n"
-    . "#\n"
-    . "#   Each topic type has its own behavior and index.  If you just want to add a\n"
-    . "#   keyword for an existing type, scroll down to the keywords section instead.\n"
-    . "#\n"
-    . "###############################################################################\n"
-    . "#\n"
-    . "#   Topic Type: [name]\n"
-    . "#\n"
-    . "#   Creates a new topic type.  Its name can have letters, numbers, spaces, and\n"
-    . "#   these charaters: - / . '  You cannot use the name General or Ignored.\n"
-    . "#\n"
+    "\n\n"
+    . "#-------------------------------------------------------------------------------\n"
+    . "# SYNTAX:\n"
     . "#\n";
 
-    if (!$isMain)
+    if ($isMain)
         {
         print FH_TOPICS
-        "#   Alter Topic Type: [name]\n"
-        . "#\n"
-        . "#   Alters an existing topic type so you can override its settings.\n"
-        . "#\n"
+        "# Topic Type: [name]\n"
+        . "#    Creates a new topic type.  Each type gets its own index and behavior\n"
+        . "#    settings.  Its name can have letters, numbers, spaces, and these\n"
+        . "#    charaters: - / . '\n"
+        . "#\n";
+        }
+    else
+        {
+        print FH_TOPICS
+        "# Topic Type: [name]\n"
+        . "# Alter Topic Type: [name]\n"
+        . "#    Creates a new topic type or alters one from the main file.  Each type gets\n"
+        . "#    its own index and behavior settings.  Its name can have letters, numbers,\n"
+        . "#    spaces, and these charaters: - / . '\n"
         . "#\n";
         };
 
     print FH_TOPICS
-    "#------------------------------------------------------------------------------\n"
-    . "#   Properties\n"
-    . "#------------------------------------------------------------------------------\n"
+    "# Plural: [name]\n"
+    . "#    Sets the plural name of the topic type, if different.\n"
     . "#\n"
-    . "#   Plural: [name]\n"
+    . "# Keywords:\n"
+    . "#    [keyword]\n"
+    . "#    [keyword], [plural keyword]\n"
+    . "#    ...\n";
+
+    if ($isMain)
+        {
+        print FH_TOPICS
+        "#    Defines a list of keywords for the topic type.  They may only contain\n"
+        . "#    letters, numbers, and spaces and are not case sensitive.  Plural keywords\n"
+        . "#    are used for list topics.\n";
+        }
+    else
+        {
+        print FH_TOPICS
+        "#    Defines or adds to the list of keywords for the topic type.  They may only\n"
+        . "#    contain letters, numbers, and spaces and are not case sensitive.  Plural\n"
+        . "#    keywords are used for list topics.  You can redefine keywords found in the\n"
+        . "#    main topics file.\n";
+        }
+
+    print FH_TOPICS
+    "#\n"
+    . "# Index: [yes|no]\n"
+    . "#    Whether the topics get their own index.  Defaults to yes.  Everything is\n"
+    . "#    included in the general index regardless of this setting.\n"
     . "#\n"
-    . "#   The plural name of the topic type, if different from the singular.  It can\n"
-    . "#   have letters, numbers, spaces, and these charaters: - / . '\n"
+    . "# Scope: [normal|start|end|always global]\n"
+    . "#    How the topics affects scope.  Defaults to normal.\n"
+    . "#    normal        - Topics stay within the current scope.\n"
+    . "#    start         - Topics start a new scope for all the topics beneath it,\n"
+    . "#                    like class topics.\n"
+    . "#    end           - Topics reset the scope back to global for all the topics\n"
+    . "#                    beneath it.\n"
+    . "#    always global - Topics are defined as global, but do not change the scope\n"
+    . "#                    for any other topics.\n"
     . "#\n"
+    . "# Class Hierarchy: [yes|no]\n"
+    . "#    Whether the topics are part of the class hierarchy.  Defaults to no.\n"
     . "#\n"
-    . "#   Index: [yes|no]\n"
+    . "# Page Title If First: [yes|no]\n"
+    . "#    Whether the topic's title becomes the page title if it's the first one in\n"
+    . "#    a file.  Defaults to no.\n"
     . "#\n"
-    . "#   Whether the topics get their own index.  Defaults to yes.  Everything is\n"
-    . "#   included in the general index regardless of this setting.\n"
+    . "# Break Lists: [yes|no]\n"
+    . "#    Whether list topics should be broken into individual topics in the output.\n"
+    . "#    Defaults to no.\n"
     . "#\n"
-    . "#\n"
-    . "#   Scope: [normal|start|end|always global]\n"
-    . "#\n"
-    . "#   How the topics affects scope.  Defaults to normal.\n"
-    . "#\n"
-    . "#   normal        - Topics stay within the current scope.\n"
-    . "#   start         - Topics start a new scope for all the topics beneath it,\n"
-    . "#                   like class topics.\n"
-    . "#   end           - Topics reset the scope back to global for all the topics\n"
-    . "#                   beneath it.\n"
-    . "#   always global - Topics are defined as global, but do not change the scope\n"
-    . "#                   for any other topics.\n"
-    . "#\n"
-    . "#\n"
-    . "#   Class Hierarchy: [yes|no]\n"
-    . "#\n"
-    . "#   Whether the topics are part of the class hierarchy.  Defaults to no.\n"
-    . "#\n"
-    . "#\n"
-    . "#   Page Title If First: [yes|no]\n"
-    . "#\n"
-    . "#   Whether the topic's title becomes the page title if it's the first one in\n"
-    . "#   a file.  Defaults to no.\n"
-    . "#\n"
-    . "#\n"
-    . "#   Break Lists: [yes|no]\n"
-    . "#\n"
-    . "#   Whether list topics should be broken into individual topics in the output.\n"
-    . "#   Defaults to no.\n"
-    . "#\n"
-    . "#\n"
-    . "#   Auto-Group: [yes|no|full only]\n"
-    . "#\n"
-    . "#   Whether the topics have groups created for them automatically if none are\n"
-    . "#   created manually.  Defaults to no.\n"
-    . "#\n"
-    . "#   no        - The topics will never be auto-grouped.\n"
-    . "#   yes       - The topics will always be auto-grouped.\n"
-    . "#   full only - The topics will be auto-grouped unless using --autogroup basic.\n"
-    . "#\n"
-    . "#\n"
-    . "###############################################################################\n";
+    . "#-------------------------------------------------------------------------------\n\n";
 
     my $listToPrint;
 
     if ($isMain)
         {
-        print FH_TOPICS "\n"
-        . "# The following topics MUST be defined in this file:\n"
+        print FH_TOPICS
+        "# The following topics MUST be defined in this file:\n"
         . "#\n";
         $listToPrint = \@requiredTypeNames;
         }
     else
         {
-        print FH_TOPICS "\n"
-        . "# The following topics are defined in the main file, if you'd like to alter\n"
-        . "# them or add keywords:\n"
+        print FH_TOPICS
+        "# The following topics are defined in the main file, if you'd like to alter\n"
+        . "# their behavior or add keywords:\n"
         . "#\n";
         $listToPrint = \@mainTopicNames;
         }
 
-    my $i = 0;
-
-    while ($i < scalar @$listToPrint)
-        {
-        print FH_TOPICS "#    " . $listToPrint->[$i];
-        my $characters = 5 + length($listToPrint->[$i]);
-
-        $i++;
-
-        if ($i < scalar @$listToPrint)
-            {
-            print FH_TOPICS ', ';
-            $characters += 2;
-
-            while ($i < scalar @$listToPrint && $characters + length($listToPrint->[$i]) + 1 < 80)
-                {
-                print FH_TOPICS $listToPrint->[$i];
-                $characters += length($listToPrint->[$i]);
-
-                $i++;
-
-                if ($i < scalar @$listToPrint)
-                    {
-                    print FH_TOPICS ', ';
-                    $characters += 2;
-                    };
-                };
-            };
-
-        print FH_TOPICS "\n";
-        };
+    print FH_TOPICS
+    Text::Wrap::wrap('#    ', '#    ', join(', ', @$listToPrint)) . "\n"
+    . "\n"
+    . "# If you add something that you think would be useful to other developers\n"
+    . "# and should be included in Natural Docs by default, please e-mail it to\n"
+    . "# topics [at] naturaldocs [dot] org.\n";
 
     # Existence hash.  We do this because we want the required ones to go first by adding them to @topicTypeOrder, but we don't
     # want them to appear twice.
     my %doneTopicTypes;
+    my ($altering, $numberOfProperties);
 
     if ($isMain)
         {  unshift @topicTypeOrder, @requiredTypeNames;  };
 
-    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Class Hierarchy', 'Page Title If First', 'Break Lists', 'Auto-Group');
+    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Class Hierarchy', 'Page Title If First', 'Break Lists');
 
     foreach my $topicType (@topicTypeOrder)
         {
@@ -1031,11 +972,17 @@ sub SaveFile #(isMain)
                 {
                 print FH_TOPICS "\n\n"
                 . 'Alter Topic Type: ' . substr($topicType, 0, -1) . "\n\n";
+
+                $altering = 1;
+                $numberOfProperties = 0;
                 }
             else
                 {
                 print FH_TOPICS "\n\n"
                 . 'Topic Type: ' . $topicType . "\n\n";
+
+                $altering = 0;
+                $numberOfProperties = 0;
                 };
 
             foreach my $property (@propertyOrder)
@@ -1044,73 +991,30 @@ sub SaveFile #(isMain)
                     {
                     print FH_TOPICS
                     '   ' . $property . ': ' . ucfirst( $properties{$topicType}->{lc($property)} ) . "\n";
+
+                    $numberOfProperties++;
                     };
                 };
 
-            $doneTopicTypes{$topicType} = 1;
-            };
-        };
-
-    print FH_TOPICS "\n\n\n" .
-    "###############################################################################\n"
-    . "#\n"
-    . "#   Keyword Syntax\n"
-    . "#\n"
-    . "#   Each topic type can have multiple keywords.\n"
-    . "#\n"
-    . "###############################################################################\n"
-    . "#\n"
-    . "#   Keywords: [topic type]\n"
-    . "#\n"
-    . "#   Starts a list of keywords for the specified topic type.\n"
-    . "#\n"
-    . "#\n";
-
-    if (!$isMain)
-        {
-        print FH_TOPICS
-        "#   Keywords: Ignored\n"
-        . "#\n"
-        . "#   Starts a list of keywords that Natural Docs will skip if they were\n"
-        . "#   previously defined.\n"
-        . "#\n"
-        . "#\n";
-        };
-
-    print FH_TOPICS
-    "#   [keyword]\n"
-    . "#   [keyword], [plural keyword]\n"
-    . "#\n"
-    . "#   Each line until the next Keyword line is the keyword and optionally its\n"
-    . "#   plural form.  The plural form is needed if you want to document topics as a\n"
-    . "#   list.\n"
-    . "#\n"
-    . "#   Keywords can only have letters, numbers, and spaces.  They are not\n"
-    . "#   case-sensitive.  You can include keywords that were previously used by a\n"
-    . "#   different type to redefine them.\n"
-    . "#\n"
-    . "###############################################################################\n";
-
-    if ($isMain)
-        {  unshift @keywordOrder, @requiredTypeNames;  };
-
-    %doneTopicTypes = ( );
-
-    foreach my $topicType (@keywordOrder)
-        {
-        if (!exists $doneTopicTypes{$topicType})
-            {
-            print FH_TOPICS "\n\n"
-            . 'Keywords: ' . $topicType . "\n\n";
-
-            for (my $i = 0; $i < scalar @{$keywords{$topicType}}; $i += 2)
+            if (scalar @{$properties{$topicType}->{'keywords'}})
                 {
-                print FH_TOPICS '   ' . $keywords{$topicType}->[$i];
+                if ($numberOfProperties > 1)
+                    {  print FH_TOPICS "\n";  };
 
-                if (defined $keywords{$topicType}->[$i+1])
-                    {  print FH_TOPICS ', ' . $keywords{$topicType}->[$i+1];  };
+                print FH_TOPICS
+                '   ' . ($altering ? 'Add ' : '') . 'Keywords:' . "\n";
 
-                print FH_TOPICS "\n";
+                my $keywords = $properties{$topicType}->{'keywords'};
+
+                for (my $i = 0; $i < scalar @$keywords; $i += 2)
+                    {
+                    print FH_TOPICS '      ' . $keywords->[$i];
+
+                    if (defined $keywords->[$i + 1])
+                        {  print FH_TOPICS ', ' . $keywords->[$i + 1];  };
+
+                    print FH_TOPICS "\n";
+                    };
                 };
 
             $doneTopicTypes{$topicType} = 1;
