@@ -446,14 +446,14 @@ sub IsQuiet
 #
 sub AppVersion
     {  return NaturalDocs::Version::FromString(TextAppVersion());  };
-    
+
 #
 #   Function: TextAppVersion
 #
 #   Returns Natural Docs' version number as plain text.
 #
 sub TextAppVersion
-    {  return '1.0';  };
+    {  return '1.01';  };
 
 #
 #   Function: AppURL

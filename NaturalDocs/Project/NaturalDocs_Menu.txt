@@ -1,8 +1,8 @@
 # Do not change or remove this line.
-Format: 1.0
+Format: 1.01
 
 Title: Natural Docs
-SubTitle: Version 1.0
+SubTitle: Version 1.01
 
 Footer: Copyright (c) 2003 Greg Valure
 
