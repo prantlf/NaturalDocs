@@ -301,13 +301,23 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_CONSTANT() => 1 );
 
 #
-#   hash: autoGroupable
+#   hash: basicAutoGroupable
 #
-#   An existence hash of the <Type Constants> that auto-groups should be created for.
+#   An existence hash of the <Type Constants> that auto-groups should be created for when using <AUTOGROUP_BASIC>.
 #
-my %autoGroupable = ( TOPIC_FUNCTION() => 1,
-                                    TOPIC_VARIABLE() => 1,
-                                    TOPIC_PROPERTY() => 1 );
+my %basicAutoGroupable = ( TOPIC_FUNCTION() => 1,
+                                           TOPIC_VARIABLE() => 1,
+                                           TOPIC_PROPERTY() => 1 );
+
+#
+#   hash: fullAutoGroupable
+#
+#   An existence hash of the <Type Constants> that auto-groups should be created for when using <AUTOGROUP_FULL> *in
+#   addition to* those found in <basicAutoGroupable>.
+#
+my %fullAutoGroupable = ( TOPIC_FILE() => 1,
+                                        TOPIC_TYPE() => 1,
+                                        TOPIC_CONSTANT() => 1 );
 
 
 
@@ -358,7 +368,19 @@ sub IsIndexable #(topic)
 sub IsAutoGroupable #(topic)
     {
     my ($self, $topic) = @_;
-    return $autoGroupable{$topic};
+
+    my $level = NaturalDocs::Settings->AutoGroupLevel();
+
+    if ($level == ::AUTOGROUP_BASIC())
+        {
+        return $basicAutoGroupable{$topic};
+        }
+    elsif ($level == ::AUTOGROUP_FULL())
+        {
+        return (exists $basicAutoGroupable{$topic} || exists $fullAutoGroupable{$topic});
+        }
+    else
+        {  return undef;  };
     };
 
 

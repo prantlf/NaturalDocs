@@ -24,6 +24,8 @@ require Exporter;
 
                    'RESOLVE_RELATIVE', 'RESOLVE_ABSOLUTE', 'RESOLVE_NOPLURAL', 'RESOLVE_NOUSING',
 
+                   'AUTOGROUP_NONE', 'AUTOGROUP_BASIC', 'AUTOGROUP_FULL',
+
                    'MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
                    'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL', 'MENU_DATA',
 
@@ -97,6 +99,19 @@ use constant RESOLVE_RELATIVE => 0x01;
 use constant RESOLVE_ABSOLUTE => 0x02;
 use constant RESOLVE_NOPLURAL => 0x04;
 use constant RESOLVE_NOUSING => 0x08;
+
+#
+#   enum: AutoGroupLevel
+#
+#   The level of auto-grouping to do.
+#
+#   AUTOGROUP_NONE - No auto-grouping at all.
+#   AUTOGROUP_BASIC - Functions, variables, and properties only.
+#   AUTOGROUP_FULL - Everything auto-groupable as specified in <NaturalDocs::Topics>.
+#
+use constant AUTOGROUP_NONE => 1;
+use constant AUTOGROUP_BASIC => 2;
+use constant AUTOGROUP_FULL => 3;
 
 #
 #   Constants: Menu Entry Type Constants

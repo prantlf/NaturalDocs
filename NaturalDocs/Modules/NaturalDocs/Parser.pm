@@ -305,7 +305,8 @@ sub Parse
     if (defined $exportedSymbols)
         {  $self->MatchExportedSymbols($exportedSymbols);  };
 
-    $self->MakeAutoGroups($autoTopics);
+    if (NaturalDocs::Settings->AutoGroupLevel() != ::AUTOGROUP_NONE())
+        {  $self->MakeAutoGroups($autoTopics);  };
 
 
     # Set the menu title.
