@@ -33,7 +33,7 @@ package NaturalDocs::ConfigFile;
 #
 #   string: file
 #
-#   The current configuration file being parsed.
+#   The <FileName> for the current configuration file being parsed.
 #
 my $file;
 
@@ -58,7 +58,7 @@ my @errors;
 #
 #   Parameters:
 #
-#       file - The file about to be parsed.
+#       file - The <FileName> about to be parsed.
 #
 sub StartingParseOf #(file)
     {
