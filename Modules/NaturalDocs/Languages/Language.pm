@@ -25,6 +25,7 @@ package NaturalDocs::Languages::Language;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are used as indexes.
 #
+#   NAME                             - The name of the language.
 #   LINE_COMMENT              - An arrayref of symbols that start a single line comment.  Undef if none.
 #   START_COMMENT           - An arrayref of symbols that start a multi-line comment.  Undef if none.
 #   END_COMMENT              - An arrayref of symbols that ends a multi-line comment.  Undef if none.
@@ -35,12 +36,13 @@ package NaturalDocs::Languages::Language;
 
 # DEPENDENCY: New() depends on its parameter list being in the same order as these constants.  If the order changes, New()
 # needs to be changed.
-use constant LINE_COMMENT => 0;
-use constant START_COMMENT => 1;
-use constant END_COMMENT => 2;
-use constant FUNCTION_ENDERS => 3;
-use constant VARIABLE_ENDERS => 4;
-use constant LINE_EXTENDER => 5;
+use constant NAME => 0;
+use constant LINE_COMMENT => 1;
+use constant START_COMMENT => 2;
+use constant END_COMMENT => 3;
+use constant FUNCTION_ENDERS => 4;
+use constant VARIABLE_ENDERS => 5;
+use constant LINE_EXTENDER => 6;
 
 
 #############################################################################
@@ -53,6 +55,7 @@ use constant LINE_EXTENDER => 5;
 #
 #   Parameters:
 #
+#       name                        - The name of the language.
 #       lineComment             - An arrayref of symbols that start a single-line comment.  Undef if none.
 #       startComment            - An arrayref of symbols that start a multi-line comment.  Undef if none.
 #       endComment             - An arrayref of symbols that start a multi-line comment.  Undef if none.
@@ -60,7 +63,7 @@ use constant LINE_EXTENDER => 5;
 #       variableEnders           - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #       lineExtender               - The symbel to extend a line of code past a line break.  Undef if not applicable.
 #
-sub New #(lineComment, startComment, endComment, functionEnders, variableEnders, lineExtender)
+sub New #(name, lineComment, startComment, endComment, functionEnders, variableEnders, lineExtender)
     {
     # DEPENDENCY: This function depends on its parameter list being in the same order as the member constants.  If the order
     # changes, this function needs to be changed.
@@ -71,6 +74,11 @@ sub New #(lineComment, startComment, endComment, functionEnders, variableEnders,
     return $object;
     };
 
+
+# Function: Name
+# Returns the name of the language.
+sub Name
+    {  return $_[0]->[NAME];  };
 
 # Function: LineComment
 # Returns an arrayref of symbols used to start a single line comment, or undef if none.
@@ -385,7 +393,16 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
                 # If the ender is a text keyword, the next and previous character can't be alphanumeric.
                 if ( ($testIndex == 0 || substr($$stringRef, $testIndex - 1, 1) !~ /^[a-z0-9_]$/i) &&
                      substr($$stringRef, $testIndex + length($ender), 1) !~ /^[a-z0-9_]$/i )
-                    {  last;  };
+                    {
+                    if ($self->Name() eq 'PL/SQL' && (lc($ender) eq 'is' || lc($ender) eq 'as') &&
+                        $testIndex != 0 && substr($$stringRef, $testIndex - 1, 1) eq '@')
+                        {
+                        # An exception for PL/SQL.  Microsoft's syntax specifies parameters as @param, @param so it's valid to have
+                        # parameters named @is or @as.  We don't want to count those as matches.
+                        }
+                    else
+                        {  last;  };
+                    };
 
                 $newStartingIndex = $testIndex + 1;
                 };
