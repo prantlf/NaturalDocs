@@ -280,6 +280,8 @@ sub Parse
     {
     my ($self) = @_;
 
+    NaturalDocs::Error->OnStartParsing($sourceFile);
+
     $language = NaturalDocs::Languages->LanguageOf($sourceFile);
     NaturalDocs::Parser::Native->Start();
     @parsedFile = ( );
@@ -342,6 +344,8 @@ sub Parse
                        NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), $name, undef, undef, undef, undef, undef, 1, undef);
             };
         };
+
+    NaturalDocs::Error->OnEndParsing($sourceFile);
 
     return $defaultMenuTitle;
     };
