@@ -195,7 +195,7 @@ sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($prototype !~ /\(.*[,;].*\)/)
+    if ($prototype !~ /\(.*[^ ].*\)/)
         {
         my $object = NaturalDocs::Languages::Prototype->New($prototype);
         return $object;
@@ -334,17 +334,19 @@ sub ParseParameterLine #(line)
     $line =~ s/ $//;
 
     my @tokens = $line =~ /([^ \(\)\{\}\[\]\<\>\'\"\=]+|.)/g;
-    my ($type, $typeSuffix, $name, $defaultValue, $afterDefaultValue);
+
     my @symbolStack;
+    my @parameterWords = ( undef );
+    my ($defaultValue, $inDefaultValue);
 
     foreach my $token (@tokens)
         {
-        if ($afterDefaultValue)
+        if ($inDefaultValue)
             {  $defaultValue .= $token;  }
 
         elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
             {
-            $name .= $token;
+            $parameterWords[-1] .= $token;
 
             if ($token eq $symbolStack[-1])
                 {  pop @symbolStack;  };
@@ -353,7 +355,7 @@ sub ParseParameterLine #(line)
         elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
             push @symbolStack, $token;
-            $name .= $token;
+            $parameterWords[-1] .= $token;
             }
 
         elsif ( ($token eq ')' && $symbolStack[-1] eq '(') ||
@@ -362,57 +364,72 @@ sub ParseParameterLine #(line)
                  ($token eq '>' && $symbolStack[-1] eq '<') )
             {
             pop @symbolStack;
-            $name .= $token;
+            $parameterWords[-1] .= $token;
             }
 
         elsif ($token eq ' ')
             {
-            $name .= $token;
+            if (!scalar @symbolStack)
+                {  push @parameterWords, undef;  }
+            else
+                {  $parameterWords[-1] .= $token;  };
             }
 
         elsif ($token eq '=')
             {
-            if (scalar @symbolStack)
-                {  $name .= $token;  }
-            else
+            if (!scalar @symbolStack)
                 {
-                $defaultValue .= $token;
-                $afterDefaultValue = 1;
-                };
+                $defaultValue = $token;
+                $inDefaultValue = 1;
+                }
+            else
+                {  $parameterWords[-1] .= $token;  };
             }
 
         else
             {
-            if (!scalar @symbolStack && $name =~ / $/)
-                {
-                $type .= $name;
-                $name = $token;
-                }
-            else
-                {  $name .= $token;  };
+            $parameterWords[-1] .= $token;
             };
         };
 
-    foreach my $part (\$type, \$typeSuffix, \$name, \$defaultValue)
-        {
-        $$part =~ s/^ //;
-        $$part =~ s/ $//;
-        };
+    my ($name, $namePrefix, $type, $typePrefix);
 
-    if ($type =~ /((?:\[[, ]*\]|[\*\&])+)$/)
+    if (!$parameterWords[-1])
+        {  pop @parameterWords;  };
+
+    $name = pop @parameterWords;
+
+    if ($parameterWords[-1]=~ /([\*\&]+)$/)
         {
-        $typeSuffix = $1;
-        $type = substr($type, 0, 0 - length($typeSuffix));
-        $type =~ s/ $//;
+        $namePrefix = $1;
+        $parameterWords[-1] = substr($parameterWords[-1], 0, 0 - length($namePrefix));
+        $parameterWords[-1] =~ s/ $//;
+
+        if (!$parameterWords[-1])
+            {  pop @parameterWords;  };
         }
     elsif ($name =~ /^([\*\&]+)/)
         {
-        $typeSuffix = $1;
-        $name = substr($name, length($typeSuffix));
+        $namePrefix = $1;
+        $name = substr($name, length($namePrefix));
         $name =~ s/^ //;
-        }
+        };
 
-    return NaturalDocs::Languages::Prototype::Parameter->New($type, $typeSuffix, $name, $defaultValue);
+    $type = pop @parameterWords;
+    $typePrefix = join(' ', @parameterWords);
+
+    if ($typePrefix)
+        {  $typePrefix .= ' ';  };
+
+    if ($type =~ /^([a-z0-9_\:\.]+(?:\.|\:\:))[a-z0-9_]/i)
+        {
+        my $attachedTypePrefix = $1;
+
+        $typePrefix .= $attachedTypePrefix;
+        $type = substr($type, length($attachedTypePrefix));
+        };
+
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, $typePrefix, $name, $namePrefix, $defaultValue);
     };
 
 
@@ -501,7 +518,7 @@ sub ParsePascalParameterLine #(line)
         $$part =~ s/ $//;
         };
 
-    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, $defaultValue);
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, undef, $defaultValue);
     };
 
 
