@@ -551,10 +551,10 @@ sub ExtractLineComments #(content)
                 else # ($state == FIND/GET_PROTOTYPE)
                     {
                     CleanComment($comment, $functionPrototype, $variablePrototype);
-                    $comment = undef;
                     $functionPrototype = undef;
                     $variablePrototype = undef;
-                    $state = FIND_COMMENT;
+                    $comment = substr($line, length($language->LineComment()));
+                    $state = GET_COMMENT;
                     }
                 }
 
