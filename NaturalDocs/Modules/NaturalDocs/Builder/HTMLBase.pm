@@ -2057,7 +2057,7 @@ sub RelativeIndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
 
-    return (defined $type ? NaturalDocs::Topics->NameOf($type) : 'General') . 'Index'
+    return (defined $type ? NaturalDocs::Topics->NameOf($type, 1) : 'General') . 'Index'
             . (defined $page && $page != 1 ? $page : '') . '.html';
     };
 
