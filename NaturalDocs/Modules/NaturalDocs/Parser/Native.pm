@@ -30,12 +30,12 @@ use constant NOT_A_TAG => 3;
 
 
 #
-#   var: scope
+#   var: package
 #
-#   The scope at the current point in the file.  This is a package variable because it needs to be preserved between function
-#   calls.
+#   A <SymbolString> representing the package normal topics will be a part of at the current point in the file.  This is a package variable
+#   because it needs to be reserved between function calls.
 #
-my $scope;
+my $package;
 
 #
 #   hash: functionListIgnoredHeadings
@@ -65,7 +65,8 @@ my %functionListIgnoredHeadings = ( 'parameters' => 1,
 #
 sub Start
     {
-    $scope = undef;
+    my ($self) = @_;
+    $package = undef;
     };
 
 
@@ -94,13 +95,10 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     my $prevLineBlank = 1;
     my $inCodeSection;
 
-    # Class applies to the name, and scope applies to the body.  They may be completely different.  For example, with a class
-    # entry, the class itself is global but its body is within its scope so it can reference members locally.  Also, a file is always
-    # global, but its body uses whatever scope it appears in.
-    my $class;
-    my $name;
     my $type;
-    #my $scope;  # package variable.
+    my $title;
+    my $symbol;
+    #my $package;  # package variable.
 
     my $index = 0;
 
@@ -134,49 +132,28 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
                 defined NaturalDocs::Topics->ConstantOf($1))
             {
             my $newType = NaturalDocs::Topics->ConstantOf($1);
-            my $newName = $2;
+            my $newTitle = $2;
 
             # Process the previous one, if any.
 
             if (defined $type)
                 {
+                if ($type == ::TOPIC_SECTION() || $type == ::TOPIC_CLASS() || $type == ::TOPIC_CLASS_LIST())
+                    {  $package = undef;  };
+
                 my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-                push @$parsedTopics, $self->MakeParsedTopic($name, $class, $type, $body, $lineNumber + $bodyStart - 1);
+                my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1);
+                push @$parsedTopics, $newTopic;
                 $topicCount++;
+
+                $package = $newTopic->Package();
                 };
 
             $type = $newType;
-            $name = $newName;
+            $title = $newTitle;
 
             $bodyStart = $index + 1;
             $bodyEnd = $index + 1;
-
-
-            if ($type == ::TOPIC_SECTION())
-                {
-                $scope = undef;
-                $class = undef;
-                }
-            elsif ($type == ::TOPIC_CLASS())
-                {
-                $scope = $name;
-                $class = undef;
-                }
-            elsif ($type == ::TOPIC_CLASS_LIST())
-                {
-                $scope = undef;
-                $class = undef;
-                }
-            elsif ($type == ::TOPIC_FILE() || $type == ::TOPIC_FILE_LIST())
-                {
-                # Scope stays the same.
-                $class = undef;
-                }
-            else
-                {
-                # Scope stays the same.
-                $class = $scope;
-                };
 
             $prevLineBlank = 0;
             }
@@ -199,9 +176,15 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     # Last one, if any.  This is the only one that gets the prototypes.
     if (defined $type)
         {
+        if ($type == ::TOPIC_SECTION() || $type == ::TOPIC_CLASS() || $type == ::TOPIC_CLASS_LIST())
+            {  $package = undef;  };
+
         my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-        push @$parsedTopics, $self->MakeParsedTopic($name, $class, $type, $body, $lineNumber + $bodyStart - 1);
+        my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1);
+        push @$parsedTopics, $newTopic;
         $topicCount++;
+
+        $package = $newTopic->Package();
         };
 
     return $topicCount;
@@ -221,20 +204,19 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 #
 #   Parameters:
 #
-#       name       - The name of the section.
-#       class        - The class of the section.
-#       type         - The section type.
-#       body        - The section's body in <NDMarkup>.
+#       type         - The <TopicType>.
+#       title          - The title of the topic.
+#       package    - The package <SymbolString> the topic appears in.
+#       body        - The topic's body in <NDMarkup>.
 #       lineNumber - The topic's line number.
 #
 #   Returns:
 #
 #       The <NaturalDocs::Parser::ParsedTopic> object.
 #
-sub MakeParsedTopic #(name, class, type, body, lineNumber)
+sub MakeParsedTopic #(type, title, package, body, lineNumber)
     {
-    my ($self, $name, $class, $type, $body, $lineNumber) = @_;
-    # $scope is a package variable.
+    my ($self, $type, $title, $package, $body, $lineNumber) = @_;
 
     my $summary;
 
@@ -251,7 +233,8 @@ sub MakeParsedTopic #(name, class, type, body, lineNumber)
         };
 
 
-    return NaturalDocs::Parser::ParsedTopic->New($type, $name, $class, $scope, undef, $summary, $body, $lineNumber);
+    return NaturalDocs::Parser::ParsedTopic->New($type, $title, $package, undef, undef, $summary,
+                                                                         $body, $lineNumber);
     };
 
 
@@ -582,7 +565,7 @@ sub AddToCodeBlock #(line, codeBlockRef, removedSpacesRef)
 #
 #   Parameters:
 #
-#       text    - The block of text to format.
+#       text - The block of text to format.
 #
 #   Returns:
 #
