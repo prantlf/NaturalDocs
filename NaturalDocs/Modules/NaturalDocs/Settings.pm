@@ -526,24 +526,45 @@ sub ParseCommandLine
     foreach my $outputString (@outputStrings)
         {
         my ($format, $directory) = split(/ /, $outputString, 2);
-        my $builderPackage = NaturalDocs::Builder->OutputPackageOf($format);
 
-        if (!defined $builderPackage)
+        if (!defined $directory)
+            {  push @errorMessages, 'The -o option needs two parameters: -o [format] [directory]';  }
+        else
             {
-            push @errorMessages, 'The output format ' . $format . ' doesn\'t exist or is not installed.';
-            $valueRef = \$ignored;
+            $directory = NaturalDocs::File->CanonizePath($directory);
+
+            if (! -e $directory || ! -d $directory)
+                {
+                # They may have forgotten the format portion and the directory name had a space in it.
+                if (-e ($format . ' ' . $directory) && -d ($format . ' ' . $directory))
+                    {
+                    push @errorMessages, 'The -o option needs two parameters: -o [format] [directory]';
+                    $format = undef;
+                    }
+                else
+                    {  push @errorMessages, 'The output directory ' . $directory . ' does not exist.';  }
+                }
+            elsif (exists $outputDirectories{$directory})
+                {  push @errorMessages, 'You cannot specify the output directory ' . $directory . ' more than once.';  }
+            else
+                {  $outputDirectories{$directory} = 1;  };
+
+            if (defined $format)
+                {
+                my $builderPackage = NaturalDocs::Builder->OutputPackageOf($format);
+
+                if (defined $builderPackage)
+                    {
+                    push @buildTargets,
+                            NaturalDocs::Settings::BuildTarget->New(undef, $builderPackage->New(), $directory, $defaultStyle);
+                    }
+                else
+                    {
+                    push @errorMessages, 'The output format ' . $format . ' doesn\'t exist or is not installed.';
+                    $valueRef = \$ignored;
+                    };
+                };
             };
-
-        $directory = NaturalDocs::File->CanonizePath($directory);
-
-        if (! -e $directory || ! -d $directory)
-            {  push @errorMessages, 'The output directory ' . $directory . ' does not exist.';  };
-
-        if (exists $outputDirectories{$directory})
-            {  push @errorMessages, 'You cannot specify the output directory ' . $directory . ' more than once.';  };
-
-        push @buildTargets, NaturalDocs::Settings::BuildTarget->New(undef, $builderPackage->New(), $directory, $defaultStyle);
-        $outputDirectories{$directory} = 1;
         };
 
     if (!scalar @buildTargets)
@@ -618,7 +639,7 @@ sub PrintSyntax
 
     # Make sure all line lengths are under 80 characters.
 
-    my $output =
+    print
 
     "Natural Docs, version " . $self->TextAppVersion() . "\n"
     . $self->AppURL() . "\n"
@@ -627,18 +648,18 @@ sub PrintSyntax
     . "\n"
     . "Syntax:\n"
     . "\n"
-    . "     NaturalDocs -i [input (source) directory]\n"
-    . "                  -o [output format] [output directory]\n"
-    . "                  (-o [output format] [output directory] ...)\n"
-    . "                  -p [project directory]\n"
-    . "                  [options]\n"
+    . "    NaturalDocs -i [input (source) directory]\n"
+    . "                 -o [output format] [output directory]\n"
+    . "                 (-o [output format] [output directory] ...)\n"
+    . "                 -p [project directory]\n"
+    . "                 [options]\n"
     . "\n"
     . "Examples:\n"
     . "\n"
-    . "     NaturalDocs -i C:\\My Project\\Source -o HTML C:\\My Project\\Docs\n"
-    . "                 -p C:\\My Project\\Natural Docs\n"
-    . "     NaturalDocs -i /src/project -o HTML /doc/project\n"
-    . "                 -p /etc/naturaldocs/project -s Small -q\n"
+    . "    NaturalDocs -i C:\\My Project\\Source -o HTML C:\\My Project\\Docs\n"
+    . "                -p C:\\My Project\\Natural Docs\n"
+    . "    NaturalDocs -i /src/project -o HTML /doc/project\n"
+    . "                -p /etc/naturaldocs/project -s Small -q\n"
     . "\n"
     . "Parameters:\n"
     . "\n"
@@ -646,51 +667,63 @@ sub PrintSyntax
     . "     Specifies the input (source) directory.  Required.\n"
     . "\n"
     . " -o [fmt] [dir]\n--output [fmt] [dir]\n"
-    . "     Specifies the output format and directory.  Required.\n"
-    . "     Can be specified multiple times, but only once per directory.\n"
-    . "     Possible output formats:\n";
+    . "    Specifies the output format and directory.  Required.\n"
+    . "    Can be specified multiple times, but only once per directory.\n"
+    . "    Possible output formats:\n";
+
+    $self->PrintOutputFormats('    - ');
+
+    print
+    "\n"
+    . " -p [dir]\n--project [dir]\n"
+    . "    Specifies the project directory.  Required.\n"
+    . "    There needs to be a unique project directory for every source directory.\n"
+    . "\n"
+    . " -s [style]\n--style [style]\n"
+    . "    Specifies the CSS style when building HTML output.  If set to \"Custom\",\n"
+    . "    Natural Docs will not sync the output's CSS file with one from its style\n"
+    . "    directory.\n"
+    . "\n"
+    . " -t [len]\n--tablength [len]\n"
+    . "    Specifies the number of spaces tabs should be expanded to.  This only needs\n"
+    . "    to be set if you use tabs in example code and text diagrams.  Defaults to 4.\n"
+    . "\n"
+    . " -r\n--rebuild\n"
+    . "    Rebuilds all output and data files from scratch.\n"
+    . "    Does not affect the menu file.\n"
+    . "\n"
+    . " -ro\n--rebuildoutput\n"
+    . "    Rebuilds all output files from scratch.\n"
+    . "\n"
+    . " -q\n--quiet\n"
+    . "    Suppresses all non-error output.\n"
+    . "\n"
+    . " -ho\n--headersonly\n"
+    . "    For C/C++, only check the headers and not the source files.\n"
+    . "\n"
+    . " -?\n -h\n--help\n"
+    . "    Displays this syntax reference.\n";
+    };
+
+#
+#   Function: PrintOutputFormats
+#
+#   Prints all the possible output formats that can be specified with -o.  Each one will be placed on its own line.
+#
+#   Parameters:
+#
+#       prefix - Characters to prefix each one with, such as for indentation.
+#
+sub PrintOutputFormats #(prefix)
+    {
+    my ($self, $prefix) = @_;
 
     my $outputPackages = NaturalDocs::Builder::OutputPackages();
 
     foreach my $outputPackage (@$outputPackages)
         {
-        $output .= "          " . $outputPackage->CommandLineOption() . "\n";
+        print $prefix . $outputPackage->CommandLineOption() . "\n";
         };
-
-    $output .=
-    "\n"
-    . " -p [dir]\n--project [dir]\n"
-    . "     Specifies the project directory.  Required.\n"
-    . "     There needs to be a unique project directory for every source directory.\n"
-    . "\n"
-    . " -s [style]\n--style [style]\n"
-    . "     Specifies the CSS style when building HTML output.  Can be a single style\n"
-    . "     (\"Small\") for all output or a series of [format]=[style] entries\n"
-    . "     (\"HTML=Small\") separated by spaces to distinguish between them.  If set\n"
-    . "     to \"Custom\", Natural Docs will not sync the output's CSS file with one\n"
-    . "     from its style directory.\n"
-    . "\n"
-    . " -t [len]\n--tablength [len]\n"
-    . "   Specifies the number of spaces tabs should be expanded to.  This only needs\n"
-    . "   to be set if you use tabs in example code and text diagrams.  Defaults to 4.\n"
-    . "\n"
-    . " -r\n--rebuild\n"
-    . "     Rebuilds all output and data files from scratch.\n"
-    . "     Does not affect the menu file.\n"
-    . "\n"
-    . " -ro\n--rebuildoutput\n"
-    . "     Rebuilds all output files from scratch.\n"
-    . "\n"
-    . " -q\n--quiet\n"
-    . "     Suppresses all non-error output.\n"
-    . "\n"
-    . " -ho\n--headersonly\n"
-    . "     For C/C++, only check the headers and not the source files.\n"
-    . "\n"
-    . " -?\n -h\n--help\n"
-    . "     Displays this syntax reference.\n";
-
-    print $output;
     };
 
 
