@@ -13,8 +13,9 @@
 #         Since this is normally done in their INIT functions, they should be available to all normal functions immediately.
 #
 #       - Prior to calling <Run()>, <NaturalDocs::Settings>, <NaturalDocs::Project>, and <NaturalDocs::Menu> must be initialized.
-#         If files need to be built (i.e. <NaturalDocs::Project->FilesToBuild()> returns something) <NaturalDocs::Parser> must be
-#         initialized and <NaturalDocs::SymbolTable> must be initialized and fully resolved.
+#         <NaturalDocs::Settings->GenerateDirectoryNames()> must be called.  If files need to be built
+#         (i.e. <NaturalDocs::Project->FilesToBuild()> returns something) <NaturalDocs::Parser> must be initialized and
+#         <NaturalDocs::SymbolTable> must be initialized and fully resolved.
 #
 ###############################################################################
 

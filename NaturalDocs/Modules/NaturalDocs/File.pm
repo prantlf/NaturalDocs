@@ -92,6 +92,28 @@ sub PathIsAbsolute #(path)
 #
 #   Function: JoinPath
 #
+#   Creates a path from its elements.
+#
+#   Parameters:
+#
+#       volume - The volume, such as the drive letter on Windows.  Undef if none.
+#       dirString - The directory string.  Create with <JoinDirectories()> if necessary.
+#       file - The file name, or undef if none.
+#
+#   Returns:
+#
+#       The joined path.
+#
+sub JoinPath #(volume, dirString, $file)
+    {
+    my ($self, $volume, $dirString, $file) = @_;
+    return File::Spec->catpath($volume, $dirString, $file);
+    };
+    
+
+#
+#   Function: JoinPaths
+#
 #   Joins two paths.
 #
 #   Parameters:
@@ -109,7 +131,7 @@ sub PathIsAbsolute #(path)
 #       Because nothing in File::Spec will simply slap two paths together.  They have to be split up for catpath/file, and rel2abs
 #       requires the base to be absolute.
 #
-sub JoinPath #(basePath, extraPath, noFileInExtra)
+sub JoinPaths #(basePath, extraPath, noFileInExtra)
     {
     my ($self, $basePath, $extraPath, $noFileInExtra) = @_;
 
@@ -271,6 +293,43 @@ sub MakeRelativePath #(basePath, targetPath)
     $targetDirString = $self->JoinDirectories(@targetDirectories);
 
     return File::Spec->catpath(undef, $targetDirString, $targetFile);
+    };
+
+
+#
+#   Function: IsSubPathOf
+#
+#   Returns whether the path is a descendant of another path.
+#
+#   Parameters:
+#
+#       base - The base path to test against.
+#       path - The possible subpath to test.
+#
+#   Returns:
+#
+#       Whether path is a descendant of base.
+#
+sub IsSubPathOf #(base, path)
+    {
+    my ($self, $base, $path) = @_;
+
+    # This is a quick test that should find a false quickly.
+    if ($base eq substr($path, 0, length($base)))
+        {
+        # This doesn't guarantee true, because it could be "C:\A B" and "C:\A B C\File".  So we test for it by seeing if the last
+        # directory in base is the same as the equivalent directory in path.
+
+        my ($baseVolume, $baseDirString, $baseFile) = NaturalDocs::File->SplitPath($base, 1);
+        my @baseDirectories = NaturalDocs::File->SplitDirectories($baseDirString);
+
+        my ($pathVolume, $pathDirString, $pathFile) = NaturalDocs::File->SplitPath($path);
+        my @pathDirectories = NaturalDocs::File->SplitDirectories($pathDirString);
+
+        return ( $baseDirectories[-1] eq $pathDirectories[ scalar @baseDirectories - 1 ] );
+        }
+    else
+        {  return undef;  };
     };
 
 
