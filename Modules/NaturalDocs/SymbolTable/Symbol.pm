@@ -31,7 +31,7 @@ package NaturalDocs::SymbolTable::Symbol;
 #       GLOBAL_DEFINITION  - The name of the file which defines the global version of the symbol, which is what is used if
 #                                          a file references the symbol but does not have its own definition.  If there are no definitions, this
 #                                          item will be undef.
-#       REFERENCES  - A hashref of the references that can be interpreted as this symbol.  This doesn't mean these
+#       REFERENCES              - A hashref of the references that can be interpreted as this symbol.  This doesn't mean these
 #                                          references necessarily are.  The keys are the reference strings, and the values are the scores of
 #                                          the interpretations.  If no references can be interpreted as this symbol, this item will be undef.
 #
@@ -71,10 +71,11 @@ sub New
 #       file   - The file that defines the symbol.
 #       type - The topic type of the definition.  One of <Topic Types>.
 #       prototype - The prototype of the definition, if applicable.  Undef otherwise.
+#       summary - The summary for the definition, if applicable.  Undef otherwise.
 #
-sub AddDefinition #(file, type, prototype)
+sub AddDefinition #(file, type, prototype, summary)
     {
-    my ($self, $file, $type, $prototype) = @_;
+    my ($self, $file, $type, $prototype, $summary) = @_;
 
     if (!defined $self->[DEFINITIONS])
         {
@@ -84,7 +85,7 @@ sub AddDefinition #(file, type, prototype)
 
     if (!exists $self->[DEFINITIONS]{$file})
         {
-        $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype);
+        $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype, $summary);
         };
     };
 
@@ -99,16 +100,18 @@ sub AddDefinition #(file, type, prototype)
 #       file   - The file that defines the symbol.  Must exist.
 #       type - The new topic type of the definition.  One of <Topic Types>.
 #       prototype - The new prototype of the definition, if applicable.  Undef otherwise.
+#       summary - The new summary of the definition, if applicable.  Undef otherwise.
 #
-sub ChangeDefinition #(file, type, prototype)
+sub ChangeDefinition #(file, type, prototype, summary)
     {
-    my ($self, $file, $type, $prototype) = @_;
+    my ($self, $file, $type, $prototype, $summary) = @_;
 
     if (defined $self->[DEFINITIONS] &&
         exists $self->[DEFINITIONS]{$file})
         {
         $self->[DEFINITIONS]{$file}->SetType($type);
         $self->[DEFINITIONS]{$file}->SetPrototype($prototype);
+        $self->[DEFINITIONS]{$file}->SetSummary($summary);
         };
     };
 
@@ -329,6 +332,40 @@ sub GlobalPrototype
         {  return undef;  }
     else
         {  return $self->[DEFINITIONS]{$globalDefinition}->Prototype();  };
+    };
+
+
+#
+#   Function: SummaryTypeDefinedIn
+#
+#   Returns the summary of symbol defined in the passed file, or undef if it doesn't exist or is not defined in that file.
+#
+sub SummaryDefinedIn #(file)
+    {
+    my ($self, $file) = @_;
+
+    if ($self->IsDefined())
+        {  return $self->[DEFINITIONS]{$file}->Summary();  }
+    else
+        {  return undef;  };
+    };
+
+
+#
+#   Function: GlobalSummary
+#
+#   Returns the summary of the global definition.  Will be undef if it doesn't exist or the symbol isn't defined.
+#
+sub GlobalSummary
+    {
+    my $self = shift;
+
+    my $globalDefinition = $self->GlobalDefinition();
+
+    if (!defined $globalDefinition)
+        {  return undef;  }
+    else
+        {  return $self->[DEFINITIONS]{$globalDefinition}->Summary();  };
     };
 
 

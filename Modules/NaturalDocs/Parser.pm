@@ -1002,18 +1002,46 @@ sub InterpretTopic #(name, class, type, body, functionPrototype, variablePrototy
         };
 
 
+    # Extract the summary line.
+
+    my $summary;
+
+    if (defined $body)
+        {
+        # Extract the first sentence from the leading paragraph, if any.  We'll tolerate a header beforehand, but nothing else.
+
+        if ($body =~ /^(?:<h>.*?<\/h>)?<p>(.*?)(<\/p>|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/x)
+            {
+            $summary = $1;
+            if ($2 ne '</p>')
+                {  $summary .= $2;  };
+            };
+
+        };
+
+
     if ($mode == PARSE_FOR_INFORMATION)
         {
-        NaturalDocs::SymbolTable::AddSymbol($class, $name, $file, $type, $prototype);
+        # Add a symbol for the topic.
+
+        NaturalDocs::SymbolTable::AddSymbol($class, $name, $file, $type, $prototype, $summary);
+
+
+        # If it's a list topic, add a symbol for each description list entry.
 
         if (::TopicIsList($type))
             {
             my $listType = ::TopicIsListOf($type);
 
-            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+            while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
                 {
-                NaturalDocs::SymbolTable::AddSymbol($scope, NaturalDocs::NDMarkup::RestoreAmpChars($1), $file,
-                                                                          $listType, undef);
+                my ($listSymbol, $listSummary) = ($1, $2);
+
+                $listSummary =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
+                $listSummary = $1 . $2;
+
+                NaturalDocs::SymbolTable::AddSymbol($scope, NaturalDocs::NDMarkup::RestoreAmpChars($listSymbol), $file,
+                                                                          $listType, undef, $listSummary);
                 };
             };
 
@@ -1023,7 +1051,7 @@ sub InterpretTopic #(name, class, type, body, functionPrototype, variablePrototy
 
     else # ($mode == PARSE_FOR_BUILD)
         {
-        push @parsedFile, NaturalDocs::Parser::ParsedTopic::New($type, $name, $class, $scope, $prototype, $body);
+        push @parsedFile, NaturalDocs::Parser::ParsedTopic::New($type, $name, $class, $scope, $prototype, $summary, $body);
         };
     };
 

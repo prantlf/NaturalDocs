@@ -27,9 +27,11 @@ package NaturalDocs::SymbolTable::SymbolDefinition;
 #
 #       TYPE  - The symbol type.  Will be one of the <Topic Types>.
 #       PROTOTYPE  - The symbol's prototype, if applicable.  Will be undef otherwise.
+#       SUMMARY - The symbol's summary, if applicable.  Will be undef otherwise.
 #
 use constant TYPE => 0;
 use constant PROTOTYPE => 1;
+use constant SUMMARY => 2;
 # New depends on the order of the constants.
 
 
@@ -45,8 +47,9 @@ use constant PROTOTYPE => 1;
 #
 #       type - The symbol type.  Should be one of the <Topic Types>.
 #       prototype  - The symbol prototype, if applicable.  Undef otherwise.
+#       summary - The symbol's summary, if applicable.  Undef otherwise.
 #
-sub New #(type, prototype)
+sub New #(type, prototype, summary)
     {
     # This depends on the parameter list being the same as the constant order.
 
@@ -73,6 +76,14 @@ sub SetPrototype #(prototype)
     $self->[PROTOTYPE] = $prototype;
     };
 
+# Function: SetSummary
+# Changes the summary.
+sub SetSummary #(summary)
+    {
+    my ($self, $summary) = @_;
+    $self->[SUMMARY] = $summary;
+    };
+
 
 ###############################################################################
 # Group: Information Functions
@@ -93,6 +104,15 @@ sub Type
 #
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
+
+
+#
+#   Function: Summary
+#
+#   Returns the definition's summary, or undef if it doesn't have one.
+#
+sub Summary
+    {  return $_[0]->[SUMMARY];  };
 
 
 1;

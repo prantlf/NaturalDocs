@@ -127,12 +127,12 @@ my %indexChanges;
 #
 #       The first stage of the file is for symbol definitions, analogous to <symbols>.  For this stage, each entry continues until it
 #       reaches a blank line.  The first line is the symbol string, and each subsequent line is a tab separated list of the definition,
-#       type, and prototype.  The first file on this list will be the one that has the global definition.  Undefined symbols are
+#       type, prototype, and summary.  The first file on this list will be the one that has the global definition.  Undefined symbols are
 #       not included here.
 #
 #       > [symbol string]
-#       > [global definition file] tab [symbol type] tab [prototype]
-#       > [definition file] tab [symbol type] tab [prototype]
+#       > [global definition file] tab [symbol type] tab [prototype] tab [summary]
+#       > [definition file] tab [symbol type] tab [prototype] tab [summary]
 #       > blank line
 #
 #       The two stages are separated by a blank line.  That works out to meaning a symbol definition followed by two blank lines.
@@ -147,6 +147,8 @@ my %indexChanges;
 #       > [definition file] tab [definition file] tab [definition file] ...
 #
 #   Revisions:
+#
+#       Prior to 1.1, there was no summary saved in the symbol definition lines.
 #
 #       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.  Other than that, the file format has not
 #       changed since its public release.
@@ -173,9 +175,9 @@ sub LoadAndPurge
 
         my $version = NaturalDocs::Version::FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
-        # Currently, the file format hasn't changed between public versions, so any version <= our own is okay.
+        # The file format was updated for 1.1 to include summaries.
 
-        if ($version <= NaturalDocs::Settings::AppVersion())
+        if ($version >= NaturalDocs::Version::FromString('1.1') && $version <= NaturalDocs::Settings::AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close(SYMBOLTABLEFILEHANDLE);  };
@@ -210,14 +212,16 @@ sub LoadAndPurge
 
         while (length $line)
             {
-            # [definition] tab [type] tab [prototype]
+            # [definition] tab [type] tab [prototype] tab [summary]
 
-            my ($file, $type, $prototype) = split(/\t/, $line);
+            my ($file, $type, $prototype, $summary) = split(/\t/, $line);
 
             if (!$prototype)
                 {  $prototype = undef;  };
+            if (!$summary)
+                {  $summary = undef;  };
 
-            $symbolObject->AddDefinition($file, $type, $prototype);
+            $symbolObject->AddDefinition($file, $type, $prototype, $summary);
 
             if (!exists $files{$file})
                 {  $files{$file} = NaturalDocs::SymbolTable::File::New();  };
@@ -301,7 +305,8 @@ sub Save
             print SYMBOLTABLEFILEHANDLE $symbol . "\n"
                                   . $symbolObject->GlobalDefinition() . "\t"
                                   . $symbolObject->GlobalType() . "\t"
-                                  . $symbolObject->GlobalPrototype() . "\n";
+                                  . $symbolObject->GlobalPrototype() . "\t"
+                                  . $symbolObject->GlobalSummary() . "\n";
 
             my @definitions = $symbolObject->Definitions();
 
@@ -311,7 +316,8 @@ sub Save
                     {
                     print SYMBOLTABLEFILEHANDLE $definition . "\t"
                                           . $symbolObject->TypeDefinedIn($definition) . "\t"
-                                          . $symbolObject->PrototypeDefinedIn($definition) . "\n";
+                                          . $symbolObject->PrototypeDefinedIn($definition) . "\t"
+                                          . $symbolObject->SummaryDefinedIn($definition) ."\n";
                     };
                 };
 
@@ -356,10 +362,11 @@ sub Save
 #       file        - The file name where it's defined.
 #       type      - The symbol's type.
 #       prototype - The symbol's prototype, if applicable.
+#       summary - The symbol's summary, if applicable.
 #
-sub AddSymbol #(class, symbol, file, type, prototype)
+sub AddSymbol #(class, symbol, file, type, prototype, summary)
     {
-    my ($class, $symbol, $file, $type, $prototype) = @_;
+    my ($class, $symbol, $file, $type, $prototype, $summary) = @_;
 
     my $symbolString = MakeSymbolString($class, $symbol);
 
@@ -370,7 +377,7 @@ sub AddSymbol #(class, symbol, file, type, prototype)
         # Create the symbol.  There are no references that could be interpreted as this or else it would have existed already.
 
         my $newSymbol = NaturalDocs::SymbolTable::Symbol::New();
-        $newSymbol->AddDefinition($file, $type, $prototype);
+        $newSymbol->AddDefinition($file, $type, $prototype, $summary);
 
         $symbols{$symbolString} = $newSymbol;
 
@@ -386,7 +393,7 @@ sub AddSymbol #(class, symbol, file, type, prototype)
         # If the symbol isn't defined, i.e. it was a potential interpretation only...
         if (!$symbolObject->IsDefined())
             {
-            $symbolObject->AddDefinition($file, $type, $prototype);
+            $symbolObject->AddDefinition($file, $type, $prototype, $summary);
 
             # See if this symbol provides a better interpretation of any references, and rebuild the reference files if it does.
             # We can assume this symbol has interpretations, because the object won't exist without either that or definitions.
@@ -416,7 +423,7 @@ sub AddSymbol #(class, symbol, file, type, prototype)
         # If the symbol is defined but not in this file...
         elsif (!$symbolObject->IsDefinedIn($file))
             {
-            $symbolObject->AddDefinition($file, $type, $prototype);
+            $symbolObject->AddDefinition($file, $type, $prototype, $summary);
 
             $indexChanges{$type} = 1;
 
@@ -451,7 +458,7 @@ sub AddSymbol #(class, symbol, file, type, prototype)
         if (!exists $watchedFileSymbolDefinitions{$symbolString})
             {
             $watchedFileSymbolDefinitions{$symbolString} =
-                 NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype);
+                 NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype, $summary);
             };
         };
     };
@@ -571,12 +578,14 @@ sub AnalyzeChanges
                 # Update symbols that changed.
 
                 if ( $symbolObject->TypeDefinedIn($watchedFileName) != $newSymbolDef->Type() ||
-                     $symbolObject->PrototypeDefinedIn($watchedFileName) ne $newSymbolDef->Prototype() )
+                     $symbolObject->PrototypeDefinedIn($watchedFileName) ne $newSymbolDef->Prototype() ||
+                     $symbolObject->SummaryDefinedIn($watchedFileName) ne $newSymbolDef->Summary() )
                     {
                     $indexChanges{$symbolObject->TypeDefinedIn($watchedFileName)} = 1;
                     $indexChanges{$newSymbolDef->Type()} = 1;
 
-                    $symbolObject->ChangeDefinition($watchedFileName, $newSymbolDef->Type(), $newSymbolDef->Prototype());
+                    $symbolObject->ChangeDefinition($watchedFileName, $newSymbolDef->Type(), $newSymbolDef->Prototype(),
+                                                                       $newSymbolDef->Summary());
 
                     # If the symbol definition was the global one, we need to update all files that reference it.  If it wasn't, the only file
                     # that could references it is itself, and the only way the symbol definition could change in the first place was if it was
@@ -731,21 +740,24 @@ sub References #(scope, reference, file)
         my $targetFile;
         my $type;
         my $prototype;
+        my $summary;
 
         if ($targetObject->IsDefinedIn($file))
             {
             $targetFile = $file;
             $type = $targetObject->TypeDefinedIn($file);
             $prototype = $targetObject->PrototypeDefinedIn($file);
+            $summary = $targetObject->SummaryDefinedIn($file);
             }
         else
             {
             $targetFile = $targetObject->GlobalDefinition();
             $type = $targetObject->GlobalType();
             $prototype = $targetObject->GlobalPrototype();
+            $summary = $targetObject->GlobalSummary();
             };
 
-        return NaturalDocs::SymbolTable::ReferenceTarget::New($class, $symbol, $targetFile, $type, $prototype);
+        return NaturalDocs::SymbolTable::ReferenceTarget::New($class, $symbol, $targetFile, $type, $prototype, $summary);
         }
 
     else
@@ -1292,12 +1304,13 @@ sub MakeIndex #(type)
                     {
                     $indexHash{$symbol} = NaturalDocs::SymbolTable::IndexElement::New($symbol, $class, $definition,
                                                                                                                               $object->TypeDefinedIn($definition),
-                                                                                                                              $object->PrototypeDefinedIn($definition) );
+                                                                                                                              $object->PrototypeDefinedIn($definition),
+                                                                                                                              $object->SummaryDefinedIn($definition) );
                     }
                 else
                     {
                     $indexHash{$symbol}->Merge($class, $definition, $object->TypeDefinedIn($definition),
-                                                                 $object->PrototypeDefinedIn($definition) );
+                                                                 $object->PrototypeDefinedIn($definition), $object->SummaryDefinedIn($definition) );
                     };
                 }; # If type matches
             }; # Each definition

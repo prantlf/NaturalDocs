@@ -29,7 +29,8 @@ package NaturalDocs::SymbolTable::ReferenceTarget;
 #       SYMBOL  - The target symbol.
 #       FILE        - The file the target is defined as.
 #       TYPE       - The target type.  Will be one of the <Topic Types>.
-#       PROTOTYPE - The target's prototype, or undef if note.
+#       PROTOTYPE - The target's prototype, or undef if none.
+#       SUMMARY    - The target's summary, or undef if none.
 #
 
 # DEPENDENCY: New() depends on the order of these constants.  If they change, New() has to be updated.
@@ -38,6 +39,7 @@ use constant SYMBOL => 1;
 use constant FILE => 2;
 use constant TYPE => 3;
 use constant PROTOTYPE => 4;
+use constant SUMMARY => 5;
 
 ###############################################################################
 # Group: Functions
@@ -55,8 +57,9 @@ use constant PROTOTYPE => 4;
 #       file       - The file the target is defined in.
 #       type     - The type of the target symbol.  Will be one of the <Topic Types>.
 #       prototype - The target's prototype.  Set to undef if not defined or not applicable.
+#       summary - The target's summary.  Set to undef if not defined or not applicable.
 #
-sub New #(class, symbol, file, type, prototype)
+sub New #(class, symbol, file, type, prototype, summary)
     {
     # DEPENDENCY: This code depends on the order of the member constants.
     my $object = [ @_ ];
@@ -90,5 +93,10 @@ sub Type
 # Returns the target's prototype, or undef if not defined or not applicable.
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
+
+# Function: Summary
+# Returns the target's summary, or undef if not defined or not applicable.
+sub Summary
+    {  return $_[0]->[SUMMARY];  };
 
 1;

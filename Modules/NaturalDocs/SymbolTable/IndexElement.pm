@@ -38,6 +38,7 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   > - File
 #   > - Type
 #   > - Prototype
+#   > - Summary
 #
 #   A symbol that is defined by multiple classes, each with only one definition:
 #   > [Element]
@@ -48,6 +49,7 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   >     - File
 #   >     - Type
 #   >     - Prototype
+#   >     - Summary
 #   >     [Element]
 #   >     - ...
 #
@@ -60,6 +62,7 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   >    - File
 #   >    - Type
 #   >    - Protype
+#   >    - Summary
 #   >    [Element]
 #   >    - ...
 #
@@ -74,6 +77,7 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   >      - File
 #   >      - Type
 #   >      - Prototype
+#   >      - Summary
 #   >      [Element]
 #   >      - ...
 #   >    [Element]
@@ -103,12 +107,14 @@ package NaturalDocs::SymbolTable::IndexElement;
 #             <NaturalDocs::SymbolTable::IndexElement>s if multiple files define the class/symbol.
 #   TYPE  - The class/symbol/file type.  Will be one of the <Topic Types>.
 #   PROTOTYPE  - The class/symbol/file prototype, or undef if not applicable.
+#   SUMMARY     - The class/symbol/file summary, or undef if not applicable.
 #
 use constant SYMBOL => 0;
 use constant CLASS => 1;
 use constant FILE => 2;
 use constant TYPE => 3;
 use constant PROTOTYPE => 4;
+use constant SUMMARY => 5;
 # DEPENDENCY: New() depends on the order of these constants.
 
 
@@ -130,8 +136,9 @@ use constant PROTOTYPE => 4;
 #       file  - The symbol's definition file.
 #       type  - The symbol's type.  One of the <Topic Types>.
 #       prototype  - The symbol's prototype, if applicable.
+#       summary  - The symbol's summary, if applicable.
 #
-sub New #(symbol, class, file, type, prototype)
+sub New #(symbol, class, file, type, prototype, summary)
     {
     # DEPENDENCY: This depends on the parameter list being in the same order as the constants.
 
@@ -153,10 +160,11 @@ sub New #(symbol, class, file, type, prototype)
 #       file  - The symbol's definition file.
 #       type  - The symbol's type.  One of the <Topic Types>.
 #       prototype  - The symbol's protoype if applicable.
+#       summary  - The symbol's summary if applicable.
 #
-sub Merge #(class, file, type, prototype)
+sub Merge #(class, file, type, prototype, summary)
     {
-    my ($self, $class, $file, $type, $prototype) = @_;
+    my ($self, $class, $file, $type, $prototype, $summary) = @_;
 
     # If there's only one class...
     if (!ref $self->Class())
@@ -164,20 +172,22 @@ sub Merge #(class, file, type, prototype)
         # If there's one class and it's the same as the new one...
         if ($class eq $self->Class())
             {
-            $self->MergeFile($file, $type, $prototype);
+            $self->MergeFile($file, $type, $prototype, $summary);
             }
 
         # If there's one class and the new one is different...
         else
             {
             my $selfDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, $self->Class(), $self->File(),
-                                                                                                                $self->Type(), $self->Prototype());
-            my $newDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, $class, $file, $type, $prototype);
+                                                                                                                $self->Type(), $self->Prototype(),
+                                                                                                                $self->Summary());
+            my $newDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, $class, $file, $type, $prototype, $summary);
 
             $self->[CLASS] = [ $selfDefinition, $newDefinition ];
             $self->[FILE] = undef;
             $self->[TYPE] = undef;
             $self->[PROTOTYPE] = undef;
+            $self->[SUMMARY] = undef;
             };
         }
 
@@ -199,13 +209,14 @@ sub Merge #(class, file, type, prototype)
         # If there's more than one class and the new class is one of them...
         if (defined $classElement)
             {
-            $classElement->MergeFile($file, $type, $prototype);
+            $classElement->MergeFile($file, $type, $prototype, $summary);
             }
 
         # If there's more than one class and the new class is not one of them...
         else
             {
-            push @{$self->Class()}, NaturalDocs::SymbolTable::IndexElement::New(undef, $class, $file, $type, $prototype);
+            push @{$self->Class()},
+                    NaturalDocs::SymbolTable::IndexElement::New(undef, $class, $file, $type, $prototype, $summary);
             };
         };
     };
@@ -272,6 +283,11 @@ sub Type
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
 
+#   Function: Summary
+#   Returns the summary of the class/symbol/file, if applicable.
+sub Summary
+    {  return $_[0]->[SUMMARY];  };
+
 
 ###############################################################################
 # Group: Support Functions
@@ -286,10 +302,11 @@ sub Prototype
 #       file  - The class/symbol's definition file.
 #       type  - The class/symbol's type.  One of the <Topic Types>.
 #       prototype  - The class/symbol's protoype if applicable.
+#       summary  - The class/symbol's summary if applicable.
 #
-sub MergeFile #(file, type, prototype)
+sub MergeFile #(file, type, prototype, summary)
     {
-    my ($self, $file, $type, $prototype) = @_;
+    my ($self, $file, $type, $prototype, $summary) = @_;
 
     # If there's only one file...
     if (!ref $self->File())
@@ -298,12 +315,13 @@ sub MergeFile #(file, type, prototype)
         if ($file ne $self->File())
             {
             my $selfDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $self->File(), $self->Type(),
-                                                                                                                $self->Prototype());
-            my $newDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $file, $type, $prototype);
+                                                                                                                $self->Prototype(), $self->Summary());
+            my $newDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $file, $type, $prototype, $summary);
 
             $self->[FILE] = [ $selfDefinition, $newDefinition ];
             $self->[TYPE] = undef;
             $self->[PROTOTYPE] = undef;
+            $self->[SUMMARY] = undef;
             }
 
         # If the file was the same, just ignore the duplicate in the index.
@@ -322,7 +340,7 @@ sub MergeFile #(file, type, prototype)
                 };
             };
 
-        push @{$self->File()}, NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $file, $type, $prototype);
+        push @{$self->File()}, NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $file, $type, $prototype, $summary);
         };
     };
 
