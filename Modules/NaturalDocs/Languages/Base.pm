@@ -354,14 +354,11 @@ sub StripOpeningSymbols #(lineRef, symbols)
     if (!defined $symbols)
         {  return undef;  };
 
-    foreach my $symbol (@$symbols)
-        {
-        my $index = index($$lineRef, $symbol);
+    my ($index, $symbol) = ::FindFirstSymbol($$lineRef, $symbols);
 
-        if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
-            {
-            return substr($$lineRef, $index, length($symbol), ' ' x length($symbol));
-            };
+    if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
+        {
+        return substr($$lineRef, $index, length($symbol), ' ' x length($symbol));
         };
 
     return undef;
