@@ -90,16 +90,19 @@ my %unbuiltFilesWithContent;
 #
 #   Format:
 #
-#       The beginning of the file is the version it was generated with.  Use the text file functions in <NaturalDocs::Version> to
-#       deal with it.
+#       The format is a text file.
+#
+#       > [VersionInt: app version]
+#
+#       The beginning of the file is the <VersionInt> it was generated with.
+#
+#       > [last modification time of menu] \n
 #
 #       The second line is the last modification time of <Menu.txt>.
 #
 #       Each following line is
 #
-#       > [file name] tab [last modification time] tab [has ND content boolean] tab [default menu title]
-#
-#       The file name is absolute.
+#       > [file name] tab [last modification time] tab [has ND content (0 or 1)] tab [default menu title] \n
 #
 #   Revisions:
 #
