@@ -60,12 +60,19 @@ my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
 #
 my $saidUpdatingCSSFile;
 
+#
+#   constant: ADD_HIDDEN_BREAKS
+#
+#   Just a synonym for "1" so that setting the flag on <StringToHTML()> is clearer in the calling code.
+#
+use constant ADD_HIDDEN_BREAKS => 1;
+
 
 ###############################################################################
 # Group: ToolTip Package Variables
 #
 #   These variables are for the tooltip generation functions only.  Since they're reset on every call to <BuildContent()> and
-#   <BuildIndexContent()>, and are only used by them and their support functions, they can be shared by all instances of the
+#   <BuildIndexPages()>, and are only used by them and their support functions, they can be shared by all instances of the
 #   package.
 
 #
@@ -154,25 +161,25 @@ tie %menuGroupNumbers, 'Tie::RefHash';
 #
 #   Constants used to approximate the lengths of the menu or its groups.
 #
-#   MENU_TITLELENGTH       - The length of the title.
-#   MENU_SUBTITLELENGTH - The length of the subtitle.
-#   MENU_FILELENGTH         - The length of one file entry.
-#   MENU_GROUPLENGTH     - The length of one group entry.
-#   MENU_TEXTLENGTH        - The length of one text entry.
-#   MENU_LINKLENGTH        - The length of one link entry.
+#   MENU_TITLE_LENGTH       - The length of the title.
+#   MENU_SUBTITLE_LENGTH - The length of the subtitle.
+#   MENU_FILE_LENGTH         - The length of one file entry.
+#   MENU_GROUP_LENGTH     - The length of one group entry.
+#   MENU_TEXT_LENGTH        - The length of one text entry.
+#   MENU_LINK_LENGTH        - The length of one link entry.
 #
-#   MENU_LENGTHLIMIT    - The limit of the menu's length.  If the total length surpasses this limit, groups that aren't required
+#   MENU_LENGTH_LIMIT    - The limit of the menu's length.  If the total length surpasses this limit, groups that aren't required
 #                                       to be open to show the selection will default to closed on browsers that support it.
 #
-use constant MENU_TITLELENGTH => 3;
-use constant MENU_SUBTITLELENGTH => 1;
-use constant MENU_FILELENGTH => 1;
-use constant MENU_GROUPLENGTH => 2; # because it's a line and a blank space
-use constant MENU_TEXTLENGTH => 1;
-use constant MENU_LINKLENGTH => 1;
-use constant MENU_INDEXLENGTH => 1;
+use constant MENU_TITLE_LENGTH => 3;
+use constant MENU_SUBTITLE_LENGTH => 1;
+use constant MENU_FILE_LENGTH => 1;
+use constant MENU_GROUP_LENGTH => 2; # because it's a line and a blank space
+use constant MENU_TEXT_LENGTH => 1;
+use constant MENU_LINK_LENGTH => 1;
+use constant MENU_INDEX_LENGTH => 1;
 
-use constant MENU_LENGTHLIMIT => 35;
+use constant MENU_LENGTH_LIMIT => 35;
 
 
 ###############################################################################
@@ -211,7 +218,7 @@ sub PurgeFiles
 #
 #   Parameters:
 #
-#       indexes  - An existence hashref of the index types to purge.  The keys are the <Topic Types> or * for the general index.
+#       indexes  - An existence hashref of the index types to purge.  The keys are the <TopicTypes> or * for the general index.
 #
 sub PurgeIndexes #(indexes)
     {
@@ -269,7 +276,7 @@ sub EndBuild #(hasChanged)
 #
 #   Parameters:
 #
-#       sourceFile - The source file to build the title of.
+#       sourceFile - The source <FileName> to build the title of.
 #
 #   Returns:
 #
@@ -299,7 +306,7 @@ sub BuildTitle #(sourceFile)
 #
 #   Parameters:
 #
-#       outputFile - The output file to build the menu for.  Does not have to be on the menu itself.
+#       outputFile - The output <FileName> to build the menu for.  Does not have to be on the menu itself.
 #       isFramed - Whether the menu will appear in a frame.  If so, it assumes the <base> HTML tag is set to make links go to the
 #                       appropriate frame.
 #
@@ -329,8 +336,8 @@ sub BuildMenu #(outputFile, isFramed)
     my $menuTitle = NaturalDocs::Menu->Title();
     if (defined $menuTitle)
         {
-        $menuLength += MENU_TITLELENGTH;
-        $rootLength += MENU_TITLELENGTH;
+        $menuLength += MENU_TITLE_LENGTH;
+        $rootLength += MENU_TITLE_LENGTH;
 
         $output .=
         '<div class=MTitle>'
@@ -339,8 +346,8 @@ sub BuildMenu #(outputFile, isFramed)
         my $menuSubTitle = NaturalDocs::Menu->SubTitle();
         if (defined $menuSubTitle)
             {
-            $menuLength += MENU_SUBTITLELENGTH;
-            $rootLength += MENU_SUBTITLELENGTH;
+            $menuLength += MENU_SUBTITLE_LENGTH;
+            $rootLength += MENU_SUBTITLE_LENGTH;
 
             $output .=
             '<div class=MSubTitle>'
@@ -360,7 +367,7 @@ sub BuildMenu #(outputFile, isFramed)
     # instead of having them default to closed via CSS, any browser that doesn't support changing this at runtime will keep
     # the menu entirely open so that its still usable.
 
-    if ($menuLength > MENU_LENGTHLIMIT())
+    if ($menuLength > MENU_LENGTH_LIMIT())
         {
         my $toExpand = $self->ExpandMenu($outputFile, $rootLength);
 
@@ -417,7 +424,7 @@ sub BuildMenu #(outputFile, isFramed)
 #
 #   Parameters:
 #
-#       outputFile - The output file the menu is being built for.  Does not have to be on the menu itself.
+#       outputFile - The output <FileName> the menu is being built for.  Does not have to be on the menu itself.
 #       isFramed - Whether the menu will be in a HTML frame or not.  Assumes that if it is, the <base> HTML tag will be set so that
 #                       links are directed to the proper frame.
 #       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the contents
@@ -473,8 +480,8 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 push @menuSelectionHierarchy, $entry;
                 };
 
-            $menuLength += MENU_GROUPLENGTH;
-            $groupLength += MENU_GROUPLENGTH;
+            $menuLength += MENU_GROUP_LENGTH;
+            $groupLength += MENU_GROUP_LENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_FILE())
@@ -486,7 +493,7 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MFile id=MSelected>'
-                        . $self->AddHiddenBreaks( $self->StringToHTML($entry->Title() ))
+                        . $self->StringToHTML($entry->Title(), ADD_HIDDEN_BREAKS)
                     . '</div>'
                 . '</div>';
 
@@ -498,14 +505,14 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 '<div class=MEntry>'
                     . '<div class=MFile>'
                         . '<a href="' . $self->MakeRelativeURL($outputFile, $targetOutputFile) . '">'
-                            . $self->AddHiddenBreaks( $self->StringToHTML( $entry->Title() ))
+                            . $self->StringToHTML( $entry->Title(), ADD_HIDDEN_BREAKS)
                         . '</a>'
                     . '</div>'
                 . '</div>';
                 };
 
-            $menuLength += MENU_FILELENGTH;
-            $groupLength += MENU_FILELENGTH;
+            $menuLength += MENU_FILE_LENGTH;
+            $groupLength += MENU_FILE_LENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_TEXT())
@@ -517,8 +524,8 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 . '</div>'
             . '</div>';
 
-            $menuLength += MENU_TEXTLENGTH;
-            $groupLength += MENU_TEXTLENGTH;
+            $menuLength += MENU_TEXT_LENGTH;
+            $groupLength += MENU_TEXT_LENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_LINK())
@@ -532,8 +539,8 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 . '</div>'
             . '</div>';
 
-            $menuLength += MENU_LINKLENGTH;
-            $groupLength += MENU_LINKLENGTH;
+            $menuLength += MENU_LINK_LENGTH;
+            $groupLength += MENU_LINK_LENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_INDEX())
@@ -563,8 +570,8 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 . '</div>';
                 };
 
-            $menuLength += MENU_INDEXLENGTH;
-            $groupLength += MENU_INDEXLENGTH;
+            $menuLength += MENU_INDEX_LENGTH;
+            $groupLength += MENU_INDEX_LENGTH;
             };
         };
 
@@ -579,7 +586,7 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
 #
 #   Parameters:
 #
-#       sourceFile - The source file name.
+#       sourceFile - The source <FileName>.
 #       parsedFile - The parsed source file as an arrayref of <NaturalDocs::Parser::ParsedTopic> objects.
 #
 #   Returns:
@@ -597,11 +604,10 @@ sub BuildContent #(sourceFile, parsedFile)
 
     while ($i < scalar @$parsedFile)
         {
-        my $anchor = $self->SymbolToHTMLSymbol( $parsedFile->[$i]->Class(), $parsedFile->[$i]->Name() );
+        my $anchor = $self->SymbolToHTMLSymbol($parsedFile->[$i]->Symbol());
 
 
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
-        # There's plenty of repeated code in this if-else tree, but this makes it simpler.
 
         my $headerType;
 
@@ -621,14 +627,14 @@ sub BuildContent #(sourceFile, parsedFile)
 
             . '<' . $headerType . ' class=CTitle>'
                 . '<a name="' . $anchor . '"></a>'
-                . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ))
+                . $self->StringToHTML( $parsedFile->[$i]->Title(), ADD_HIDDEN_BREAKS)
             . '</' . $headerType . '>';
 
 
         my $hierarchy;
         if ($parsedFile->[$i]->Type() == ::TOPIC_CLASS())
             {
-            $hierarchy = $self->BuildClassHierarchy($sourceFile, $parsedFile->[$i]->Name());
+            $hierarchy = $self->BuildClassHierarchy($sourceFile, $parsedFile->[$i]->Symbol());
             };
 
         my $summary;
@@ -655,7 +661,8 @@ sub BuildContent #(sourceFile, parsedFile)
 
         if (defined $parsedFile->[$i]->Body())
             {
-            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Scope() );
+            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Package(),
+                                                                   $parsedFile->[$i]->Using() );
             };
 
         $output .= $summary;
@@ -682,7 +689,7 @@ sub BuildContent #(sourceFile, parsedFile)
 #
 #   Parameters:
 #
-#       sourceFile - The source file the summary appears in.
+#       sourceFile - The source <FileName> the summary appears in.
 #
 #       parsedFile - A reference to the parsed source file.
 #
@@ -776,15 +783,14 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             if (defined $topic->Prototype())
                 {
-                my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $sourceFile, $topic->Type(),
+                my $tooltipID = $self->BuildToolTip($topic->Symbol(), $sourceFile, $topic->Type(),
                                                                      $topic->Prototype(), $topic->Summary());
                 $toolTipProperties = $self->BuildToolTipLinkProperties($tooltipID);
                 };
 
             $output .=
-            '<a href="#' . $self->SymbolToHTMLSymbol( $parsedFile->[$index]->Class(), $parsedFile->[$index]->Name() ) . '" '
-                . $toolTipProperties . '>'
-                . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$index]->Name() ))
+            '<a href="#' . $self->SymbolToHTMLSymbol($parsedFile->[$index]->Symbol()) . '" ' . $toolTipProperties . '>'
+                . $self->StringToHTML( $parsedFile->[$index]->Title(), ADD_HIDDEN_BREAKS)
             . '</a>';
 
 
@@ -810,11 +816,10 @@ sub BuildSummary #(sourceFile, parsedFile, index)
             $output .= $inSectionOrClassTag . $inGroupTag;
 
 
-            # We want the summary to be the first sentence of the body, if it's regular text.  If it's a list, we'll leave it empty.
-
             if (defined $parsedFile->[$index]->Body())
                 {
-                $output .= $self->NDMarkupToHTML($sourceFile, $parsedFile->[$index]->Summary(), $parsedFile->[$index]->Scope());
+                $output .= $self->NDMarkupToHTML($sourceFile, $parsedFile->[$index]->Summary(),
+                                                                     $parsedFile->[$index]->Package(), $parsedFile->[$index]->Using());
                 };
 
 
@@ -877,9 +882,9 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 #
 #   Parameters:
 #
-#       type - The type of prototype it is.
+#       type - The <TopicType> the prototype is from.
 #       prototype - The prototype to format.
-#       file - The file the prototype was defined in.
+#       file - The <FileName> the prototype was defined in.
 #
 #   Returns:
 #
@@ -999,380 +1004,15 @@ sub BuildFooter
 
 
 #
-#   Function: BuildIndexContent
-#
-#   Builds and returns index's content in HTML.
-#
-#   Parameters:
-#
-#       index  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement> objects.
-#                   The first section is for symbols, the second for numbers, and the rest for A through Z.
-#       outputFile - The output file the index is going to be stored in.  Since there may be multiple files, just send the first file.
-#
-#   Returns:
-#
-#       An arrayref of the index sections.  Index 0 is the symbols, index 1 is the numbers, and each following index is A through Z.
-#       The content of each section is its HTML, or undef if there is nothing for that section.
-#
-sub BuildIndexContent #(index, outputFile)
-    {
-    my ($self, $index, $outputFile) = @_;
-
-    $self->ResetToolTips();
-
-    my $content = [ ];
-
-    for (my $section = 0; $section < scalar @$index; $section++)
-        {
-        foreach my $entry ( @{$index->[$section]} )
-            {
-            # Build a simple entry
-
-            if (!ref $entry->Class() && !ref $entry->File())
-                {
-                $content->[$section] .=
-                    $self->BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
-                                                    $entry->File(), $entry->Type(), $entry->Prototype(), $entry->Summary(), $outputFile);
-                }
-
-
-            # Build an entry with subindexes.
-
-            else
-                {
-                $content->[$section] .=
-                '<div class=IEntry>'
-                    . '<span class=ISymbol>' . $self->StringToHTML($entry->Symbol()) . '</span>';
-
-                    if (defined $entry->Class() && !ref $entry->Class())
-                        {  $content->[$section] .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
-
-                    $content->[$section] .=
-                    '<div class=ISubIndex>';
-
-                if (ref $entry->Class())
-                    {
-                    my $classEntries = $entry->Class();
-
-                    foreach my $classEntry (@$classEntries)
-                        {
-                        if (ref $classEntry->File())
-                            {
-                            $content->[$section] .= '<div class=IEntry><span class=IParent>';
-
-                            if (defined $classEntry->Class())
-                                {  $content->[$section] .= $self->AddHiddenBreaks($self->StringToHTML($classEntry->Class()));  }
-                            else
-                                {  $content->[$section] .= 'Global';  };
-
-                            $content->[$section] .= '</span><div class=ISubIndex>';
-
-                            my $fileEntries = $classEntry->File();
-                            foreach my $fileEntry (@$fileEntries)
-                                {
-                                $content->[$section] .=
-                                    $self->BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
-                                                                     $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(),
-                                                                     $fileEntry->Summary(), $outputFile);
-                                };
-
-                            $content->[$section] .= '</div></div>';
-                            }
-
-                        else #(!ref $classEntry->File())
-                            {
-                            $content->[$section] .=
-                                $self->BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
-                                                                  $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(),
-                                                                  $classEntry->Summary(), $outputFile);
-                            };
-                        };
-                    }
-
-                else #(!ref $entry->Class())
-                    {
-                    # ref $entry->File() is logically true then.
-
-                    my $fileEntries = $entry->File();
-                    foreach my $fileEntry (@$fileEntries)
-                        {
-                        $content->[$section] .=
-                            $self->BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
-                                                             $fileEntry->Type(), $fileEntry->Prototype(), $fileEntry->Summary(), $outputFile);
-                        };
-                    };
-
-                $content->[$section] .= '</div></div>'; # Symbol IEntry and ISubIndex
-                };
-
-
-            # Add the tooltips to each section.
-
-            $content->[$section] .= $self->BuildToolTips();
-            $self->ResetToolTips(1);
-            };
-        };
-
-
-    return $content;
-    };
-
-
-#
-#   Function: BuildIndexLink
-#
-#   Returns a link in the index, complete with surrounding <IEntry> tags.
-#
-#   Parameters:
-#
-#       name  - The text to appear for the link.
-#       tag  - The tag to apply to name.  For example, <ISymbol>.
-#       class  - The class of the symbol, if any.
-#       showClass  - Whether the class name should be shown in parenthesis.
-#       symbol  - The symbol to link to.
-#       file  - The source file the symbol appears in.
-#       type  - The type of the symbol.  One of the <Topic Types>.
-#       prototype  - The prototype of the symbol, if any.
-#       summary  - The summary of the symbol, if any.
-#       outputFile  - The output file the link is appearing in.
-#
-#   Returns:
-#
-#       The link entry, including <IEntry> tags.
-#
-sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype, summary, outputFile)
-    {
-    my ($self, $name, $tag, $class, $showClass, $symbol, $file, $type, $prototype, $summary, $outputFile) = @_;
-
-    my $output =
-    '<div class=IEntry>'
-        . '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file) )
-            . '#' . $self->SymbolToHTMLSymbol($class, $symbol) . '" '
-            . 'class=' . $tag . ' ';
-
-    my $tooltipID = $self->BuildToolTip($class, $symbol, $file, $type, $prototype, $summary);
-    my $tooltipProperties = $self->BuildToolTipLinkProperties($tooltipID);
-
-    $output .= $tooltipProperties . '>' . $self->AddHiddenBreaks($self->StringToHTML($name)) . '</a>';
-
-    if ($showClass && defined $class)
-        {  $output .= ', <span class=IParent>' . $class . '</span>';  };
-
-    $output .= '</div>';
-
-    return $output;
-    };
-
-
-#
-#   Function: BuildIndexFiles
-#
-#   Builds an index file or files.
-#
-#   Parameters:
-#
-#       type - The type the index is limited to, or undef for none.  Should be one of the <Topic Types>.
-#       indexContent - An arrayref containing the index content.  Each entry is a section; index 0 is symbols, index 1 is numbers,
-#                             and following indexes represent A through Z.
-#       beginPage - All the content of the HTML page up to where the index content should appear.
-#       endPage - All the content of the HTML page past where the index should appear.
-#
-#   Returns:
-#
-#       The number of pages in the index.
-#
-sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
-    {
-    my ($self, $type, $indexContent, $beginPage, $endPage) = @_;
-
-    my $page = 1;
-    my $pageSize = 0;
-    my @pageLocation;
-
-    # The maximum page size acceptable before starting a new page.  Note that this doesn't include beginPage and endPage,
-    # because we don't want something like a large menu screwing up the calculations.
-    use constant PAGESIZE_LIMIT => 40000;
-
-
-    # File the pages.
-
-    for (my $i = 0; $i < scalar @$indexContent; $i++)
-        {
-        if (!defined $indexContent->[$i])
-            {  next;  };
-
-        $pageSize += length($indexContent->[$i]);
-        $pageLocation[$i] = $page;
-
-        if ($pageSize + length($indexContent->[$i + 1]) > PAGESIZE_LIMIT)
-            {
-            $page++;
-            $pageSize = 0;
-            };
-        };
-
-
-    # Build the pages.
-
-    my $indexFileName;
-    $page = -1;
-    my $oldPage = -1;
-
-    for (my $i = 0; $i < scalar @$indexContent; $i++)
-        {
-        if (!defined $indexContent->[$i])
-            {  next;  };
-
-        $page = $pageLocation[$i];
-
-        # Switch files if we need to.
-
-        if ($page != $oldPage)
-            {
-            if ($oldPage != -1)
-                {
-                print INDEXFILEHANDLE $endPage;
-                close(INDEXFILEHANDLE);
-                };
-
-            $indexFileName = $self->IndexFileOf($type, $page);
-
-            open(INDEXFILEHANDLE, '>' . $indexFileName)
-                or die "Couldn't create output file " . $indexFileName . ".\n";
-
-
-            # Create the link tags like first, next, previous, and last.
-
-            if ($pageLocation[-1] > 1)
-                {
-                my $linkTags;
-
-                if ($page > 1)
-                    {
-                    $linkTags .=
-                        '<link rel=First href="' . $self->RelativeIndexFileOf($type, 1) . '">'
-                        . '<link rel=Previous href="' . $self->RelativeIndexFileOf($type, $page - 1) . '">';
-                    };
-                if ($page < $pageLocation[-1])
-                    {
-                    $linkTags .=
-                        '<link rel=Last href="' . $self->RelativeIndexFileOf($type, $pageLocation[-1]) . '">'
-                        . '<link rel=Next href="' . $self->RelativeIndexFileOf($type, $page + 1) . '">';
-                    };
-
-                my $endOfHead = index($beginPage, '</head>');
-
-                print INDEXFILEHANDLE
-
-                    substr($beginPage, 0, $endOfHead)
-                    . $linkTags
-                    . substr($beginPage, $endOfHead);
-                }
-            else
-                {  print INDEXFILEHANDLE $beginPage;  };
-
-            print INDEXFILEHANDLE '' . $self->BuildIndexNavigationBar($type, $page, \@pageLocation);
-
-
-            $oldPage = $page;
-            };
-
-        print INDEXFILEHANDLE
-        '<div class=ISection>'
-
-            . '<div class=IHeading>'
-                . '<a name="' . $indexAnchors[$i] . '"></a>'
-                 . $indexHeadings[$i]
-            . '</div>'
-
-            . $indexContent->[$i]
-
-        . '</div>';
-        };
-
-    if ($page != -1)
-        {
-        print INDEXFILEHANDLE $endPage;
-        close(INDEXFILEHANDLE);
-        }
-
-    # Build a dummy page so there's something at least.
-    else
-        {
-        $indexFileName = $self->IndexFileOf($type, 1);
-
-        open(INDEXFILEHANDLE, '>' . $indexFileName)
-            or die "Couldn't create output file " . $indexFileName . ".\n";
-
-        print INDEXFILEHANDLE
-            $beginPage
-            . $self->BuildIndexNavigationBar($type, 1, \@pageLocation)
-            . 'There are no entries in the ' . lc( NaturalDocs::Topics->NameOf($type) ) . ' index.'
-            . $endPage;
-
-        close(INDEXFILEHANDLE);
-        };
-
-
-    return $page;
-    };
-
-
-#
-#   Function: BuildIndexNavigationBar
-#
-#   Builds a navigation bar for a page of the index.
-#
-#   Parameters:
-#
-#       type - The type of the index, or undef for general.  Should be one of the <Topic Types>.
-#       page - The page of the index the navigation bar is for.
-#       locations - An arrayref of the locations of each section.  Index 0 is for the symbols, index 1 for the numbers, and the rest
-#                       for each letter.  The values are the page numbers where the sections are located.
-#
-sub BuildIndexNavigationBar #(type, page, locations)
-    {
-    my ($self, $type, $page, $locations) = @_;
-
-    my $output = '<div class=INavigationBar>';
-
-    for (my $i = 0; $i < scalar @indexHeadings; $i++)
-        {
-        if ($i != 0)
-            {  $output .= ' &middot; ';  };
-
-        if (defined $locations->[$i])
-            {
-            $output .= '<a href="';
-
-            if ($locations->[$i] != $page)
-                {  $output .= $self->RelativeIndexFileOf($type, $locations->[$i]);  };
-
-            $output .= '#' . $indexAnchors[$i] . '">' . $indexHeadings[$i] . '</a>';
-            }
-        else
-            {
-            $output .= $indexHeadings[$i];
-            };
-        };
-
-    $output .= '</div>';
-
-    return $output;
-    };
-
-
-#
 #   Function: BuildToolTip
 #
 #   Builds the HTML for a symbol's tooltip and stores it in <tooltipHTML>.
 #
 #   Parameters:
 #
-#       class - The target's class, or undef for global.
-#       symbol - The target symbol.
-#       file - The file the target's defined in.
-#       type - The symbol type.  Should be one of the <Topic Types>.
+#       symbol - The target <SymbolString>.
+#       file - The <FileName> the target's defined in.
+#       type - The symbol <TopicType>.
 #       prototype - The target prototype, or undef for none.
 #       summary - The target summary, or undef for none.
 #
@@ -1380,21 +1020,21 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #
 #       If a tooltip is necessary for the link, returns the tooltip ID.  If not, returns undef.
 #
-sub BuildToolTip #(class, symbol, file, type, prototype, summary)
+sub BuildToolTip #(symbol, file, type, prototype, summary)
     {
-    my ($self, $class, $symbol, $file, $type, $prototype, $summary) = @_;
+    my ($self, $symbol, $file, $type, $prototype, $summary) = @_;
 
     if (defined $prototype || defined $summary)
         {
-        my $fullSym = $self->SymbolToHTMLSymbol($class, $symbol);
-        my $number = $tooltipSymbolsToNumbers{$fullSym};
+        my $htmlSymbol = $self->SymbolToHTMLSymbol($symbol);
+        my $number = $tooltipSymbolsToNumbers{$htmlSymbol};
 
         if (!defined $number)
             {
             $number = $tooltipNumber;
             $tooltipNumber++;
 
-            $tooltipSymbolsToNumbers{$fullSym} = $number;
+            $tooltipSymbolsToNumbers{$htmlSymbol} = $number;
 
             $tooltipHTML .=
             '<div class=CToolTip id="tt' . $number . '">'
@@ -1408,10 +1048,10 @@ sub BuildToolTip #(class, symbol, file, type, prototype, summary)
             if (defined $summary)
                 {
                 # Remove links, since people can't/shouldn't be clicking on tooltips anyway.
-
                 $summary =~ s/<\/?(?:link|url)>//g;
 
-                $summary = $self->NDMarkupToHTML(undef, $summary, undef);
+                # The fact that we don't have scope or using shouldn't matter because we removed the links.
+                $summary = $self->NDMarkupToHTML($file, $summary, undef, undef);
 
                 # XXX - Hack.  We want to remove e-mail links as well, but keep their obfuscation.  So we leave the tags in there for
                 # the NDMarkupToHTML call, then strip out the link part afterwards.  The text obfuscation should still be in place.
@@ -1450,17 +1090,17 @@ sub BuildToolTips
 #
 #   Parameters:
 #
-#       file - The source file.
-#       class - The class to build the hierarchy of.
+#       file - The source <FileName>.
+#       class - The class <SymbolString> to build the hierarchy of.
 #
-sub BuildClassHierarchy #(file, class)
+sub BuildClassHierarchy #(file, symbol)
     {
-    my ($self, $file, $class) = @_;
+    my ($self, $file, $symbol) = @_;
 
-    my @parents = NaturalDocs::ClassHierarchy->ParentsOf($class);
+    my @parents = NaturalDocs::ClassHierarchy->ParentsOf($symbol);
     @parents = sort { ::StringCompare($a, $b) } @parents;
 
-    my @children = NaturalDocs::ClassHierarchy->ChildrenOf($class);
+    my @children = NaturalDocs::ClassHierarchy->ChildrenOf($symbol);
     @children = sort { ::StringCompare($a, $b) } @children;
 
     if (!scalar @parents && !scalar @children)
@@ -1483,7 +1123,7 @@ sub BuildClassHierarchy #(file, class)
 
     $output .=
     '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
-        . $self->BuildClassHierarchyEntry($file, $class, 'CHCurrent', undef)
+        . $self->BuildClassHierarchyEntry($file, $symbol, 'CHCurrent', undef)
     . '</td></tr></table>';
 
     if (scalar @children)
@@ -1502,7 +1142,7 @@ sub BuildClassHierarchy #(file, class)
             for (my $i = 0; $i < 4; $i++)
                 {  $output .= $self->BuildClassHierarchyEntry($file, $children[$i], 'CHChild', 1);  };
 
-           $output .= $self->BuildClassHierarchyEntry($file, (scalar @children - 4) . ' other children', 'CHChildNote', undef);
+           $output .= '<div class=CHChildNote><div class=CHEntry>' . (scalar @children - 4) . ' other children</div></div>';
             };
 
         $output .=
@@ -1527,39 +1167,47 @@ sub BuildClassHierarchy #(file, class)
 #
 #   Parameters:
 #
-#       file - The source file.
-#       class - The class whose hierarchy is getting built.
+#       file - The source <FileName>.
+#       symbol - The class <SymbolString> whose entry is getting built.
 #       style - The style to apply to the entry, such as <CHParent>.
-#       link - Whether to build a link for this class or not.  When building the selected class' entry, this should be false.
+#       link - Whether to build a link for this class or not.  When building the selected class' entry, this should be false.  It will
+#               automatically handle whether the symbol is defined or not.
 #
-sub BuildClassHierarchyEntry #(file, class, style, link)
+sub BuildClassHierarchyEntry #(file, symbol, style, link)
     {
-    my ($self, $file, $class, $style, $link) = @_;
+    my ($self, $file, $symbol, $style, $link) = @_;
+
+    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($symbol);
+    my $name = join(NaturalDocs::Languages->LanguageOf($file)->PackageSeparator(), @identifiers);
+    $name = $self->StringToHTML($name);
 
     my $output = '<div class=' . $style . '><div class=CHEntry>';
-    my $target;
 
-    if ($link && ($target = NaturalDocs::SymbolTable->GlobalDefinition(undef, $class)) )
+    if ($link)
         {
-        my $targetFile;
+        my $target = NaturalDocs::SymbolTable->Lookup($symbol, $file);
 
-        if ($target->File() ne $file)
-            {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($file), $self->OutputFileOf($target->File()) );  };
-        # else leave it undef
+        if (defined $target)
+            {
+            my $targetFile;
 
-        my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $file, $target->Type(),
-                                                                      $target->Prototype(), $target->Summary());
+            if ($target->File() ne $file)
+                {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($file), $self->OutputFileOf($target->File()) );  };
+            # else leave it undef
 
-        my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
+            my $targetTooltipID = $self->BuildToolTip($symbol, $targetFile, $target->Type(),
+                                                                          $target->Prototype(), $target->Summary());
 
-        $output .= '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '" '
-                        . 'class=L' . NaturalDocs::Topics->NameOf($target->Type()) . ' ' . $toolTipProperties . '>' . $class . '</a>';
+            my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
+            $output .= '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol($symbol) . '" '
+                            . 'class=L' . NaturalDocs::Topics->NameOf($target->Type()) . ' ' . $toolTipProperties . '>' . $name . '</a>';
+            }
+        else
+            {  $output .= $name;  };
         }
     else
-        {
-        $output .= $class;
-        };
+        {  $output .= $name;  };
 
     $output .= '</div></div>';
     return $output;
@@ -1849,6 +1497,450 @@ sub ClosingBrowserStyles
 
 
 ###############################################################################
+# Group: Index Functions
+
+
+#
+#   Function: BuildIndexPages
+#
+#   Builds an index file or files.
+#
+#   Parameters:
+#
+#       type - The <TopicType> the index is limited to, or undef for none.
+#       index  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement> objects.
+#                   The first section is for symbols, the second for numbers, and the rest for A through Z.
+#       beginPage - All the content of the HTML page up to where the index content should appear.
+#       endPage - All the content of the HTML page past where the index should appear.
+#
+#   Returns:
+#
+#       The number of pages in the index.
+#
+sub BuildIndexPages #(type, index, beginPage, endPage)
+    {
+    my ($self, $type, $indexSections, $beginPage, $endPage) = @_;
+
+    # Build the content.
+
+    my $indexHTMLSections = $self->BuildIndexSections($indexSections, $self->IndexFileOf($type, 1));
+
+
+    my $page = 1;
+    my $pageSize = 0;
+    my @pageLocations;
+
+    # The maximum page size acceptable before starting a new page.  Note that this doesn't include beginPage and endPage,
+    # because we don't want something like a large menu screwing up the calculations.
+    use constant PAGESIZE_LIMIT => 40000;
+
+
+    # File the pages.
+
+    for (my $i = 0; $i < scalar @$indexHTMLSections; $i++)
+        {
+        if (!defined $indexHTMLSections->[$i])
+            {  next;  };
+
+        $pageSize += length($indexHTMLSections->[$i]);
+        $pageLocations[$i] = $page;
+
+        if ($pageSize + length($indexHTMLSections->[$i + 1]) > PAGESIZE_LIMIT)
+            {
+            $page++;
+            $pageSize = 0;
+            };
+        };
+
+
+    # Build the pages.
+
+    my $indexFileName;
+    $page = -1;
+    my $oldPage = -1;
+
+    for (my $i = 0; $i < scalar @$indexHTMLSections; $i++)
+        {
+        if (!defined $indexHTMLSections->[$i])
+            {  next;  };
+
+        $page = $pageLocations[$i];
+
+        # Switch files if we need to.
+
+        if ($page != $oldPage)
+            {
+            if ($oldPage != -1)
+                {
+                print INDEXFILEHANDLE $endPage;
+                close(INDEXFILEHANDLE);
+                };
+
+            $indexFileName = $self->IndexFileOf($type, $page);
+
+            open(INDEXFILEHANDLE, '>' . $indexFileName)
+                or die "Couldn't create output file " . $indexFileName . ".\n";
+
+            print INDEXFILEHANDLE $beginPage . $self->BuildIndexNavigationBar($type, $page, \@pageLocations);
+
+            $oldPage = $page;
+            };
+
+        print INDEXFILEHANDLE
+        '<div class=ISection>'
+
+            . '<div class=IHeading>'
+                . '<a name="' . $indexAnchors[$i] . '"></a>'
+                 . $indexHeadings[$i]
+            . '</div>'
+
+            . $indexHTMLSections->[$i]
+
+        . '</div>';
+        };
+
+    if ($page != -1)
+        {
+        print INDEXFILEHANDLE $endPage;
+        close(INDEXFILEHANDLE);
+        }
+
+    # Build a dummy page so there's something at least.
+    else
+        {
+        $indexFileName = $self->IndexFileOf($type, 1);
+
+        open(INDEXFILEHANDLE, '>' . $indexFileName)
+            or die "Couldn't create output file " . $indexFileName . ".\n";
+
+        print INDEXFILEHANDLE
+            $beginPage
+            . $self->BuildIndexNavigationBar($type, 1, \@pageLocations)
+            . 'There are no entries in the ' . lc( NaturalDocs::Topics->NameOf($type) ) . ' index.'
+            . $endPage;
+
+        close(INDEXFILEHANDLE);
+        };
+
+
+    return $page;
+    };
+
+
+#
+#   Function: BuildIndexSections
+#
+#   Builds and returns index's sections in HTML.
+#
+#   Parameters:
+#
+#       index  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement> objects.
+#                   The first section is for symbols, the second for numbers, and the rest for A through Z.
+#       outputFile - The output file the index is going to be stored in.  Since there may be multiple files, just send the first file.  The
+#                        path is what matters, not the file name.
+#
+#   Returns:
+#
+#       An arrayref of the index sections.  Index 0 is the symbols, index 1 is the numbers, and each following index is A through Z.
+#       The content of each section is its HTML, or undef if there is nothing for that section.
+#
+sub BuildIndexSections #(index, outputFile)
+    {
+    my ($self, $indexSections, $outputFile) = @_;
+
+    $self->ResetToolTips();
+
+    my $contentSections = [ ];
+
+    for (my $section = 0; $section < scalar @$indexSections; $section++)
+        {
+        if (defined $indexSections->[$section])
+            {
+            foreach my $indexEntry ( @{$indexSections->[$section]} )
+                {
+                $contentSections->[$section] .= $self->BuildIndexElement($indexEntry, $outputFile);
+                };
+
+            # Add the tooltips to each section.
+
+            $contentSections->[$section] .= $self->BuildToolTips();
+            $self->ResetToolTips(1);
+            };
+        };
+
+
+    return $contentSections;
+    };
+
+
+#
+#   Function: BuildIndexElement
+#
+#   Converts a <NaturalDocs::SymbolTable::IndexElement> to HTML and returns it.  It will handle all sub-elements automatically.
+#
+sub BuildIndexElement #(element, outputFile)
+    {
+    # Hidden parameters: symbol, package, hasPackage.  These are used for recursion.
+    # HasPackage is included because package may be undef and we don't want that to affect recursion.
+
+    my ($self, $element, $outputFile, $symbol, $package, $hasPackage) = @_;
+
+    my $output = '<div class=IEntry>';
+
+
+    # If we're doing a file sub-index entry...
+
+    if ($hasPackage)
+        {
+        my ($inputDirectory, $relativePath) = NaturalDocs::Settings->SplitFromInputDirectory($element->File());
+
+        $output .= $self->BuildIndexLink($self->StringToHTML($relativePath, ADD_HIDDEN_BREAKS), $symbol,
+                                                         $package, $element->File(), $element->Type(), $element->Prototype(),
+                                                         $element->Summary(), $outputFile, 'IFile');
+        }
+
+
+    # If we're doing a package sub-index entry...
+
+    elsif (defined $symbol)
+        {
+        my $text = $self->IndexSymbolToHTML($element->Package(), $element);
+
+        if (!$element->HasMultipleFiles())
+            {
+            $output .= $self->BuildIndexLink($text, $symbol, $element->Package(), $element->File(), $element->Type(),
+                                                             $element->Prototype(), $element->Summary(), $outputFile, 'IParent');
+            }
+
+        else
+            {
+            $output .=
+            '<span class=IParent>'
+                . $text
+            . '</span>'
+            . '<div class=ISubIndex>';
+
+            my $fileElements = $element->File();
+            foreach my $fileElement (@$fileElements)
+                {
+                $output .= $self->BuildIndexElement($fileElement, $outputFile, $symbol, $element->Package(), 1);
+                };
+
+            $output .=
+            '</div>';
+            };
+        }
+
+
+    # If we're doing a top-level symbol entry...
+
+    else
+        {
+        my $symbolText = $self->IndexSymbolToHTML($element->Symbol(), $element);
+
+        if (!$element->HasMultiplePackages())
+            {
+            my $packageText;
+
+            if (defined $element->Package())
+                {
+                $packageText = $self->IndexSymbolToHTML($element->Package(), $element);
+                };
+
+            if (!$element->HasMultipleFiles())
+                {
+                $output .=
+                    $self->BuildIndexLink($symbolText, $element->Symbol(), $element->Package(), $element->File(),
+                                                     $element->Type(), $element->Prototype(), $element->Summary(), $outputFile, 'ISymbol');
+
+                if (defined $packageText)
+                    {
+                    $output .=
+                    ', <span class=IParent>'
+                        . $packageText
+                    . '</span>';
+                    };
+                }
+            else # hasMultipleFiles but not mulitplePackages
+                {
+                $output .=
+                '<span class=ISymbol>'
+                    . $symbolText
+                . '</span>';
+
+                if (defined $packageText)
+                    {
+                    $output .=
+                    ', <span class=IParent>'
+                        . $packageText
+                    . '</span>';
+                    };
+
+                $output .=
+                '<div class=ISubIndex>';
+
+                my $fileElements = $element->File();
+                foreach my $fileElement (@$fileElements)
+                    {
+                    $output .= $self->BuildIndexElement($fileElement, $outputFile, $element->Symbol(), $element->Package(), 1);
+                    };
+
+                $output .=
+                '</div>';
+                };
+            }
+
+        else # hasMultiplePackages
+            {
+            $output .=
+            '<span class=ISymbol>'
+                . $symbolText
+            . '</span>'
+            . '<div class=ISubIndex>';
+
+            my $packageElements = $element->Package();
+            foreach my $packageElement (@$packageElements)
+                {
+                $output .= $self->BuildIndexElement($packageElement, $outputFile, $element->Symbol());
+                };
+
+            $output .=
+            '</div>';
+            };
+        };
+
+
+    $output .= '</div>';
+
+    return $output;
+    };
+
+
+#
+#   Function: BuildIndexLink
+#
+#   Builds and returns the HTML associated with an index link.  The HTML will be the a href tag, the text, and the closing tag.
+#
+#   Parameters:
+#
+#       text - The text of the link *in HTML*.  Use <IndexSymbolToHTML()> if necessary.
+#       symbol - The partial <SymbolString> to link to.
+#       package - The package <SymbolString> of the symbol.
+#       file - The <FileName> the symbol is defined in.
+#       type - The <TopicType> of the symbol.
+#       prototype - The prototype of the symbol, or undef if none.
+#       summary - The summary of the symbol, or undef if none.
+#       outputFile - The HTML <FileName> this link will appear in.
+#       style - The CSS style to apply to the link.
+#
+sub BuildIndexLink #(text, symbol, package, file, type, prototype, summary, outputFile, style)
+    {
+    my ($self, $text, $symbol, $package, $file, $type, $prototype, $summary, $outputFile, $style) = @_;
+
+    $symbol = NaturalDocs::SymbolString->Join($package, $symbol);
+
+    my $targetTooltipID = $self->BuildToolTip($symbol, $file, $type, $prototype, $summary);
+    my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
+
+    return '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file)  )
+                         . '#' . $self->SymbolToHTMLSymbol($symbol) . '" ' . $toolTipProperties . ' '
+                . 'class=' . $style . '>' . $text . '</a>';
+    };
+
+
+#
+#   Function: IndexSymbolToHTML
+#
+#   Converts an index <Symbol> or package <Symbol> to HTML.
+#
+#   Parameters:
+#
+#       symbol - The symbol to convert.
+#       element - The <NaturalDocs::SymbolTable::IndexElement> it comes from.  It doesn't matter if it's the top-level one, or
+#                      one from its packages or files.
+#
+#   Returns:
+#
+#       The symbol as HTML.
+#
+sub IndexSymbolToHTML #(symbol, element)
+    {
+    my ($self, $symbol, $element) = @_;
+
+    my $html;
+    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($symbol);
+
+    if (scalar @identifiers)
+        {
+        if ($element->HasMultiplePackages())
+            {  $element = $element->Package()->[0];  };
+        if ($element->HasMultipleFiles())
+            {  $element = $element->File()->[0];  };
+
+        my $separator;
+
+        if ($element->Type() == ::TOPIC_FILE())
+            {  $separator = '.';  }
+        else
+            {  $separator = NaturalDocs::Languages->LanguageOf($element->File())->PackageSeparator();  };
+
+        $html = join($separator, @identifiers);
+        }
+    else
+        {  $html = $identifiers[0];  };
+
+    $html = $self->StringToHTML($html, ADD_HIDDEN_BREAKS);
+
+    return $html;
+    };
+
+
+#
+#   Function: BuildIndexNavigationBar
+#
+#   Builds a navigation bar for a page of the index.
+#
+#   Parameters:
+#
+#       type - The <TopicType> of the index, or undef for general.
+#       page - The page of the index the navigation bar is for.
+#       locations - An arrayref of the locations of each section.  Index 0 is for the symbols, index 1 for the numbers, and the rest
+#                       for each letter.  The values are the page numbers where the sections are located.
+#
+sub BuildIndexNavigationBar #(type, page, locations)
+    {
+    my ($self, $type, $page, $locations) = @_;
+
+    my $output = '<div class=INavigationBar>';
+
+    for (my $i = 0; $i < scalar @indexHeadings; $i++)
+        {
+        if ($i != 0)
+            {  $output .= ' &middot; ';  };
+
+        if (defined $locations->[$i])
+            {
+            $output .= '<a href="';
+
+            if ($locations->[$i] != $page)
+                {  $output .= $self->RelativeIndexFileOf($type, $locations->[$i]);  };
+
+            $output .= '#' . $indexAnchors[$i] . '">' . $indexHeadings[$i] . '</a>';
+            }
+        else
+            {
+            $output .= $indexHeadings[$i];
+            };
+        };
+
+    $output .= '</div>';
+
+    return $output;
+    };
+
+
+
+###############################################################################
 # Group: Support Functions
 
 
@@ -1859,7 +1951,7 @@ sub ClosingBrowserStyles
 #
 #   Parameters:
 #
-#       type  - The index type, or undef for general.  Should be one of the <Topic Types>.
+#       type  - The index <TopicType>, or undef for general.
 #       startingPage - If defined, only pages starting with this number will be removed.  Otherwise all pages will be removed.
 #
 sub PurgeIndexFiles #(type, startingPage)
@@ -1916,10 +2008,10 @@ sub OutputFileOf #(sourceFile)
     # We also need to add a dash if the file doesn't have an extension so there'd be no conflicts with index.html,
     # FunctionIndex.html, etc.
 
-    if (!($relativeSourceFile =~ s/\./-/g))
+    if (!($relativeSourceFile =~ tr/./-/))
         {  $relativeSourceFile .= '-';  };
 
-    $relativeSourceFile =~ s/ /_/g;
+    $relativeSourceFile =~ tr/ /_/;
     $relativeSourceFile .= '.html';
 
     return NaturalDocs::File->JoinPaths($outputDirectory, $relativeSourceFile);
@@ -1933,7 +2025,7 @@ sub OutputFileOf #(sourceFile)
 #
 #   Parameters:
 #
-#       type  - The type of index, or undef if general.
+#       type  - The <TopicType> of the index, or undef if general.
 #       page  - The page number.  Undef is the same as one.
 #
 sub IndexFileOf #(type, page)
@@ -1951,7 +2043,7 @@ sub IndexFileOf #(type, page)
 #
 #   Parameters:
 #
-#       type  - The type of index, or undef if general.
+#       type  - The <TopicType> of the index, or undef if general.
 #       page  - The page number.  Undef is the same as one.
 #
 sub RelativeIndexFileOf #(type, page)
@@ -1985,8 +2077,8 @@ sub IndexTitleOf #(type)
 #
 #   Parameters:
 #
-#       baseFile    - The base file in local format, *not* in URL format.
-#       targetFile  - The target of the link in local format, *not* in URL format.
+#       baseFile    - The base <FileName> in local format, *not* in URL format.
+#       targetFile  - The target <FileName> of the link in local format, *not* in URL format.
 #
 #   Returns:
 #
@@ -2010,14 +2102,16 @@ sub MakeRelativeURL #(baseFile, targetFile)
 #   Parameters:
 #
 #       string - The string to convert.
+#       addHiddenBreaks - Whether to add hidden breaks to the string.  You can use <ADD_HIDDEN_BREAKS> for this parameter
+#                                   if you want to make the calling code clearer.
 #
 #   Returns:
 #
 #       The string in HTML.
 #
-sub StringToHTML #(string)
+sub StringToHTML #(string, addHiddenBreaks)
     {
-    my ($self, $string) = @_;
+    my ($self, $string, $addHiddenBreaks) = @_;
 
     $string =~ s/&/&amp;/g;
     $string =~ s/</&lt;/g;
@@ -2035,42 +2129,33 @@ sub StringToHTML #(string)
 
     # Me likey the double spaces too.  As you can probably tell, I like print-formatting better than web-formatting.  The indented
     # paragraphs without blank lines in between them do become readable when you have fancy quotes and double spaces too.
-    return $self->AddDoubleSpaces($string);
+    $string = $self->AddDoubleSpaces($string);
+
+    if ($addHiddenBreaks)
+        {  $string = $self->AddHiddenBreaks($string);  };
+
+    return $string;
     };
 
 
 #
 #   Function: SymbolToHTMLSymbol
 #
-#   Converts a class and symbol to a HTML symbol, meaning one that is safe to include in anchor and link tags.  You don't need
+#   Converts a <SymbolString> to a HTML symbol, meaning one that is safe to include in anchor and link tags.  You don't need
 #   to pass the result to <ConvertAmpChars()>.
 #
-#   Parameters:
-#
-#       class     - The symbol's class.  Set to undef if global.
-#       symbol  - The symbol's name.
-#
-#   Returns:
-#
-#       The HTML symbol string.
-#
-sub SymbolToHTMLSymbol #(class, symbol)
+sub SymbolToHTMLSymbol #(symbol)
     {
-    my ($self, $class, $symbol) = @_;
+    my ($self, $symbol) = @_;
 
-    ($class, $symbol) = NaturalDocs::SymbolTable->Defines($class, $symbol);
-
-    # Some of these changes can potentially create conflicts, though they should be incredibly rare.
-
-    if (defined $class)
-        {  $symbol = $class . '.' . $symbol;  };
+    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($symbol);
+    my $htmlSymbol = join('.', @identifiers);
 
     # If only Mozilla was nice about putting special characters in URLs like IE and Opera are, I could leave spaces in and replace
     # "<>& with their amp chars.  But alas, Mozilla shows them as %20, etc. instead.  It would have made for nice looking URLs.
-    $symbol =~ s/[\"<>\?&%]//g;
-    $symbol =~ s/ /_/g;
+    $htmlSymbol =~ tr/ \"<>\?&%/_/d;
 
-    return $symbol;
+    return $htmlSymbol;
     };
 
 
@@ -2081,17 +2166,19 @@ sub SymbolToHTMLSymbol #(class, symbol)
 #
 #   Parameters:
 #
-#       sourceFile - The source file the <NDMarkup> appears in.
+#       sourceFile - The source <FileName> the <NDMarkup> appears in.
 #       text    - The <NDMarkup> text to convert.
-#       scope  - The scope the <NDMarkup> appears in.
+#       package  - The package <SymbolString> the <NDMarkup> appears in.
+#       using - An arrayref of scope <SymbolStrings> the <NDMarkup> also has access to, or undef if none.
 #
 #   Returns:
 #
 #       The text in HTML.
 #
-sub NDMarkupToHTML #(sourceFile, text, scope)
+sub NDMarkupToHTML #(sourceFile, text, package, using)
     {
-    my ($self, $sourceFile, $text, $scope) = @_;
+    my ($self, $sourceFile, $text, $package, $using) = @_;
+
     my $output;
     my $inCode;
 
@@ -2130,7 +2217,7 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
             $text =~ s/&quot;/&rdquo;/g;
 
             # Resolve and convert links.
-            $text =~ s/<link>([^<]+)<\/link>/$self->BuildLink($scope, $1, $sourceFile)/ge;
+            $text =~ s/<link>([^<]+)<\/link>/$self->BuildTextLink($1, $package, $using, $sourceFile)/ge;
             $text =~ s/<url>([^<]+)<\/url>/<a href=\"$1\" class=LURL>$1<\/a>/g;
             $text =~ s/<email>([^<]+)<\/email>/$self->BuildEMailLink($1)/eg;
 
@@ -2153,17 +2240,21 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
 
             $text =~ s/<de>/<tr><td class=CDLEntry>/g;
             $text =~ s/<\/de>/<\/td>/g;
-            $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol($scope, $1)/ge;
+            $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol($package, $1)/ge;
 
-            sub MakeDescriptionListSymbol #(scope, text)
+            sub MakeDescriptionListSymbol #(package, text)
                 {
-                my ($self, $scope, $text) = @_;
+                my ($self, $package, $text) = @_;
+
+                $text = NaturalDocs::NDMarkup->RestoreAmpChars($text);
+                my $symbol = NaturalDocs::SymbolString->FromText($text);
+                $symbol = NaturalDocs::SymbolString->Join($package, $symbol);
 
                 return
                 '<tr>'
                     . '<td class=CDLEntry>'
                         # The anchors are closed, but not around the text, to prevent the :hover CSS style from kicking in.
-                        . '<a name="' . $self->SymbolToHTMLSymbol($scope, NaturalDocs::NDMarkup->RestoreAmpChars($text)) . '"></a>'
+                        . '<a name="' . $self->SymbolToHTMLSymbol($symbol) . '"></a>'
                         . $text
                     . '</td>';
                 };
@@ -2180,31 +2271,33 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
 
 
 #
-#   Function: BuildLink
+#   Function: BuildTextLink
 #
 #   Creates a HTML link to a symbol, if it exists.
 #
 #   Parameters:
 #
-#       scope  - The scope the link appears in.
 #       text  - The link text
-#       sourceFile  - The file the link appears in.
+#       package  - The package <SymbolString> the link appears in, or undef if none.
+#       using - An arrayref of additional scope <SymbolStrings> the link has access to, or undef if none.
+#       sourceFile  - The <FileName> the link appears in.
 #
 #   Returns:
 #
 #       The link in HTML, including tags.  If the link doesn't resolve to anything, returns the HTML that should be substituted for it.
 #
-sub BuildLink #(scope, text, sourceFile)
+sub BuildTextLink #(text, package, using, sourceFile)
     {
-    my ($self, $scope, $text, $sourceFile) = @_;
+    my ($self, $text, $package, $using, $sourceFile) = @_;
 
-    my $restoredText = NaturalDocs::NDMarkup->RestoreAmpChars($text);
+    $text = NaturalDocs::NDMarkup->RestoreAmpChars($text);
 
     # DEPENDENCY: This is undoing the fancy quotes from NDMarkupToHTML.
-    $restoredText =~ s/&(?:[lr]dquo|quot);/\"/g;
-    $restoredText =~ s/&[lr]squo;/\'/g;
+    $text =~ s/&(?:[lr]dquo|quot);/\"/g;
+    $text =~ s/&[lr]squo;/\'/g;
 
-    my $target = NaturalDocs::SymbolTable->References($scope, $restoredText, $sourceFile);
+    my $symbol = NaturalDocs::SymbolString->FromText($text);
+    my $target = NaturalDocs::SymbolTable->References(::REFERENCE_TEXT(), $symbol, $package, $using, $sourceFile);
 
     if (defined $target)
         {
@@ -2214,12 +2307,12 @@ sub BuildLink #(scope, text, sourceFile)
             {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()) );  };
         # else leave it undef
 
-        my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $sourceFile, $target->Type(),
+        my $targetTooltipID = $self->BuildToolTip($target->Symbol(), $sourceFile, $target->Type(),
                                                                       $target->Prototype(), $target->Summary());
 
         my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
-        return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '" '
+        return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol($target->Symbol()) . '" '
                     . 'class=L' . NaturalDocs::Topics->NameOf($target->Type()) . ' ' . $toolTipProperties . '>' . $text . '</a>';
         }
     else
@@ -2459,7 +2552,7 @@ sub FindFirstFile
 #
 #   Parameters:
 #
-#       outputFile - The file the menu is being built for.  Does not have to be on the menu itself.
+#       outputFile - The <FileName> the menu is being built for.  Does not have to be on the menu itself.
 #       rootLength - The length of the menu's root group, *not* including the contents of subgroups.
 #
 #   Returns:
@@ -2492,7 +2585,7 @@ sub ExpandMenu #(outputFile, rootLength)
     my $pass = 1;
     my $hasSubGroups;
 
-    while ($length < MENU_LENGTHLIMIT)
+    while ($length < MENU_LENGTH_LIMIT)
         {
         my $content;
         my $topIndex;
@@ -2554,7 +2647,7 @@ sub ExpandMenu #(outputFile, rootLength)
             {  last;  };
 
 
-        while ( ($topIndex >= 0 || $bottomIndex < scalar @$content) && $length < MENU_LENGTHLIMIT)
+        while ( ($topIndex >= 0 || $bottomIndex < scalar @$content) && $length < MENU_LENGTH_LIMIT)
             {
             # We do the bottom first.
 
@@ -2566,7 +2659,7 @@ sub ExpandMenu #(outputFile, rootLength)
                 my $bottomEntry = $content->[$bottomIndex];
                 $hasSubGroups = 1;
 
-                if ($length + $menuGroupLengths{$bottomEntry} <= MENU_LENGTHLIMIT)
+                if ($length + $menuGroupLengths{$bottomEntry} <= MENU_LENGTH_LIMIT)
                     {
                     $length += $menuGroupLengths{$bottomEntry};
                     push @$toExpand, $menuGroupNumbers{$bottomEntry};
@@ -2586,7 +2679,7 @@ sub ExpandMenu #(outputFile, rootLength)
                 my $topEntry = $content->[$topIndex];
                 $hasSubGroups = 1;
 
-                if ($length + $menuGroupLengths{$topEntry} <= MENU_LENGTHLIMIT)
+                if ($length + $menuGroupLengths{$topEntry} <= MENU_LENGTH_LIMIT)
                     {
                     $length += $menuGroupLengths{$topEntry};
                     push @$toExpand, $menuGroupNumbers{$topEntry};
@@ -2626,5 +2719,6 @@ sub ResetToolTips #(samePage)
     $tooltipHTML = undef;
     %tooltipSymbolsToNumbers = ( );
     };
+
 
 1;
