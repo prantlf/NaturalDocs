@@ -78,6 +78,18 @@ sub CanonizePath #(path)
 
 
 #
+#   Function: PathIsAbsolute
+#
+#   Returns whether the passed path is absolute.
+#
+sub PathIsAbsolute #(path)
+    {
+    my ($self, $path) = @_;
+    return File::Spec->file_name_is_absolute($path);
+    };
+
+
+#
 #   Function: JoinPath
 #
 #   Joins two paths.
