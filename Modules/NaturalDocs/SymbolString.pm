@@ -18,14 +18,6 @@ package NaturalDocs::SymbolString;
 
 
 #
-#   array: separators
-#
-#   An array of the character sequences that separate pieces of a symbol.
-#
-my @separators = ( '.', '::', '->' );
-
-
-#
 #   Function: FromText
 #
 #   Extracts and returns a <SymbolString> from plain text.
