@@ -47,13 +47,17 @@ use NaturalDocs::DefineMembers 'TOKENS', 'SCOPE_STACK', 'SCOPE_RECORD', 'AUTO_TO
 #
 #   Function: New
 #
-#   Returns a new language object and adds it to <NaturalDocs::Languages>.
+#   Creates and returns a new object.
 #
-sub New
+#   Parameters:
+#
+#       name - The name of the language.
+#
+sub New #(name)
     {
-    my ($package) = @_;
+    my ($package, @parameters) = @_;
 
-    my $object = $package->SUPER::New();
+    my $object = $package->SUPER::New(@parameters);
     $object->[TOKENS] = undef;
     $object->[SCOPE_STACK] = undef;
     $object->[SCOPE_RECORD] = undef;
