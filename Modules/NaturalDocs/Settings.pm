@@ -106,11 +106,23 @@ sub ParseCommandLine
     # inserted into the command line.
     my $ignored;
 
-    foreach my $arg (@ARGV)
+    my $index = 0;
+
+    while ($index < scalar @ARGV)
         {
+        my $arg = $ARGV[$index];
+
         if (substr($arg, 0, 1) eq '-')
             {
             $option = lc($arg);
+
+            # Support options like -t2 as well as -t 2.
+            if ($option =~ /^([^0-9]+)([0-9]+)$/)
+                {
+                $option = $1;
+                splice(@ARGV, $index + 1, 0, $2);
+                };
+
             if (substr($option, 1, 1) eq '-')
                 {  $option = $synonyms{$option};  }
 
@@ -213,6 +225,8 @@ sub ParseCommandLine
                 push @errorMessages, 'Unrecognized element ' . $arg;
                 };
             };
+
+        $index++;
         };
 
 
