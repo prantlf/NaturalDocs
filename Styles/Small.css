@@ -154,7 +154,7 @@ body.FramedContentPage,
         border-width: 2px 0; border-color: #000000;
         margin-left: 0; margin-right: 0 }
 
-    .CMain .CTitle {
+    #MainTopic .CTitle {
         font-size: 20pt;
         color: #FFFFFF; background-color: #7070C0;
         padding: 10px 15px 10px 15px;
