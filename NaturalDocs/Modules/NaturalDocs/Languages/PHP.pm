@@ -28,7 +28,7 @@ sub MakeSortableSymbol #(name, type)
     {
     my ($self, $name, $type) = @_;
 
-    if ($type == ::TOPIC_VARIABLE())
+    if ($type eq ::TOPIC_VARIABLE())
         {
         $name =~ s/^\$//;
         };
