@@ -92,9 +92,9 @@ sub LanguageOf #(sourceFile)
     {
     my ($self, $sourceFile) = @_;
 
-    my $extension;
-    if ($sourceFile =~ /\.([^\.]+)$/)
-        {  $extension = lc($1);  };
+    my $extension = NaturalDocs::File->ExtensionOf($sourceFile);
+    if (defined $extension)
+        {  $extension = lc($extension);  };
 
     if (!defined $extension || $extension eq 'cgi')
         {
