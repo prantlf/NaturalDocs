@@ -511,7 +511,8 @@ eval {
 
     NaturalDocs::Project->LoadAndDetectChanges();
 
-    NaturalDocs::SymbolTable->LoadAndPurge();
+    NaturalDocs::SymbolTable->Load();
+    NaturalDocs::SymbolTable->Purge();
 
 
     # Parse any supported files that have changed.
