@@ -84,9 +84,7 @@ use integer;
 #           -p, --project               - The project directory.  Required.  There should be a unique project directory for each
 #                                              input directory.
 #
-#           -s, --style                  - Sets the CSS style for HTML output.  It can either be a single value ("Small") that applies to all
-#                                             HTML output or a series of [format]=[style] lines ("HTML=Small") separated by spaces to
-#                                             distinguish between them.  If any style is set to "Custom", it will not sync the project's CSS file
+#           -s, --style                  - Sets the CSS style for HTML output.  If set to "Custom", it will not sync the project's CSS file
 #                                             with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
 #                                             <HTML Styles> for options.
 #
