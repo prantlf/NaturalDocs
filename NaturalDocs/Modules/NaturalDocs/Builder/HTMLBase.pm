@@ -121,19 +121,28 @@ my $tooltipHTML;
 
 
 #
+#   hash: prebuiltMenus
+#
+#   A hash that maps output directonies to menu HTML already built for it.  There will be no selection or JavaScript in the menus.
+#
+my %prebuiltMenus;
+
+
+#
+#   bool: menuNumbersAndLengthsDone
+#
+#   Set when the variables that only need to be calculated for the menu once are done.  This includes <menuGroupNumber>,
+#   <menuLength>, <menuGroupLengths>, and <menuGroupNumbers>, and <menuRootLength>.
+#
+my $menuNumbersAndLengthsDone;
+
+
+#
 #   int: menuGroupNumber
 #
 #   The current menu group number.  Each time a group is created, this is incremented so that each one will be unique.
 #
 my $menuGroupNumber;
-
-#
-#   array: menuSelectionHierarchy
-#
-#   An array of the <NaturalDocs::Menu::Entry> objects of each group surrounding the selected menu item.  First entry is the
-#   group immediately encompassing it, and each subsequent entries works its way towards the outermost group.
-#
-my @menuSelectionHierarchy;
 
 
 #
@@ -162,6 +171,14 @@ tie %menuGroupLengths, 'Tie::RefHash';
 #
 my %menuGroupNumbers;
 tie %menuGroupNumbers, 'Tie::RefHash';
+
+
+#
+#   int: menuRootLength
+#
+#   The length of the top-level menu entries without expansion.  The value is computed from the <Menu Length Constants>.
+#
+my $menuRootLength;
 
 
 #
@@ -381,70 +398,133 @@ sub BuildTitle #(sourceFile)
 #
 #   Parameters:
 #
-#       outputFile - The output <FileName> to build the menu for.  Does not have to be on the menu itself.
+#       sourceFile - The source <FileName> to use if you're looking for a source file.
+#       indexType - The index <TopicType> to use if you're looking for an index.
 #       isFramed - Whether the menu will appear in a frame.  If so, it assumes the <base> HTML tag is set to make links go to the
 #                       appropriate frame.
+#
+#       Both sourceFile and indexType may be undef.
 #
 #   Returns:
 #
 #       The side menu in HTML.
 #
-sub BuildMenu #(outputFile, isFramed)
+sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> string htmlMenu
     {
-    my ($self, $outputFile, $isFramed) = @_;
+    my ($self, $sourceFile, $indexType, $isFramed) = @_;
 
-    $menuGroupNumber = 1;
-    @menuSelectionHierarchy = ( );
-    $menuLength = 0;
-    %menuGroupLengths = ( );
-    %menuGroupNumbers = ( );
+    if (!$menuNumbersAndLengthsDone)
+        {
+        $menuGroupNumber = 1;
+        $menuLength = 0;
+        %menuGroupLengths = ( );
+        %menuGroupNumbers = ( );
+        $menuRootLength = 0;
+        };
 
-    my ($segmentOutput, $hasSelection, $rootLength) =
-        $self->BuildMenuSegment($outputFile, $isFramed, NaturalDocs::Menu->Content());
+    my $outputDirectory;
+
+    if ($sourceFile)
+        {  $outputDirectory = NaturalDocs::File->NoFileName( $self->OutputFileOf($sourceFile) );  }
+    elsif ($indexType)
+        {  $outputDirectory = NaturalDocs::File->NoFileName( $self->IndexFileOf($indexType) );  }
+    else
+        {  $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);  };
 
 
     # Comment needed for UpdateFile().
     my $output = '<!--START_ND_MENU-->';
 
-    # The title and sub-title, if any.
 
-    my $menuTitle = NaturalDocs::Menu->Title();
-    if (defined $menuTitle)
+    if (!exists $prebuiltMenus{$outputDirectory})
         {
-        $menuLength += MENU_TITLE_LENGTH;
-        $rootLength += MENU_TITLE_LENGTH;
+        my $segmentOutput;
 
-        $output .=
-        '<div class=MTitle>'
-            . $self->StringToHTML($menuTitle);
+        ($segmentOutput, $menuRootLength) =
+            $self->BuildMenuSegment($outputDirectory, $isFramed, NaturalDocs::Menu->Content());
 
-        my $menuSubTitle = NaturalDocs::Menu->SubTitle();
-        if (defined $menuSubTitle)
+        my $titleOutput;
+
+        my $menuTitle = NaturalDocs::Menu->Title();
+        if (defined $menuTitle)
             {
-            $menuLength += MENU_SUBTITLE_LENGTH;
-            $rootLength += MENU_SUBTITLE_LENGTH;
+            if (!$menuNumbersAndLengthsDone)
+                {  $menuLength += MENU_TITLE_LENGTH;  };
 
-            $output .=
-            '<div class=MSubTitle>'
-                . $self->StringToHTML($menuSubTitle)
-            . '</div>';
+            $menuRootLength += MENU_TITLE_LENGTH;
+
+            $titleOutput .=
+            '<div class=MTitle>'
+                . $self->StringToHTML($menuTitle);
+
+            my $menuSubTitle = NaturalDocs::Menu->SubTitle();
+            if (defined $menuSubTitle)
+                {
+                if (!$menuNumbersAndLengthsDone)
+                    {  $menuLength += MENU_SUBTITLE_LENGTH;  };
+
+                $menuRootLength += MENU_SUBTITLE_LENGTH;
+
+                $titleOutput .=
+                '<div class=MSubTitle>'
+                    . $self->StringToHTML($menuSubTitle)
+                . '</div>';
+                };
+
+            $titleOutput .=
+            '</div>';
             };
 
-        $output .=
-        '</div>';
+        $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput;
+        $output .= $titleOutput . $segmentOutput;
+        }
+    else
+        {  $output .= $prebuiltMenus{$outputDirectory};  };
+
+
+    # Highlight the menu selection.
+
+    if ($sourceFile)
+        {
+        # Dependency: This depends on how BuildMenuSegment() formats file entries.
+        my $outputFile = $self->OutputFileOf($sourceFile);
+        my $tag = '<div class=MFile><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
+        my $tagIndex = index($output, $tag);
+
+        if ($tagIndex != -1)
+            {
+            my $endIndex = index($output, '</a>', $tagIndex);
+
+            substr($output, $endIndex, 4, '');
+            substr($output, $tagIndex, length($tag), '<div class=MFile id=MSelected>');
+            };
+        }
+    elsif ($indexType)
+        {
+        # Dependency: This depends on how BuildMenuSegment() formats index entries.
+        my $outputFile = $self->IndexFileOf($indexType);
+        my $tag = '<div class=MIndex><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
+        my $tagIndex = index($output, $tag);
+
+        if ($tagIndex != -1)
+            {
+            my $endIndex = index($output, '</a>', $tagIndex);
+
+            substr($output, $endIndex, 4, '');
+            substr($output, $tagIndex, length($tag), '<div class=MIndex id=MSelected>');
+            };
         };
 
 
-    $output .= $segmentOutput;
-
-
-    # If the completely expanded menu is too long, collapse all the groups that aren't in the selection hierarchy.  By doing this
-    # instead of having them default to closed via CSS, any browser that doesn't support changing this at runtime will keep
-    # the menu entirely open so that its still usable.
+    # If the completely expanded menu is too long, collapse all the groups that aren't in the selection hierarchy or near the
+    # selection.  By doing this instead of having them default to closed via CSS, any browser that doesn't support changing this at
+    # runtime will keep the menu entirely open so that its still usable.
 
     if ($menuLength > MENU_LENGTH_LIMIT())
         {
-        my $toExpand = $self->ExpandMenu($outputFile, $rootLength);
+        my $menuSelectionHierarchy = $self->GetMenuSelectionHierarchy($sourceFile, $indexType);
+
+        my $toExpand = $self->ExpandMenu($sourceFile, $indexType, $menuSelectionHierarchy, $menuRootLength);
 
         $output .=
 
@@ -487,6 +567,8 @@ sub BuildMenu #(outputFile, isFramed)
     # Comment needed for UpdateFile().
     $output .= '<!--END_ND_MENU-->';
 
+    $menuNumbersAndLengthsDone = 1;
+
     return $output;
     };
 
@@ -499,7 +581,7 @@ sub BuildMenu #(outputFile, isFramed)
 #
 #   Parameters:
 #
-#       outputFile - The output <FileName> the menu is being built for.  Does not have to be on the menu itself.
+#       outputDirectory - The output directory the menu is being built for.
 #       isFramed - Whether the menu will be in a HTML frame or not.  Assumes that if it is, the <base> HTML tag will be set so that
 #                       links are directed to the proper frame.
 #       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the contents
@@ -507,31 +589,37 @@ sub BuildMenu #(outputFile, isFramed)
 #
 #   Returns:
 #
-#       The array ( menuHTML, hasSelection, length ).
+#       The array ( menuHTML, length ).
 #
 #       menuHTML - The menu segment in HTML.
-#       hasSelection - Whether the group or any of its subgroups contains the entry for the selected file.
 #       groupLength - The length of the group, *not* including the contents of any subgroups, as computed from the
 #                            <Menu Length Constants>.
 #
-sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
+sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
     {
-    my ($self, $outputFile, $isFramed, $menuSegment) = @_;
+    my ($self, $outputDirectory, $isFramed, $menuSegment) = @_;
 
-    my ($output, $hasSelection, $groupLength);
+    my ($output, $groupLength);
 
     foreach my $entry (@$menuSegment)
         {
         if ($entry->Type() == ::MENU_GROUP())
             {
-            my $entryNumber = $menuGroupNumber;
-            $menuGroupNumber++;
+            my ($entryOutput, $entryLength) =
+                $self->BuildMenuSegment($outputDirectory, $isFramed, $entry->GroupContent());
 
-            my ($entryOutput, $entryHasSelection, $entryLength) =
-                $self->BuildMenuSegment($outputFile, $isFramed, $entry->GroupContent());
+            my $entryNumber;
 
-            $menuGroupLengths{$entry} = $entryLength;
-            $menuGroupNumbers{$entry} = $entryNumber;
+            if (!$menuNumbersAndLengthsDone)
+                {
+                $entryNumber = $menuGroupNumber;
+                $menuGroupNumber++;
+
+                $menuGroupLengths{$entry} = $entryLength;
+                $menuGroupNumbers{$entry} = $entryNumber;
+                }
+            else
+                {  $entryNumber = $menuGroupNumbers{$entry};  };
 
             $output .=
             '<div class=MEntry>'
@@ -549,13 +637,6 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 . '</div>'
             . '</div>';
 
-            if ($entryHasSelection)
-                {
-                $hasSelection = 1;
-                push @menuSelectionHierarchy, $entry;
-                };
-
-            $menuLength += MENU_GROUP_LENGTH;
             $groupLength += MENU_GROUP_LENGTH;
             }
 
@@ -563,30 +644,16 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
             {
             my $targetOutputFile = $self->OutputFileOf($entry->Target());
 
-            if ($outputFile eq $targetOutputFile)
-                {
-                $output .=
-                '<div class=MEntry>'
-                    . '<div class=MFile id=MSelected>'
-                        . $self->StringToHTML($entry->Title(), ADD_HIDDEN_BREAKS)
-                    . '</div>'
-                . '</div>';
+        # Dependency: BuildMenu() depends on how this formats file entries.
+            $output .=
+            '<div class=MEntry>'
+                . '<div class=MFile>'
+                    . '<a href="' . $self->MakeRelativeURL($outputDirectory, $targetOutputFile) . '">'
+                        . $self->StringToHTML( $entry->Title(), ADD_HIDDEN_BREAKS)
+                    . '</a>'
+                . '</div>'
+            . '</div>';
 
-                $hasSelection = 1;
-                }
-            else
-                {
-                $output .=
-                '<div class=MEntry>'
-                    . '<div class=MFile>'
-                        . '<a href="' . $self->MakeRelativeURL($outputFile, $targetOutputFile) . '">'
-                            . $self->StringToHTML( $entry->Title(), ADD_HIDDEN_BREAKS)
-                        . '</a>'
-                    . '</div>'
-                . '</div>';
-                };
-
-            $menuLength += MENU_FILE_LENGTH;
             $groupLength += MENU_FILE_LENGTH;
             }
 
@@ -599,7 +666,6 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 . '</div>'
             . '</div>';
 
-            $menuLength += MENU_TEXT_LENGTH;
             $groupLength += MENU_TEXT_LENGTH;
             }
 
@@ -614,7 +680,6 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
                 . '</div>'
             . '</div>';
 
-            $menuLength += MENU_LINK_LENGTH;
             $groupLength += MENU_LINK_LENGTH;
             }
 
@@ -622,35 +687,25 @@ sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
             {
             my $indexFile = $self->IndexFileOf($entry->Target);
 
-            if ($outputFile eq $indexFile)
-                {
-                $output .=
-                '<div class=MEntry>'
-                    . '<div class=MIndex id=MSelected>'
+        # Dependency: BuildMenu() depends on how this formats index entries.
+            $output .=
+            '<div class=MEntry>'
+                . '<div class=MIndex>'
+                    . '<a href="' . $self->MakeRelativeURL( $outputDirectory, $self->IndexFileOf($entry->Target()) ) . '">'
                         . $self->StringToHTML( $entry->Title() )
-                    . '</div>'
-                . '</div>';
+                    . '</a>'
+                . '</div>'
+            . '</div>';
 
-                $hasSelection = 1;
-                }
-            else
-                {
-                $output .=
-                '<div class=MEntry>'
-                    . '<div class=MIndex>'
-                        . '<a href="' . $self->MakeRelativeURL( $outputFile, $self->IndexFileOf($entry->Target()) ) . '">'
-                            . $self->StringToHTML( $entry->Title() )
-                        . '</a>'
-                    . '</div>'
-                . '</div>';
-                };
-
-            $menuLength += MENU_INDEX_LENGTH;
             $groupLength += MENU_INDEX_LENGTH;
             };
         };
 
-    return ($output, $hasSelection, $groupLength);
+
+    if (!$menuNumbersAndLengthsDone)
+        {  $menuLength += $groupLength;  };
+
+    return ($output, $groupLength);
     };
 
 
@@ -1331,7 +1386,7 @@ sub BuildClassHierarchyEntry #(file, symbol, style, link)
             my $targetFile;
 
             if ($target->File() ne $file)
-                {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($file), $self->OutputFileOf($target->File()) );  };
+                {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($file), $self->OutputFileOf($target->File()), 1 );  };
             # else leave it undef
 
             my $targetTooltipID = $self->BuildToolTip($symbol, $target->File(), $target->Type(),
@@ -1791,7 +1846,7 @@ sub BuildIndexLink #(text, symbol, package, file, type, prototype, summary, outp
     my $targetTooltipID = $self->BuildToolTip($symbol, $file, $type, $prototype, $summary);
     my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
-    return '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file)  )
+    return '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file), 1 )
                          . '#' . $self->SymbolToHTMLSymbol($symbol) . '" ' . $toolTipProperties . ' '
                 . 'class=' . $style . '>' . $text . '</a>';
     };
@@ -1981,17 +2036,20 @@ sub IndexTitleOf #(type)
 #
 #       baseFile    - The base <FileName> in local format, *not* in URL format.
 #       targetFile  - The target <FileName> of the link in local format, *not* in URL format.
+#       baseHasFileName - Whether baseFile has a file name attached or is just a path.
 #
 #   Returns:
 #
 #       The relative URL to the target.
 #
-sub MakeRelativeURL #(baseFile, targetFile)
+sub MakeRelativeURL #(FileName baseFile, FileName targetFile, bool baseHasFileName) -> string relativeURL
     {
-    my ($self, $baseFile, $targetFile) = @_;
+    my ($self, $baseFile, $targetFile, $baseHasFileName) = @_;
 
-    my $baseDir = NaturalDocs::File->NoFileName($baseFile);
-    my $relativePath = NaturalDocs::File->MakeRelativePath($baseDir, $targetFile);
+    if ($baseHasFileName)
+        {  $baseFile = NaturalDocs::File->NoFileName($baseFile)  };
+
+    my $relativePath = NaturalDocs::File->MakeRelativePath($baseFile, $targetFile);
 
     return $self->ConvertAmpChars( NaturalDocs::File->ConvertToURL($relativePath) );
     };
@@ -2527,7 +2585,9 @@ sub FindFirstFile
 #
 #   Parameters:
 #
-#       outputFile - The <FileName> the menu is being built for.  Does not have to be on the menu itself.
+#       sourceFile - The source <FileName> to use if you're looking for a source file.
+#       indexType - The index <TopicType> to use if you're looking for an index.
+#       selectionHierarchy - The <FileName> the menu is being built for.  Does not have to be on the menu itself.
 #       rootLength - The length of the menu's root group, *not* including the contents of subgroups.
 #
 #   Returns:
@@ -2535,9 +2595,9 @@ sub FindFirstFile
 #       An arrayref of all the group numbers that should be expanded.  At minimum, it will contain the numbers of the groups
 #       present in <menuSelectionHierarchy>, though it may contain more.
 #
-sub ExpandMenu #(outputFile, rootLength)
+sub ExpandMenu #(FileName sourceFile, TopicType indexType, NaturalDocs::Menu::Entry[] selectionHierarchy, int rootLength) -> int[] groupsToExpand
     {
-    my ($self, $outputFile, $rootLength) = @_;
+    my ($self, $sourceFile, $indexType, $menuSelectionHierarchy, $rootLength) = @_;
 
     my $toExpand = [ ];
 
@@ -2546,7 +2606,7 @@ sub ExpandMenu #(outputFile, rootLength)
 
     my $length = $rootLength;
 
-    foreach my $entry (@menuSelectionHierarchy)
+    foreach my $entry (@$menuSelectionHierarchy)
         {
         $length += $menuGroupLengths{$entry};
         push @$toExpand, $menuGroupNumbers{$entry};
@@ -2571,8 +2631,8 @@ sub ExpandMenu #(outputFile, rootLength)
             {
             # First pass, we expand the selection's siblings.
 
-            if (scalar @menuSelectionHierarchy)
-                {  $content = $menuSelectionHierarchy[0]->GroupContent();  }
+            if (scalar @$menuSelectionHierarchy)
+                {  $content = $menuSelectionHierarchy->[0]->GroupContent();  }
             else
                 {  $content = NaturalDocs::Menu->Content();  };
 
@@ -2580,9 +2640,9 @@ sub ExpandMenu #(outputFile, rootLength)
 
             while ($bottomIndex < scalar @$content &&
                      !($content->[$bottomIndex]->Type() == ::MENU_FILE() &&
-                       $self->OutputFileOf($content->[$bottomIndex]->Target()) eq $outputFile) &&
+                       $content->[$bottomIndex]->Target() eq $sourceFile) &&
                      !($content->[$bottomIndex]->Type() != ::MENU_INDEX() &&
-                       $self->IndexFileOf($content->[$bottomIndex]->Target()) eq $outputFile) )
+                       $content->[$bottomIndex]->Target() eq $indexType) )
                 {  $bottomIndex++;  };
 
             if ($bottomIndex == scalar @$content)
@@ -2596,17 +2656,17 @@ sub ExpandMenu #(outputFile, rootLength)
             # net effect is that groups won't collapse as much unnecessarily.  Someone can click on a file in a sub-group and the
             # groups in the parent will stay open.
 
-            if (!$hasSubGroups && scalar @menuSelectionHierarchy)
+            if (!$hasSubGroups && scalar @$menuSelectionHierarchy)
                 {
-                if (scalar @menuSelectionHierarchy > 1)
-                    {  $content = $menuSelectionHierarchy[1]->GroupContent();  }
+                if (scalar @$menuSelectionHierarchy > 1)
+                    {  $content = $menuSelectionHierarchy->[1]->GroupContent();  }
                 else
                     {  $content = NaturalDocs::Menu->Content();  };
 
                 $bottomIndex = 0;
 
                 while ($bottomIndex < scalar @$content &&
-                         $content->[$bottomIndex] != $menuSelectionHierarchy[0])
+                         $content->[$bottomIndex] != $menuSelectionHierarchy->[0])
                     {  $bottomIndex++;  };
 
                 $topIndex = $bottomIndex - 1;
@@ -2671,6 +2731,84 @@ sub ExpandMenu #(outputFile, rootLength)
 
     return $toExpand;
     };
+
+
+#
+#   Function: GetMenuSelectionHierarchy
+#
+#   Finds the sequence of menu groups that contain the current selection.
+#
+#   Parameters:
+#
+#       sourceFile - The source <FileName> to use if you're looking for a source file.
+#       indexType - The index <TopicType> to use if you're looking for an index.
+#
+#   Returns:
+#
+#       An arrayref of the <NaturalDocs::Menu::Entry> objects of each group surrounding the selected menu item.  First entry is the
+#       group immediately encompassing it, and each subsequent entry works its way towards the outermost group.
+#
+sub GetMenuSelectionHierarchy #(FileName sourceFile, TopicType indexType) -> NaturalDocs::Menu::Entry[] selectionHierarchy
+    {
+    my ($self, $sourceFile, $indexType) = @_;
+
+    my $hierarchy = [ ];
+
+    $self->FindMenuSelection($sourceFile, $indexType, $hierarchy, NaturalDocs::Menu->Content());
+
+    return $hierarchy;
+    };
+
+
+#
+#   Function: FindMenuSelection
+#
+#   A recursive function that deterimes if it or any of its sub-groups has the menu selection.
+#
+#   Parameters:
+#
+#       sourceFile - The source <FileName> to use if you're looking for a source file.
+#       indexType - The index <TopicType> to use if you're looking for an index.
+#       hierarchyRef - A reference to the menu selection hierarchy.
+#       entries - An arrayref of <NaturalDocs::Menu::Entries> to search.
+#
+#   Returns:
+#
+#       Whether this group or any of its subgroups had the selection.  If true, it will add any subgroups to the menu selection
+#       hierarchy but not itself.  This prevents the topmost entry from being added.
+#
+sub FindMenuSelection #(FileName sourceFile, TopicType indexType, NaturalDocs::Menu::Entry[] hierarchyRef, NaturalDocs::Menu::Entry[] entries) -> bool hasSelection
+    {
+    my ($self, $sourceFile, $indexType, $hierarchyRef, $entries) = @_;
+
+    foreach my $entry (@$entries)
+        {
+        if ($entry->Type() == ::MENU_GROUP())
+            {
+            # If the subgroup has the selection...
+            if ( $self->FindMenuSelection($sourceFile, $indexType, $hierarchyRef, $entry->GroupContent()) )
+                {
+                push @$hierarchyRef, $entry;
+                return 1;
+                };
+            }
+
+        elsif ($entry->Type() == ::MENU_FILE())
+            {
+            if ($sourceFile eq $entry->Target())
+                {  return 1;  };
+            }
+
+        elsif ($entry->Type() == ::MENU_INDEX())
+            {
+            if ($indexType eq $entry->Target)
+                {  return 1;  };
+            };
+        };
+
+    return 0;
+    };
+
 
 #
 #   Function: ResetToolTips
