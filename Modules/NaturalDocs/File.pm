@@ -402,6 +402,18 @@ sub ExtensionOf #(path)
     };
 
 
+#
+#   Function: IsCaseSensitive
+#
+#   Returns whether the current platform has case-sensitive paths.
+#
+sub IsCaseSensitive
+    {
+    return !(File::Spec->case_tolerant());
+    };
+    
+
+
 ###############################################################################
 # Group: Disk Functions
 
