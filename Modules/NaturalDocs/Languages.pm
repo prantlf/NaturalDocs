@@ -18,7 +18,7 @@
 
 use NaturalDocs::Languages::Base;
 use NaturalDocs::Languages::Simple;
-#use NaturalDocs::Languages::Advanced;
+use NaturalDocs::Languages::Advanced;
 
 use NaturalDocs::Languages::Perl;
 use NaturalDocs::Languages::PHP;
