@@ -183,8 +183,12 @@ sub Run
             {
             my $parsedFile = NaturalDocs::Parser->ParseForBuild($file);
 
+            NaturalDocs::Error->OnStartBuilding($file);
+
             foreach my $buildTarget (@$buildTargets)
                 {  $buildTarget->Builder()->BuildFile($file, $parsedFile);  };
+
+            NaturalDocs::Error->OnEndBuilding($file);
             };
         };
 
