@@ -855,7 +855,8 @@ sub RepairScope #(topicList)
 #   Function: MergeAutoTopics
 #
 #   Merges the <AutoTopics()> into the passed topics list.  If an auto-topic matches an existing topic, it will be deleted and,
-#   if appropriate, have it's prototype transferred.  If it doesn't, the auto-topic will be inserted into the list.
+#   if appropriate, have it's prototype transferred.  If it doesn't, the auto-topic will be inserted into the list unless
+#   <NaturalDocs::Settings->DocumentedOnly()> is set.
 #
 #   Parameters:
 #
@@ -880,7 +881,8 @@ sub MergeAutoTopics #(topicList)
         # Add the auto-topic if it's higher in the file than the current topic.
         if ($autoTopic->LineNumber < $topic->LineNumber())
             {
-            splice(@$topics, $topicIndex, 0, $autoTopic);
+            if (!NaturalDocs::Settings->DocumentedOnly())
+                {  splice(@$topics, $topicIndex, 0, $autoTopic);  };
 
             $topicIndex++;
             $autoTopicIndex++;
@@ -911,7 +913,7 @@ sub MergeAutoTopics #(topicList)
         };
 
     # Add any auto-topics remaining.
-    if ($autoTopicIndex < scalar @$autoTopics)
+    if ($autoTopicIndex < scalar @$autoTopics && !NaturalDocs::Settings->DocumentedOnly())
         {
         push @$topics, @$autoTopics[$autoTopicIndex..scalar @$autoTopics-1];
         };
