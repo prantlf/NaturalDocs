@@ -114,7 +114,7 @@ use NaturalDocs::Extensions;
 #
 #   A scalar which encodes a normalized array of identifier strings representing a full or partially-resolved symbol.  All symbols
 #   must be retrieved from plain text via <NaturalDocs::SymbolString->FromText()> so that the separation and normalization is
-#   always consistent.  Symbols are comparable via string compare functions and are sortable.
+#   always consistent.  SymbolStrings are comparable via string compare functions and are sortable.
 #
 #
 #   Type: ReferenceString
@@ -442,14 +442,14 @@ if ($EVAL_ERROR)  # Oops.
          . "   " . $@
          . "\n"
 
-         . "Also include the following information when sending an error report:\n"
-         . "\n"
-         . "   Natural Docs version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
-         . "   Perl version: " .$perlVersion . " on " . $OSNAME . "\n"
-         . "\n"
-
          . "You can get help at the following web site:\n"
          . "\n"
          . "   " . NaturalDocs::Settings->AppURL() . "\n"
+         . "\n"
+
+         . "If sending an error report, please include the following information:\n"
+         . "\n"
+         . "   Natural Docs version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
+         . "   Perl version: " .$perlVersion . " on " . $OSNAME . "\n"
          . "\n";
     };
