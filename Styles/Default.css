@@ -223,7 +223,9 @@ body.FramedContentPage,
         margin-top: 1.5em; margin-bottom: .5em }
 
     .CCode {
-        font: 10pt "Courier New", Courier, monospace }
+        font: 10pt "Courier New", Courier, monospace;
+        overflow: auto;
+        }
 
     .CBulletList {
         /*  I don't know why CBody's margin doesn't apply, but it's consistent across browsers so whatever.
