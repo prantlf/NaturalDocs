@@ -27,7 +27,7 @@ package NaturalDocs::Settings::BuildTarget;
 #   The class is implemented as a blessed arrayref with the members below.
 #
 #       NAME           - The name of the target.
-#       BUILDER      - The <NaturalDocs::Builder> sub-object for the target's output format.
+#       BUILDER      - The <NaturalDocs::Builder::Base>-derived object for the target's output format.
 #       DIRECTORY - The output directory of the target.
 #       STYLE          - The style of the target.  If the target is HTML-based, it's the CSS style.
 #
@@ -49,7 +49,7 @@ use constant STYLE => 3;
 #   Parameters:
 #
 #       name - The name of the target.
-#       builder - The <NaturalDocs::Builder> sub-object for the target's output format.
+#       builder - The <NaturalDocs::Builder::Base>-derived object for the target's output format.
 #       directory - The directory to place the output files in.
 #       style - The style of the target.  If it's HTML-based, it's the CSS style.
 #
@@ -76,7 +76,7 @@ sub SetName #(name)
     {  $_[0]->[NAME] = $_[1];  };
 
 # Function: Builder
-# Returns the <NaturalDocs::Builder> sub-object for the target's output format.
+# Returns the <NaturalDocs::Builder::Base>-derived object for the target's output format.
 sub Builder
     {  return $_[0]->[BUILDER];  };
 
