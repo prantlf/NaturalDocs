@@ -621,25 +621,27 @@ sub LoadFile #(isMain)
                         {
                         NaturalDocs::ConfigFile->AddError($keyword . ' lines are not allowed in Keywords sections.');
                         }
-                    elsif ($value =~ /^([a-z0-9]+), ?([a-z0-9]+)$/)
+                    elsif ($value =~ /^([a-z0-9 ]*[a-z0-9]) ?, ?([a-z0-9 ]+)$/)
                         {
+                        my ($singular, $plural) = ($1, $2);
+
                         if (defined $topicType)
                             {
-                            $keywords{$1} = $topicType;
-                            delete $pluralKeywords{$1};
+                            $keywords{$singular} = $topicType;
+                            delete $pluralKeywords{$singular};
 
-                            $pluralKeywords{$2} = $topicType;
-                            delete $keywords{$2};
+                            $pluralKeywords{$plural} = $topicType;
+                            delete $keywords{$plural};
                             }
                         elsif ($ignored)
                             {
-                            delete $keywords{$1};
-                            delete $keywords{$2};
-                            delete $pluralKeywords{$1};
-                            delete $pluralKeywords{$2};
+                            delete $keywords{$singular};
+                            delete $keywords{$plural};
+                            delete $pluralKeywords{$singular};
+                            delete $pluralKeywords{$plural};
                             };
                         }
-                    elsif ($value =~ /^[a-z0-9]+$/)
+                    elsif ($value =~ /^[a-z0-9 ]+$/)
                         {
                         if (defined $topicType)
                             {
@@ -654,7 +656,7 @@ sub LoadFile #(isMain)
                         }
                     else
                         {
-                        NaturalDocs::ConfigFile->AddError('Keywords can only have letters and numbers.  '
+                        NaturalDocs::ConfigFile->AddError('Keywords can only have letters, numbers, and spaces.  '
                                                                          . 'Plurals must be separated by a comma.');
                         };
                     };
@@ -798,7 +800,7 @@ sub SaveFile #(isMain)
                     {
                     if (!defined $keyword)
                         {
-                        my ($singular, $plural) = split(/, ?/, lc($value));
+                        my ($singular, $plural) = split(/ ?, ?/, lc($value));
                         push @{$keywords{$topicTypeName}}, $singular, $plural;
                         };
                     };
@@ -1028,9 +1030,9 @@ sub SaveFile #(isMain)
     . "#   plural form.  The plural form is needed if you want to document topics as a\n"
     . "#   list.\n"
     . "#\n"
-    . "#   Keywords can only have letters and numbers, and are not case-sensitive.\n"
-    . "#   You can include keywords that were previously used by a different type to\n"
-    . "#   redefine them.\n"
+    . "#   Keywords can only have letters, numbers, and spaces.  They are not\n"
+    . "#   case-sensitive.  You can include keywords that were previously used by a\n"
+    . "#   different type to redefine them.\n"
     . "#\n"
     . "###############################################################################\n";
 
