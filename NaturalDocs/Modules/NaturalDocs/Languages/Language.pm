@@ -407,8 +407,27 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
                 $newStartingIndex = $testIndex + 1;
                 };
             }
-        else
-            {  $testIndex = index($$stringRef, $ender, $startingIndex);  };
+        else # ender is a symbol
+            {
+            $testIndex = index($$stringRef, $ender, $startingIndex);
+
+            # An exception for Pascal.  Semicolons are used both to end functions and to separate parameters.  Parenthesis are
+            # required if you want parameters, but parameters are not required themselves.
+            if ($self->Name() eq 'Pascal' && $ender eq ';' && $testIndex != -1)
+                {
+                my $openParenIndex = index($$stringRef, '(', $startingIndex);
+
+                if ($openParenIndex != -1 && $openParenIndex < $testIndex)
+                    {
+                    my $closedParenIndex = index($$stringRef, ')', $openParenIndex);
+
+                    if ($closedParenIndex == -1)
+                        {  $testIndex = -1;  }
+                    else
+                        {  $testIndex = index($$stringRef, ';', $closedParenIndex);  };
+                    };
+                };
+            };
 
 
         if ($testIndex != -1 && ($enderIndex == -1 || $testIndex < $enderIndex))
@@ -417,7 +436,6 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
 
     return $enderIndex;
     };
-
 
 
 1;
