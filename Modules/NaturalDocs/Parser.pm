@@ -36,7 +36,6 @@ use constant POSSIBLE_OPENING_TAG => 1;
 use constant POSSIBLE_CLOSING_TAG => 2;
 use constant NOT_A_TAG => 3;
 
-
 #   Hash: synonyms
 #
 #   A hash of the text synonyms for the tokens.  For example, "procedure", "routine", and "function" all map to
@@ -201,11 +200,10 @@ my %synonyms = (
                             );
 
 #
-#   string: file
+#   Handle: SOURCEFILEHANDLE
 #
-#   The file currently being parsed.
+#   The handle of the source file currently being parsed.
 #
-my $file;
 
 #
 #   object: language
@@ -213,23 +211,6 @@ my $file;
 #   The language of the file currently being parsed.  Is a <NaturalDocs::Languages::Language> object.
 #
 my $language;
-
-#
-#   enum: mode
-#
-#   What mode the parser is currently in.
-#
-#      PARSE_FOR_INFORMATION  - The parser was called with <ParseForInformation()>.  It will go through the file and extract
-#                                                  symbol definitions and references for <NaturalDocs::SymbolTable> and information about the
-#                                                  file for <NaturalDocs::Project>.
-#
-#      PARSE_FOR_BUILD  - The parser was called with <ParseForBuild()>.  It will go through the file and generate
-#                                      <NaturalDocs::Parser::ParsedTopic> objects to be used in generating output.
-#
-my $mode;
-
-    use constant PARSE_FOR_INFORMATION => 1;
-    use constant PARSE_FOR_BUILD => 2;
 
 #
 #   var: scope
@@ -240,35 +221,11 @@ my $mode;
 my $scope;
 
 #
-#   bool: hasContent
-#
-#   Whether the current file has Natural Docs content or not.
-#
-my $hasContent;
-
-#
 #   var: defaultMenuTitle
 #
 #   The default menu title of the current file.  Will be the file name if a suitable one cannot be found.
 #
 my $defaultMenuTitle;
-
-#
-#   enum: menuTitleState
-#
-#   The state of the default menu title, since it can be determined different ways.
-#
-#   States:
-#
-#       INDEFINITE            - The title has a value, but will be changed by any content.
-#       DEFINITE               - The title has been determined conclusively.
-#       DEFINITE_IF_ONLY - The title will keep its current value only if is no more content in the file.
-#
-my $defaultMenuTitleState;
-
-    use constant INDEFINITE => 0;
-    use constant DEFINITE => 1;
-    use constant DEFINITE_IF_ONLY => 2;
 
 #
 #   Array: parsedFile
@@ -293,21 +250,62 @@ my @parsedFile;
 #
 sub ParseForInformation #(file)
     {
-    $file = shift;
-    $mode = PARSE_FOR_INFORMATION;
+    my $file = shift;
 
     # Have the symbol table watch this parse so we detect any changes.
     NaturalDocs::SymbolTable::WatchFileForChanges($file);
 
-    Parse();
+    Parse($file);
+
+    foreach my $topic (@parsedFile)
+        {
+        # Add a symbol for the topic.
+
+        NaturalDocs::SymbolTable::AddSymbol($topic->Class(), $topic->Name(), $file, $topic->Type(),
+                                                                  $topic->Prototype(), $topic->Summary());
+
+
+        # You can't put the function call directly in a while with a regex.  It has to sit in a variable to work.
+        my $body = $topic->Body();
+
+
+        # If it's a list topic, add a symbol for each description list entry.
+
+        if (::TopicIsList($topic->Type()))
+            {
+            my $listType = ::TopicIsListOf($topic->Type());
+
+            while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
+                {
+                my ($listSymbol, $listSummary) = ($1, $2);
+
+                $listSummary =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
+                $listSummary = $1 . $2;
+
+                NaturalDocs::SymbolTable::AddSymbol($topic->Scope(), NaturalDocs::NDMarkup::RestoreAmpChars($listSymbol),
+                                                                          $file, $listType, undef, $listSummary);
+                };
+            };
+
+
+        # Add references in the topic.
+
+        while ($body =~ /<link>([^<]+)<\/link>/g)
+            {  NaturalDocs::SymbolTable::AddReference($topic->Scope(), NaturalDocs::NDMarkup::RestoreAmpChars($1), $file);  };
+        };
 
     # Handle any changes to the file.
     NaturalDocs::SymbolTable::AnalyzeChanges();
 
     # Update project on the file's characteristics.
+    my $hasContent = (scalar @parsedFile > 0);
+
     NaturalDocs::Project::SetHasContent($file, $hasContent);
     if ($hasContent)
         {  NaturalDocs::Project::SetDefaultMenuTitle($file, $defaultMenuTitle);  };
+
+    # We don't need to keep this around.
+    @parsedFile = ( );
     };
 
 
@@ -328,12 +326,11 @@ sub ParseForInformation #(file)
 #
 #       An arrayref of the source file as <NaturalDocs::Parser::ParsedTopic> objects.
 #
-sub ParseForBuild #(filename)
+sub ParseForBuild #(file)
     {
-    $file = shift;
-    $mode = PARSE_FOR_BUILD;
+    my $file = shift;
 
-    Parse();
+    Parse($file);
 
     # If the title ended up being the file name, add a leading section for it.
     if ($defaultMenuTitle eq $file && $parsedFile[0]->Name() ne $file)
@@ -351,318 +348,208 @@ sub ParseForBuild #(filename)
 # Do not call these functions directly, as they are stages in the parsing process.  Rather, call <ParseForInformation()> or
 # <ParseForBuild()>.
 
-#
+
 #   Function: Parse
 #
-#   Begins the parsing process.  Do not call directly; rather, call <ParseForInformation()> or <ParseForBuild()>.  <file> and
-#   <mode> should be set prior to calling; it will set everything else itself.
+#   Opens <SOURCEFILEHANDLE> and begins the parsing process.  Do not call directly; rather, call <ParseForInformation()> or
+#   <ParseForBuild()>.  <file> should be set prior to calling; it will set everything else itself.  It will close <SOURCEFILEHANDLE>
+#   as well.
 #
-sub Parse
+#   Parameters:
+#
+#       file - The name of the file to parse.
+#
+sub Parse #(file)
     {
+    my $file = shift;
+
     $language = NaturalDocs::Languages::LanguageOf($file);
     $scope = undef;
-    $hasContent = undef;
     @parsedFile = ( );
 
-    # The menu title is the file name by default, but that will be changed by any content.
-    $defaultMenuTitle = $file;
-    $defaultMenuTitleState = INDEFINITE;
-
-
-    # Read the entire file into memory.
-
     my $fileName = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $file );
-    my $fileContent;
 
     open(SOURCEFILEHANDLE, '<' . $fileName)
         or die "Couldn't open input file " . $fileName . "\n";
-    read(SOURCEFILEHANDLE, $fileContent, -s SOURCEFILEHANDLE);
+
+    # Parse the content for comments.
+    ExtractComments();
+
     close(SOURCEFILEHANDLE);
 
 
-    # Parse the content for comments.
+    # Set the menu title.
 
-    if ($language->FileIsComment())
-        {  CleanComment($fileContent, undef, undef);  }
-    else
-        {  ExtractComments($fileContent);  };
+    $defaultMenuTitle = $file;
+
+    if (scalar @parsedFile)
+        {
+        my $firstType = $parsedFile[0]->Type();
+
+        # If there's only one topic, it's title overrides the file name.  If there's more than one topic but the first one is a section, file,
+        # or class, it's title overrides the file name as well.
+        if (scalar @parsedFile == 1 ||
+            $firstType == ::TOPIC_SECTION() || $firstType == ::TOPIC_FILE() || $firstType == ::TOPIC_CLASS())
+            {
+            $defaultMenuTitle = $parsedFile[0]->Name();
+            };
+        };
+
     };
 
 
 #
 #   Function: ExtractComments
 #
-#   Extracts comments from the passed content and sends them individually to <CleanComment()>.
+#   Extracts comments from <SOURCEFILEHANDLE> and sends them individually to <CleanComment()>.
 #
-#   Parameters:
-#
-#       content - The file content.
-#
-sub ExtractComments #(content)
+sub ExtractComments
     {
-    my $content = shift;
-    my $length = length($content);
+    my @commentLines;
 
-
-    # First do multiline comments
-
-    if (defined $language->StartComment())
+    if ($language->FileIsComment())
         {
-        my $startIndex = 0;
-        my $endIndex = 0;
-        my $symbolLength;
-        my $prototypeStart;
-        my $functionPrototype;
-        my $variablePrototype;
+        @commentLines = <SOURCEFILEHANDLE>;
 
-        do
-            {
-            # Find the next multi-line comment.
-            ($startIndex, $symbolLength) = $language->NextStartComment(\$content, $startIndex);
+        foreach my $commentLine (@commentLines)
+            {  chomp($commentLine);  };
 
-            if ($startIndex == -1)
-                {
-                # If there aren't any more, search the remainder of the content for single line comments.
-                ExtractLineComments(substr($content, $endIndex));
-
-                # Guess what?  "do" isn't a real loop structure in Perl!  So I have to use goto instead of last!  Of course this was
-                # plainly obvious and would never cause any sort of obscure errors.  God I love Perl!
-                goto OutOfLoop;
-                }
-            else
-                {
-                # Search everything between the last find and this one for single line comments.
-                ExtractLineComments(substr($content, $endIndex, $startIndex - $endIndex));
-
-                # Find the start and end of the comment, not including the symbols.
-                $startIndex += $symbolLength;
-
-                ($endIndex, $symbolLength) = $language->NextEndComment(\$content, $startIndex);
-                if ($endIndex == -1)
-                    {  $endIndex = $length - $startIndex;  };
-
-                # Find the prototype if necessary.
-                if (defined $language->FunctionEnders() || defined $language->VariableEnders())
-                    {
-                    # Put the start of the potential prototype past all completely blank lines.
-                    $prototypeStart = $endIndex + $symbolLength;
-
-                    while ($prototypeStart < length($content))
-                        {
-                        my $nextLineBreak = index($content, "\n", $prototypeStart);
-                        if ($nextLineBreak == -1)
-                            {  last;  };
-
-                        if (substr($content, $prototypeStart, $nextLineBreak - $prototypeStart) =~ /[^ \t\n\r]/)
-                            {  last;  }
-                        else
-                            {  $prototypeStart = $nextLineBreak + length("\n");  };
-                        };
-
-                    if ($prototypeStart < length($content))
-                        {
-                        # The end is either the end of the file or one of the ender symbols, whichever comes first.
-
-                        if (defined $language->FunctionEnders())
-                            {
-                            my $functionEnd = $language->EndOfFunction(\$content, $prototypeStart);
-                            if ($functionEnd == -1)
-                                {  $functionEnd = $length  };
-
-                            $functionPrototype = substr($content, $prototypeStart, $functionEnd - $prototypeStart);
-                            };
-
-                        if (defined $language->VariableEnders())
-                            {
-                            my $variableEnd = $language->EndOfVariable(\$content, $prototypeStart);
-                            if ($variableEnd == -1)
-                                {  $variableEnd = $length  };
-
-                            $variablePrototype = substr($content, $prototypeStart, $variableEnd - $prototypeStart);
-                            };
-                        };
-                    };
-
-                CleanComment(substr($content, $startIndex, $endIndex - $startIndex), $functionPrototype, $variablePrototype);
-
-                $endIndex += $symbolLength;
-                $functionPrototype = undef;
-                $variablePrototype = undef;
-                };
-            }
-        while ($endIndex < $length);
-
-        # See above comments on why Perl is the most awesome language ever!
-        OutOfLoop:
+        CleanComment(\@commentLines);
         }
 
-    # If the code format doesn't have multiline comments...
     else
         {
-        ExtractLineComments($content);
-        };
-    };
+        my $line = <SOURCEFILEHANDLE>;
 
-
-#
-#   Function: ExtractLineComments
-#
-#   Parses the passed content for single line comments.  Merges adjacent ones and sends them to <CleanComment()>.
-#
-#   Parameters:
-#
-#       content - The content to be searched for single line comments.
-#
-sub ExtractLineComments #(content)
-    {
-    my $content = shift;
-
-    if (defined $language->LineComment())
-        {
-
-        # Parse line comments that start a line only, and join multiple consecutive ones into one comment.
-
-        my $comment;
-        my $functionPrototype;
-        my $variablePrototype;
-        my $functionPrototypeDone;
-        my $variablePrototypeDone;
-
-        use constant FIND_COMMENT => 0;  # Looking for the start of the next comment.
-        use constant GET_COMMENT => 1;   # Retrieving the comment.
-        use constant FIND_PROTOTYPE => 2;  # Looking for the start of the prototype.
-        use constant GET_PROTOTYPE => 3;  # Retrieving the prototypes.
-
-        my $state = FIND_COMMENT;
-
-        my @contentLines = split(/\n/, $content);
-        $content = undef;
-
-        my $line = shift @contentLines;
+        my $prototype;
+        my $prototypeType;
 
         while (defined $line)
             {
-            $line =~ s/^[ \t]+//;
-            $line .= "\n";
+            chomp $line;
 
-            my $lineComment;
-            foreach my $commentSymbol (@{$language->LineComment()})
-                {
-                if ( substr($line, 0, length($commentSymbol)) eq $commentSymbol)
-                    {
-                    $lineComment = substr($line, length($commentSymbol));
-                    last;
-                    };
-                };
+            # Retrieve single line comments.  This leaves $line at the next line.
 
-            # If the line begins with the comment symbol...
-            if (defined $lineComment)
+            if ($language->StripLineComment(\$line))
                 {
-                if ($state == FIND_COMMENT)
+                # If we couldn't find a prototype ender, we couldn't find a prototype.
+                $prototype = undef;
+                $prototypeType = undef;
+
+                do
                     {
-                    $comment = $lineComment;
-                    $state = GET_COMMENT;
+                    push @commentLines, $line;
+                    $line = <SOURCEFILEHANDLE>;
+
+                    if (!defined $line)
+                        {  last;  };
+
+                    chomp($line);
                     }
-                elsif ($state == GET_COMMENT)
-                    {
-                    $comment .= $lineComment;
-                    }
-                else # ($state == FIND/GET_PROTOTYPE)
-                    {
-                    CleanComment($comment, $functionPrototype, $variablePrototype);
-                    $functionPrototype = undef;
-                    $variablePrototype = undef;
-                    $comment = $lineComment;
-                    $state = GET_COMMENT;
-                    }
+                while ($language->StripLineComment(\$line));
                 }
 
-            # If the line isn't a comment...
-            else
+            # Retrieve multiline comments.  This leaves $line with whatever followed the closing comment symbol.
+
+            elsif ($language->StripStartComment(\$line))
                 {
-                # Note that these are sequential ifs.  These are not if-elsifs.
-                if ($state == GET_COMMENT)
+                # If we couldn't find a prototype ender, we couldn't find a prototype.
+                $prototype = undef;
+                $prototypeType = undef;
+
+                my ($symbol, $lineRemainder);
+
+                for (;;)
                     {
-                    if (defined $language->FunctionEnders() || defined $language->VariableEnders())
+                    ($symbol, $lineRemainder) = $language->StripEndComment(\$line);
+
+                    push @commentLines, $line;
+
+                    #  If we found an end comment symbol...
+                    if (defined $symbol)
                         {
-                        $state = FIND_PROTOTYPE;
+                        $line = $lineRemainder;
+                        last;
+                        };
 
-                        $functionPrototypeDone = (!defined $language->FunctionEnders());
-                        $variablePrototypeDone = (!defined $language->VariableEnders());
+                    $line = <SOURCEFILEHANDLE>;
 
-                        # Continues to FIND_PROTOTYPE...
-                        }
+                    if (!defined $line)
+                        {  last;  };
+
+                    chomp($line);
+                    };
+                }
+
+            # Try to retrieve the protoype, if necessary.  This leaves $line at the next line.
+
+            elsif (defined $prototypeType)
+                {
+                $prototype .= $line . "\n";
+                my $endOfPrototype;
+
+                if ($prototypeType == ::TOPIC_FUNCTION())
+                    {  $endOfPrototype = $language->EndOfFunction(\$prototype);  }
+                else # ($prototypeType == ::TOPIC_VARIABLE())
+                    {  $endOfPrototype = $language->EndOfVariable(\$prototype);  };
+
+                if ($endOfPrototype != -1)
+                    {
+                    $prototype = substr($prototype, 0, $endOfPrototype);
+                    $language->RemoveExtenders(\$prototype);
+
+                    # Tabs and line breaks to spaces.
+                    $prototype =~ tr/\t\n\r/   /;
+
+                    if (index($prototype, $parsedFile[-1]->Name()) != -1)
+                        {
+                        $parsedFile[-1]->SetPrototype($prototype);
+                        };
+
+                    $prototype = undef;
+                    $prototypeType = undef;
+                    };
+
+                $line = <SOURCEFILEHANDLE>;
+                }
+
+            # Otherwise just put $line on the next line.
+
+            else
+                {  $line = <SOURCEFILEHANDLE>;  };
+
+
+
+            # If there were comments, send them to CleanComment() and determine if we need to find a prototype.
+
+            if (scalar @commentLines)
+                {
+                my $previousTopics = scalar @parsedFile;
+
+                CleanComment(\@commentLines);
+                @commentLines = ( );
+
+                # If there were topics created from the last comments...
+                if (scalar @parsedFile > $previousTopics)
+                    {
+                    # Start searching for a prototype if necessary.
+
+                    $prototypeType = $parsedFile[-1]->Type();
+
+                    if ($prototypeType != ::TOPIC_FUNCTION() && $prototypeType != ::TOPIC_VARIABLE())
+                        {  $prototypeType = undef;  }
                     else
                         {
-                        CleanComment($comment, undef, undef);
-                        $comment = undef;
-                        $state = FIND_COMMENT;
+                        # Skip all completely blank lines before the prototype.  This is important because a line break may be a symbol
+                        # that can end it.  Note that the current line in $line has already been chomped.
+
+                        while (defined $line && $line =~ /^[ \t\n]*$/)
+                            {  $line = <SOURCEFILEHANDLE>;  };
                         };
                     };
-
-                if ($state == FIND_PROTOTYPE)
-                    {
-                    # All whitespace would have been cleared.
-                    if ($line ne "\n")
-                        {
-                        $state = GET_PROTOTYPE;
-                        # Continues to GET_PROTOTYPE...
-                        };
-                    };
-
-                if ($state == GET_PROTOTYPE)
-                    {
-                    if (!$functionPrototypeDone)
-                        {
-                        my $endOfFunction = $language->EndOfFunction(\$line);
-
-                        if ($endOfFunction != -1)
-                            {
-                            $functionPrototype .= substr($line, 0, $endOfFunction);
-                            $functionPrototypeDone = 1;
-                            }
-                        else
-                            {
-                            $functionPrototype .= $line;
-                            };
-                        };
-
-                    if (!$variablePrototypeDone)
-                        {
-                        my $endOfVariable = $language->EndOfVariable(\$line);
-
-                        if ($endOfVariable != -1)
-                            {
-                            $variablePrototype .= substr($line, 0, $endOfVariable);
-                            $variablePrototypeDone = 1;
-                            }
-                        else
-                            {
-                            $variablePrototype .= $line;
-                            };
-                        };
-
-                    if ($functionPrototypeDone && $variablePrototypeDone)
-                        {
-                        CleanComment($comment, $functionPrototype, $variablePrototype);
-                        $comment = undef;
-                        $functionPrototype = undef;
-                        $variablePrototype = undef;
-                        $state = FIND_COMMENT;
-                        };
-                    };
-
-                # Do nothing if state is FIND_COMMENT
                 };
 
-            $line = shift @contentLines;
-            };
-
-
-        # Tie up loose ends if we ran out of file.
-        if ($state ne FIND_COMMENT)
-            {  CleanComment($comment, $functionPrototype, $variablePrototype);  };
-
+            };  # while (defined $line)
         };
     };
 
@@ -671,24 +558,17 @@ sub ExtractLineComments #(content)
 #   Function: CleanComment
 #
 #   Removes any extraneous formatting or whitespace from the comment and sends it to <ExtractTopics()>.  Eliminates comment
-#   boxes, horizontal lines, leading and trailing line breaks, leading and trailing whitespace from lines, and more than two line
-#   breaks in a row.
+#   boxes, horizontal lines, leading and trailing line breaks, leading and trailing whitespace from lines, more than two line
+#   breaks in a row, and expands all tab characters.
 #
 #   Parameters:
 #
-#       comment  - The comment to clean.
-#       functionPrototype - The potential function prototype appearing after it.  Undef if none or not applicable.
-#       variablePrototype - The potential variable prototype appearing after it.  Undef if none or not applicable.
+#       commentLines  - An arrayref of the comment lines to clean.  *The original memory will be changed.*  Lines should not have
+#                                the trailing line break.
 #
-sub CleanComment #(comment, functionPrototype, variablePrototype)
+sub CleanComment #(commentLines)
     {
-    my ($comment, $functionPrototype, $variablePrototype) = @_;
-
-    $language->RemoveExtenders(\$functionPrototype);
-    $language->RemoveExtenders(\$variablePrototype);
-
-    my @lines = split(/\n/, $comment);
-    $comment = undef;
+    my $commentLines = shift;
 
     use constant DONT_KNOW => 0;
     use constant IS_UNIFORM => 1;
@@ -700,21 +580,31 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
     my $leftSideChar;
     my $rightSideChar;
 
-    my $line = shift @lines;
-    my $cleanComment;
+    my $index = 0;
+    my $tabLength = NaturalDocs::Settings::TabLength();
 
-    while (defined $line)
+    while ($index < scalar @$commentLines)
         {
-        # Strip leading and trailing whitespace.
+        # Expand tabs.  This method is almost six times faster than Text::Tabs' method.
 
-        $line =~ s/^[ \t]+//;
-        $line =~ s/[ \t]+$//;
+        my $tabIndex = index($commentLines->[$index], "\t");
+
+        while ($tabIndex != -1)
+            {
+            substr( $commentLines->[$index], $tabIndex, 1, ' ' x ($tabLength - ($tabIndex % $tabLength)) );
+            $tabIndex = index($commentLines->[$index], "\t", $tabIndex);
+            };
+
+
+        # Strip leading and trailing whitespace.  This has to be done after tabs are expanded because stripping indentation could
+        # change how far tabs are expanded.
+
+        $commentLines->[$index] =~ s/^ +//;
+        $commentLines->[$index] =~ s/ +$//;
 
         # If the line is blank...
-        if (!length($line))
+        if (!length($commentLines->[$index]))
             {
-            $cleanComment .= "\n";
-
             # If we have a potential vertical line, this only acceptable if it's at the end of the comment.
             if ($leftSide == IS_UNIFORM)
                 {  $leftSide = IS_UNIFORM_IF_AT_END;  };
@@ -724,11 +614,11 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
 
         # If there's at least four symbols in a row, it's a horizontal line.  The second regex supports differing edge characters.  It
         # doesn't matter if any of this matches the left and right side symbols.
-        elsif ($line =~ /^([^a-zA-Z0-9 \t])\1{3,}$/ ||
-                $line =~ /^([^a-zA-Z0-9 \t])\1*([^a-zA-Z0-9 \t])\2{3,}([^a-zA-Z0-9 \t])\3*$/)
+        elsif ($commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
+                $commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/)
             {
-            # Add a blank line to the output, since that's what it should be treated as.
-            $cleanComment .= "\n";
+            # Convert it to a blank line.
+            $commentLines->[$index] = '';
 
             # This has no effect on the vertical line detection.
             }
@@ -751,7 +641,7 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
 
             if ($leftSide != IS_NOT_UNIFORM)
                 {
-                if ($line =~ /^([^a-zA-Z0-9])\1*(?:[ \t]|$)/)
+                if ($commentLines->[$index] =~ /^([^a-zA-Z0-9])\1*(?: |$)/)
                     {
                     if ($leftSide == DONT_KNOW)
                         {
@@ -772,7 +662,7 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
 
             if ($rightSide != IS_NOT_UNIFORM)
                 {
-                if ($line =~ /[ \t]([^a-zA-Z0-9])\1*$/)
+                if ($commentLines->[$index] =~ / ([^a-zA-Z0-9])\1*$/)
                     {
                     if ($rightSide == DONT_KNOW)
                         {
@@ -791,14 +681,10 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
                     };
                 };
 
-
-            # Add the line to the content.  We'll remove vertical lines later if they're uniform throughout the entire comment.
-
-            $cleanComment .= $line . "\n";
+            # We'll remove vertical lines later if they're uniform throughout the entire comment.
             };
 
-
-        $line = shift @lines;
+        $index++;
         };
 
 
@@ -808,38 +694,67 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
         {  $rightSide = IS_UNIFORM;  };
 
 
-    # Clear vertical lines.
+    $index = 0;
+    my $prevLineBlank = 1;
 
-    if ($leftSide == IS_UNIFORM)
+    while ($index < scalar @$commentLines)
         {
-        # This works because every line should either start this way or be blank.
-        $cleanComment =~ s/^([^a-zA-Z0-9])\1*[ \t]*//gm;
+        # Clear vertical lines.
+
+        if ($leftSide == IS_UNIFORM)
+            {
+            # This works because every line should either start this way or be blank.
+            $commentLines->[$index] =~ s/^([^a-zA-Z0-9])\1* *//;
+            };
+
+        if ($rightSide == IS_UNIFORM)
+            {
+            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9])\1*$//;
+            };
+
+
+        # Clear horizontal lines again if there were vertical lines.  This catches lines that were separated from the verticals by
+        # whitespace.  We couldn't do this in the first loop because that would make the regexes over-tolerant.
+
+        if ($leftSide == IS_UNIFORM || $rightSide == IS_UNIFORM)
+            {
+            $commentLines->[$index] =~ s/^([^a-zA-Z0-9 ])\1{3,}$//;
+            $commentLines->[$index] =~ s/^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$//;
+            };
+
+
+        # Condense line breaks.  This also strips leading ones since prevLineBlank defaults to set.
+
+        if (!length($commentLines->[$index]))
+            {
+            if ($prevLineBlank)
+                {
+                splice(@$commentLines, $index, 1);
+                }
+            else
+                {
+                $prevLineBlank = 1;
+                $index++;
+                };
+            }
+
+        else # the line isn't blank
+            {
+            $prevLineBlank = 0;
+            $index++;
+            };
         };
 
-    if ($rightSide == IS_UNIFORM)
-        {
-        $cleanComment =~ s/[ \t]*([^a-zA-Z0-9])\1*$//gm;
-        };
+
+    # Strip trailing blank lines.
+
+    while ($index > 0 && !length( $commentLines->[$index - 1] ))
+        {  $index--;  };
+
+    splice(@$commentLines, $index);
 
 
-    # Clear horizontal lines again if there were vertical lines.  This catches lines that were separated from the verticals by
-    # whitespace.  We couldn't do this in the loop because that would make the regexes over-tolerant.
-
-    if ($leftSide == IS_UNIFORM || $rightSide == IS_UNIFORM)
-        {
-        $cleanComment =~ s/^([^a-zA-Z0-9 \t])\1{3,}$//gm;
-        $cleanComment =~ s/^([^a-zA-Z0-9 \t])\1*([^a-zA-Z0-9 \t])\2{3,}([^a-zA-Z0-9 \t])\3*$//gm;
-        };
-
-
-    # Condense line breaks and strip edge ones.
-
-    $cleanComment =~ s/^\n+//;
-    $cleanComment =~ s/\n+$//;
-    $cleanComment =~ s/\n{3,}/\n\n/g;
-
-
-    ExtractTopics($cleanComment, $functionPrototype, $variablePrototype);
+    ExtractTopics($commentLines);
     };
 
 
@@ -850,16 +765,11 @@ sub CleanComment #(comment, functionPrototype, variablePrototype)
 #
 #   Parameters:
 #
-#       comment  - The comment to interpret
-#       functionPrototype  - The potential function prototype.  Undef if none or not applicable.
-#       variablePrototype - The potential variable prototype.  Undef if none or not applicable.
+#       commentLines  - An arrayref of comment lines.
 #
-sub ExtractTopics #(comment, functionPrototype, variablePrototype)
+sub ExtractTopics #(commentLines)
     {
-    my ($comment, $functionPrototype, $variablePrototype) = @_;
-
-    my @commentLines = split(/\n/, $comment);
-    $comment = undef;
+    my $commentLines = shift;
 
     my $prevLineBlank = 1;
 
@@ -870,24 +780,36 @@ sub ExtractTopics #(comment, functionPrototype, variablePrototype)
     my $name;
     my $type;
     #my $scope;  # package variable.
-    my $body;
 
-    my $line = shift @commentLines;
+    my $index = 0;
 
-    while (defined $line)
+    my $bodyStart = 0;
+    my $bodyEnd = 0;  # Not inclusive.
+
+    while ($index < scalar @$commentLines)
         {
         # Leading and trailing whitespace was removed by CleanComment().
 
         # If the line is empty...
-        if (length $line == 0)
+        if (!length($commentLines->[$index]))
             {
             # CleanComment() made sure there weren't multiple blank lines in a row or at the beginning/end of the comment.
-            $body .= "\n";
             $prevLineBlank = 1;
+
+            # If this is the beginning of a body, make sure the leading blank is excluded.
+            if ($bodyStart == $index)
+                {
+                $bodyStart = $index + 1;
+                $bodyEnd = $index + 1;
+                };
+            # If this isn't the beginning of a body, we ignore it completely.  It will be included if there is any content after it when
+            # bodyEnd is advanced for that content.
             }
 
         # If the line has a recognized header and the previous line is blank...
-        elsif ($prevLineBlank && $line =~ /^([^:]+):\s+(\S.*)$/ && exists $synonyms{lc($1)})
+        elsif ($prevLineBlank &&
+                $commentLines->[$index] =~ /^([^:]+): +([^ ].*)$/ &&
+                exists $synonyms{lc($1)})
             {
             my $newType = $synonyms{lc($1)};
             my $newName = $2;
@@ -896,15 +818,15 @@ sub ExtractTopics #(comment, functionPrototype, variablePrototype)
 
             if (defined $type)
                 {
-                $body = FormatBody($body, $type);
-                InterpretTopic($name, $class, $type, $body, undef, undef);
+                my $body = FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
+                AddToParsedFile($name, $class, $type, $body);
                 };
 
             $type = $newType;
             $name = $newName;
 
-            $hasContent = 1;
-            $body = undef;
+            $bodyStart = $index + 1;
+            $bodyEnd = $index + 1;
 
 
             if ($type == ::TOPIC_SECTION())
@@ -933,35 +855,6 @@ sub ExtractTopics #(comment, functionPrototype, variablePrototype)
                 $class = $scope;
                 };
 
-
-            # Set the menu title, if necessary.
-
-            if ($defaultMenuTitleState == INDEFINITE)
-                {
-                # If the file starts off with a section, file, or class, that's the menu title no matter what.
-                if ($type == ::TOPIC_SECTION() || $type == ::TOPIC_FILE() || $type == ::TOPIC_CLASS())
-                    {
-                    $defaultMenuTitle = $name;
-                    $defaultMenuTitleState = DEFINITE;
-                    }
-
-                # If it starts with something else, that's the menu title only if that's the only thing in the file.
-                else
-                    {
-                    $defaultMenuTitle = $name;
-                    $defaultMenuTitleState = DEFINITE_IF_ONLY;
-                    };
-                }
-            elsif ($defaultMenuTitleState eq DEFINITE_IF_ONLY)
-                {
-                # If there was a second header after starting the file with something other than a section, file, or class,
-                # the menu title becomes the file name.
-
-                $defaultMenuTitle = $file;
-                $defaultMenuTitleState = DEFINITE;
-                };
-
-
             $prevLineBlank = 0;
             }
 
@@ -969,32 +862,29 @@ sub ExtractTopics #(comment, functionPrototype, variablePrototype)
         # Line without recognized header
         else
             {
-            if (defined $type)
-                {  $body .= $line . "\n";  };
-
             $prevLineBlank = 0;
+            $bodyEnd = $index + 1;
             };
 
 
-        $line = shift @commentLines;
+        $index++;
         };
 
 
     # Last one, if any.  This is the only one that gets the prototypes.
     if (defined $type)
         {
-        $body = FormatBody($body, $type);
-        InterpretTopic($name, $class, $type, $body, $functionPrototype, $variablePrototype);
+        my $body = FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
+        AddToParsedFile($name, $class, $type, $body);
         };
     };
 
 
 #
-#   Function: InterpretTopic
+#   Function: AddToParsedFile
 #
-#   Handles the parsed topic as appropriate for the parser mode.  If we're parsing for build, it adds it to <parsedFile>.  If
-#   we're parsing for symbols, it adds all symbol definitions and references to <NaturalDocs::SymbolTable>.  Scope is gotten from
-#   the package variable <scope> instead of from the parameters.
+#   Creates a <NaturalDocs::Parser::ParsedTopic> object and adds it to <parsedFile>.  Scope is gotten from
+#   the package variable <scope> instead of from the parameters.  The summary is generated from the body.
 #
 #   Parameters:
 #
@@ -1002,33 +892,11 @@ sub ExtractTopics #(comment, functionPrototype, variablePrototype)
 #       class        - The class of the section.
 #       type         - The section type.
 #       body        - The section's body in <NDMarkup>.
-#       functionPrototype - The potential function prototype.
-#       variablePrototype - The potential variable prototype.
 #
-sub InterpretTopic #(name, class, type, body, functionPrototype, variablePrototype)
+sub AddToParsedFile #(name, class, type, body)
     {
-    my ($name, $class, $type, $body, $functionPrototype, $variablePrototype) = @_;
+    my ($name, $class, $type, $body) = @_;
     # $scope is a package variable.
-
-    # Make sure the potential prototype is applicable and contains the name before including.
-    my $prototype;
-
-    if ($type == ::TOPIC_FUNCTION())
-        {  $prototype = $functionPrototype;  }
-    elsif ($type == ::TOPIC_VARIABLE())
-        {  $prototype = $variablePrototype;  };
-    # else no prototype for you!
-
-    if (defined $prototype && index($prototype, $name) == -1)
-        {  $prototype = undef;  }
-    else
-        {
-        $prototype =~ s/\n/ /g;
-        $prototype =~ s/ +$//;
-        };
-
-
-    # Extract the summary line.
 
     my $summary;
 
@@ -1042,43 +910,10 @@ sub InterpretTopic #(name, class, type, body, functionPrototype, variablePrototy
             if ($2 ne '</p>')
                 {  $summary .= $2;  };
             };
-
         };
 
 
-    if ($mode == PARSE_FOR_INFORMATION)
-        {
-        # Add a symbol for the topic.
-
-        NaturalDocs::SymbolTable::AddSymbol($class, $name, $file, $type, $prototype, $summary);
-
-
-        # If it's a list topic, add a symbol for each description list entry.
-
-        if (::TopicIsList($type))
-            {
-            my $listType = ::TopicIsListOf($type);
-
-            while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
-                {
-                my ($listSymbol, $listSummary) = ($1, $2);
-
-                $listSummary =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
-                $listSummary = $1 . $2;
-
-                NaturalDocs::SymbolTable::AddSymbol($scope, NaturalDocs::NDMarkup::RestoreAmpChars($listSymbol), $file,
-                                                                          $listType, undef, $listSummary);
-                };
-            };
-
-        while ($body =~ /<link>([^<]+)<\/link>/g)
-            {  NaturalDocs::SymbolTable::AddReference($scope, NaturalDocs::NDMarkup::RestoreAmpChars($1), $file);  };
-        }
-
-    else # ($mode == PARSE_FOR_BUILD)
-        {
-        push @parsedFile, NaturalDocs::Parser::ParsedTopic::New($type, $name, $class, $scope, $prototype, $summary, $body);
-        };
+    push @parsedFile, NaturalDocs::Parser::ParsedTopic::New($type, $name, $class, $scope, undef, $summary, $body);
     };
 
 
@@ -1093,17 +928,18 @@ sub InterpretTopic #(name, class, type, body, functionPrototype, variablePrototy
 #
 #   Parameters:
 #
-#       body - The body itself.
-#       type - The type of the section.
+#       commentLines - The arrayref of comment lines.
+#       startingIndex  - The starting index of the body to format.
+#       endingIndex   - The ending index of the body to format, *not* inclusive.
+#       type               - The type of the section.
 #
 #   Returns:
 #
 #       The body formatted in <NDMarkup>.
 #
-sub FormatBody #(body, type)
+sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     {
-    my $body = shift;
-    my $type = shift;
+    my ($commentLines, $startingIndex, $endingIndex, $type) = @_;
 
     use constant TAG_NONE => 1;
     use constant TAG_PARAGRAPH => 2;
@@ -1129,20 +965,15 @@ sub FormatBody #(body, type)
     my $prevCodeLineBlank = 1;
     my $removedCodeSpaces;
 
-    my @bodyLines = split(/\n/, $body);
-    $body = undef;
+    my $index = $startingIndex;
 
-
-    foreach my $line (@bodyLines)
+    while ($index < $endingIndex)
         {
         # If the line starts with a code designator...
-        if ($line =~ /^[>:|]([ \t]*)((?:[^ \t].*)?)$/)
+        if ($commentLines->[$index] =~ /^[>:|]( *)((?:[^ ].*)?)$/)
             {
             my $spaces = $1;
             my $code = $2;
-
-            $spaces =~ s/\t/   /g;
-            $code =~ s/[ \t]*$//;
 
             if ($topLevelTag == TAG_CODE)
                 {
@@ -1152,13 +983,7 @@ sub FormatBody #(body, type)
                     if (length($spaces) != $removedCodeSpaces)
                         {
                         my $spaceDifference = abs( length($spaces) - $removedCodeSpaces );
-                        my $spacesToAdd;
-
-                        while ($spaceDifference)
-                            {
-                            $spacesToAdd .= ' ';
-                            $spaceDifference--;
-                            };
+                        my $spacesToAdd = ' ' x $spaceDifference;
 
                         if (length($spaces) > $removedCodeSpaces)
                             {
@@ -1225,7 +1050,7 @@ sub FormatBody #(body, type)
 
 
             # If the line is blank...
-            if (!length $line)
+            if (!length($commentLines->[$index]))
                 {
                 # End a paragraph.  Everything else ignores it for now.
                 if ($topLevelTag == TAG_PARAGRAPH)
@@ -1239,7 +1064,7 @@ sub FormatBody #(body, type)
                 }
 
             # If the line starts with a bullet...
-            elsif ($line =~ /^[-\*o+]\s+(\S.*)$/)
+            elsif ($commentLines->[$index] =~ /^[-\*o+] +([^ ].*)$/)
                 {
                 my $bulletedText = $1;
 
@@ -1256,13 +1081,13 @@ sub FormatBody #(body, type)
                     $topLevelTag = TAG_BULLETLIST;
                     };
 
-                $textBlock = $bulletedText . ' ';
+                $textBlock = $bulletedText;
 
                 $prevLineBlank = undef;
                 }
 
             # If the line looks like a description list entry...
-            elsif ($line =~ /^(.+?)\s+-\s+(.+)$/)
+            elsif ($commentLines->[$index] =~ /^(.+?) +- +([^ ].*)$/)
                 {
                 my $entry = $1;
                 my $description = $2;
@@ -1289,13 +1114,13 @@ sub FormatBody #(body, type)
                     $output .= '<de>' . NaturalDocs::NDMarkup::ConvertAmpChars($entry) . '</de><dd>';
                     };
 
-                $textBlock = $description . ' ';
+                $textBlock = $description;
 
                 $prevLineBlank = undef;
                 }
 
             # If the line could be a header...
-            elsif ($prevLineBlank && $line =~ /^(.*)([^ \t]):$/)
+            elsif ($prevLineBlank && $commentLines->[$index] =~ /^(.*)([^ ]):$/)
                 {
                 my $headerText = $1 . $2;
 
@@ -1333,12 +1158,16 @@ sub FormatBody #(body, type)
                     # textBlock will already be undef.
                     };
 
-                $textBlock .= $line . ' ';
+                if (defined $textBlock)
+                    {  $textBlock .= ' ';  };
+
+                $textBlock .= $commentLines->[$index];
 
                 $prevLineBlank = undef;
                 };
-
             };
+
+        $index++;
         };
 
     # Clean up anything left dangling.
