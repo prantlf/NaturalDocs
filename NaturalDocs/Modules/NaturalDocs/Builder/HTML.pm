@@ -33,18 +33,18 @@ use base 'NaturalDocs::Builder::Base';
 #   A hash of text equivalents of the <Topic Types>.  Makes output easier.  The keys
 #   are the tokens, and the values are their text equivalents.
 #
-my %topicNames = ( ::TOPIC_CLASS()       => 'Class',
-                                   ::TOPIC_SECTION()   => 'Section',
-                                   ::TOPIC_FILE()          => 'File',
-                                   ::TOPIC_GROUP()      => 'Group',
-                                   ::TOPIC_FUNCTION() => 'Function',
-                                   ::TOPIC_VARIABLE() => 'Variable',
-                                   ::TOPIC_GENERIC()  => 'Generic',
-                                   ::TOPIC_CLASS_LIST()       => 'ClassList',
-                                   ::TOPIC_FILE_LIST()          => 'FileList',
-                                   ::TOPIC_FUNCTION_LIST() => 'FunctionList',
-                                   ::TOPIC_VARIABLE_LIST() => 'VariableList',
-                                   ::TOPIC_GENERIC_LIST()  => 'GenericList' );
+my %topicNames = ( ::TOPIC_CLASS() => 'Class',
+                                ::TOPIC_SECTION() => 'Section',
+                                ::TOPIC_FILE() => 'File',
+                                ::TOPIC_GROUP() => 'Group',
+                                ::TOPIC_FUNCTION() => 'Function',
+                                ::TOPIC_VARIABLE() => 'Variable',
+                                ::TOPIC_GENERIC() => 'Generic',
+                                ::TOPIC_CLASS_LIST() => 'ClassList',
+                                ::TOPIC_FILE_LIST() => 'FileList',
+                                ::TOPIC_FUNCTION_LIST() => 'FunctionList',
+                                ::TOPIC_VARIABLE_LIST() => 'VariableList',
+                                ::TOPIC_GENERIC_LIST() => 'GenericList' );
 
 #
 #   Hash: abbreviations
@@ -157,6 +157,28 @@ sub PurgeFiles
 
 
 #
+#   Function: PurgeIndexes
+#
+#   Deletes the output files associated with the purged source files.
+#
+#   Parameters:
+#
+#       indexes  - An existence hashref of the index types to purge.  The keys are the <Topic Types> or * for the general index.
+#
+sub PurgeIndexes #(indexes)
+    {
+    my ($self, $indexes) = @_;
+
+    my $outputPath = NaturalDocs::Settings::OutputDirectory($self);
+
+    foreach my $index (keys %$indexes)
+        {
+        unlink( NaturalDocs::File::JoinPath($outputPath, IndexFileOf($index eq '*' ? undef : $index)) );
+        };
+    };
+
+
+#
 #   Function: BuildFile
 #
 #   Builds the output file from the parsed source file.
@@ -171,19 +193,20 @@ sub BuildFile #(sourceFile, parsedFile)
     my ($self, $sourceFile, $parsedFile) = @_;
 
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory($self);
-    my $outputFile = NaturalDocs::File::JoinPath($outputDirectory, OutputFileOf($sourceFile));
+    my $outputFile = OutputFileOf($sourceFile);
+    my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
 
 
     my $outputFileHandle;
 
     # 99.99% of the time the output directory will already exist, so this will actually be more efficient.  It only won't exist
     # if a new file was added in a new subdirectory and this is the first time that file was ever parsed.
-    if (!open($outputFileHandle, '>' . $outputFile))
+    if (!open($outputFileHandle, '>' . $fullOutputFile))
         {
-        NaturalDocs::File::CreatePath( NaturalDocs::File::NoFileName($outputFile) );
+        NaturalDocs::File::CreatePath( NaturalDocs::File::NoFileName($fullOutputFile) );
 
-        open($outputFileHandle, '>' . $outputFile)
-            or die "Couldn't create output file " . $outputFile . "\n";
+        open($outputFileHandle, '>' . $fullOutputFile)
+            or die "Couldn't create output file " . $fullOutputFile . "\n";
         };
 
     print $outputFileHandle
@@ -198,23 +221,9 @@ sub BuildFile #(sourceFile, parsedFile)
                 . BuildTitle($sourceFile)
             . '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'. MakeRelativeURL(OutputFileOf($sourceFile), 'NaturalDocs.css') . '">'
+            . '<link rel="stylesheet" type="text/css" href="'. MakeRelativeURL($outputFile, 'NaturalDocs.css') . '">'
 
-            . '<script language=JavaScript><!-- ' . "\n"
-
-            . 'function ToggleMenu(id)'
-                . '{'
-                . 'if (!document.getElementById) { return; };'
-
-                . 'var display = document.getElementById(id).style.display;'
-
-                . 'if (display == "none") { display = "block"; }'
-                . 'else { display = "none"; }'
-
-                . 'document.getElementById(id).style.display = display;'
-                . '}'
-
-            . '// --></script>'
+            . BuildMenuJavaScript()
 
         . '</head><body>' . "\n\n"
 
@@ -227,7 +236,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<td class=Menu valign=top>'
 
-                . BuildMenu($sourceFile)
+                . BuildMenu($outputFile)
 
             . '</td>' . "\n\n"
 
@@ -249,6 +258,85 @@ sub BuildFile #(sourceFile, parsedFile)
 
 
 #
+#   Function: BuildIndex
+#
+#   Builds an index for the passed type.
+#
+#   Parameters:
+#
+#       type  - The type to limit the index to, or undef if none.
+#
+sub BuildIndex #(type)
+    {
+    my ($self, $type) = @_;
+
+    my $indexTitle = (defined $type ? $topicNames{$type} . ' ' : '') . 'Index';
+    my $indexFile = IndexFileOf($type);
+
+    my $outputDirectory = NaturalDocs::Settings::OutputDirectory($self);
+    my $outputFile = NaturalDocs::File::JoinPath($outputDirectory, $indexFile);
+
+    my $outputFileHandle;
+
+    open($outputFileHandle, '>' . $outputFile)
+        or die "Couldn't create output file " . $outputFile . "\n";
+
+    print $outputFileHandle
+
+        '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" '
+            . '"http://www.w3.org/TR/REC-html40/strict.dtd">' . "\n\n"
+
+        . '<html><head>'
+
+            . '<title>';
+
+            if (defined NaturalDocs::Menu::Title())
+                {  print $outputFileHandle '' . StringToHTML(NaturalDocs::Menu::Title()) . ' - ';  };
+
+                print $outputFileHandle
+
+                $indexTitle
+            . '</title>'
+
+            . '<link rel="stylesheet" type="text/css" href="'. MakeRelativeURL($indexFile, 'NaturalDocs.css') . '">'
+
+            . BuildMenuJavaScript()
+
+        . '</head><body>' . "\n\n"
+
+        . '<!--  Generated by Natural Docs, version ' . NaturalDocs::Settings::AppVersion() . ' -->' . "\n"
+        . '<!--  ' . NaturalDocs::Settings::AppURL() . '  -->' . "\n\n"
+
+
+        # I originally had this part done in CSS, but there were too many problems.  Back to good old HTML tables.
+        . '<table border=0 cellspacing=0 cellpadding=0 width=100%><tr>'
+
+            . '<td class=Menu valign=top>'
+
+                . BuildMenu($indexFile)
+
+            . '</td>' . "\n\n"
+
+            . '<td class=Index valign=top>'
+                . '<div class=IPageTitle>'
+                    . $indexTitle
+                . '</div>'
+                . BuildIndexContent( NaturalDocs::SymbolTable::Index($type), $indexFile )
+            . '</td>' . "\n\n"
+
+        . '</tr></table>'
+
+        . '<div class=Footer>'
+            . BuildFooter()
+        . '</div>'
+
+        . '</body></html>';
+
+
+    close($outputFileHandle);
+    };
+
+#
 #   Function: UpdateMenu
 #
 #   Updates the menu in all the output files that weren't rebuilt.  Also generates index.html.
@@ -265,6 +353,22 @@ sub UpdateMenu
     foreach my $sourceFile (keys %$filesToUpdate)
         {
         UpdateFile($sourceFile);
+        };
+
+
+    # Update the menu on unchanged index files.
+
+    my $indexes = NaturalDocs::Menu::Indexes();
+
+    foreach my $index (keys %$indexes)
+        {
+        if ($index eq '*')
+            {  $index = undef;  };
+
+        if (!NaturalDocs::SymbolTable::IndexChanged($index))
+            {
+            UpdateIndex($index);
+            };
         };
 
 
@@ -293,13 +397,9 @@ sub UpdateMenu
 #
 #   Checks that the project's CSS file is the same as the master CSS file, unless -s Custom is specified.
 #
-#       purgedFiles     - Whether <PurgeFiles()> was called.
-#       builtFiles         - Whether <BuildFile()> was called.  If this parameter is false, <NaturalDocs::SymbolTable> is not available.
-#       updatedMenu  - Whether <UpdateMenu()> was called.
-#
-sub EndBuild #(purgedFiles, builtFiles, updatedMenu)
+sub EndBuild #(hasChanged)
     {
-    my $self = shift;
+    my ($self, $hasChanged) = @_;
 
     my $style = NaturalDocs::Settings::OutputStyle($self);
 
@@ -308,18 +408,11 @@ sub EndBuild #(purgedFiles, builtFiles, updatedMenu)
         my $masterCSSFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::StyleDirectory(), $style . '.css' );
         my $localCSSFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'NaturalDocs.css' );
 
-        if (! -e $localCSSFile)
-            {
-            if (!NaturalDocs::Settings::IsQuiet())
-                {  print "Adding CSS file...\n";  };
-
-            NaturalDocs::File::Copy($masterCSSFile, $localCSSFile);
-            }
-
         # We check both the date and the size in case the user switches between two styles which just happen to have the same
         # date.  Should rarely happen, but it might.
-        elsif ( (stat($masterCSSFile))[9] != (stat($localCSSFile))[9] ||
-                 (stat($masterCSSFile))[7] != (stat($localCSSFile))[7] )
+        if (! -e $localCSSFile ||
+            (stat($masterCSSFile))[9] != (stat($localCSSFile))[9] ||
+            (stat($masterCSSFile))[7] != (stat($localCSSFile))[7] )
             {
             if (!NaturalDocs::Settings::IsQuiet())
                 {  print "Updating CSS file...\n";  };
@@ -371,15 +464,15 @@ sub BuildTitle #(sourceFile)
 #
 #   Parameters:
 #
-#       sourceFile - The source file to build the menu for.
+#       outputFile - The output file to build the menu for.
 #
 #   Returns:
 #
 #       The side menu in HTML.
 #
-sub BuildMenu #(sourceFile)
+sub BuildMenu #(outputFile)
     {
-    my $sourceFile = shift;
+    my $outputFile = shift;
 
     $menuGroupNumber = 1;
     @menuSelectionHierarchy = ( );
@@ -416,7 +509,7 @@ sub BuildMenu #(sourceFile)
         };
 
 
-    $output .= BuildMenuSegment($sourceFile, NaturalDocs::Menu::Content(), undef);
+    $output .= BuildMenuSegment($outputFile, NaturalDocs::Menu::Content(), undef);
 
 
     # If the completely expanded menu is too long, collapse all the groups that aren't in the selection hierarchy.  By doing this
@@ -478,7 +571,7 @@ sub BuildMenu #(sourceFile)
 #
 #   Parameters:
 #
-#       sourceFile - The source file the menu is being built for.
+#       outputFile - The output file the menu is being built for.
 #
 #       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the content
 #                               of a group.
@@ -489,9 +582,9 @@ sub BuildMenu #(sourceFile)
 #
 #       The menu segment in HTML.
 #
-sub BuildMenuSegment #(sourceFile, menuSegment, hasSelectionRef)
+sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
     {
-    my ($sourceFile, $menuSegment, $hasSelectionRef) = @_;
+    my ($outputFile, $menuSegment, $hasSelectionRef) = @_;
 
     my $output;
 
@@ -515,7 +608,7 @@ sub BuildMenuSegment #(sourceFile, menuSegment, hasSelectionRef)
                     . '</a>'
 
                     . '<div class=MGroupContent id=MGroupContent' . $myGroupNumber . '>'
-                        . BuildMenuSegment($sourceFile, $entry->GroupContent(), \$hasSelection)
+                        . BuildMenuSegment($outputFile, $entry->GroupContent(), \$hasSelection)
                     . '</div>'
 
                 . '</div>'
@@ -534,12 +627,14 @@ sub BuildMenuSegment #(sourceFile, menuSegment, hasSelectionRef)
             {
             $menuLength += MENU_FILELENGTH;
 
-            if ($entry->Target() eq $sourceFile)
+            my $targetOutputFile = OutputFileOf($entry->Target());
+
+            if ($outputFile eq $targetOutputFile)
                 {
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MFile id=MSelected>'
-                        . AddHiddenBreaks( StringToHTML( $entry->Title() ))
+                        . AddHiddenBreaks( StringToHTML($entry->Title() ))
                     . '</div>'
                 . '</div>';
 
@@ -551,7 +646,7 @@ sub BuildMenuSegment #(sourceFile, menuSegment, hasSelectionRef)
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MFile>'
-                        . '<a href="' . MakeRelativeURL( OutputFileOf($sourceFile), OutputFileOf($entry->Target()) ) . '">'
+                        . '<a href="' . MakeRelativeURL($outputFile, $targetOutputFile) . '">'
                             . AddHiddenBreaks( StringToHTML( $entry->Title() ))
                         . '</a>'
                     . '</div>'
@@ -579,6 +674,32 @@ sub BuildMenuSegment #(sourceFile, menuSegment, hasSelectionRef)
                     . '</a>'
                 . '</div>'
             . '</div>';
+            }
+
+        elsif ($entry->Type() == ::MENU_INDEX())
+            {
+            my $indexFile = IndexFileOf($entry->Target);
+
+            if ($outputFile eq $indexFile)
+                {
+                $output .=
+                '<div class=MEntry>'
+                    . '<div class=MIndex id=MSelected>'
+                        . StringToHTML( $entry->Title() )
+                    . '</div>'
+                . '</div>';
+                }
+            else
+                {
+                $output .=
+                '<div class=MEntry>'
+                    . '<div class=MIndex>'
+                        . '<a href="' . MakeRelativeURL( $outputFile, IndexFileOf($entry->Target()) ) . '">'
+                            . StringToHTML( $entry->Title() )
+                        . '</a>'
+                    . '</div>'
+                . '</div>';
+                };
             };
         };
 
@@ -933,29 +1054,318 @@ sub UpdateFile #(sourceFile)
     my $sourceFile = shift;
 
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory(__PACKAGE__);
-    my $outputFile = NaturalDocs::File::JoinPath( $outputDirectory, OutputFileOf($sourceFile) );
+    my $outputFile = OutputFileOf($sourceFile);
+    my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
     my $outputFileHandle;
 
-    if (open($outputFileHandle, '<' . $outputFile))
+    if (open($outputFileHandle, '<' . $fullOutputFile))
         {
         my $content;
 
-        read($outputFileHandle, $content, (stat($outputFile))[7]);
+        read($outputFileHandle, $content, (stat($fullOutputFile))[7]);
         close($outputFileHandle);
 
 
         $content =~ s{<title>[^<]*<\/title>}{'<title>' . BuildTitle($sourceFile) . '</title>'}e;
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/BuildMenu($sourceFile)/es;
+        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/BuildMenu($outputFile)/es;
 
         $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . BuildFooter() . "<\/div>"/e;
 
 
-        open($outputFileHandle, '>' . $outputFile);
+        open($outputFileHandle, '>' . $fullOutputFile);
         print $outputFileHandle $content;
         close($outputFileHandle);
         };
     };
+
+
+#
+#   Function: UpdateIndex
+#
+#   Updates an index's output file.  Replaces the menu and footer.  It opens the output file, makes the changes, and saves it
+#   back to disk, which is much quicker than rebuilding the file from scratch if these were the only things that changed.
+#
+#   Parameters:
+#
+#       type - The index type, or undef if note.
+#
+sub UpdateIndex #(type)
+    {
+    my $type = shift;
+
+    my $outputDirectory = NaturalDocs::Settings::OutputDirectory(__PACKAGE__);
+    my $outputFile =IndexFileOf($type);
+    my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
+    my $outputFileHandle;
+
+    if (open($outputFileHandle, '<' . $fullOutputFile))
+        {
+        my $content;
+
+        read($outputFileHandle, $content, (stat($fullOutputFile))[7]);
+        close($outputFileHandle);
+
+
+        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/BuildMenu($outputFile)/es;
+
+        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . BuildFooter() . "<\/div>"/e;
+
+
+        open($outputFileHandle, '>' . $fullOutputFile);
+        print $outputFileHandle $content;
+        close($outputFileHandle);
+        };
+    };
+
+
+#
+#   Function: BuildIndexContent
+#
+#   Builds and returns index's content in HTML.
+#
+#   Parameters:
+#
+#       index  - An arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
+#       outputFile - The output file the index is going to be stored in.
+#
+sub BuildIndexContent #(index, outputFile)
+    {
+    my ($index, $outputFile) = @_;
+    my $output;
+
+    use constant NUMBER_HEADING => '0-9';
+    use constant SYMBOL_HEADING => '$#!';
+
+    my %headings;  # Existence hash.  Keys: 'A'-'Z', NUMBER_HEADING, SYMBOL_HEADING
+    my $currentHeading;
+
+    foreach my $entry (@$index)
+        {
+        # Check for headings
+
+        my $tempHeading = uc(substr($entry->Symbol(), 0, 1));
+
+        if ($tempHeading =~ /^[0-9]$/)
+            {  $tempHeading = NUMBER_HEADING;  }
+        elsif ($tempHeading !~ /^[A-Z]$/)
+            {  $tempHeading = SYMBOL_HEADING;  };
+
+        if ($tempHeading ne $currentHeading)
+            {
+            $currentHeading = $tempHeading;
+            $headings{$currentHeading} = 1;
+
+            $output .=
+            '<div class=IHeading>'
+                . '<a name="';
+
+                if ($currentHeading eq NUMBER_HEADING)
+                    {  $output .= 'Numbers';  }
+                elsif ($currentHeading eq SYMBOL_HEADING)
+                    {  $output .= 'Symbols';  }
+                else
+                    {  $output .= $currentHeading;  };
+
+                $output .=
+                '"></a>'
+                . $currentHeading
+            . '</div>';
+            };
+
+
+        # Build a simple entry
+
+        if (!ref $entry->Class() && !ref $entry->File())
+            {
+            $output .= BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(), $entry->File(),
+                                                  $entry->Type(), $entry->Prototype(), $outputFile);
+            }
+
+
+        # Build an entry with subindexes.
+
+        else
+            {
+            $output .=
+            '<div class=IEntry>'
+                . '<span class=ISymbol>' . StringToHTML($entry->Symbol()) . '</span>';
+
+                if (defined $entry->Class() && !ref $entry->Class())
+                    {  $output .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
+
+                $output .=
+                '<div class=ISubIndex>';
+
+            if (ref $entry->Class())
+                {
+                my $classEntries = $entry->Class();
+
+                foreach my $classEntry (@$classEntries)
+                    {
+                    if (ref $classEntry->File())
+                        {
+                        $output .= '<div class=IEntry><span class=IParent>';
+
+                        if (defined $classEntry->Class())
+                            {  $output .= AddHiddenBreaks(StringToHTML($classEntry->Class()));  }
+                        else
+                            {  $output .= 'Global';  };
+
+                        $output .= '</span><div class=ISubIndex>';
+
+                        my $fileEntries = $classEntry->File();
+                        foreach my $fileEntry (@$fileEntries)
+                            {
+                            $output .= BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
+                                                                  $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                            };
+
+                        $output .= '</div></div>';
+                        }
+
+                    else #(!ref $classEntry->File())
+                        {
+                        $output .= BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
+                                                                 $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(), $outputFile);
+                        };
+                    };
+                }
+
+            else #(!ref $entry->Class())
+                {
+                # ref $entry->File() is logically true then.
+
+                my $fileEntries = $entry->File();
+                foreach my $fileEntry (@$fileEntries)
+                    {
+                    $output .= BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
+                                                          $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                    };
+                };
+
+            $output .= '</div></div>'; # Symbol IEntry and ISubIndex
+            };
+        };
+
+
+    # Now add a navigation bar.
+
+    my $navBar = '<div class=INavigationBar>';
+
+    if (exists $headings{SYMBOL_HEADING()})
+        {
+        $navBar .=
+        '<a href="#Symbols">'
+            . SYMBOL_HEADING
+        . '</a>';
+        }
+    else
+        {  $navBar .= SYMBOL_HEADING;  };
+
+    if (exists $headings{NUMBER_HEADING()})
+        {
+        $navBar .=
+        ' &middot; '
+        . '<a href="#Numbers">'
+            . NUMBER_HEADING
+        . '</a>';
+        }
+    else
+        {  $navBar .= ' &middot; ' . NUMBER_HEADING;  };
+
+    foreach my $letter ('A'..'Z')
+        {
+        if (exists $headings{$letter})
+            {
+            $navBar .=
+            ' &middot; '
+            . '<a href="#' . $letter . '">'
+                . $letter
+            . '</a>';
+            }
+        else
+            {  $navBar .= ' &middot; ' . $letter;  };
+        };
+
+    $navBar .= '</div>';
+
+
+    return $navBar . $output;
+    };
+
+
+#
+#   Function: BuildIndexLink
+#
+#   Returns a link in the index, complete with surrounding <IEntry> tags.
+#
+#   Parameters:
+#
+#       name  - The text to appear for the link.
+#       tag  - The tag to apply to name.  For example, <ISymbol>.
+#       class  - The class of the symbol, if any.
+#       showClass  - Whether the class name should be shown in parenthesis.
+#       symbol  - The symbol to link to.
+#       file  - The source file the symbol appears in.
+#       type  - The type of the symbol.  One of the <Topic Types>.
+#       prototype  - The prototype of the symbol, if any.
+#       outputFile  - The output file the link is appearing in.
+#
+#   Returns:
+#
+#       The link entry, including <IEntry> tags.
+#
+sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype, outputFile)
+    {
+    my ($name, $tag, $class, $showClass, $symbol, $file, $type, $prototype, $outputFile) = @_;
+
+    my $output =
+    '<div class=IEntry>'
+        . '<a href="' . MakeRelativeURL( $outputFile, OutputFileOf($file) )
+            . '#' . SymbolToHTMLSymbol($class, $symbol) . '" '
+            . 'class=' . $tag;
+
+    if (defined $prototype)
+        {  $output .= ' title="' . ConvertAmpChars($prototype) . '"';  };
+
+    $output .= '>' . AddHiddenBreaks(StringToHTML($name)) . '</a>';
+
+    if ($showClass && defined $class)
+        {  $output .= ', <span class=IParent>' . $class . '</span>';  };
+
+    $output .= '</div>';
+
+    return $output;
+    };
+
+
+#
+#   Function: BuildMenuJavaScript
+#
+#   Returns the JavaScript necessary to expand and collapse the menus.
+#
+sub BuildMenuJavaScript
+    {
+    return
+
+    '<script language=JavaScript><!-- ' . "\n"
+
+    . 'function ToggleMenu(id)'
+        . '{'
+        . 'if (!document.getElementById) { return; };'
+
+        . 'var display = document.getElementById(id).style.display;'
+
+        . 'if (display == "none") { display = "block"; }'
+        . 'else { display = "none"; }'
+
+        . 'document.getElementById(id).style.display = display;'
+        . '}'
+
+    . '// --></script>';
+    };
+
 
 
 ###############################################################################
@@ -965,7 +1375,7 @@ sub UpdateFile #(sourceFile)
 #
 #   function: OutputFileOf
 #
-#   Returns the output file name of the source file, no path included.
+#   Returns the output file name of the source file.
 #
 sub OutputFileOf #(sourceFile)
     {
@@ -979,14 +1389,30 @@ sub OutputFileOf #(sourceFile)
     };
 
 #
-#   function: MakeRelativeURL
+#   function:IndexFileOf
 #
-#   Returns a relative path between two files and returns it in URL format.
+#   Returns the output file name of the index file.
 #
 #   Parameters:
 #
-#       baseFile    - The base file.
-#       targetFile  - The target of the link.
+#       type  - The type of index, or undef if general.
+#
+sub IndexFileOf #(type)
+    {
+    my $type = shift;
+
+    return (defined $type ? $topicNames{$type} : 'General') . 'Index.html';
+    };
+
+#
+#   function: MakeRelativeURL
+#
+#   Returns a relative path between two files in the output tree and returns it in URL format.
+#
+#   Parameters:
+#
+#       baseFile    - The base file in local format, *not* in URL format.
+#       targetFile  - The target of the link in local format, *not* in URL format.
 #
 #   Returns:
 #
