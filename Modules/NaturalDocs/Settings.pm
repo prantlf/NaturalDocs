@@ -172,46 +172,73 @@ sub Save
 #
 #   Generates names for each of the input directories, which can later be retrieved with <InputDirectoryNameOf()>.
 #
-sub GenerateDirectoryNames
+#   Parameters:
+#
+#       hints - A hashref of suggested names, where the keys are the directories and the values are the names.  These take
+#                 precedence over anything generated.  Directories here that aren't on the list of input directories are ignored.
+#                 This parameter may be undef.
+#
+sub GenerateDirectoryNames #(hints)
     {
-    my ($self) = @_;
+    my ($self, $hints) = @_;
 
     my %usedNames;
 
-    for (my $i = 0; $i < scalar @inputDirectories; $i++)
+
+    # Pass one applies all names from the hints.
+
+    if (defined $hints)
         {
-        my $name;
-
-        if ($i == 0)
-            {  $name = 'default';  }
-        else
+        for (my $i = 0; $i < scalar @inputDirectories; $i++)
             {
-            # The first attempt at a name is the last directory that isn't already used.
-
-            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($inputDirectories[$i], 1);
-            my @directories = NaturalDocs::File->SplitDirectories($dirString);
-
-            while (scalar @directories && !defined $name)
+            if (exists $hints->{$inputDirectories[$i]})
                 {
-                my $directory = pop @directories;
-                if (!exists $usedNames{$directory})
-                    {  $name = $directory;  };
-                };
-
-            if (!defined $name)
-                {
-                # If that didn't work, the second attempt is a number.
-
-                my $number = 1;
-                while (!exists $usedNames{$number})
-                    {  $number++;  };
-
-                $name = $number;
+                $inputDirectoryNames[$i] = $hints->{$inputDirectories[$i]};
+                $usedNames{ $hints->{$inputDirectories[$i]} } = 1;
                 };
             };
+        };
 
-        $inputDirectoryNames[$i] = $name;
-        $usedNames{$name} = 1;
+
+    # Pass two generates names for anything remaining.
+
+    for (my $i = 0; $i < scalar @inputDirectories; $i++)
+        {
+        if (!defined $inputDirectoryNames[$i])
+            {
+            my $name;
+
+            if (!exists $usedNames{'default'})
+                {  $name = 'default';  }
+            else
+                {
+                # The first attempt at a name is the last directory that isn't already used.
+
+                my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($inputDirectories[$i], 1);
+                my @directories = NaturalDocs::File->SplitDirectories($dirString);
+
+                while (scalar @directories && !defined $name)
+                    {
+                    my $directory = pop @directories;
+                    if (!exists $usedNames{$directory})
+                        {  $name = $directory;  };
+                    };
+
+                if (!defined $name)
+                    {
+                    # If that didn't work, the second attempt is a number.
+
+                    my $number = 1;
+                    while (!exists $usedNames{$number})
+                        {  $number++;  };
+
+                    $name = $number;
+                    };
+                };
+
+            $inputDirectoryNames[$i] = $name;
+            $usedNames{$name} = 1;
+            };
         };
     };
 
