@@ -431,6 +431,11 @@ sub ProjectDataDirectory
 sub StyleDirectory
     {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'Styles', 1);  };
 
+# Function: JavaScriptDirectory
+# Returns the main JavaScript directory.
+sub JavaScriptDirectory
+    {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'JavaScript', 1);  };
+
 # Function: ConfigDirectory
 # Returns the main configuration directory.
 sub ConfigDirectory
