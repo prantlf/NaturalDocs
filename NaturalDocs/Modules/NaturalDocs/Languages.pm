@@ -60,6 +60,15 @@ my %extensions;
 #
 my %shebangs;
 
+#
+#   hash: shebangFiles
+#
+#   A hash of all the defined languages for files where it needs to be found via shebang strings.  The keys are the file names,
+#   and the values are indexes into <languages>, or -1 if the file isn't supported.  These values should be filled in the first time
+#   each file is parsed for a shebang string so that it doesn't have to be done multiple times.
+#
+my %shebangFiles;
+
 
 ###############################################################################
 # Group: Functions
@@ -88,31 +97,51 @@ sub LanguageOf #(sourceFile)
 
     if (!defined $extension || $extension eq 'cgi')
         {
-        my $shebangLine;
-
-        open(SOURCEFILEHANDLE, '<' . $sourceFile) or die 'Could not open ' . $sourceFile;
-
-        read(SOURCEFILEHANDLE, $shebangLine, 2);
-        if ($shebangLine eq '#!')
-            {  $shebangLine = <SOURCEFILEHANDLE>;  }
-        else
-            {  $shebangLine = undef;  };
-
-        close (SOURCEFILEHANDLE);
-
-        if (!defined $shebangLine)
-            {  return undef;  }
-        else
+        if (exists $shebangFiles{$sourceFile})
             {
-            $shebangLine = lc($shebangLine);
+            my $index = $shebangFiles{$sourceFile};
 
-            foreach my $shebangString (keys %shebangs)
+            if ($index != -1)
+                {  return $languages[$index];  }
+            else
+                {  return undef;  };
+            }
+
+        else # (!exists $shebangFiles{$sourceFile})
+            {
+            my $shebangLine;
+
+            open(SOURCEFILEHANDLE, '<' . $sourceFile) or die 'Could not open ' . $sourceFile;
+
+            read(SOURCEFILEHANDLE, $shebangLine, 2);
+            if ($shebangLine eq '#!')
+                {  $shebangLine = <SOURCEFILEHANDLE>;  }
+            else
+                {  $shebangLine = undef;  };
+
+            close (SOURCEFILEHANDLE);
+
+            if (!defined $shebangLine)
                 {
-                if (index($shebangLine, $shebangString) != -1)
-                    {  return $languages[ $shebangs{$shebangString} ];  };
-                };
+                $shebangFiles{$sourceFile} = -1;
+                return undef;
+                }
+            else
+                {
+                $shebangLine = lc($shebangLine);
 
-            return undef;
+                foreach my $shebangString (keys %shebangs)
+                    {
+                    if (index($shebangLine, $shebangString) != -1)
+                        {
+                        $shebangFiles{$sourceFile} = $shebangs{$shebangString};
+                        return $languages[ $shebangs{$shebangString} ];
+                        };
+                    };
+
+                $shebangFiles{$sourceFile} = -1;
+                return undef;
+                };
             };
         }
     elsif (exists $extensions{$extension})
