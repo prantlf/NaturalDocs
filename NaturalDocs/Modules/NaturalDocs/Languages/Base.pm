@@ -221,4 +221,91 @@ sub MakeSortableSymbol #(name, type)
     };
 
 
+###############################################################################
+# Group: Support Functions
+
+#
+#   Function: StripOpeningSymbol
+#
+#   Determines if the line starts with any of the passed symbols, and if so, replaces it with spaces.  This only happens
+#   if the only thing before it on the line is whitespace.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#       symbols - An arrayref of the symbols to check for.
+#
+#   Returns:
+#
+#       If the line starts with any of the passed comment symbols, it will replace it in the line with spaces and return the symbol.
+#       If the line doesn't, it will leave the line alone and return undef.
+#
+sub StripOpeningSymbol #(lineRef, symbols)
+    {
+    my ($self, $lineRef, $symbols) = @_;
+
+    if (!defined $symbols)
+        {  return undef;  };
+
+    foreach my $symbol (@$symbols)
+        {
+        my $index = index($$lineRef, $symbol);
+
+        if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
+            {
+            return substr($$lineRef, $index, length($symbol), ' ' x length($symbol));
+            };
+        };
+
+    return undef;
+    };
+
+
+#
+#   Function: StripClosingSymbol
+#
+#   Determines if the line contains a symbol, and if so, truncates it just before the symbol.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#       symbols - An arrayref of the symbols to check for.
+#
+#   Returns:
+#
+#       The array ( symbol, lineRemainder ), or undef if the symbol was not found.
+#
+#       symbol - The symbol that was found.
+#       lineRemainder - Everything on the line following the symbol.
+#
+sub StripClosingSymbol #(lineRef, symbols)
+    {
+    my ($self, $lineRef, $symbols) = @_;
+
+    my $index = -1;
+    my $symbol;
+
+    foreach my $testSymbol (@$symbols)
+        {
+        my $testIndex = index($$lineRef, $testSymbol);
+
+        if ($testIndex != -1 && ($index == -1 || $testIndex < $index))
+            {
+            $index = $testIndex;
+            $symbol = $testSymbol;
+            };
+        };
+
+    if ($index != -1)
+        {
+        my $lineRemainder = substr($$lineRef, $index + length($symbol));
+        $$lineRef = substr($$lineRef, 0, $index);
+
+        return ($symbol, $lineRemainder);
+        }
+    else
+        {  return undef;  };
+    };
+
+
 1;
