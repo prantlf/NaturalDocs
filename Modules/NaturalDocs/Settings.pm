@@ -718,23 +718,26 @@ sub ParseCommandLine
         {
         @styles = split(/ +/, $styles[0]);
 
-        foreach my $style (@styles)
+        for (my $i = 0; $i < scalar @styles; $i++)
             {
-            if (lc($style) eq 'custom')
+            # Tolerate .css by stripping it off.
+            $styles[$i] =~ s/\.css$//i;
+
+            if (lc($styles[$i]) eq 'custom')
                 {
                 push @errorMessages, 'The "Custom" style setting is no longer supported.  Copy your custom style sheet to your '
                                                . 'project directory and you can refer to it with -s.';
                 }
             else
                 {
-                my $cssFile = NaturalDocs::File->JoinPaths( $self->StyleDirectory(), $style . '.css' );
+                my $cssFile = NaturalDocs::File->JoinPaths( $self->StyleDirectory(), $styles[$i] . '.css' );
                 if (! -e $cssFile)
                     {
-                    $cssFile = NaturalDocs::File->JoinPaths( $self->ProjectDirectory(), $style . '.css' );
+                    $cssFile = NaturalDocs::File->JoinPaths( $self->ProjectDirectory(), $styles[$i] . '.css' );
 
                     if (! -e $cssFile)
                         {
-                        push @errorMessages, 'The style ' . $style . ' does not exist.';
+                        push @errorMessages, 'The style ' . $styles[$i] . ' does not exist.';
                         };
                     };
                 };
