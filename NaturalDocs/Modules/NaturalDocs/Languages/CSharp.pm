@@ -1046,7 +1046,7 @@ sub TryToSkipString #(indexRef, lineNumberRef)
         # We need to do at-strings manually because backslash characters are accepted as regular characters, and two consecutive
         # quotes are accepted as well.
 
-        while ($$indexRef < scalar @$tokens && !($tokens->[$$indexRef] eq '"' && $tokens->[$$indexRef+1] eq '"') )
+        while ($$indexRef < scalar @$tokens && !($tokens->[$$indexRef] eq '"' && $tokens->[$$indexRef+1] ne '"') )
             {
             if ($tokens->[$$indexRef] eq '"')
                 {
@@ -1063,6 +1063,10 @@ sub TryToSkipString #(indexRef, lineNumberRef)
                 $$indexRef++;
                 };
             };
+
+        # Skip the closing quote.
+        if ($$indexRef < scalar @$tokens)
+            {  $$indexRef++;  };
 
         return 1;
         }
