@@ -20,7 +20,8 @@ use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
                                                  'TYPE_PREFIX', 'TypePrefix()', 'SetTypePrefix()',
                                                  'NAME', 'Name()', 'SetName()',
                                                  'NAME_PREFIX', 'NamePrefix()', 'SetNamePrefix()',
-                                                 'DEFAULT_VALUE', 'DefaultValue()', 'SetDefaultValue()';
+                                                 'DEFAULT_VALUE', 'DefaultValue()', 'SetDefaultValue()',
+                                                 'DEFAULT_VALUE_PREFIX', 'DefaultValuePrefix()', 'SetDefaultValuePrefix()';
 # Dependency: New() depends on the order of these constants and that they don't inherit from another class.
 
 
@@ -36,8 +37,9 @@ use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
 #       name - The parameter name.
 #       namePrefix - The parameter name prefix which should be aligned separately, if any.
 #       defaultValue - The default value expression, if any.
+#       defaultValuePrefix - The default value prefix which should be aligned separately, if any.
 #
-sub New #(type, typePrefix, name, namePrefix, defaultValue)
+sub New #(type, typePrefix, name, namePrefix, defaultValue, defaultValuePrefix)
     {
     my ($package, @params) = @_;
 
@@ -64,6 +66,8 @@ sub New #(type, typePrefix, name, namePrefix, defaultValue)
 #   SetNamePrefix - Replaces the parameter name prefix.
 #   DefaultValue - The default value expression, if any.
 #   SetDefaultValue - Replaces the default value expression.
+#   DefaultValuePrefix - The default value prefix, which should be aligned separately, if any.
+#   SetDefaultValuePrefix - Replaces the default value prefix.
 #
 
 

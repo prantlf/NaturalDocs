@@ -452,7 +452,7 @@ Topic: Prototype Structure
             </td PBeforeParameters>
 
             <td PTypePrefix>
-                "unsigned "
+                "unsigned"
             </td PTypePrefix>
 
             <td PType>
@@ -467,8 +467,12 @@ Topic: Prototype Structure
                 "a", "b"
             </td PParameter>
 
+            <td PDefaultValuePrefix>
+                "="
+            </td PDefaultValuePrefix>
+
             <td PDefaultValue>
-                "= 0"
+                "0"
             </td PDefaultValue>
 
             (repeated as necessary)
@@ -504,8 +508,12 @@ Topic: Prototype Structure
                 "int"
             </td PType>
 
+            <td PDefaultValuePrefix>
+                ":="
+            </td PDefaultValuePrefix>
+
             <td PDefaultValue>
-                ":= 0"
+                "0"
             </td PDefaultValue>
 
             (repeated as necessary)
@@ -534,8 +542,8 @@ Styles: Prototype Styles
     PTypePrefix - The prefix of a parameter type.
     PParameter - The parameter name.
     PParameterPrefix - The prefix of a parameter name.
-
     PDefaultValue - The default value expression for a parameter.
+    PDefaultValuePrefix - The prefix of the default value expression.
 
 
 Topic: Link Structure
@@ -711,6 +719,10 @@ Group: History
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
+
+    1.33:
+
+        - Added <PDefaultValuePrefix>.
 
     1.32:
 
