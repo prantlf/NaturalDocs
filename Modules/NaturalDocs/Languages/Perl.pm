@@ -16,12 +16,6 @@ use integer;
 
 package NaturalDocs::Languages::Perl;
 
-
-#
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Advanced>
-#
 use base 'NaturalDocs::Languages::Advanced';
 
 
@@ -81,7 +75,7 @@ sub ParseFile #(sourceFile, topicsList)
         {
         if ($self->TryToSkipWhitespace(\$index, \$lineNumber) ||
             $self->TryToGetPackage(\$index, \$lineNumber) ||
-#            $self->TryToGetBase(\$index, \$lineNumber) ||
+            $self->TryToGetBase(\$index, \$lineNumber) ||
             $self->TryToGetFunction(\$index, \$lineNumber) ||
             $self->TryToGetVariable(\$index, \$lineNumber) )
             {
@@ -121,11 +115,9 @@ sub ParseFile #(sourceFile, topicsList)
 
 
     my $autoTopics = $self->AutoTopics();
-    if (!scalar @$autoTopics)
-        {  $autoTopics = undef;  };
 
     my $scopeRecord = $self->ScopeRecord();
-    if (!scalar @$scopeRecord)
+    if (defined $scopeRecord && !scalar @$scopeRecord)
         {  $scopeRecord = undef;  };
 
     return ( $autoTopics, $scopeRecord );
@@ -194,6 +186,8 @@ sub TryToGetPackage #(indexRef, lineNumberRef)
                                                                                                    undef, $name,
                                                                                                    undef,
                                                                                                    undef, undef, $$lineNumberRef));
+        NaturalDocs::Parser->OnClass($name);
+
         $self->SetPackage($name, $$lineNumberRef);
 
         $$indexRef = $index;
@@ -210,8 +204,102 @@ sub TryToGetPackage #(indexRef, lineNumberRef)
 #
 #   Function: TryToGetBase
 #
-#   Determines whether the position is at a package base declaration statement, and if so, adds it to
-#   <NaturalDocs::ClassHierarchy>.
+#   Determines whether the position is at a package base declaration statement, and if so, calls
+#   <NaturalDocs::Parser->OnParent()>.
+#
+#   Supported Syntaxes:
+#
+#   > use base [list of strings]
+#   > @ISA = [list of strings]
+#   > @[package]::ISA = [list of strings]
+#   > our @ISA = [list of strings]
+#
+sub TryToGetBase #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my ($index, $lineNumber, $class, $parents);
+
+    if (lc($tokens->[$$indexRef]) eq 'use')
+        {
+        $index = $$indexRef + 1;
+        $lineNumber = $$lineNumberRef;
+
+        if (!$self->TryToSkipWhitespace(\$index, \$lineNumber) ||
+           lc($tokens->[$index]) ne 'base')
+            {  return undef;  }
+
+        $index++;
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        $parents = $self->TryToGetListOfStrings(\$index, \$lineNumber);
+        }
+
+    else
+        {
+        $index = $$indexRef;
+        $lineNumber = $$lineNumberRef;
+
+        if (lc($tokens->[$index]) eq 'our')
+            {
+            $index++;
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            };
+
+        if ($tokens->[$index] eq '@')
+            {
+            $index++;
+
+            while ($index < scalar @$tokens)
+                {
+                if ($tokens->[$index] eq 'ISA')
+                    {
+                    $index++;
+                    $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+                    if ($tokens->[$index] eq '=')
+                        {
+                        $index++;
+                        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+                        $parents = $self->TryToGetListOfStrings(\$index, \$lineNumber);
+                        }
+                    else
+                        {  last;  };
+                    }
+
+                # If token isn't ISA...
+                elsif ($tokens->[$index] =~ /^[a-z0-9_:]/i)
+                    {
+                    $class .= $tokens->[$index];
+                    $index++;
+                    }
+                else
+                    {  last;  };
+                };
+            };
+        };
+
+    if (defined $parents)
+        {
+        if (defined $class)
+            {  $class =~ s/::$//;  }
+        else
+            {  $class = $self->CurrentScope();  };
+
+        foreach my $parent (@$parents)
+            {  NaturalDocs::Parser->OnClassParent($class, $parent, undef);  };
+
+        $$indexRef = $index;
+        $$lineNumberRef = $lineNumber;
+        $self->SkipRestOfStatement($indexRef, $lineNumberRef);
+
+        return 1;
+        }
+    else
+        {  return undef;  };
+    };
 
 
 #
@@ -281,6 +369,12 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 #
 #   Determines if the position is at a variable declaration statement, and if so, generates a topic for it, skips it, and returns
 #   true.
+#
+#   Supported Syntaxes:
+#
+#   - Supports variables declared with "my", "our", and "local".
+#   - Supports multiple declarations in one statement, such as "my ($x, $y);".
+#   - Supports types and attributes.
 #
 sub TryToGetVariable #(indexRef, lineNumberRef)
     {
@@ -452,6 +546,78 @@ sub TryToGetVariableName #(indexRef, lineNumberRef)
     };
 
 
+#
+#   Function: TryToGetListOfStrings
+#
+#   Attempts to retrieve a list of strings from the current position.  Returns an arrayref of them if any are found, or undef if none.
+#   It stops the moment it reaches a non-string, so "string1, variable, string2" will only return string1.
+#
+#   Supported Syntaxes:
+#
+#   - Supports parenthesis.
+#   - Supports all string forms supported by <TryToSkipString()>.
+#   - Supports qw() string arrays.
+#
+sub TryToGetListOfStrings #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my $parenthesis = 0;
+    my $strings;
+
+    while ($$indexRef < scalar @$tokens)
+        {
+        # We'll tolerate parenthesis.
+        if ($tokens->[$$indexRef] eq '(')
+            {
+            $$indexRef++;
+            $parenthesis++;
+            }
+        elsif ($tokens->[$$indexRef] eq ')')
+            {
+            if ($parenthesis == 0)
+                {  last;  };
+
+            $$indexRef++;
+            $parenthesis--;
+            }
+        elsif ($tokens->[$$indexRef] eq ',')
+            {
+            $$indexRef++;
+            }
+        else
+            {
+            my ($startContent, $endContent);
+            my $symbolIndex = $$indexRef;
+
+            if ($self->TryToSkipString($indexRef, $lineNumberRef, \$startContent, \$endContent))
+                {
+                my $content = $self->CreateString($startContent, $endContent);
+
+                if (!defined $strings)
+                    {  $strings = [ ];  };
+
+                if (lc($tokens->[$symbolIndex]) eq 'qw')
+                    {
+                    push @$strings, split(/[ \t]+/, $content);
+                    }
+                else
+                    {
+                    push @$strings, $content;
+                    };
+                }
+            else
+                {  last;  };
+            };
+
+        $self->TryToSkipWhitespace($indexRef, $lineNumberRef);
+        };
+
+    return $strings;
+    };
+
+
 ###############################################################################
 # Group: Low Level Parsing Functions
 
@@ -463,6 +629,7 @@ sub TryToGetVariableName #(indexRef, lineNumberRef)
 #
 #   - If the position is on a comment or string, it will skip it completely.
 #   - If the position is on an opening symbol, it will skip until the past the closing symbol.
+#   - If the position is on a regexp or quote-like operator, it will skip it completely.
 #   - If the position is on a backslash, it will skip it and the following token.
 #   - If the position is on whitespace (including comments), it will skip it completely.
 #   - Otherwise it skips one token.
@@ -506,14 +673,9 @@ sub GenericSkip #(indexRef, lineNumberRef)
         while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1));
         }
 
-    elsif ($tokens->[$$indexRef] eq "\n")
-        {
-        $$lineNumberRef++;
-        $$indexRef++;
-        }
-
     elsif ($self->TryToSkipWhitespace($indexRef, $lineNumberRef) ||
-            $self->TryToSkipString($indexRef, $lineNumberRef) )
+            $self->TryToSkipString($indexRef, $lineNumberRef) ||
+            $self->TryToSkipRegexp($indexRef, $lineNumberRef) )
         {
         }
 
@@ -534,6 +696,85 @@ sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token)
 
     while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] ne $token)
         {  $self->GenericSkip($indexRef, $lineNumberRef);  };
+
+    if ($tokens->[$$indexRef] eq "\n")
+        {  $$lineNumberRef++;  };
+    $$indexRef++;
+    };
+
+
+#
+#   Function: GenericRegexpSkip
+#
+#   Advances the position one place through regexp code.
+#
+#   - If the position is on an opening symbol, it will skip until the past the closing symbol.
+#   - If the position is on a backslash, it will skip it and the following token.
+#   - If the position is on whitespace (not including comments), it will skip it completely.
+#   - Otherwise it skips one token.
+#
+#   Also differs from <GenericSkip()> in that the parenthesis in $( and $) do count against the scope, where they wouldn't
+#   normally.
+#
+#   Parameters:
+#
+#       indexRef - A reference to the current index.
+#       lineNumberRef - A reference to the current line number.
+#       inBrackets - Whether we're in brackets or not.  If true, we don't care about matching braces and parenthesis.
+#
+sub GenericRegexpSkip #(indexRef, lineNumberRef, inBrackets)
+    {
+    my ($self, $indexRef, $lineNumberRef, $inBrackets) = @_;
+    my $tokens = $self->Tokens();
+
+    if ($tokens->[$$indexRef] eq "\\" && $$indexRef + 1 < scalar @$tokens && $tokens->[$$indexRef+1] ne "\n")
+        {  $$indexRef += 2;  }
+
+    # We can ignore the scope stack because we're just skipping everything without parsing, and we need recursion anyway.
+    elsif ($tokens->[$$indexRef] eq '{' && !$self->IsBackslashed($$indexRef) && !$inBrackets)
+        {
+        $$indexRef++;
+        $self->GenericRegexpSkipUntilAfter($indexRef, $lineNumberRef, '}');
+        }
+    elsif ($tokens->[$$indexRef] eq '(' && !$self->IsBackslashed($$indexRef) && !$inBrackets)
+        {
+        $$indexRef++;
+        $self->GenericRegexpSkipUntilAfter($indexRef, $lineNumberRef, ')');
+        }
+    elsif ($tokens->[$$indexRef] eq '[' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
+        {
+        $$indexRef++;
+
+        do
+            {  $self->GenericRegexpSkipUntilAfter($indexRef, $lineNumberRef, ']');  }
+        while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1));
+        }
+
+    elsif ($tokens->[$$indexRef] eq "\n")
+        {
+        $$lineNumberRef++;
+        $$indexRef++;
+        }
+
+    else
+        {  $$indexRef++;  };
+    };
+
+
+#
+#   Function: GenericRegexpSkipUntilAfter
+#
+#   Advances the position via <GenericRegexpSkip()> until a specific token is reached and passed.
+#
+sub GenericRegexpSkipUntilAfter #(indexRef, lineNumberRef, token)
+    {
+    my ($self, $indexRef, $lineNumberRef, $token) = @_;
+    my $tokens = $self->Tokens();
+
+    my $inBrackets = ( $token eq ']' );
+
+    while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] ne $token)
+        {  $self->GenericRegexpSkip($indexRef, $lineNumberRef, $inBrackets);  };
 
     if ($tokens->[$$indexRef] eq "\n")
         {  $$lineNumberRef++;  };
@@ -672,18 +913,180 @@ sub TryToSkipPODComment #(indexRef, lineNumberRef)
 #   Function: TryToSkipString
 #   If the current position is on a string delimiter, skip past the string and return true.
 #
-sub TryToSkipString #(indexRef, lineNumberRef)
+#   Parameters:
+#
+#       indexRef - A reference to the index of the position to start at.
+#       lineNumberRef - A reference to the line number of the position.
+#       startContentIndexRef - A reference to the variable in which to store the index of the first content token.  May be undef.
+#       endContentIndexRef - A reference to the variable in which to store the index of the end of the content, which is one past
+#                                        the last content token.  may be undef.
+#
+#   Returns:
+#
+#       Whether the position was at a string.  The index, line number, and content index variabls will only be changed if true.
+#
+#   Syntax Support:
+#
+#       - Supports quotes, apostrophes, backticks, q(), qq(), qx(), and qw().
+#       - All symbols are supported for the letter forms.
+#
+sub TryToSkipString #(indexRef, lineNumberRef, startContentIndexRef, endContentIndexRef)
     {
-    my ($self, $indexRef, $lineNumberRef) = @_;
+    my ($self, $indexRef, $lineNumberRef, $startContentIndexRef, $endContentIndexRef) = @_;
+    my $tokens = $self->Tokens();
 
-    # All three characters are also Perl variables when following a dollar sign.
-    return ( !$self->IsStringed($$indexRef) &&
-                ( $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, "\'") ||
-                  $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, "\"") ||
-                  $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, "\`") ) );
+    # The three string delimiters.  All three are Perl variables when preceded by a dollar sign.
+    if (!$self->IsStringed($$indexRef) &&
+        ( $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, '\'', '\'', $startContentIndexRef, $endContentIndexRef) ||
+          $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, '"', '"', $startContentIndexRef, $endContentIndexRef) ||
+          $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, '`', '`', $startContentIndexRef, $endContentIndexRef) ) )
+        {
+        return 1;
+        }
+    elsif ($tokens->[$$indexRef] =~ /^(?:q|qq|qx|qw)$/i &&
+            ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*]$/))
+        {
+        $$indexRef++;
+
+        $self->TryToSkipWhitespace($indexRef, $lineNumberRef);
+
+        my $openingSymbol = $tokens->[$$indexRef];
+        my $closingSymbol;
+
+        if ($openingSymbol eq '{')
+            {  $closingSymbol = '}';  }
+        elsif ($openingSymbol eq '(')
+            {  $closingSymbol = ')';  }
+        elsif ($openingSymbol eq '[')
+            {  $closingSymbol = ']';  }
+        elsif ($openingSymbol eq '<')
+            {  $closingSymbol = '>';  }
+        else
+            {  $closingSymbol = $openingSymbol;  };
+
+        $self->SUPER::TryToSkipString($indexRef, $lineNumberRef, $openingSymbol, $closingSymbol,
+                                                      $startContentIndexRef, $endContentIndexRef);
+
+        return 1;
+        }
+    else
+        {  return undef;  };
     };
 
 
+#
+#   Function: TryToSkipRegexp
+#   If the current position is on a regular expression or a quote-like operator, skip past it and return true.
+#
+#   Syntax Support:
+#
+#       - Supports //, ??, m//, qr//, s///, tr///, and y///.
+#       - All symbols are supported for the letter forms.
+#
+sub TryToSkipRegexp #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my $isRegexp;
+
+    if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y|)$/i &&
+         ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*]$/) )
+        {  $isRegexp = 1;  }
+    elsif ($tokens->[$$indexRef] eq '/' || $tokens->[$$indexRef] eq '?')
+        {
+        my $index = $$indexRef - 1;
+
+        while ($index >= 0 && $tokens->[$index] =~ /^(?: |\t|\n)/)
+            {  $index--;  };
+
+        if ($index < 0 || $tokens->[$index] !~ /^[a-zA-Z0-9_\)\]]/)
+            {  $isRegexp = 1;  };
+        };
+
+    if ($isRegexp)
+        {
+        my $operator = lc($tokens->[$$indexRef]);
+        my $index = $$indexRef;
+        my $lineNumber = $$lineNumberRef;
+
+        if ($operator =~ /^[\?\/]/)
+            {  $operator = 'm';  }
+        else
+            {
+            $index++;
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            };
+
+        if ($tokens->[$index] =~ /^\w/)
+            {  return undef;  };
+
+        my $openingSymbol = $tokens->[$index];
+        my $closingSymbol;
+
+        if ($openingSymbol eq '{')
+            {  $closingSymbol = '}';  }
+        elsif ($openingSymbol eq '(')
+            {  $closingSymbol = ')';  }
+        elsif ($openingSymbol eq '[')
+            {  $closingSymbol = ']';  }
+        elsif ($openingSymbol eq '<')
+            {  $closingSymbol = '>';  }
+        else
+            {  $closingSymbol = $openingSymbol;  };
+
+        $index++;
+
+        $self->GenericRegexpSkipUntilAfter(\$index, \$lineNumber, $closingSymbol);
+
+        $$indexRef = $index;
+        $$lineNumberRef = $lineNumber;
+
+        if ($operator =~ /^(?:s|tr|y)$/)
+            {
+            if ($openingSymbol ne $closingSymbol)
+                {
+                $self->TryToSkipWhitespace($indexRef, $lineNumberRef);
+
+                $openingSymbol = $tokens->[$index];
+
+                if ($openingSymbol eq '{')
+                    {  $closingSymbol = '}';  }
+                elsif ($openingSymbol eq '(')
+                    {  $closingSymbol = ')';  }
+                elsif ($openingSymbol eq '[')
+                    {  $closingSymbol = ']';  }
+                elsif ($openingSymbol eq '<')
+                    {  $closingSymbol = '>';  }
+                else
+                    {  $closingSymbol = $openingSymbol;  };
+
+                $$indexRef++;
+                };
+
+            if ($operator eq 's')
+                {
+                $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, $closingSymbol);
+                }
+            else # ($operator eq 'tr' || $operator eq 'y')
+                {
+                while ($$indexRef < scalar @$tokens &&
+                          ($tokens->[$$indexRef] ne $closingSymbol || $self->IsBackslashed($$indexRef)) )
+                    {
+                    if ($tokens->[$$indexRef] eq "\n")
+                        {  $$lineNumberRef++;  };
+                    $$indexRef++;
+                    };
+
+                $$indexRef++;
+                };
+            };
+
+        return 1;
+        };
+
+    return undef;
+    };
 
 ###############################################################################
 # Group: Support Functions
