@@ -225,13 +225,24 @@ sub PurgeFiles
 
     my $filesToPurge = NaturalDocs::Project->FilesToPurge();
 
+    # Combine directories into a hash to remove duplicate work.
+    my %directoriesToPurge;
+
     foreach my $file (keys %$filesToPurge)
         {
         # It's possible that there may be files there that aren't in a valid input directory anymore.  They won't generate an output
         # file name so we need to check for undef.
         my $outputFile = $self->OutputFileOf($file);
         if (defined $outputFile)
-            {  unlink($outputFile);  };
+            {
+            unlink($outputFile);
+            $directoriesToPurge{ NaturalDocs::File->NoFileName($outputFile) } = 1;
+            };
+        };
+
+    foreach my $directory (keys %directoriesToPurge)
+        {
+        NaturalDocs::File->RemoveEmptyTree($directory, NaturalDocs::Settings->OutputDirectoryOf($self));
         };
     };
 
