@@ -73,8 +73,8 @@ package NaturalDocs::Builder::Base;
 #
 #   Multiple Output Files, Menu in File:
 #
-#       This example is for when you want to build one output file per source file, but keep the menu in its own separate file.  An
-#       example would be HTML output similar to <NaturalDocs::Builder::HTML> but using frames.
+#       This example is for when you want to build one output file per source file, but keep the menu in its own separate file.  This
+#       is how <NaturalDocs::Builder::FramedHTML> works.
 #
 #       <BeginBuild()> isn't important.  You don't need to implement it.
 #
@@ -125,8 +125,7 @@ package NaturalDocs::Builder::Base;
 #
 #       Implement <PurgeIndexes()> to remove the entries associated with the purged indexes.
 #
-#       Implement <BuildFile()> to add or replace a section of the output file with a new one generated from the parsed file.  You
-#       can detect whether the file is new or has changed via <NaturalDocs::Project::StatusOf()>.
+#       Implement <BuildFile()> to add or replace a section of the output file with a new one generated from the parsed file.
 #
 #       Implement <BuildIndex()> to add or replace an index in the output file with a new one generated from the specified index.
 #
@@ -135,7 +134,7 @@ package NaturalDocs::Builder::Base;
 #       How you handle the menu depends on how the output file references other sections of itself.  If it can do so by name, then
 #       you can implement <UpdateMenu()> to update the menu section of the file and you're done.  If it has to reference itself
 #       by address or offset, it gets trickier.  You should skip <UpdateMenu()> and instead rebuild the menu in <EndBuild()> if
-#       any of the parameters are true.  This lets you do it whenever anything changes in a file, rather than just when the menu
+#       the parameter is true.  This lets you do it whenever anything changes in a file, rather than just when the menu
 #       visibly changes.  How you keep track of the locations and how they change is your problem.
 #
 
