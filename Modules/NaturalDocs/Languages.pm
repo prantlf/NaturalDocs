@@ -16,6 +16,7 @@
 # Natural Docs is licensed under the GPL
 
 use NaturalDocs::Languages::Language;
+use NaturalDocs::Languages::Perl;
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
 use NaturalDocs::Languages::Ada;
