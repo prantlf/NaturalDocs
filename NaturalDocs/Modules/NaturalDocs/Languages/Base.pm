@@ -178,11 +178,9 @@ sub CopyIgnoredPrefixesOf #(language)
 
 
 #
-#   Function: FormatPrototype
+#   Function: ParsePrototype
 #
-#   Parses a prototype so that it can be formatted nicely in the output.  By default, it formats function prototypes assuming the
-#   parameter list is enclosed in parenthesis and parameters are separated by commas and semicolons.  It leaves all other
-#   prototypes alone.
+#   Parses the prototype and returns it as a <NaturalDocs::Languages::Prototype> object.
 #
 #   Parameters:
 #
@@ -191,105 +189,301 @@ sub CopyIgnoredPrefixesOf #(language)
 #
 #   Returns:
 #
-#       The array ( preParam, opening, params, closing, postParam ).
+#       A <NaturalDocs::Languages::Prototype> object.
 #
-#       preParam - The part of the prototype prior to the parameter list.  If there is no parameter list, this is the only part of the
-#                        array that will be defined.
-#       open - The opening symbol to the parameter list, such as parenthesis.  If there is none but there are parameters, it will be
-#                 a space.
-#       params - An arrayref of parameters, one per entry.  Will be undef if none.
-#       close - The closing symbol to the parameter list, such as parenthesis.  If there is none but there are parameters, it will be
-#                 a space.
-#       postParam - The part of the prototype after the parameter list, or undef if none.
-#
-sub FormatPrototype #(type, prototype)
+sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    $prototype =~ tr/\t\n /   /s;
-    $prototype =~ s/^ //;
-    $prototype =~ s/ $//;
-
-    # Cut out early if it's not a function.
     if ($type ne ::TOPIC_FUNCTION())
-        {  return ( $prototype, undef, undef, undef, undef );  };
-
-    # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look
-    # at this VB function declaration:
-    #
-    # <WebMethod()> Public Function RetrieveTable(ByRef Msg As Integer, ByVal Key As String) As String()
-
-    my @segments = split(/([\(\)])/, $prototype);
-    my ($pre, $open, $paramString, $params, $close, $post);
-    my $nest = 0;
-
-    while (scalar @segments)
         {
-        my $segment = shift @segments;
+        my $object = NaturalDocs::Languages::Prototype->New($prototype);
+        return $object;
+        };
 
-        if ($nest == 0)
-            {  $pre .= $segment;  }
 
-        elsif ($nest == 1 && $segment eq ')')
+    # Parse the parameters out of the prototype.
+
+    my @tokens = $prototype =~ /([^\(\)\[\]\{\}\<\>\,\;]+|.)/g;
+
+    my $parameter;
+    my @parameterLines;
+
+    my @symbolStack;
+    my $finishedParameters;
+
+    my ($beforeParameters, $afterParameters);
+
+    foreach my $token (@tokens)
+        {
+        if ($finishedParameters)
+            {  $afterParameters .= $token;  }
+
+        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
             {
-            if ($paramString =~ /[,;]/)
+            if ($symbolStack[0] eq '(')
+                {  $parameter .= $token;   }
+            else
+                {  $beforeParameters .= $token;  };
+
+            push @symbolStack, $token;
+            }
+
+        elsif ( ($token eq ')' && $symbolStack[-1] eq '(') ||
+                 ($token eq ']' && $symbolStack[-1] eq '[') ||
+                 ($token eq '}' && $symbolStack[-1] eq '{') ||
+                 ($token eq '>' && $symbolStack[-1] eq '<') )
+            {
+            if ($symbolStack[0] eq '(')
                 {
-                $post = join('', $segment, @segments);
-                last;
+                if ($token eq ')' && scalar @symbolStack == 1)
+                    {
+                    if ($parameter ne ' ')
+                        {
+                        push @parameterLines, $parameter;
+                        $finishedParameters = 1;
+                        $afterParameters .= $token;
+                        }
+                    else
+                        {
+                        $beforeParameters .= $token;
+                        $parameter = undef;
+                        }
+                    }
+                else
+                    {  $parameter .= $token;  };
                 }
             else
                 {
-                $pre .= $paramString . $segment;
-                $paramString = undef;
+                $beforeParameters .= $token;
+                };
+
+            pop @symbolStack;
+            }
+
+        elsif ($token eq ',' || $token eq ';')
+            {
+            if ($symbolStack[0] eq '(')
+                {
+                if (scalar @symbolStack == 1)
+                    {
+                    push @parameterLines, $parameter . $token;
+                    $parameter = undef;
+                    }
+                else
+                    {
+                    $parameter .= $token;
+                    };
+                }
+            else
+                {
+                $beforeParameters .= $token;
                 };
             }
 
         else
-            {  $paramString .= $segment;  };
-
-        if ($segment eq '(')
-            {  $nest++;  }
-        elsif ($segment eq ')' && $nest > 0)
-            {  $nest--;  };
-        };
-
-    # If there wasn't closing parenthesis...
-    if ($paramString && !defined $post)
-        {
-        $pre .= $paramString;
-        $paramString = undef;
-        };
-
-
-    if (!defined $paramString)
-        {
-        return ( $pre, undef, undef, undef, undef );
-        }
-    else
-        {
-        if ($pre =~ /( ?\()$/)
             {
-            $open = $1;
-            $pre =~ s/ ?\($//;
+            if ($symbolStack[0] eq '(')
+                {  $parameter .= $token;  }
+            else
+                {  $beforeParameters .= $token;  };
             };
-
-        if ($post=~ /^(\) ?)/)
-            {
-            $close = $1;
-            $post =~ s/^\) ?//;
-
-            if (!length $post)
-                {  $post = undef;  };
-            };
-
-        my $params = [ ];
-
-        while ($paramString =~ /([^,;]+[,;]?) ?/g)
-            {  push @$params, $1;  };
-
-        return ( $pre, $open, $params, $close, $post );
         };
+
+    foreach my $part (\$beforeParameters, \$afterParameters)
+        {
+        $$part =~ s/^ //;
+        $$part =~ s/ $//;
+        };
+
+    my $prototypeObject = NaturalDocs::Languages::Prototype->New($beforeParameters, $afterParameters);
+
+
+    # Parse the actual parameters.
+
+    foreach my $parameterLine (@parameterLines)
+        {
+        $prototypeObject->AddParameter( $self->ParseParameterLine($parameterLine) );
+        };
+
+    return $prototypeObject;
     };
+
+
+#
+#   Function: ParseParameterLine
+#
+#   Parses a prototype parameter line and returns it as a <NaturalDocs::Languages::Prototype::Parameter> object.
+#
+sub ParseParameterLine #(line)
+    {
+    my ($self, $line) = @_;
+
+    $line =~ s/^ //;
+    $line =~ s/ $//;
+
+    my @tokens = $line =~ /([^ \(\)\{\}\[\]\<\>\=]+|.)/g;
+    my ($type, $typeSuffix, $name, $defaultValue, $afterDefaultValue);
+    my @symbolStack;
+
+    foreach my $token (@tokens)
+        {
+        if ($afterDefaultValue)
+            {  $defaultValue .= $token;  }
+
+        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+            {
+            push @symbolStack, $token;
+            $name .= $token;
+            }
+
+        elsif ( ($token eq ')' && $symbolStack[-1] eq '(') ||
+                 ($token eq ']' && $symbolStack[-1] eq '[') ||
+                 ($token eq '}' && $symbolStack[-1] eq '{') ||
+                 ($token eq '>' && $symbolStack[-1] eq '<') )
+            {
+            pop @symbolStack;
+            $name .= $token;
+            }
+
+        elsif ($token eq ' ')
+            {
+            $name .= $token;
+            }
+
+        elsif ($token eq '=')
+            {
+            if (scalar @symbolStack)
+                {  $name .= $token;  }
+            else
+                {
+                $defaultValue .= $token;
+                $afterDefaultValue = 1;
+                };
+            }
+
+        else
+            {
+            if (!scalar @symbolStack && $name =~ / $/)
+                {
+                $type .= $name;
+                $name = $token;
+                }
+            else
+                {  $name .= $token;  };
+            };
+        };
+
+    foreach my $part (\$type, \$typeSuffix, \$name, \$defaultValue)
+        {
+        $$part =~ s/^ //;
+        $$part =~ s/ $//;
+        };
+
+    if ($type =~ /((?:\[[, ]*\]|[\*\&])+)$/)
+        {
+        $typeSuffix = $1;
+        $type = substr($type, 0, 0 - length($typeSuffix));
+        };
+
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, $typeSuffix, $name, $defaultValue);
+    };
+
+
+#
+#   Function: ParsePascalParameterLine
+#
+#   Parses a Pascal-like prototype parameter line and returns it as a <NaturalDocs::Languages::Prototype::Parameter> object.
+#   Pascal lines are as follows:
+#
+#   Function (name: type; name, name: type := value)
+#
+sub ParsePascalParameterLine #(line)
+    {
+    my ($self, $line) = @_;
+
+    $line =~ s/^ //;
+    $line =~ s/ $//;
+
+    my @tokens = $line =~ /([^\(\)\{\}\[\]\<\>\=\:]+|\:\=|.)/g;
+    my ($type, $name, $defaultValue, $afterName, $afterDefaultValue);
+    my @symbolStack;
+
+    foreach my $token (@tokens)
+        {
+        if ($afterDefaultValue)
+            {  $defaultValue .= $token;  }
+
+        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+            {
+            push @symbolStack, $token;
+
+            if ($afterName)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+            }
+
+        elsif ( ($token eq ')' && $symbolStack[-1] eq '(') ||
+                 ($token eq ']' && $symbolStack[-1] eq '[') ||
+                 ($token eq '}' && $symbolStack[-1] eq '{') ||
+                 ($token eq '>' && $symbolStack[-1] eq '<') )
+            {
+            pop @symbolStack;
+
+            if ($afterName)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+            }
+
+        elsif ($afterName)
+            {
+            if ($token eq ':=' && !scalar @symbolStack)
+                {
+                $defaultValue .= $token;
+                $afterDefaultValue = 1;
+                }
+            else
+                {  $type .= $token;  };
+            }
+
+        elsif ($token eq ':')
+            {
+            $name .= $token;
+            $afterName = 1;
+            }
+
+        else
+            {  $name .= $token;  };
+        };
+
+    foreach my $part (\$type, \$name, \$defaultValue)
+        {
+        $$part =~ s/^ //;
+        $$part =~ s/ $//;
+        };
+
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, $defaultValue);
+    };
+
+
+#
+#   Function: TypeBeforeParameter
+#
+#   Returns whether the type appears before the parameter in prototypes.
+#
+#   For example, it does in C++
+#   > void Function (int a, int b)
+#
+#   but does not in Pascal
+#   > function Function (a: int; b, c: int)
+#
+sub TypeBeforeParameter
+    {
+    return 1;
+    };
+
 
 
 #
@@ -433,6 +627,32 @@ sub StripClosingSymbol #(lineRef, symbol)
         }
     else
         {  return undef;  };
+    };
+
+
+#
+#   Function: NormalizePrototype
+#
+#   Normalizes a prototype.  Specifically, condenses spaces, tabs, and line breaks into single spaces and removes leading and
+#   trailing ones.
+#
+#   Parameters:
+#
+#       prototype - The original prototype string.
+#
+#   Returns:
+#
+#       The normalized prototype.
+#
+sub NormalizePrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+
+    $prototype =~ tr/ \t\r\n/ /s;
+    $prototype =~ s/^ //;
+    $prototype =~ s/ $//;
+
+    return $prototype;
     };
 
 
