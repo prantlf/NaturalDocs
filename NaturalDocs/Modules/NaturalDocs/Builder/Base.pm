@@ -25,8 +25,8 @@ package NaturalDocs::Builder::Base;
 #   Topic: Implementation
 #
 #   Builder packages are implemented as blessed arrayrefs, not hashrefs.  This is done for all objects in Natural Docs for
-#   efficiency reasons.  You create members by defining constants via <DefineMembers()> and using them as indexes into the
-#   array.
+#   efficiency reasons.  You create members by defining constants via <NaturalDocs::DefineMembers> and using them as
+#   indexes into the array.
 #
 
 #
