@@ -188,9 +188,9 @@ sub Load
             {
             my $version = NaturalDocs::Version->FromBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE);
 
-            # The file format has not changed since it was introduced.
+            # The file format changed is 1.22.
 
-            if ($version > NaturalDocs::Settings->AppVersion())
+            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.22'))
                 {
                 close(CLASS_HIERARCHY_FILEHANDLE);
                 $fileIsOkay = undef;
