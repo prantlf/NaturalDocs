@@ -431,8 +431,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
         my $prototypeEnd = $$indexRef + 1;
         my $prototypeEndLine = $$lineNumberRef;
 
-        if (!$self->TryToSkipWhitespace(\$prototypeEnd, \$prototypeEndLine))
-            {  return undef;  };
+        $self->TryToSkipWhitespace(\$prototypeEnd, \$prototypeEndLine);
 
 
         # Get the type if present.
