@@ -462,6 +462,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
             my $name;
             my @names;
+            my $hasComma = 0;
 
             $prototypeStart = $prototypeEnd + 1;
             $prototypeStartLine = $prototypeEndLine;
@@ -479,14 +480,22 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
                 $self->TryToSkipWhitespace(\$prototypeStart, \$prototypeStartLine);
 
+                # We can have multiple commas in a row.  We can also have trailing commas.  However, the parenthesis must
+                # not start with a comma or be empty, hence this logic does not appear earlier.
+                while ($tokens->[$prototypeStart] eq ',')
+                    {
+                    $prototypeStart++;
+                    $self->TryToSkipWhitespace(\$prototypeStart, \$prototypeStartLine);
+
+                    $hasComma = 1;
+                    }
+
                 if ($tokens->[$prototypeStart] eq ')')
                     {
                     $prototypeStart++;
                     last;
                     }
-                elsif ($tokens->[$prototypeStart] eq ',')
-                    {  $prototypeStart++;  }
-                else
+                elsif (!$hasComma)
                     {  return undef;  };
                 };
 
