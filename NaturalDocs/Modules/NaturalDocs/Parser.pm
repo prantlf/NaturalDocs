@@ -293,11 +293,13 @@ sub ExtractComments
                     $line = <SOURCEFILEHANDLE>;
 
                     if (!defined $line)
-                        {  last;  };
+                        {  goto EndDo;  };
 
                     chomp($line);
                     }
                 while ($language->StripLineCommentSymbol(\$line));
+
+                EndDo:  # I hate Perl sometimes.
                 }
 
             # Retrieve multiline comments.  This leaves $line with whatever followed the closing comment symbol.
