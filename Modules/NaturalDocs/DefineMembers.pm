@@ -37,7 +37,7 @@
 
 package NaturalDocs::DefineMembers;
 
-sub import #(member, member, member ...)
+sub import #(member, member, ...)
     {
     my ($self, @parameters) = @_;
     my $package = caller();
