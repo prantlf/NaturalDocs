@@ -111,24 +111,6 @@ sub ParseFile #(sourceFile, topicsList)
     };
 
 
-#
-#   Function: MakeSortableSymbol
-#
-#   Perl's variables start with symbols: $ for scalars, @ for arrays, and % for hashes.  This function strips them
-#   off for sorting.
-#
-sub MakeSortableSymbol #(name, type)
-    {
-    my ($self, $name, $type) = @_;
-
-    if ($type eq ::TOPIC_VARIABLE())
-        {
-        $name =~ s/^[\$\@\%]//;
-        };
-
-    return $name;
-    };
-
 
 
 ###############################################################################
