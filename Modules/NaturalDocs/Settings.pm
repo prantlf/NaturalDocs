@@ -51,6 +51,10 @@ my $projectDirectory;
 # An array of <NaturalDocs::Settings::BuildTarget>s.
 my @buildTargets;
 
+# var: documentedOnly
+# Whether undocumented code aspects should be included in the output.
+my $documentedOnly;
+
 # int: tabLength
 # The number of spaces in tabs.
 my $tabLength;
@@ -359,6 +363,11 @@ sub ProjectDataDirectory
 sub StyleDirectory
     {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'Styles', 1);  };
 
+# Function: DocumentedOnly
+# Returns whether undocumented code aspects should be included in the output.
+sub DocumentedOnly
+    {  return $documentedOnly;  };
+
 # Function: TabLength
 # Returns the number of spaces tabs should be expanded to.
 sub TabLength
@@ -435,6 +444,7 @@ sub ParseCommandLine
                              '-o' => 'Natural Docs',
                              '-p' => 'Natural Docs',
                              '-s' => 'Natural Docs',
+                             '-do' => 'Natural Docs',
                              '-r' => 'Natural Docs',
                              '-ro' => 'Natural Docs',
                              '-t' => 'Natural Docs',
@@ -447,6 +457,7 @@ sub ParseCommandLine
                                   '--source' => '-i',
                                   '--output'  => '-o',
                                   '--project' => '-p',
+                                  '--documentedonly' => '-do',
                                   '--style'    => '-s',
                                   '--rebuild' => '-r',
                                   '--rebuildoutput' => '-ro',
@@ -568,6 +579,8 @@ sub ParseCommandLine
                     }
                 elsif ($option eq '-ro')
                     {  $rebuildOutput = 1;  }
+                elsif ($option eq '-do')
+                    {  $documentedOnly = 1;  }
                 elsif ($option eq '-q')
                     {  $isQuiet = 1;  }
                 elsif ($option eq '-ho')
@@ -807,6 +820,9 @@ sub PrintSyntax
     . "    Specifies the CSS style when building HTML output.  If set to \"Custom\",\n"
     . "    Natural Docs will not sync the output's CSS file with one from its style\n"
     . "    directory.\n"
+    . "\n"
+    . " -do\n--documentedonly\n"
+    . "    Specifies only documented code aspects should be included in the output.\n"
     . "\n"
     . " -t [len]\n--tablength [len]\n"
     . "    Specifies the number of spaces tabs should be expanded to.  This only needs\n"
