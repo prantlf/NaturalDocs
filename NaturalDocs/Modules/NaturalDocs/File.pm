@@ -463,6 +463,44 @@ sub CreatePath #(path)
 
 
 #
+#   Function: RemoveEmptyTree
+#
+#   Removes an empty directory tree.  The passed directory will be removed if it's empty, and it will keep removing its parents
+#   until it reaches one that's not empty or a set limit.
+#
+#   Parameters:
+#
+#       path - The path to start from.  It will try to remove this directory and work it's way down.
+#       limit - The path to stop at if it doesn't find any non-empty directories first.  This path will *not* be removed.
+#
+sub RemoveEmptyTree #(path, limit)
+    {
+    my ($self, $path, $limit) = @_;
+
+    my ($volume, $directoryString) = $self->SplitPath($path, 1);
+    my @directories = $self->SplitDirectories($directoryString);
+
+    my $directory = $path;
+
+    while (-d $directory && $directory ne $limit)
+        {
+        opendir FH_ND_FILE, $directory;
+        my @entries = readdir FH_ND_FILE;
+        closedir FH_ND_FILE;
+
+        @entries = $self->NoUpwards(@entries);
+
+        if (scalar @entries || !rmdir($directory))
+            {  last;  };
+
+        pop @directories;
+        $directoryString = $self->JoinDirectories(@directories);
+        $directory = $self->JoinPath($volume, $directoryString);
+        };
+    };
+
+
+#
 #   Function: Copy
 #
 #   Copies a file from one path to another.  If the destination file exists, it is overwritten.
