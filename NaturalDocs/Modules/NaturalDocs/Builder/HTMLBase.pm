@@ -230,7 +230,7 @@ sub BuildTitle #(sourceFile)
 
     my $menuTitle = NaturalDocs::Menu::Title();
     if (defined $menuTitle && $menuTitle ne $title)
-        {  $title = $menuTitle . ' - ' . $title;  };
+        {  $title .= ' - ' . $menuTitle;  };
 
     $title = $self->StringToHTML($title);
 
