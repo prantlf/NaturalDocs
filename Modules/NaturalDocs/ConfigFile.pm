@@ -4,11 +4,12 @@
 #
 ###############################################################################
 #
-#   A package to manage some of the shared functionality needed for Natural Docs' configuration files.
+#   A package to manage Natural Docs' configuration files.
 #
 #   Usage:
 #
-#       - <StartingParseOf()> must be called for each configuration file before using any other functions with that file.
+#       - Only one configuration file can be managed with this package at a time.  You must close the file before opening another
+#         one.
 #
 ###############################################################################
 
@@ -21,14 +22,46 @@ use integer;
 package NaturalDocs::ConfigFile;
 
 
+
+#
+#   Topic: Format
+#
+#   All configuration files are text files.
+#
+#   > # [comment]
+#
+#   Comments start with the # character.
+#
+#   > Format: [version]
+#
+#   All configuration files *must* have a format line as its first line containing content.  Whitespace and comments are permitted
+#   ahead of it.
+#
+#   > [keyword]: [value]
+#
+#   Keywords can only contain letters, numbers, spaces, apostrophes, and dashes.  Keywords are not case sensitive.  Values can
+#   be anything and run until the end of the line or a comment.
+#
+#   > [value]
+#
+#   Lines that don't start with a valid keyword format are considered to be all value.
+#
+#   > [line] { [line] } [line]
+#
+#   Files supporting brace groups (specified in <Open()>) may also have braces that can appear anywhere.  It allows more than
+#   one thing to appear per line, which isn't supported otherwise.  Consequently, values may not have braces.
+#
+
+
 ###############################################################################
 # Group: Variables
 
 #
 #   handle: CONFIG_FILEHANDLE
 #
-#   The file handle used when annotating the configuration file with error comments.
+#   The file handle used for the configuration file.
 #
+
 
 #
 #   string: file
@@ -36,6 +69,7 @@ package NaturalDocs::ConfigFile;
 #   The <FileName> for the current configuration file being parsed.
 #
 my $file;
+
 
 #
 #   array: errors
@@ -46,60 +80,190 @@ my $file;
 my @errors;
 
 
+#
+#   var: lineNumber
+#
+#   The current line number for the configuration file.
+#
+my $lineNumber;
+
+
+#
+#   bool: hasBraceGroups
+#
+#   Whether the file has brace groups or not.
+#
+my $hasBraceGroups;
+
+
+#
+#   array: virtualLines
+#
+#   An array of virtual lines if a line from the file contained more than one.
+#
+#   Files with brace groups may have more than one virtual line per actual file line, such as "Group: A { Group: B".  When that
+#   happens, any extra virtual lines are put into here so they can be returned on the next call.
+#
+my @virtualLines;
+
+
+
 ###############################################################################
 # Group: Functions
 
 
 #
-#   Function: StartingParseOf
+#   Function: Open
 #
-#   Notifies the package that a new configuration file is about to be parsed.  You *must* call this function for each configuration
-#   file before using any other package functions with it.
+#   Opens a configuration file for parsing and returns the format <VersionInt>.
 #
 #   Parameters:
 #
-#       file - The <FileName> about to be parsed.
+#       file - The <FileName> to parse.
+#       hasBraceGroups - Whether the file supports brace groups or not.  If so, lines with braces will be split apart behind the
+#                                  scenes.
 #
-sub StartingParseOf #(file)
+#   Returns:
+#
+#       The <VersionInt> of the file, or undef if the file doesn't exist.
+#
+sub Open #(file, hasBraceGroups)
     {
-    my ($self, $passedFile) = @_;
-    $file = $passedFile;
+    my $self;
+    ($self, $file, $hasBraceGroups) = @_;
+
     @errors = ( );
+
+    # It will be incremented to one when the first line is read from the file.
+    $lineNumber = 0;
+
+    open(CONFIG_FILEHANDLE, '<' . $file) or return undef;
+
+
+    # Get the format line.
+
+    my ($keyword, $value, $comment) = $self->GetLine();
+
+    if ($keyword eq 'format')
+        {  return NaturalDocs::Version->FromString($value);  }
+    else
+        {  die "The first content line in " . $file . " must be the Format: line.\n";  };
     };
 
 
 #
-#   Function: Obscure
+#   Function: Close
 #
-#   Obscures the passed text so that it is not user editable and returns it.  The encoding method is not secure; it is just designed
-#   to be fast and to discourage user editing.
+#   Closes the current configuration file.
 #
-sub Obscure #(text)
+sub Close
     {
-    my ($self, $text) = @_;
-
-    # ` is specifically chosen to encode to space because of its rarity.  We don't want a trailing one to get cut off before decoding.
-    $text =~ tr{a-zA-Z0-9\ \\\/\.\:\_\-\`}
-                    {pY9fGc\`R8lAoE\\uIdH6tN\/7sQjKx0B5mW\.vZ41PyFg\:CrLaO\_eUi2DhT\-nSqJkXb3MwVz\ };
-
-    return $text;
+    my $self = shift;
+    close(CONFIG_FILEHANDLE);
     };
 
 
 #
-#   Function: Unobscure
+#   Function: GetLine
 #
-#   Restores text encoded with <Obscure()> and returns it.
+#   Returns the next line containing content, or an empty array if none.
 #
-sub Unobscure #(text)
+#   Returns:
+#
+#       Returns the array ( keyword, value, comment ), or an empty array if none.  All tabs will be converted to spaces, and all
+#       whitespace will be condensed.
+#
+#       keyword - The keyword part of the line, if any.  Is converted to lowercase and doesn't include the colon.  If the file supports
+#                       brace groups, opening and closing braces will be returned as keywords.
+#       value - The value part of the line, minus any whitespace.  Keeps its original case.
+#       comment - The comment following the line, if any.  This includes the # symbol and a leading space if there was
+#                       any whitespace, since it may be significant.  Otherwise undef.  Used for lines where the # character needs to be
+#                       accepted as part of the value.
+#
+sub GetLine
     {
-    my ($self, $text) = @_;
+    my $self = shift;
 
-    $text =~ tr{pY9fGc\`R8lAoE\\uIdH6tN\/7sQjKx0B5mW\.vZ41PyFg\:CrLaO\_eUi2DhT\-nSqJkXb3MwVz\ }
-                    {a-zA-Z0-9\ \\\/\.\:\_\-\`};
+    my ($line, $comment);
 
-    return $text;
+
+    # Get the next line with content.
+
+    do
+        {
+        # Get the next line.
+
+        my $isFileLine;
+
+        if (scalar @virtualLines)
+            {
+            $line = shift @virtualLines;
+            $isFileLine = 0;
+            }
+        else
+            {
+            $line = <CONFIG_FILEHANDLE>;
+            $lineNumber++;
+
+            if (!defined $line)
+                {  return ( );  };
+
+            ::XChomp(\$line);
+
+            # Condense spaces and tabs into a single space.
+            $line =~ tr/\t /  /s;
+            $isFileLine = 1;
+            };
+
+
+        # Split off the comment.
+
+        if ($line =~ /^(.*?)( ?#.*)$/)
+            {  ($line, $comment) = ($1, $2);  }
+        else
+            {  $comment = undef;  };
+
+
+        # Split any brace groups.
+
+        if ($isFileLine && $hasBraceGroups && $line =~ /[\{\}]/)
+            {
+            ($line, @virtualLines) = split(/([\{\}])/, $line);
+
+            $virtualLines[-1] .= $comment;
+            $comment = undef;
+            };
+
+
+        # Remove whitespace.
+
+        $line =~ s/^ //;
+        $line =~ s/ $//;
+        }
+    while (!$line);
+
+
+    # Process the line.
+
+    if ($hasBraceGroups && ($line eq '{' || $line eq '}'))
+        {
+        return ($line, undef, undef);
+        };
+
+
+    if ($line =~ /^([a-z0-9 '-]+?) ?: ?(.*)$/i)
+        {
+        my ($keyword, $value) = ($1, $2);
+        return (lc($keyword), $value, $comment);
+        }
+
+    else
+        {
+        return (undef, $line, $comment);
+        };
     };
+
+
 
 ###############################################################################
 # Group: Error Functions
@@ -108,16 +272,15 @@ sub Unobscure #(text)
 #
 #   Function: AddError
 #
-#   Stores an error for the current configuration file.
+#   Stores an error for the current configuration file.  Will be attached to the last line read by <GetLine()>.
 #
 #   Parameters:
 #
-#       lineNumber - The line number, with the first line being one, not zero.
 #       message - The error message.
 #
-sub AddError #(lineNumber, message)
+sub AddError #(message)
     {
-    my ($self, $lineNumber, $message) = @_;
+    my ($self, $message) = @_;
     push @errors, $lineNumber, $message;
     };
 
@@ -134,12 +297,12 @@ sub ErrorCount
 
 
 #
-#   Function: HandleErrors
+#   Function: PrintErrorsAndAnnotateFile
 #
-#   Handles any errors that we're found in the configuration file, which currently means printing them out in the GNU error format
-#   and annotating the configuration file with error comments.  It does *not* end execution.
+#   Prints the errors to STDERR in the standard GNU format and annotates the configuration file with them.  It does *not* end
+#   execution.  <Close()> *must* be called before this function.
 #
-sub HandleErrors
+sub PrintErrorsAndAnnotateFile
     {
     my ($self) = @_;
 
@@ -164,7 +327,7 @@ sub HandleErrors
             $originalLineNumber++;
 
             # We want to drop the blank line after it as well.
-            if (scalar @lines && $lines[0] eq "\n")
+            if ($lines[0] eq "\n")
                 {
                 shift @lines;
                 $originalLineNumber++;
@@ -218,6 +381,46 @@ sub HandleErrors
         close(CONFIG_FILEHANDLE);
         };
     };
+
+
+
+###############################################################################
+# Group: Misc Functions
+
+
+#
+#   Function: Obscure
+#
+#   Obscures the passed text so that it is not user editable and returns it.  The encoding method is not secure; it is just designed
+#   to be fast and to discourage user editing.
+#
+sub Obscure #(text)
+    {
+    my ($self, $text) = @_;
+
+    # ` is specifically chosen to encode to space because of its rarity.  We don't want a trailing one to get cut off before decoding.
+    $text =~ tr{a-zA-Z0-9\ \\\/\.\:\_\-\`}
+                    {pY9fGc\`R8lAoE\\uIdH6tN\/7sQjKx0B5mW\.vZ41PyFg\:CrLaO\_eUi2DhT\-nSqJkXb3MwVz\ };
+
+    return $text;
+    };
+
+
+#
+#   Function: Unobscure
+#
+#   Restores text encoded with <Obscure()> and returns it.
+#
+sub Unobscure #(text)
+    {
+    my ($self, $text) = @_;
+
+    $text =~ tr{pY9fGc\`R8lAoE\\uIdH6tN\/7sQjKx0B5mW\.vZ41PyFg\:CrLaO\_eUi2DhT\-nSqJkXb3MwVz\ }
+                    {a-zA-Z0-9\ \\\/\.\:\_\-\`};
+
+    return $text;
+    };
+
 
 
 1;
