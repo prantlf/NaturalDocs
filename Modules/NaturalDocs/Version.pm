@@ -173,8 +173,8 @@ sub ToBinaryFile #(fileHandle, version)
 #   after 0.95.
 #
 #   Text files with "1" as the version will be interpreted as 0.91, since this should not cause compatibility problems.  The only
-#   file format changes between 0.85 and 0.91 were to <NaturalDocs.m>, which didn't exist in 0.85 and didn't change between 0.9
-#   and 0.91, and <NaturalDocs_Menu.txt>, which only changed in 0.9 to add index entries.
+#   file format changes between 0.85 and 0.91 were to <PreviousMenuState.nd>, which didn't exist in 0.85 and didn't change
+#   between 0.9 and 0.91, and <Menu.txt>, which only changed in 0.9 to add index entries.
 #
 
 #

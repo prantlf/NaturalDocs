@@ -334,6 +334,9 @@ sub ParseCommandLine
 
         if (! -e $projectDirectory || ! -d $projectDirectory)
             {  push @errorMessages, 'The project directory ' . $projectDirectory . ' does not exist.';  };
+
+        # Create the Data subdirectory if it doesn't exist.
+        NaturalDocs::File->CreatePath( NaturalDocs::File->JoinPath($projectDirectory, 'Data', 1) );
         }
     else
         {  push @errorMessages, 'You did not specify a project directory.';  };
@@ -524,6 +527,11 @@ sub OutputStyleOf #(object)
 # Returns the project directory.
 sub ProjectDirectory
     {  return $projectDirectory;  };
+
+# Function: ProjectDataDirectory
+# Returns the project data directory.
+sub ProjectDataDirectory
+    {  return NaturalDocs::File->JoinPath($projectDirectory, 'Data', 1);  };
 
 # Function: StyleDirectory
 # Returns the main style directory.

@@ -153,7 +153,7 @@ my %bannedIndexes;
 # Group: Files
 
 #
-#   File: NaturalDocs_Menu.txt
+#   File: Menu.txt
 #
 #   The file used to generate the menu.
 #
@@ -213,9 +213,13 @@ my %bannedIndexes;
 #       > Don't Index: [type], [type], ...
 #
 #       The option above prevents indexes that exist but are not on the menu from being automatically added.  "General" is
-#       used to specify the general index.
+#       used to specify the general index.  Commas aren't required.
 #
 #   Revisions:
+#
+#       1.2:
+#
+#           - Renamed this file from NaturalDocs_Menu.txt to Menu.txt.
 #
 #       1.1:
 #
@@ -240,11 +244,9 @@ my %bannedIndexes;
 #
 
 #
-#   File: NaturalDocs.m
+#   File: PreviousMenuState.nd
 #
-#   The file used to store the previous state of the menu so as to detect changes.  Is named NaturalDocs.m instead of something
-#   like NaturalDocs.menu to avoid confusion with <NaturalDocs_Menu.txt>.  This one is not user-editable so we don't want
-#   people opening it by accident.
+#   The file used to store the previous state of the menu so as to detect changes.
 #
 #   > [BINARY_FORMAT]
 #
@@ -273,6 +275,8 @@ my %bannedIndexes;
 #       - Because the index target is represented by a UInt8, the <Topic Types> must all be <= 255.
 #
 #   Revisions:
+#
+#       Prior to 1.2, the file was named NaturalDocs.m.
 #
 #       Prior to 1.0, the file was a text file consisting of the app version and a line which was a tab-separated list of the indexes
 #       present in the menu.  * meant the general index.
@@ -538,8 +542,8 @@ sub OnDefaultTitleChange #(file)
 #
 #   Function: LoadMenuFile
 #
-#   Loads and parses the menu file <NaturalDocs_Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, <indexes>,
-#   and <bannedIndexes>.
+#   Loads and parses the menu file <Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, <indexes>, and
+#   <bannedIndexes>.
 #
 #   Returns:
 #
@@ -991,7 +995,7 @@ sub LoadMenuFile
 #
 #   Function: SaveMenuFile
 #
-#   Saves the current menu to <NaturalDocs_Menu.txt>.
+#   Saves the current menu to <Menu.txt>.
 #
 sub SaveMenuFile
     {
@@ -1359,7 +1363,7 @@ sub LoadPreviousMenuStateFile
 #
 #   Function: SavePreviousMenuStateFile
 #
-#   Saves changes to <NaturalDocs.m>.
+#   Saves changes to <PreviousMenuState.nd>.
 #
 sub SavePreviousMenuStateFile
     {

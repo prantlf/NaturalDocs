@@ -415,14 +415,14 @@ BEGIN {
 
 eval {
 
-    # Almost everything requires Settings to be initialized.
-
-    NaturalDocs::Settings->ParseCommandLine();
-
-
     # Check that our required packages are okay.
 
     NaturalDocs::File->CheckCompatibility();
+
+
+    # Almost everything requires Settings to be initialized.
+
+    NaturalDocs::Settings->ParseCommandLine();
 
 
     # Add the supported languages.
@@ -455,6 +455,11 @@ eval {
     NaturalDocs::Languages::Ada->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
     NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], undef );
     NaturalDocs::Languages::Language->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
+
+
+    # Migrate from the old file names that were used prior to 1.2.
+
+    NaturalDocs::Project->MigrateOldFiles();
 
 
     if (!NaturalDocs::Settings->IsQuiet())

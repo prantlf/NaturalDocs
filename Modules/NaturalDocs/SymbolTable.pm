@@ -114,7 +114,7 @@ my %indexChanges;
 # Group: Files
 
 #
-#   File: NaturalDocs.sym
+#   File: SymbolTable.nd
 #
 #   The storage file for the symbol table.
 #
@@ -147,6 +147,8 @@ my %indexChanges;
 #       > [definition file] tab [definition file] tab [definition file] ...
 #
 #   Revisions:
+#
+#       Prior to 1.2, this file was called NaturalDocs.sym.
 #
 #       Prior to 1.1, there was no summary saved in the symbol definition lines.
 #
@@ -286,7 +288,7 @@ sub LoadAndPurge
 #
 #   Function: Save
 #
-#   Saves the symbol table to disk.  It is written to <NaturalDocs.sym>.
+#   Saves the symbol table to disk.  It is written to <SymbolTable.nd>.
 #
 sub Save
     {
