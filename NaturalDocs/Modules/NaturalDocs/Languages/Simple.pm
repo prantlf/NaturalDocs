@@ -28,7 +28,9 @@ use NaturalDocs::DefineMembers 'LINE_COMMENT_SYMBOLS', 'LineCommentSymbols()', '
                                                  'BLOCK_COMMENT_SYMBOLS', 'BlockCommentSymbols()',
                                                                                               'SetBlockCommentSymbols() duparrayref',
                                                  'PROTOTYPE_ENDERS',
-                                                 'LINE_EXTENDER', 'LineExtender()', 'SetLineExtender()';
+                                                 'LINE_EXTENDER', 'LineExtender()', 'SetLineExtender()',
+                                                 'PACKAGE_SEPARATOR', 'PackageSeparator()',
+                                                 'PACKAGE_SEPARATOR_WAS_SET', 'PackageSeparatorWasSet()';
 
 #
 #   Functions: Members
@@ -41,7 +43,20 @@ use NaturalDocs::DefineMembers 'LINE_COMMENT_SYMBOLS', 'LineCommentSymbols()', '
 #                                             specified with two consecutive array entries.
 #   LineExtender - Returns the symbol to ignore a line break in languages where line breaks are significant.
 #   SetLineExtender - Replaces the symbol to ignore a line break in languages where line breaks are significant.
+#   PackageSeparator - Returns the package separator symbol.
+#   PackageSeparatorWasSet - Returns whether the package separator symbol was ever changed from the default.
 #
+
+#
+#   Function: SetPackageSeparator
+#   Replaces the language's package separator string.
+#
+sub SetPackageSeparator #(separator)
+    {
+    my ($self, $separator) = @_;
+    $self->[PACKAGE_SEPARATOR] = $separator;
+    $self->[PACKAGE_SEPARATOR_WAS_SET] = 1;
+    };
 
 
 #
