@@ -57,6 +57,20 @@ my %abbreviations = ( mr => 1, mrs => 1, ms => 1, dr => 1,
                                   maj => 1, gen => 1, pres => 1, sen => 1, rep => 1,
                                   n => 1, s => 1, e => 1, w => 1, ne => 1, se => 1, nw => 1, sw => 1 );
 
+#
+#   array: indexHeadings
+#
+#   An array of the headings of all the index sections.  First is for symbols, second for numbers, and the rest for each letter.
+#
+my @indexHeadings = ( '$#!', '0-9', 'A' .. 'Z' );
+
+#
+#   array: indexAnchors
+#
+#   An array of the HTML anchors of all the index sections.  First is for symbols, second for numbers, and the rest for each letter.
+#
+my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
+
 
 ###############################################################################
 # Group: Menu Variables
@@ -173,7 +187,7 @@ sub PurgeIndexes #(indexes)
 
     foreach my $index (keys %$indexes)
         {
-        unlink( NaturalDocs::File::JoinPath($outputPath, IndexFileOf($index eq '*' ? undef : $index)) );
+        PurgeIndexFiles(($index eq '*' ? undef : $index), undef);
         };
     };
 
@@ -273,15 +287,7 @@ sub BuildIndex #(type)
     my $indexTitle = (defined $type ? $topicNames{$type} . ' ' : '') . 'Index';
     my $indexFile = IndexFileOf($type);
 
-    my $outputDirectory = NaturalDocs::Settings::OutputDirectory($self);
-    my $outputFile = NaturalDocs::File::JoinPath($outputDirectory, $indexFile);
-
-    my $outputFileHandle;
-
-    open($outputFileHandle, '>' . $outputFile)
-        or die "Couldn't create output file " . $outputFile . "\n";
-
-    print $outputFileHandle
+    my $startPage =
 
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" '
             . '"http://www.w3.org/TR/REC-html40/strict.dtd">' . "\n\n"
@@ -291,10 +297,9 @@ sub BuildIndex #(type)
             . '<title>';
 
             if (defined NaturalDocs::Menu::Title())
-                {  print $outputFileHandle '' . StringToHTML(NaturalDocs::Menu::Title()) . ' - ';  };
+                {  $startPage .= StringToHTML(NaturalDocs::Menu::Title()) . ' - ';  };
 
-                print $outputFileHandle
-
+                $startPage .=
                 $indexTitle
             . '</title>'
 
@@ -315,14 +320,16 @@ sub BuildIndex #(type)
 
                 . BuildMenu($indexFile)
 
-            . '</td>' . "\n\n"
+            . '</td>'
 
             . '<td class=Index valign=top>'
                 . '<div class=IPageTitle>'
                     . $indexTitle
-                . '</div>'
-                . BuildIndexContent( NaturalDocs::SymbolTable::Index($type), $indexFile )
-            . '</td>' . "\n\n"
+                . '</div>';
+
+
+    my $endPage =
+            '</td>'
 
         . '</tr></table>'
 
@@ -333,7 +340,10 @@ sub BuildIndex #(type)
         . '</body></html>';
 
 
-    close($outputFileHandle);
+    my $index = NaturalDocs::SymbolTable::Index($type);
+    my $indexContent = BuildIndexContent($index, $indexFile);
+    my $indexPages = BuildIndexFiles($type, $indexContent, $startPage, $endPage);
+    PurgeIndexFiles($type, $indexPages + 1);
     };
 
 #
@@ -1129,57 +1139,38 @@ sub UpdateIndex #(type)
 #       index  - An arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
 #       outputFile - The output file the index is going to be stored in.
 #
+#   Returns:
+#
+#       An arrayref of the index sections.  Index 0 is the symbols, index 1 is the numbers, and each following index is A through Z.
+#       The content of each section is its HTML, or undef if there is nothing for that section.
+#
 sub BuildIndexContent #(index, outputFile)
     {
     my ($index, $outputFile) = @_;
-    my $output;
 
-    use constant NUMBER_HEADING => '0-9';
-    use constant SYMBOL_HEADING => '$#!';
-
-    my %headings;  # Existence hash.  Keys: 'A'-'Z', NUMBER_HEADING, SYMBOL_HEADING
-    my $currentHeading;
+    my $content = [ ];
+    my $contentIndex;
 
     foreach my $entry (@$index)
         {
         # Check for headings
 
-        my $tempHeading = uc(substr($entry->Symbol(), 0, 1));
+        $contentIndex = uc(substr($entry->Symbol(), 0, 1));
 
-        if ($tempHeading =~ /^[0-9]$/)
-            {  $tempHeading = NUMBER_HEADING;  }
-        elsif ($tempHeading !~ /^[A-Z]$/)
-            {  $tempHeading = SYMBOL_HEADING;  };
-
-        if ($tempHeading ne $currentHeading)
-            {
-            $currentHeading = $tempHeading;
-            $headings{$currentHeading} = 1;
-
-            $output .=
-            '<div class=IHeading>'
-                . '<a name="';
-
-                if ($currentHeading eq NUMBER_HEADING)
-                    {  $output .= 'Numbers';  }
-                elsif ($currentHeading eq SYMBOL_HEADING)
-                    {  $output .= 'Symbols';  }
-                else
-                    {  $output .= $currentHeading;  };
-
-                $output .=
-                '"></a>'
-                . $currentHeading
-            . '</div>';
-            };
+        if ($contentIndex =~ /^[0-9]$/)
+            {  $contentIndex = 1;  }
+        elsif ($contentIndex !~ /^[A-Z]$/)
+            {  $contentIndex = 0;  }
+        else
+            {  $contentIndex = (ord(lc($contentIndex)) - ord('a')) + 2;  };
 
 
         # Build a simple entry
 
         if (!ref $entry->Class() && !ref $entry->File())
             {
-            $output .= BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(), $entry->File(),
-                                                  $entry->Type(), $entry->Prototype(), $outputFile);
+            $content->[$contentIndex] .= BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
+                                                                              $entry->File(), $entry->Type(), $entry->Prototype(), $outputFile);
             }
 
 
@@ -1187,14 +1178,14 @@ sub BuildIndexContent #(index, outputFile)
 
         else
             {
-            $output .=
+            $content->[$contentIndex] .=
             '<div class=IEntry>'
                 . '<span class=ISymbol>' . StringToHTML($entry->Symbol()) . '</span>';
 
                 if (defined $entry->Class() && !ref $entry->Class())
-                    {  $output .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
+                    {  $content->[$contentIndex] .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
 
-                $output .=
+                $content->[$contentIndex] .=
                 '<div class=ISubIndex>';
 
             if (ref $entry->Class())
@@ -1205,29 +1196,31 @@ sub BuildIndexContent #(index, outputFile)
                     {
                     if (ref $classEntry->File())
                         {
-                        $output .= '<div class=IEntry><span class=IParent>';
+                        $content->[$contentIndex] .= '<div class=IEntry><span class=IParent>';
 
                         if (defined $classEntry->Class())
-                            {  $output .= AddHiddenBreaks(StringToHTML($classEntry->Class()));  }
+                            {  $content->[$contentIndex] .= AddHiddenBreaks(StringToHTML($classEntry->Class()));  }
                         else
-                            {  $output .= 'Global';  };
+                            {  $content->[$contentIndex] .= 'Global';  };
 
-                        $output .= '</span><div class=ISubIndex>';
+                        $content->[$contentIndex] .= '</span><div class=ISubIndex>';
 
                         my $fileEntries = $classEntry->File();
                         foreach my $fileEntry (@$fileEntries)
                             {
-                            $output .= BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
-                                                                  $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                            $content->[$contentIndex] .=
+                                BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
+                                                      $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
                             };
 
-                        $output .= '</div></div>';
+                        $content->[$contentIndex] .= '</div></div>';
                         }
 
                     else #(!ref $classEntry->File())
                         {
-                        $output .= BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
-                                                                 $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(), $outputFile);
+                        $content->[$contentIndex] .=
+                            BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
+                                                   $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(), $outputFile);
                         };
                     };
                 }
@@ -1239,59 +1232,17 @@ sub BuildIndexContent #(index, outputFile)
                 my $fileEntries = $entry->File();
                 foreach my $fileEntry (@$fileEntries)
                     {
-                    $output .= BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
+                    $content->[$contentIndex] .= BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
                                                           $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
                     };
                 };
 
-            $output .= '</div></div>'; # Symbol IEntry and ISubIndex
+            $content->[$contentIndex] .= '</div></div>'; # Symbol IEntry and ISubIndex
             };
         };
 
 
-    # Now add a navigation bar.
-
-    my $navBar = '<div class=INavigationBar>';
-
-    if (exists $headings{SYMBOL_HEADING()})
-        {
-        $navBar .=
-        '<a href="#Symbols">'
-            . SYMBOL_HEADING
-        . '</a>';
-        }
-    else
-        {  $navBar .= SYMBOL_HEADING;  };
-
-    if (exists $headings{NUMBER_HEADING()})
-        {
-        $navBar .=
-        ' &middot; '
-        . '<a href="#Numbers">'
-            . NUMBER_HEADING
-        . '</a>';
-        }
-    else
-        {  $navBar .= ' &middot; ' . NUMBER_HEADING;  };
-
-    foreach my $letter ('A'..'Z')
-        {
-        if (exists $headings{$letter})
-            {
-            $navBar .=
-            ' &middot; '
-            . '<a href="#' . $letter . '">'
-                . $letter
-            . '</a>';
-            }
-        else
-            {  $navBar .= ' &middot; ' . $letter;  };
-        };
-
-    $navBar .= '</div>';
-
-
-    return $navBar . $output;
+    return $content;
     };
 
 
@@ -1341,6 +1292,158 @@ sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype,
 
 
 #
+#   Function: BuildIndexFiles
+#
+#   Builds an index file or files.
+#
+#   Parameters:
+#
+#       type - The type the index is limited to, or undef for none.  Should be one of the <Topic Types>.
+#       indexContent - An arrayref containing the index content.  Each entry is a section; index 0 is symbols, index 1 is numbers,
+#                             and following indexes represent A through Z.
+#       beginPage - All the content of the HTML page up to where the index content should appear.
+#       endPage - All the content of the HTML page past where the index should appear.
+#
+#   Returns:
+#
+#       The number of pages in the index.
+#
+sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
+    {
+    my ($type, $indexContent, $beginPage, $endPage) = @_;
+
+    my $page = 1;
+    my $pageSize = 0;
+    my @pageLocation;
+
+    # The maximum page size acceptable before starting a new page.  Note that this doesn't include beginPage and endPage,
+    # because we don't want something like a large menu screwing up the calculations.
+    use constant PAGESIZE_LIMIT => 35000;
+
+
+    # File the pages.
+
+    for (my $i = 0; $i < scalar @$indexContent; $i++)
+        {
+        if (!defined $indexContent->[$i])
+            {  next;  };
+
+        $pageSize += length($indexContent->[$i]);
+        $pageLocation[$i] = $page;
+
+        if ($pageSize + length($indexContent->[$i + 1]) > PAGESIZE_LIMIT)
+            {
+            $page++;
+            $pageSize = 0;
+            };
+        };
+
+
+    # Build the pages.
+
+    my $fileName;
+    my $fileHandle;
+    my $oldPage = -1;
+
+    for (my $i = 0; $i < scalar @$indexContent; $i++)
+        {
+        if (!defined $indexContent->[$i])
+            {  next;  };
+
+        $page = $pageLocation[$i];
+
+        # Switch files if we need to.
+
+        if ($page != $oldPage)
+            {
+            if (defined $fileHandle)
+                {
+                print $fileHandle $endPage;
+                close($fileHandle);
+                };
+
+            $fileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory(__PACKAGE__),
+                                                                      IndexFileOf($type, $page));
+
+            open($fileHandle, '>' . $fileName)
+                or die "Couldn't create output file " . $fileName . ".\n";
+
+            print $fileHandle $beginPage;
+
+            print $fileHandle '' . BuildIndexNavigationBar($type, $page, \@pageLocation);
+
+            $oldPage = $page;
+            };
+
+        print $fileHandle
+        '<div class=ISection>'
+
+            . '<div class=IHeading>'
+                . '<a name="' . $indexAnchors[$i] . '"></a>'
+                 . $indexHeadings[$i]
+            . '</div>'
+
+            . $indexContent->[$i]
+
+        . '</div>';
+        };
+
+    if (defined $fileHandle)
+        {
+        print $fileHandle $endPage;
+        close($fileHandle);
+        };
+
+
+    return $page;
+    };
+
+
+#
+#   Function: BuildIndexNavigationBar
+#
+#   Builds a navigation bar for a page of the index.
+#
+#   Parameters:
+#
+#       type - The type of the index, or undef for general.  Should be one of the <Topic Types>.
+#       page - The page of the index the navigation bar is for.
+#       locations - An arrayref of the locations of each section.  Index 0 is for the symbols, index 1 for the numbers, and the rest
+#                       for each letter.  The values are the page numbers where the sections are located.
+#
+sub BuildIndexNavigationBar #(type, page, locations)
+    {
+    my ($type, $page, $locations) = @_;
+
+    my $output = '<div class=INavigationBar>';
+
+    for (my $i = 0; $i < scalar @indexHeadings; $i++)
+        {
+        if ($i != 0)
+            {  $output .= ' &middot; ';  };
+
+        if (defined $locations->[$i])
+            {
+            $output .= '<a href="';
+
+            if ($locations->[$i] != $page)
+                {  $output .= IndexFileOf($type, $locations->[$i]);  };
+
+            $output .= '#' . $indexAnchors[$i] . '">' . $indexHeadings[$i] . '</a>';
+            }
+        else
+            {
+            $output .= $indexHeadings[$i];
+            };
+        };
+
+    $output .= '</div>';
+
+    return $output;
+    };
+
+
+#
 #   Function: BuildMenuJavaScript
 #
 #   Returns the JavaScript necessary to expand and collapse the menus.
@@ -1373,6 +1476,41 @@ sub BuildMenuJavaScript
 
 
 #
+#   function: PurgeIndexFiles
+#
+#   Removes all or some of the output files for an index.
+#
+#   Parameters:
+#
+#       type  - The index type, or undef for general.  Should be one of the <Topic Types>.
+#       startingPage - If defined, only pages starting with this number will be removed.  Otherwise all pages will be removed.
+#
+sub PurgeIndexFiles #(type, startingPage)
+    {
+    my ($type, $page) = @_;
+
+    if (!defined $page)
+        {  $page = 1;  };
+
+    my $outputDirectory = NaturalDocs::Settings::OutputDirectory(__PACKAGE__);
+
+    for (;;)
+        {
+        my $file = NaturalDocs::File::JoinPath($outputDirectory, IndexFileOf($type, $page));
+
+        if (-e $file)
+            {
+            unlink($file);
+            $page++;
+            }
+        else
+            {
+            last;
+            };
+        };
+    };
+
+#
 #   function: OutputFileOf
 #
 #   Returns the output file name of the source file.
@@ -1396,12 +1534,13 @@ sub OutputFileOf #(sourceFile)
 #   Parameters:
 #
 #       type  - The type of index, or undef if general.
+#       page  - The page number.  Undef is the same as one.
 #
-sub IndexFileOf #(type)
+sub IndexFileOf #(type, page)
     {
-    my $type = shift;
+    my ($type, $page) = @_;
 
-    return (defined $type ? $topicNames{$type} : 'General') . 'Index.html';
+    return (defined $type ? $topicNames{$type} : 'General') . 'Index' . (defined $page && $page != 1 ? $page : '') . '.html';
     };
 
 #
