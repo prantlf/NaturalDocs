@@ -498,64 +498,50 @@ eval {
     if (!NaturalDocs::Settings->IsQuiet())
         {  print "Finding files and detecting changes...\n";  };
 
-    if (NaturalDocs::Project->LoadAndDetectChanges())
-        {
-        # We only load the symbol table if supported files have changed.
+    NaturalDocs::Project->LoadAndDetectChanges();
 
-        NaturalDocs::SymbolTable->LoadAndPurge();
+    NaturalDocs::SymbolTable->LoadAndPurge();
 
 
-        # Parse any supported files that have changed.
+    # Parse any supported files that have changed.
 
-        my $filesToParse = NaturalDocs::Project->FilesToParse();
-        my $amount = scalar keys %$filesToParse;
+    my $filesToParse = NaturalDocs::Project->FilesToParse();
+    my $amount = scalar keys %$filesToParse;
 
-        if ($amount > 0)
-          {
-          if (!NaturalDocs::Settings->IsQuiet())
-              {  print 'Parsing ' . $amount . ' file' . ($amount > 1 ? 's' : '') . "...\n";  };
+    if ($amount > 0)
+      {
+      if (!NaturalDocs::Settings->IsQuiet())
+          {  print 'Parsing ' . $amount . ' file' . ($amount > 1 ? 's' : '') . "...\n";  };
 
-          foreach my $file (keys %$filesToParse)
-              {  NaturalDocs::Parser->ParseForInformation($file);  };
-          };
-
-
-        # The symbol table is now fully resolved, so we can reduce its memory footprint.
-
-        NaturalDocs::SymbolTable->PurgeResolvingInfo();
+      foreach my $file (keys %$filesToParse)
+          {  NaturalDocs::Parser->ParseForInformation($file);  };
+      };
 
 
-        # Load and update the menu file.  We need to do this after parsing so when it is updated, it will detect files where the
-        # default menu title has changed and files that have added or deleted Natural Docs content.
+    # The symbol table is now fully resolved, so we can reduce its memory footprint.
 
-        NaturalDocs::Menu->LoadAndUpdate();
-
-
-        # Build any files that need it.  This needs to be run regardless of whether there are any files to build.  It will handle its own
-        # output messages.
-
-        NaturalDocs::Builder->Run();
+    NaturalDocs::SymbolTable->PurgeResolvingInfo();
 
 
-        # Write the changes back to disk.  The menu must be saved before the project because the project file stores when the
-        # menu file was last changed.
+    # Load and update the menu file.  We need to do this after parsing so when it is updated, it will detect files where the
+    # default menu title has changed and files that have added or deleted Natural Docs content.
 
-        NaturalDocs::Menu->Save();
-        NaturalDocs::Project->Save();
-        NaturalDocs::SymbolTable->Save();
-        #NaturalDocs::Settings->Save();
-        }
-    else
-        {
-        # We need to load the menu file anyway, because Builder may need it.  However, we have an optimized version for this
-        # occasion.
-        NaturalDocs::Menu->LoadUnchanged();
+    NaturalDocs::Menu->LoadAndUpdate();
 
-        # Builder needs to be run anyway.  Since there were no changes to the source tree, we don't need to worry about
-        # parsing or NaturalDocs::SymbolTable.
 
-        NaturalDocs::Builder->Run();
-        };
+    # Build any files that need it.  This needs to be run regardless of whether there are any files to build.  It will handle its own
+    # output messages.
+
+    NaturalDocs::Builder->Run();
+
+
+    # Write the changes back to disk.  The menu must be saved before the project because the project file stores when the
+    # menu file was last changed.
+
+    NaturalDocs::Menu->Save();
+    NaturalDocs::Project->Save();
+    NaturalDocs::SymbolTable->Save();
+    #NaturalDocs::Settings->Save();
 
     if (!NaturalDocs::Settings->IsQuiet())
         {  print "Done.\n";  };
