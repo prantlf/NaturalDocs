@@ -22,7 +22,7 @@ package NaturalDocs::Topics;
 use base 'Exporter';
 our @EXPORT = ( 'TOPIC_GENERAL', 'TOPIC_GENERIC', 'TOPIC_GROUP', 'TOPIC_CLASS', 'TOPIC_FILE', 'TOPIC_FUNCTION',
                           'TOPIC_VARIABLE', 'TOPIC_PROPERTY', 'TOPIC_TYPE', 'TOPIC_CONSTANT', 'TOPIC_INTERFACE',
-                          'TOPIC_EVENT', 'TOPIC_DELEGATE' );
+                          'TOPIC_EVENT', 'TOPIC_DELEGATE', 'TOPIC_SECTION' );
 
 
 
