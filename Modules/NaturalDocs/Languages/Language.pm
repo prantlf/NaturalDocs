@@ -253,54 +253,48 @@ sub StripClosingCommentSymbol #(lineRef)
 
 
 #
-#   Function: EndOfFunction
+#   Function: HasPrototype
 #
-#   Returns the index of the end of the function prototype in a string.
+#   Returns whether the language accepts prototypes from the passed <Topic Types>.
 #
-#   Parameters:
-#
-#       stringRef  - A reference to the string.
-#       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
-#                              ignored.  This is for use by derived classes only, so set to undef.
-#
-#   Returns:
-#
-#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from
-#       <FunctionEnders()>.
-#
-sub EndOfFunction #(stringRef, falsePositives)
+sub HasPrototype #(type)
     {
-    my ($self, $stringRef, $falsePositives) = @_;
+    my ($self, $type) = @_;
 
-    if (defined $self->FunctionEnders())
-        {  return $self->EndOfPrototype($stringRef, $falsePositives, $self->FunctionEnders());  }
+    if ($type == ::TOPIC_FUNCTION())
+        {  return defined $self->FunctionEnders();  }
+    elsif ($type == ::TOPIC_VARIABLE())
+        {  return defined $self->VariableEnders();  }
     else
-        {  return -1;  };
+        {  return undef;  };
     };
 
 
 #
-#   Function: EndOfVariable
+#   Function: EndOfPrototype
 #
-#   Returns the index of the end of the variable declaration in a string.
+#   Returns the index of the end of the prototype in a string.
 #
 #   Parameters:
 #
+#       type - The topic type of the prototype.
 #       stringRef  - A reference to the string.
 #       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
 #                              ignored.  This is for use by derived classes only, so set to undef.
 #
 #   Returns:
 #
-#       The zero-based offset into the string of the end of the declaration, or -1 if the string doesn't contain a symbol from
-#       <VariableEnders()>.
+#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol that would
+#       end it.
 #
-sub EndOfVariable #(stringRef, falsePositives)
+sub EndOfPrototype #(type, stringRef, falsePositives)
     {
-    my ($self, $stringRef, $falsePositives) = @_;
+    my ($self, $type, $stringRef, $falsePositives) = @_;
 
-    if (defined $self->VariableEnders())
-        {  return $self->EndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
+    if ($type == ::TOPIC_FUNCTION() && defined $self->FunctionEnders())
+        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->FunctionEnders());  }
+    elsif ($type == ::TOPIC_VARIABLE() && defined $self->VariableEnders())
+        {  return $self->FindEndOfPrototype($stringRef, $falsePositives, $self->VariableEnders());  }
     else
         {  return -1;  };
     };
@@ -344,6 +338,7 @@ sub RemoveExtenders #(stringRef)
 #
 #   Parameters:
 #
+#       type - The topic type.
 #       prototype - The text prototype.
 #
 #   Returns:
@@ -356,13 +351,17 @@ sub RemoveExtenders #(stringRef)
 #       close - The closing symbol to the parameter list, such as parenthesis.  If there is none, it will be space.
 #       post - The part of the prototype after the parameter list, or undef if none.
 #
-sub FormatPrototype #(prototype)
+sub FormatPrototype #(type, prototype)
     {
-    my ($self, $prototype) = @_;
+    my ($self, $type, $prototype) = @_;
 
     $prototype =~ tr/\t\n /   /s;
     $prototype =~ s/^ //;
     $prototype =~ s/ $//;
+
+    # Cut out early if it's not a function.
+    if ($type != ::TOPIC_FUNCTION())
+        {  return ( $prototype, undef, undef, undef, undef );  };
 
     # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look
     # at this VB function declaration:
@@ -484,7 +483,7 @@ sub StripCommentSymbol #(lineRef, symbols)
 
 
 #
-#   Function: EndOfPrototype
+#   Function: FindEndOfPrototype
 #
 #   Returns the index of the end of an arbitrary prototype in a string.
 #
@@ -500,7 +499,7 @@ sub StripCommentSymbol #(lineRef, symbols)
 #       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from the
 #       arrayref.
 #
-sub EndOfPrototype #(stringRef, falsePositives, symbols)
+sub FindEndOfPrototype #(stringRef, falsePositives, symbols)
     {
     my ($self, $stringRef, $falsePositives, $symbols) = @_;
 

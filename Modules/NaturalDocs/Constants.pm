@@ -20,12 +20,7 @@ use vars qw(@EXPORT @ISA);
 require Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = ('TOPIC_CLASS', 'TOPIC_SECTION', 'TOPIC_FILE', 'TOPIC_GROUP', 'TOPIC_FUNCTION', 'TOPIC_VARIABLE',
-                   'TOPIC_GENERIC', 'TOPIC_CLASS_LIST', 'TOPIC_FILE_LIST', 'TOPIC_FUNCTION_LIST', 'TOPIC_VARIABLE_LIST',
-                   'TOPIC_GENERIC_LIST', 'TopicIsList', 'TopicIsListOf', 'TOPIC_TYPE', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT',
-                   'TOPIC_CONSTANT_LIST',
-
-                   'MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
+@EXPORT = ('MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
                    'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL',
 
                    'MENU_FILE_NOAUTOTITLE', 'MENU_GROUP_UPDATETITLES', 'MENU_GROUP_UPDATESTRUCTURE',
@@ -43,81 +38,6 @@ require Exporter;
 #
 #   No constant here will ever be zero.
 #
-
-#
-#   Constants: Topic Types
-#
-#   Constants representing all the types of Natural Docs sections.
-#
-#       TOPIC_CLASS      - A class.  All topics until the next class or section become its members.
-#       TOPIC_SECTION  - A main section of code or text.  Formats like a class but doesn't provide scope.  Also ends the
-#                                    scope of a class.
-#       TOPIC_FILE          - A file.  Is always referenced as a global, but does not end a class scope.
-#       TOPIC_GROUP      - A subdivider for long lists.
-#       TOPIC_FUNCTION - A function.  The code immediately afterwards will be used as the prototype if it matches the name.
-#       TOPIC_VARIABLE  - A variable.  The code immediately afterwards will be used as the prototype if it matches the name.
-#       TOPIC_GENERIC   - A generic topic.
-#
-#       TOPIC_CONSTANT - A constant.  Same as generic, but distinguished for indexing.
-#       TOPIC_TYPE          - A type.  Same as generic, but distinguished for indexing.
-#
-#       TOPIC_CLASS_LIST        - A list of classes.  Will not have scope.
-#       TOPIC_FILE_LIST            - A list of files.
-#       TOPIC_FUNCTION_LIST  - A list of functions.  Will not have prototypes.
-#       TOPIC_VARIABLE_LIST   - A list of variables.  Will not have prototypes.
-#       TOPIC_GENERIC_LIST    - A list of generic topics.
-#
-#       TOPIC_CONSTANT_LIST - A list of constants.
-#       TOPIC_TYPE_LIST - A list of types.
-#
-#   Dependency:
-#
-#       <NaturalDocs.m> depends on these values all being able to fint into a UInt8, i.e. <= 255.
-#
-use constant TOPIC_CLASS => 1;
-use constant TOPIC_SECTION => 2;
-use constant TOPIC_FILE => 3;
-use constant TOPIC_GROUP => 4;
-use constant TOPIC_FUNCTION => 5;
-use constant TOPIC_VARIABLE => 6;
-use constant TOPIC_GENERIC => 7;
-use constant TOPIC_TYPE => 8;
-use constant TOPIC_CONSTANT => 9;
-
-use constant TOPIC_LIST_BASE => 100;  # To accomodate for future expansion without changing the actual values.
-
-use constant TOPIC_CLASS_LIST => (TOPIC_CLASS + TOPIC_LIST_BASE);
-use constant TOPIC_FILE_LIST => (TOPIC_FILE + TOPIC_LIST_BASE);
-use constant TOPIC_FUNCTION_LIST => (TOPIC_FUNCTION + TOPIC_LIST_BASE);
-use constant TOPIC_VARIABLE_LIST => (TOPIC_VARIABLE + TOPIC_LIST_BASE);
-use constant TOPIC_GENERIC_LIST => (TOPIC_GENERIC + TOPIC_LIST_BASE);
-use constant TOPIC_TYPE_LIST => (TOPIC_TYPE + TOPIC_LIST_BASE);
-use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
-
-
-#
-#   Function: TopicIsList
-#
-#   Returns whether the topic is a list topic.
-#
-sub TopicIsList #(topic)
-    {
-    my ($topic) = @_;
-    return ($topic >= TOPIC_LIST_BASE);
-    };
-
-#
-#   Function: TopicIsListOf
-#
-#   Returns what type the list topic is a list of.  Assumes the topic is a list topic.
-#
-sub TopicIsListOf #(topic)
-    {
-    my ($topic) = @_;
-    return ($topic - TOPIC_LIST_BASE);
-    };
-
-
 
 #
 #   Constants: Menu Entry Types

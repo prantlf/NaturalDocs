@@ -27,90 +27,65 @@ use base 'NaturalDocs::Languages::Language';
 
 
 #
-#   Function: EndOfFunction
+#   Function: EndOfPrototype
 #
-#   Returns the index of the end of the function prototype in a string.
+#   Microsoft's SQL specifies parameters as shown below.
 #
-#   Parameters:
+#   > CREATE PROCEDURE Test @as int, @foo int AS ...
 #
-#       stringRef  - A reference to the string.
-#       falsePositives  - Ignored.  For consistency only.
+#   Having a parameter @is or @as is perfectly valid even though those words are also used to end the prototype.  Note any
+#   false positives created by this.
 #
-#   Returns:
-#
-#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from
-#       <FunctionEnders()>.
-#
-#   Language Issue:
-#
-#       Microsoft's SQL specifies parameters as shown below.
-#
-#       > CREATE PROCEDURE Test @as int, @foo int AS ...
-#
-#       Having a parameter @is or @as is perfectly valid even though those words are also used to end the prototype.  Note any
-#       false positives created by this.
-#
-sub EndOfFunction #(stringRef, falsePositives)
+sub EndOfPrototype #(type, stringRef, falsePositives)
     {
-    my ($self, $stringRef) = @_;  # Passed falsePositives is ignored.
+    my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
 
-    my %falsePositives;
+    my $falsePositives;
 
-    foreach my $ender (@{$self->FunctionEnders()})
+    if ($type == ::TOPIC_FUNCTION())
         {
-        my $index = 0;
+        $falsePositives = { };
 
-        for (;;)
+        foreach my $ender (@{$self->FunctionEnders()})
             {
-            $index = index($$stringRef, '@' . $ender, $index);
+            my $index = 0;
 
-            if ($index == -1)
-                {  last;  };
+            for (;;)
+                {
+                $index = index($$stringRef, '@' . $ender, $index);
 
-            # +1 because the positive will be after the @ symbol.
-            $falsePositives{$index + 1} = 1;
-            $index++;
+                if ($index == -1)
+                    {  last;  };
+
+                # +1 because the positive will be after the @ symbol.
+                $falsePositives->{$index + 1} = 1;
+                $index++;
+                };
             };
+
+        if (!scalar keys %$falsePositives)
+            {  $falsePositives = undef;  };
         };
 
-    return $self->SUPER::EndOfFunction($stringRef, \%falsePositives);
+    return $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
     };
 
 
 #
 #   Function: FormatPrototype
 #
-#   Parses a prototype so that it can be formatted nicely in the output.  By default, this function assumes the parameter list is
-#   enclosed in parenthesis and parameters are separated by commas and semicolons.
+#   Microsoft's SQL implementation doesn't require parenthesis.  Instead, parameters are specified with the @ symbol as
+#   below:
 #
-#   Parameters:
+#   > CREATE PROCEDURE Test @as int, @foo int AS ...
 #
-#       prototype - The text prototype.
+#   If the prototype doesn't have parenthesis but does have @text, it makes sure it is still formatted correctly.
 #
-#   Returns:
-#
-#       The array ( preParam, opening, params, closing, postParam ).
-#
-#       pre - The part of the prototype prior to the parameter list.
-#       open - The opening symbol to the parameter list, such as parenthesis.  If there is none, it will be a space.
-#       params - An arrayref of parameters, one per entry.  Will be undef if none.
-#       close - The closing symbol to the parameter list, such as parenthesis.  If there is none, it will be space.
-#       post - The part of the prototype after the parameter list, or undef if none.
-#
-#   Language Issue:
-#
-#       Microsoft's SQL implementation doesn't require parenthesis.  Instead, parameters are specified with the @ symbol as
-#       below:
-#
-#       > CREATE PROCEDURE Test @as int, @foo int AS ...
-#
-#       If the prototype doesn't have parenthesis but does have @text, it makes sure it is still formatted correctly.
-#
-sub FormatPrototype #(prototype)
+sub FormatPrototype #(type, prototype)
     {
-    my ($self, $prototype) = @_;
+    my ($self, $type, $prototype) = @_;
 
-    if ($prototype !~ /\(/ && $prototype =~ /@/)
+    if ($type == ::TOPIC_FUNCTION() && $prototype !~ /\(/ && $prototype =~ /@/)
         {
         $prototype =~ tr/\t\n /   /s;
         $prototype =~ s/^ //;
@@ -129,7 +104,7 @@ sub FormatPrototype #(prototype)
         return ( $pre, ' ', $params, ' ', undef );
         }
     else
-        {  return $self->SUPER::FormatPrototype($prototype);  };
+        {  return $self->SUPER::FormatPrototype($type, $prototype);  };
     };
 
 

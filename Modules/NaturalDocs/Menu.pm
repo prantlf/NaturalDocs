@@ -70,56 +70,6 @@ my %menuSynonyms = (
                                     );
 
 #
-#   hash: indexSynonyms
-#
-#   A hash of the text synonyms for the index modifiers.  The keys are the all lowercase synonyms, and the values are the
-#   associated <Topic Types>.
-#
-my %indexSynonyms = (
-                                        'function' => ::TOPIC_FUNCTION(),
-                                        'func' => ::TOPIC_FUNCTION(),
-                                        'class' => ::TOPIC_CLASS(),
-                                        'package' => ::TOPIC_CLASS(),
-                                        'file' => ::TOPIC_FILE(),
-                                        'variable' => ::TOPIC_VARIABLE(),
-                                        'var' => ::TOPIC_VARIABLE(),
-                                        'type' => ::TOPIC_TYPE(),
-                                        'typedef' => ::TOPIC_TYPE(),
-                                        'const' => ::TOPIC_CONSTANT(),
-                                        'constant' => ::TOPIC_CONSTANT()
-                                    );
-
-#
-#   hash: indexNames
-#
-#   A hash of text equivalents of the possible index types.  The keys are the <Topic Types>, and the values are the strings.
-#
-my %indexNames = (
-                                    ::TOPIC_FUNCTION() => 'Function',
-                                    ::TOPIC_CLASS() => 'Class',
-                                    ::TOPIC_FILE() => 'File',
-                                    ::TOPIC_VARIABLE() => 'Variable',
-                                    ::TOPIC_TYPE() => 'Type',
-                                    ::TOPIC_CONSTANT() => 'Constant'
-                              );
-
-
-#
-#   hash: indexPluralNames
-#
-#   A hash of plural text equivalents of the possible index types.  The keys are the <Topic Types>, and the values are the strings.
-#
-my %indexPluralNames = (
-                                        ::TOPIC_FUNCTION() => 'Functions',
-                                        ::TOPIC_CLASS() => 'Classes',
-                                        ::TOPIC_FILE() => 'Files',
-                                        ::TOPIC_VARIABLE() => 'Variables',
-                                        ::TOPIC_TYPE() => 'Types',
-                                        ::TOPIC_CONSTANT() => 'Constants'
-                                      );
-
-
-#
 #   bool: hasChanged
 #
 #   Whether the menu changed or not, regardless of why.
@@ -898,7 +848,7 @@ sub LoadMenuFile
 
                         elsif ($type == ::MENU_INDEX())
                             {
-                            if (!defined $modifier)
+                            if (!defined $modifier || $modifier eq 'general')
                                 {
                                 my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, undef, undef);
                                 $currentGroup->PushToGroup($entry);
@@ -915,20 +865,26 @@ sub LoadMenuFile
                                     if ($bannedIndex eq 'general')
                                         {  $bannedIndex = '*';  }
                                     else
-                                        {  $bannedIndex = $indexSynonyms{$bannedIndex};  };
+                                        {  $bannedIndex = NaturalDocs::Topics->NonListConstantOf($bannedIndex);  };
 
-                                    $bannedIndexes{$bannedIndex} = 1;
+                                    if (defined $bannedIndex)
+                                        {  $bannedIndexes{$bannedIndex} = 1;  };
                                     };
-                                }
-                            elsif (exists $indexSynonyms{$modifier})
-                                {
-                                $modifier = $indexSynonyms{$modifier};
-                                $indexes{$modifier} = 1;
-                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, $modifier, undef) );
                                 }
                             else
                                 {
-                                push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $modifier . ' is not a valid index type.');
+                                my $modifierType = NaturalDocs::Topics->NonListConstantOf($modifier);
+
+                                if (defined $modifierType && NaturalDocs::Topics->IsIndexable($modifierType))
+                                    {
+                                    $indexes{$modifierType} = 1;
+                                    $currentGroup->PushToGroup(
+                                        NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, $modifierType, undef) );
+                                    }
+                                else
+                                    {
+                                    push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $modifier . ' is not a valid index type.');
+                                    };
                                 };
                             }
 
@@ -1138,7 +1094,7 @@ sub SaveMenuFile
             if ($index eq '*')
                 {  print MENUFILEHANDLE 'General';  }
             else
-                {  print MENUFILEHANDLE $indexNames{$index};  };
+                {  print MENUFILEHANDLE NaturalDocs::Topics->PluralNameOf($index);  };
             };
 
         print MENUFILEHANDLE "\n\n\n";
@@ -1192,7 +1148,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
             my $type;
             if (defined $entry->Target())
                 {
-                $type = $indexNames{$entry->Target()} . ' ';
+                $type = NaturalDocs::Topics->NameOf($entry->Target()) . ' ';
                 };
 
             print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
@@ -1969,14 +1925,17 @@ sub AddAndRemoveIndexes
     {
     my ($self) = @_;
 
-    # A quick way to get the possible indexes...
-    my $validIndexes = { %indexNames, '*' => 1 };
+    my %validIndexes = ( '*' => 1 );
+    my @allIndexes = NaturalDocs::Topics->AllIndexable();
 
-    # Strip the banned indexes first so it's potentially less work for SymbolTable.
-    foreach my $index (keys %bannedIndexes)
-        {  delete $validIndexes->{$index};  };
+    foreach my $index (@allIndexes)
+        {
+        # Strip the banned indexes first so it's potentially less work for SymbolTable.
+        if (!exists $bannedIndexes{$index})
+            {  $validIndexes{$index} = 1;  };
+        };
 
-    $validIndexes = NaturalDocs::SymbolTable->HasIndexes($validIndexes);
+    %validIndexes = %{NaturalDocs::SymbolTable->HasIndexes(\%validIndexes)};
 
 
     # Delete dead indexes and find the best index group.
@@ -2009,7 +1968,7 @@ sub AddAndRemoveIndexes
 
                 # Remove it if it's dead.
 
-                if (!exists $validIndexes->{ ($entry->Target() || '*') })
+                if (!exists $validIndexes{ ($entry->Target() || '*') })
                     {
                     $currentGroup->DeleteFromGroup($index);
                     delete $indexes{ ($entry->Target() || '*') };
@@ -2033,9 +1992,9 @@ sub AddAndRemoveIndexes
     # Now add the new indexes.
 
     foreach my $index (keys %indexes)
-        {  delete $validIndexes->{$index};  };
+        {  delete $validIndexes{$index};  };
 
-    if (scalar keys %$validIndexes)
+    if (scalar keys %validIndexes)
         {
         # Add a group if there are no indexes at all.
 
@@ -2056,7 +2015,7 @@ sub AddAndRemoveIndexes
         $bestIndexGroup->MarkEndOfOriginal();
         my $isIndexGroup = $bestIndexGroup->Flags() & ::MENU_GROUP_ISINDEXGROUP();
 
-        foreach my $index (keys %$validIndexes)
+        foreach my $index (keys %validIndexes)
             {
             my $title;
 
@@ -2065,14 +2024,14 @@ sub AddAndRemoveIndexes
                 if ($index eq '*')
                     {  $title = 'Everything';  }
                 else
-                    {  $title = $indexPluralNames{$index};  };
+                    {  $title = NaturalDocs::Topics->PluralNameOf($index);  };
                 }
             else
                 {
                 if ($index eq '*')
                     {  $title = 'General Index';  }
                 else
-                    {  $title .= $indexNames{$index} . ' Index';  };
+                    {  $title .= NaturalDocs::Topics->NameOf($index) . ' Index';  };
                 };
 
             my $newEntry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $title, ($index eq '*' ? undef : $index), undef);
