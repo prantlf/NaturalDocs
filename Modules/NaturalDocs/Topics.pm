@@ -200,6 +200,10 @@ my @legacyTypes = ( TOPIC_GENERAL, TOPIC_CLASS, TOPIC_SECTION, TOPIC_FILE, TOPIC
 #
 #       Whether the title of this topic becomes the page title if it is the first topic in a file.  Defaults to no.
 #
+#       > Break Lists: [yes|no]
+#
+#       Whether list topics should be broken into individual topics in the output.  Defaults to no.
+#
 #       > Auto Group: [yes|no|full only]
 #
 #       Whether this topic has groups created for it by default.  Defaults to no.
@@ -486,6 +490,26 @@ sub LoadFile #(isMain)
                         else
                             {
                             NaturalDocs::ConfigFile->AddError('Page Title if First lines can only be "yes" or "no".');
+                            };
+                        }
+
+                    elsif ($keyword eq 'break lists')
+                        {
+                        $value = lc($value);
+
+                        if ($value eq 'yes')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetBreakLists(1);  };
+                            }
+                        elsif ($value eq 'no')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetBreakLists(undef);  };
+                            }
+                        else
+                            {
+                            NaturalDocs::ConfigFile->AddError('Break Lists lines can only be "yes" or "no".');
                             };
                         }
 

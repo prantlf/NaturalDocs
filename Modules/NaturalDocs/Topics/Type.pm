@@ -19,7 +19,8 @@ use NaturalDocs::DefineMembers 'NAME',                         'Name()',
                                                  'INDEX',                        'Index()',              'SetIndex()',
                                                  'AUTO_GROUP',             'AutoGroup()',        'SetAutoGroup()',
                                                  'SCOPE',                       'Scope()',              'SetScope()',
-                                                 'PAGE_TITLE_IF_FIRST', 'PageTitleIfFirst()', 'SetPageTitleIfFirst()';
+                                                 'PAGE_TITLE_IF_FIRST', 'PageTitleIfFirst()', 'SetPageTitleIfFirst()',
+                                                 'BREAK_LISTS',             'BreakLists()',        'SetBreakLists()';
 
 # Dependency: New() depends on the order of these and that there are no parent classes.
 
@@ -38,6 +39,7 @@ our @EXPORT = ('AUTO_GROUP_YES', 'AUTO_GROUP_NO', 'AUTO_GROUP_FULL_ONLY',
 #   AUTO_GROUP - The topic's <AutoGroupType>.
 #   SCOPE - The topic's <ScopeType>.
 #   PAGE_TITLE_IF_FIRST - Whether the topic becomes the page title if it's first in a file.
+#   BREAK_LISTS - Whether list topics should be broken into individual topics in the output.
 #
 
 
@@ -93,8 +95,9 @@ use constant SCOPE_ALWAYS_GLOBAL => 4;
 #       autoGroup - The topic's <AutoGroupType>.
 #       scope - The topic's <ScopeType>.
 #       pageTitleIfFirst - Whether the topic becomes the page title if it's the first one in a file.
+#       breakLists - Whether list topics should be broken into individual topics in the output.
 #
-sub New #(name, pluralName, index, autoGroup, scope, pageTitleIfFirst)
+sub New #(name, pluralName, index, autoGroup, scope, pageTitleIfFirst, breakLists)
     {
     my ($self, @params) = @_;
 
@@ -121,6 +124,8 @@ sub New #(name, pluralName, index, autoGroup, scope, pageTitleIfFirst)
 #   SetScope - Replaces the topic's <ScopeType>.
 #   PageTitleIfFirst - Returns whether the topic becomes the page title if it's first in the file.
 #   SetPageTitleIfFirst - Sets whether the topic becomes the page title if it's first in the file.
+#   BreakLists - Returns whether list topics should be broken into individual topics in the output.
+#   SetBreakLists - Sets whether list topics should be broken into individual topics in the output.
 #
 
 
