@@ -59,6 +59,9 @@ sub SoftDeath #(message)
     my ($self, $message) = @_;
 
     $softDeath = 1;
+    if ($message !~ /\n$/)
+        {  $message .= "\n";  };
+
     die $message;
     };
 
@@ -72,11 +75,14 @@ sub HandleDeath
     {
     my $self = shift;
 
+    my $reason = $::EVAL_ERROR;
+    $reason =~ s/[\n\r]+$//;
+
     my $errorMessage =
          "\n"
          . "Natural Docs encountered the following error and was stopped:\n"
          . "\n"
-         . "   " . $@
+         . "   " . $reason . "\n"
          . "\n"
 
          . "You can get help at the following web site:\n"
@@ -144,13 +150,16 @@ sub GenerateCrashReport
     {
     my $self = shift;
 
+    my $errorMessage = $::EVAL_ERROR;
+    $errorMessage =~ s/[\r\n]+$//;
+
     my $file = NaturalDocs::File->JoinPaths($FindBin::RealBin, 'LastCrash.txt');
 
     open(FH_CRASHREPORT, '>' . $file) or return undef;
 
     print FH_CRASHREPORT
     'Crash Message:' . "\n\n"
-    . '   ' . $::EVAL_ERROR . "\n\n"
+    . '   ' . $errorMessage . "\n\n"
     . 'Natural Docs version ' . NaturalDocs::Settings->TextAppVersion() . "\n"
     . 'Perl version ' . $self->PerlVersion . ' on ' . $::OSNAME . "\n\n"
     . 'Command Line:' . "\n\n"
