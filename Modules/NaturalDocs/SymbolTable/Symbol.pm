@@ -25,10 +25,10 @@ package NaturalDocs::SymbolTable::Symbol;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#       DEFINITIONS             - A hashref of all the files which define this symbol.  The keys are the file names, and the values are
+#       DEFINITIONS             - A hashref of all the files which define this symbol.  The keys are the <FileNames>, and the values are
 #                                         <NaturalDocs::SymbolTable::SymbolDefinition> objects.  If no files define this symbol, this item will
 #                                          be undef.
-#       GLOBAL_DEFINITION  - The name of the file which defines the global version of the symbol, which is what is used if
+#       GLOBAL_DEFINITION  - The <FileName> which defines the global version of the symbol, which is what is used if
 #                                          a file references the symbol but does not have its own definition.  If there are no definitions, this
 #                                          item will be undef.
 #       REFERENCES              - A hashref of the references that can be interpreted as this symbol.  This doesn't mean these
@@ -70,25 +70,34 @@ sub New
 #
 #   Parameters:
 #
-#       file   - The file that defines the symbol.
-#       type - The topic type of the definition.  One of <Topic Types>.
+#       file   - The <FileName> that defines the symbol.
+#       type - The <TopicType> of the definition.
 #       prototype - The prototype of the definition, if applicable.  Undef otherwise.
 #       summary - The summary for the definition, if applicable.  Undef otherwise.
+#
+#   Returns:
+#
+#       Whether this provided the first definition for this symbol.
 #
 sub AddDefinition #(file, type, prototype, summary)
     {
     my ($self, $file, $type, $prototype, $summary) = @_;
 
+    my $isFirst;
+
     if (!defined $self->[DEFINITIONS])
         {
         $self->[DEFINITIONS] = { };
         $self->[GLOBAL_DEFINITION] = $file;
+        $isFirst = 1;
         };
 
     if (!exists $self->[DEFINITIONS]{$file})
         {
         $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition->New($type, $prototype, $summary);
         };
+
+    return $isFirst;
     };
 
 
@@ -99,8 +108,8 @@ sub AddDefinition #(file, type, prototype, summary)
 #
 #   Parameters:
 #
-#       file   - The file that defines the symbol.  Must exist.
-#       type - The new topic type of the definition.  One of <Topic Types>.
+#       file   - The <FileName> that defines the symbol.  Must exist.
+#       type - The new <TopicType> of the definition.
 #       prototype - The new prototype of the definition, if applicable.  Undef otherwise.
 #       summary - The new summary of the definition, if applicable.  Undef otherwise.
 #
@@ -125,7 +134,11 @@ sub ChangeDefinition #(file, type, prototype, summary)
 #
 #   Parameters:
 #
-#       file - The definition to delete.
+#       file - The <FileName> which contains definition to delete.
+#
+#   Returns:
+#
+#       Whether that was the only definition, and the symbol is now undefined.
 #
 sub DeleteDefinition #(file)
     {
@@ -133,7 +146,7 @@ sub DeleteDefinition #(file)
 
     # If there are no definitions...
     if (!defined $self->[DEFINITIONS])
-        {  return;  };
+        {  return undef;  };
 
     delete $self->[DEFINITIONS]{$file};
 
@@ -146,6 +159,8 @@ sub DeleteDefinition #(file)
         # without checking it against $file.
 
         $self->[GLOBAL_DEFINITION] = undef;
+
+        return 1;
         }
 
     # If there are more definitions and the global one was just deleted...
@@ -153,6 +168,7 @@ sub DeleteDefinition #(file)
         {
         # Which one becomes global is pretty much random.
         $self->[GLOBAL_DEFINITION] = (keys %{$self->[DEFINITIONS]})[0];
+        return undef;
         };
     };
 
@@ -233,7 +249,7 @@ sub IsDefined
 #
 #   Function: IsDefinedIn
 #
-#   Returns whether the symbol is defined in the passed file.
+#   Returns whether the symbol is defined in the passed <FileName>.
 #
 sub IsDefinedIn #(file)
     {
@@ -245,7 +261,7 @@ sub IsDefinedIn #(file)
 #
 #   Function: Definitions
 #
-#   Returns an array of all the files that define this symbol.  If none do, will return an empty array.
+#   Returns an array of all the <FileNames> that define this symbol.  If none do, will return an empty array.
 #
 sub Definitions
     {
@@ -261,7 +277,7 @@ sub Definitions
 #
 #   Function: GlobalDefinition
 #
-#   Returns the file that contains the global definition of this symbol, or undef if the symbol isn't defined.
+#   Returns the <FileName> that contains the global definition of this symbol, or undef if the symbol isn't defined.
 #
 sub GlobalDefinition
     {
@@ -272,7 +288,7 @@ sub GlobalDefinition
 #
 #   Function: TypeDefinedIn
 #
-#   Returns the type of symbol defined in the passed file, or undef if it's not defined in that file.
+#   Returns the <TopicType> of the symbol defined in the passed <FileName>, or undef if it's not defined in that file.
 #
 sub TypeDefinedIn #(file)
     {
@@ -288,7 +304,7 @@ sub TypeDefinedIn #(file)
 #
 #   Function: GlobalType
 #
-#   Returns the type of the global definition.  Will be one of <Topic Types> or undef if the symbol isn't defined.
+#   Returns the <TopicType> of the global definition, or undef if the symbol isn't defined.
 #
 sub GlobalType
     {
@@ -306,7 +322,7 @@ sub GlobalType
 #
 #   Function: PrototypeDefinedIn
 #
-#   Returns the prototype of symbol defined in the passed file, or undef if it doesn't exist or is not defined in that file.
+#   Returns the prototype of symbol defined in the passed <FileName>, or undef if it doesn't exist or is not defined in that file.
 #
 sub PrototypeDefinedIn #(file)
     {
@@ -340,7 +356,7 @@ sub GlobalPrototype
 #
 #   Function: SummaryDefinedIn
 #
-#   Returns the summary of symbol defined in the passed file, or undef if it doesn't exist or is not defined in that file.
+#   Returns the summary of symbol defined in the passed <FileName>, or undef if it doesn't exist or is not defined in that file.
 #
 sub SummaryDefinedIn #(file)
     {
@@ -384,7 +400,7 @@ sub HasReferences
 #
 #   Function: References
 #
-#   Returns an array of all the references that can be interpreted as this symbol.  If none, will return an empty array.
+#   Returns an array of all the reference strings that can be interpreted as this symbol.  If none, will return an empty array.
 #
 sub References
     {
@@ -393,6 +409,7 @@ sub References
     else
         {  return ( );  };
     };
+
 
 #
 #   Function: ReferencesAndScores
