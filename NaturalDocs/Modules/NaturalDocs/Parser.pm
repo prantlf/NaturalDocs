@@ -315,12 +315,9 @@ sub Parse
 
     if (scalar @parsedFile)
         {
-        my $firstType = $parsedFile[0]->Type();
-
         # If there's only one topic, it's title overrides the file name.  If there's more than one topic but the first one is a section, file,
         # or class, it's title overrides the file name as well.
-        if (scalar @parsedFile == 1 ||
-            $firstType == ::TOPIC_SECTION() || $firstType == ::TOPIC_FILE() || $firstType == ::TOPIC_CLASS())
+        if (scalar @parsedFile == 1 || NaturalDocs::Topics->CanBePageTitle( $parsedFile[0]->Type() ))
             {
             $defaultMenuTitle = $parsedFile[0]->Title();
             }
@@ -597,7 +594,7 @@ sub RepairPackages #(autoTopics, scopeRecord)
         # Finally try to handle the topic, since it has the lowest line number.
         else
             {
-            if ($topic->Type() == ::TOPIC_CLASS() || $topic->Type() == ::TOPIC_SECTION())
+            if (NaturalDocs::Topics->HasScope($topic->Type()) || NaturalDocs::Topics->EndsScope($topic->Type()))
                 {
                 # They should already have the correct class and scope.
                 $currentPackage = $topic->Package();
@@ -686,7 +683,7 @@ sub MergeAutoTopics #(language, autoTopics)
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
 
-            if ($topic->Type() != ::TOPIC_CLASS())
+            if (!NaturalDocs::Topics->HasScope($topic->Type()))
                 {  $topic->SetPackage($autoTopic->Package());  };
 
             $topicIndex++;
@@ -827,7 +824,7 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
             $groupCount++;
             }
 
-        elsif ($type == ::TOPIC_CLASS() || $type == ::TOPIC_SECTION())
+        elsif (NaturalDocs::Topics->HasScope($type) || NaturalDocs::Topics->EndsScope($type))
             {
             $currentType = undef;
             };
@@ -922,7 +919,7 @@ sub AddPackageDelineators
     my $index = 0;
     my $currentPackage;
 
-    # Values are the titles.
+    # Values are the arrayref [ title, type ];
     my %usedPackages;
 
     while ($index < scalar @parsedFile)
@@ -933,11 +930,11 @@ sub AddPackageDelineators
             {
             $currentPackage = $topic->Package();
 
-            if ($topic->Type() == ::TOPIC_CLASS())
+            if (NaturalDocs::Topics->HasScope($topic->Type()))
                 {
-                $usedPackages{$currentPackage} = $topic->Title();
+                $usedPackages{$currentPackage} = [ $topic->Title(), $topic->Type() ];
                 }
-            elsif  ($topic->Type() != ::TOPIC_CLASS_LIST() && $topic->Type() != ::TOPIC_SECTION())
+            elsif (!NaturalDocs::Topics->EndsScope($topic->Type()))
                 {
                 my $newTopic;
 
@@ -950,18 +947,20 @@ sub AddPackageDelineators
                     }
                 else
                     {
-                    my ($title, $body, $summary);
+                    my ($title, $body, $summary, $type);
                     my @packageIdentifiers = NaturalDocs::SymbolString->IdentifiersOf($currentPackage);
 
                     if (exists $usedPackages{$currentPackage})
                         {
-                        $title = $usedPackages{$currentPackage};
+                        $title = $usedPackages{$currentPackage}->[0];
+                        $type = $usedPackages{$currentPackage}->[1];
                         $body = '<p>(continued)</p>';
                         $summary = '(continued)';
                         }
                     else
                         {
                         $title = join($language->PackageSeparator(), @packageIdentifiers);
+                        $type = ::TOPIC_CLASS();
 
                         # Body and summary stay undef.
 
@@ -972,7 +971,7 @@ sub AddPackageDelineators
                     for (my $i = 0; $i < scalar @titleIdentifiers; $i++)
                         {  pop @packageIdentifiers;  };
 
-                    $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $title,
+                    $newTopic = NaturalDocs::Parser::ParsedTopic->New($type, $title,
                                                                                                    NaturalDocs::SymbolString->Join(@packageIdentifiers), undef,
                                                                                                    undef, $summary, $body,
                                                                                                    $topic->LineNumber());

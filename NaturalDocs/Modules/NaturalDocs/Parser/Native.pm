@@ -138,7 +138,7 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 
             if (defined $type)
                 {
-                if ($type == ::TOPIC_SECTION() || $type == ::TOPIC_CLASS() || $type == ::TOPIC_CLASS_LIST())
+                if (NaturalDocs::Topics->HasScope($type) || NaturalDocs::Topics->EndsScope($type))
                     {  $package = undef;  };
 
                 my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
@@ -176,7 +176,7 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     # Last one, if any.  This is the only one that gets the prototypes.
     if (defined $type)
         {
-        if ($type == ::TOPIC_SECTION() || $type == ::TOPIC_CLASS() || $type == ::TOPIC_CLASS_LIST())
+        if (NaturalDocs::Topics->HasScope($type) || NaturalDocs::Topics->EndsScope($type))
             {  $package = undef;  };
 
         my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);

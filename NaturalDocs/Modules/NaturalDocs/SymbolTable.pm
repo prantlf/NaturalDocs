@@ -1755,7 +1755,7 @@ sub SplitSymbolForIndex #(symbol, type)
     {
     my ($self, $symbol, $type) = @_;
 
-    if ($type == ::TOPIC_FILE() || $type == ::TOPIC_CLASS())
+    if (NaturalDocs::Topics->IsAlwaysGlobal($type) || NaturalDocs::Topics->HasScope($type))
         {  return ( $symbol, undef );  }
     else
         {

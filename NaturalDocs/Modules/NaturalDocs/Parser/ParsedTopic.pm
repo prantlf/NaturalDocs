@@ -6,26 +6,6 @@
 #
 #   A class for parsed topics of source files.  Also encompasses some of the <TopicType>-specific behavior.
 #
-#
-#   Topic: Type-Specific Behavior
-#
-#   TOPIC_CLASS:
-#
-#       - <Symbol()> will be generated from both the title and the package passed to <New()>.
-#       - <Package()> will be generated from both the title and the package passed to <New()>, not just the package.
-#
-#   TOPIC_FILE:
-#
-#       - <Symbol()> will be generated from the title only, guaranteeing that it's global.
-#       - <Package()> will return the package passed to <New()>, so it will still appear as part of the package when iterating
-#         through the topics.  Also so its body will have the package as its scope when resolving links.
-#
-#   Everything else:
-#
-#       - <Symbol()> will be generated from both the title and the package.
-#       - <Package()> will be generated from the package passed to <New()> only.  Any separators found in the title will not
-#         be reflected here.
-#
 ###############################################################################
 
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
@@ -123,8 +103,8 @@ sub Title
 #
 #   Type-Specific Behavior:
 #
-#       - <TOPIC_FILE> symbols will always be generated from the title only, so that they are always global.
-#       - Everything else's smybols will be generated from the title and the package passed to <New()>.
+#       - If <NaturalDocs::Topics->IsAlwaysGlobal()> is set for the <TopicType>, the symbol will be generated from the title only.
+#       - Everything else's symbols will be generated from the title and the package passed to <New()>.
 #
 sub Symbol
     {
@@ -132,7 +112,7 @@ sub Symbol
 
     my $titleSymbol = NaturalDocs::SymbolString->FromText($self->[TITLE]);
 
-    if ($self->Type() == ::TOPIC_FILE())
+    if (NaturalDocs::Topics->IsAlwaysGlobal($self->Type()))
         {  return $titleSymbol;  }
     else
         {
@@ -148,15 +128,17 @@ sub Symbol
 #
 #   Type-Specific Behavior:
 #
-#       - <TOPIC_CLASS'> package will be generated from both the title and the package passed to <New()>, not just the package.
-#       - <TOPIC_FILE's> package will be the one passed to <New()>, even though it isn't part of it's <Symbol()>.
+#       - If <NaturalDocs::Topics->HasScope()> is set for the <TopicType>, the package will be generated from both the title and
+#         the package passed to <New()>, not just the package.
+#       - If <NaturalDocs::Topics->IsAlwaysGlobal()> is set for the <TopicType>, the package will be the one passed to <New()>,
+#         even though it isn't part of it's <Symbol()>.
 #       - Everything else's package will be what was passed to <New()>, even if the title has separator symbols in it.
 #
 sub Package
     {
     my ($self) = @_;
 
-    if ($self->Type() == ::TOPIC_CLASS())
+    if (NaturalDocs::Topics->HasScope($self->Type()))
         {  return $self->Symbol();  }
     else
         {  return $self->[PACKAGE];  };
@@ -165,7 +147,7 @@ sub Package
 
 # Function: SetPackage
 # Replaces the package the topic appears in.  This will behave the same way as the package parameter in <New()>.  Later calls
-# to <Package()> will still be generated according to the <Type-Specific Behavior>.
+# to <Package()> will still be generated according to its type-specific behavior.
 sub SetPackage #(package)
     {  $_[0]->[PACKAGE] = $_[1];  };
 
