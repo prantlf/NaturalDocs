@@ -122,6 +122,22 @@ my %impossibleTypeWords = ( 'abstract' => 1, 'as' => 1, 'base' => 1, 'break' => 
 
 
 #
+#   Function: PackageSeparator
+#   Returns the package separator symbol.
+#
+sub PackageSeparator
+    {  return '.';  };
+
+
+#
+#   Function: EnumValues
+#   Returns the <EnumValuesType> that describes how the language handles enums.
+#
+sub EnumValues
+    {  return ::ENUM_UNDER_TYPE();  };
+
+
+#
 #   Function: ParseFile
 #
 #   Parses the passed source file, sending comments acceptable for documentation to <NaturalDocs::Parser->OnComment()>.
