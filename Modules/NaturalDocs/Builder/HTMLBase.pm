@@ -412,8 +412,8 @@ sub BuildMenu #(outputFile, isFramed)
 #
 #   Function: BuildMenuSegment
 #
-#   A recursive function to build a segment of the menu.  *Remember to reset the <Menu Variables> before calling this for the
-#   first time.*
+#   A recursive function to build a segment of the menu.  *Remember to reset the <Menu Package Variables> before calling this
+#   for the first time.*
 #
 #   Parameters:
 #
@@ -598,7 +598,6 @@ sub BuildContent #(sourceFile, parsedFile)
     while ($i < scalar @$parsedFile)
         {
         my $anchor = $self->SymbolToHTMLSymbol( $parsedFile->[$i]->Class(), $parsedFile->[$i]->Name() );
-        my $hasCBody;
 
 
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
@@ -626,44 +625,43 @@ sub BuildContent #(sourceFile, parsedFile)
             . '</' . $headerType . '>';
 
 
-        if (defined $parsedFile->[$i]->Prototype())
+        my $hierarchy;
+        if ($parsedFile->[$i]->Type() == ::TOPIC_CLASS())
             {
-            if (!$hasCBody)
-                {
-                $output .= '<div class=CBody>';
-                $hasCBody = 1;
-                };
-
-            $output .= $self->BuildPrototype($parsedFile->[$i]->Type(), $parsedFile->[$i]->Prototype(), $sourceFile);
+            $hierarchy = $self->BuildClassHierarchy($sourceFile, $parsedFile->[$i]->Name());
             };
 
-
-        if (defined $parsedFile->[$i]->Body())
-            {
-            if (!$hasCBody)
-                {
-                $output .= '<div class=CBody>';
-                $hasCBody = 1;
-                };
-
-            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Scope() );
-            };
-
-
+        my $summary;
         if ($i == 0 ||
             $parsedFile->[$i]->Type() == ::TOPIC_CLASS() || $parsedFile->[$i]->Type() == ::TOPIC_SECTION())
             {
-            if (!$hasCBody)
-                {
-                $output .= '<div class=CBody>';
-                $hasCBody = 1;
-                };
-
-            $output .= $self->BuildSummary($sourceFile, $parsedFile, $i);
+            $summary .= $self->BuildSummary($sourceFile, $parsedFile, $i);
             };
 
+        my $hasBody;
+        if (defined $hierarchy || defined $summary ||
+            defined $parsedFile->[$i]->Prototype() || defined $parsedFile->[$i]->Body())
+            {
+            $output .= '<div class=CBody>';
+            $hasBody = 1;
+            };
 
-        if ($hasCBody)
+        $output .= $hierarchy;
+
+        if (defined $parsedFile->[$i]->Prototype())
+            {
+            $output .= $self->BuildPrototype($parsedFile->[$i]->Type(), $parsedFile->[$i]->Prototype(), $sourceFile);
+            };
+
+        if (defined $parsedFile->[$i]->Body())
+            {
+            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Scope() );
+            };
+
+        $output .= $summary;
+
+
+        if ($hasBody)
             {  $output .= '</div>';  };
 
         $output .=
@@ -1444,6 +1442,130 @@ sub BuildToolTips
     my $self = shift;
     return $tooltipHTML;
     };
+
+#
+#   Function: BuildClassHierarchy
+#
+#   Builds and returns a class hierarchy diagram for the passed class, if applicable.
+#
+#   Parameters:
+#
+#       file - The source file.
+#       class - The class to build the hierarchy of.
+#
+sub BuildClassHierarchy #(file, class)
+    {
+    my ($self, $file, $class) = @_;
+
+    my @parents = NaturalDocs::ClassHierarchy->ParentsOf($class);
+    @parents = sort { ::StringCompare($a, $b) } @parents;
+
+    my @children = NaturalDocs::ClassHierarchy->ChildrenOf($class);
+    @children = sort { ::StringCompare($a, $b) } @children;
+
+    if (!scalar @parents && !scalar @children)
+        {  return undef;  };
+
+    my $output =
+    '<div class=ClassHierarchy>';
+
+    if (scalar @parents)
+        {
+        $output .='<table border=0 cellspacing=0 cellpadding=0><tr><td>';
+
+        foreach my $parent (@parents)
+            {
+            $output .= $self->BuildClassHierarchyEntry($file, $parent, 'CHParent', 1);
+            };
+
+        $output .= '</td></tr></table><div class=CHIndent>';
+        };
+
+    $output .=
+    '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
+        . $self->BuildClassHierarchyEntry($file, $class, 'CHCurrent', undef)
+    . '</td></tr></table>';
+
+    if (scalar @children)
+        {
+        $output .=
+        '<div class=CHIndent>'
+            . '<table border=0 cellspacing=0 cellpadding=0><tr><td>';
+
+        if (scalar @children <= 5)
+            {
+            for (my $i = 0; $i < scalar @children; $i++)
+                {  $output .= $self->BuildClassHierarchyEntry($file, $children[$i], 'CHChild', 1);  };
+            }
+        else
+            {
+            for (my $i = 0; $i < 4; $i++)
+                {  $output .= $self->BuildClassHierarchyEntry($file, $children[$i], 'CHChild', 1);  };
+
+           $output .= $self->BuildClassHierarchyEntry($file, (scalar @children - 4) . ' other children', 'CHChildNote', undef);
+            };
+
+        $output .=
+        '</td></tr></table>'
+        . '</div>';
+        };
+
+    if (scalar @parents)
+        {  $output .= '</div>';  };
+
+    $output .=
+    '</div>';
+
+    return $output;
+    };
+
+
+#
+#   Function: BuildClassHierarchyEntry
+#
+#   Builds and returns a single class hierarchy entry.
+#
+#   Parameters:
+#
+#       file - The source file.
+#       class - The class whose hierarchy is getting built.
+#       style - The style to apply to the entry, such as <CHParent>.
+#       link - Whether to build a link for this class or not.  When building the selected class' entry, this should be false.
+#
+sub BuildClassHierarchyEntry #(file, class, style, link)
+    {
+    my ($self, $file, $class, $style, $link) = @_;
+
+    my $output = '<div class=' . $style . '><div class=CHEntry>';
+    my $target;
+
+    if ($link && ($target = NaturalDocs::SymbolTable->GlobalDefinition(undef, $class)) )
+        {
+        my $targetFile;
+
+        if ($target->File() ne $file)
+            {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($file), $self->OutputFileOf($target->File()) );  };
+        # else leave it undef
+
+        my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $file, $target->Type(),
+                                                                      $target->Prototype(), $target->Summary());
+
+        my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
+
+        $output .= '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '" '
+                        . 'class=L' . NaturalDocs::Topics->NameOf($target->Type()) . ' ' . $toolTipProperties . '>' . $class . '</a>';
+
+        }
+    else
+        {
+        $output .= $class;
+        };
+
+    $output .= '</div></div>';
+    return $output;
+    };
+
+
 
 #
 #   Function: MenuToggleJavaScript
@@ -2485,7 +2607,7 @@ sub ExpandMenu #(outputFile, rootLength)
 #
 #   Function: ResetToolTips
 #
-#   Resets the <ToolTip Variables> for a new page.
+#   Resets the <ToolTip Package Variables> for a new page.
 #
 #   Parameters:
 #
