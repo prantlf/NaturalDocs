@@ -306,17 +306,33 @@ sub EndBuild #(hasChanged)
             $changed = 1;
             };
         };
+        
+
+    my $deleteFrom;
+
+    if (scalar @$styles == 1)
+        {  $deleteFrom = 1;  }
+    else
+        {  $deleteFrom = scalar @$styles + 1;  };
+
+    for (;;)
+        {
+        my $file = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs' . $deleteFrom . '.css');
+
+        if (! -e $file)
+            {  last;  };
+
+        unlink ($file);
+        $deleteFrom++;
+
+        $changed = 1;
+        };
+
 
     if ($changed)
         {
-        my $deleteFrom;
-
-        if (scalar @$styles == 1)
-            {  $deleteFrom = 1;  }
-        else
+        if (scalar @$styles > 1)
             {
-            $deleteFrom = scalar @$styles + 1;
-
             open(FH_CSS_FILE, '>' . $mainCSSFile);
 
             for (my $i = 0; $i < scalar @$styles; $i++)
@@ -326,18 +342,8 @@ sub EndBuild #(hasChanged)
 
             close(FH_CSS_FILE);
             };
-
-        for (;;)
-            {
-            my $file = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs' . $deleteFrom . '.css');
-
-            if (! -e $file)
-                {  last;  };
-
-            unlink ($file);
-            $deleteFrom++;
-            };
         };
+
 
 
     # Update the JavaScript file.
