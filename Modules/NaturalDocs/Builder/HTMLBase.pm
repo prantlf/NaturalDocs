@@ -919,7 +919,7 @@ sub BuildPrototype #(prototype, file)
 
     my $output;
 
-    if (defined $params)
+    if (defined $params && scalar @$params > 1)
         {
         if (defined $open)
             {
@@ -979,9 +979,9 @@ sub BuildPrototype #(prototype, file)
        . '</div></td></tr></table>';
         }
 
-    else # (!defined $params)
+    else # (!defined $params || scalar @$params == 1)
         {
-        my $string = $pre . $open . $close . $post;
+        my $string = $pre . $open . (defined $params ? $params->[1] : '') . $close . $post;
 
         $output =
         # A surrounding table as a hack to make the div form-fit.
