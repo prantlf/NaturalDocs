@@ -895,6 +895,7 @@ sub BuildPrototype #(prototype)
     my ($self, $prototype) = @_;
 
     my $output;
+    $prototype = $self->ConvertAmpChars($prototype);
 
     if ($prototype =~ /^  ([^\(]+?)  ( [\ \t]?  \(   [\ \t]? )  (.+?)  ( [\ \t]?  \)  [\ \t]? )  ([^\)]*)  $/x)
         {
