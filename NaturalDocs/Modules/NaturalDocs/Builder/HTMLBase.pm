@@ -1532,7 +1532,7 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
 
     # Build the content.
 
-    my $indexHTMLSections = $self->BuildIndexSections($indexSections, $self->IndexFileOf($type, 1));
+    my ($indexHTMLSections, $tooltipHTMLSections) = $self->BuildIndexSections($indexSections, $self->IndexFileOf($type, 1));
 
 
     my $page = 1;
@@ -1541,7 +1541,7 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
 
     # The maximum page size acceptable before starting a new page.  Note that this doesn't include beginPage and endPage,
     # because we don't want something like a large menu screwing up the calculations.
-    use constant PAGESIZE_LIMIT => 40000;
+    use constant PAGESIZE_LIMIT => 50000;
 
 
     # File the pages.
@@ -1551,10 +1551,10 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
         if (!defined $indexHTMLSections->[$i])
             {  next;  };
 
-        $pageSize += length($indexHTMLSections->[$i]);
+        $pageSize += length($indexHTMLSections->[$i]) + length($tooltipHTMLSections->[$i]);
         $pageLocations[$i] = $page;
 
-        if ($pageSize + length($indexHTMLSections->[$i + 1]) > PAGESIZE_LIMIT)
+        if ($pageSize + length($indexHTMLSections->[$i+1]) + length($tooltipHTMLSections->[$i+1]) > PAGESIZE_LIMIT)
             {
             $page++;
             $pageSize = 0;
@@ -1567,6 +1567,8 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
     my $indexFileName;
     $page = -1;
     my $oldPage = -1;
+    my $tooltips;
+    my $firstHeading;
 
     for (my $i = 0; $i < scalar @$indexHTMLSections; $i++)
         {
@@ -1581,8 +1583,9 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
             {
             if ($oldPage != -1)
                 {
-                print INDEXFILEHANDLE $endPage;
+                print INDEXFILEHANDLE '</table>' . $tooltips . $endPage;
                 close(INDEXFILEHANDLE);
+                $tooltips = undef;
                 };
 
             $indexFileName = $self->IndexFileOf($type, $page);
@@ -1590,27 +1593,31 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
             open(INDEXFILEHANDLE, '>' . $indexFileName)
                 or die "Couldn't create output file " . $indexFileName . ".\n";
 
-            print INDEXFILEHANDLE $beginPage . $self->BuildIndexNavigationBar($type, $page, \@pageLocations);
+            print INDEXFILEHANDLE $beginPage . $self->BuildIndexNavigationBar($type, $page, \@pageLocations)
+                                              . '<table border=0 cellspacing=0 cellpadding=0>';
 
             $oldPage = $page;
+            $firstHeading = 1;
             };
 
         print INDEXFILEHANDLE
-        '<div class=ISection>'
-
-            . '<div class=IHeading>'
+        '<tr>'
+            . '<td class=IHeading' . ($firstHeading ? ' id=IFirstHeading' : '') . '>'
                 . '<a name="' . $indexAnchors[$i] . '"></a>'
                  . $indexHeadings[$i]
-            . '</div>'
+            . '</td>'
+            . '<td></td>'
+        . '</tr>'
 
-            . $indexHTMLSections->[$i]
+        . $indexHTMLSections->[$i];
 
-        . '</div>';
+        $firstHeading = 0;
+        $tooltips .= $tooltipHTMLSections->[$i];
         };
 
     if ($page != -1)
         {
-        print INDEXFILEHANDLE $endPage;
+        print INDEXFILEHANDLE '</table>' . $tooltips . $endPage;
         close(INDEXFILEHANDLE);
         }
 
@@ -1650,8 +1657,10 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
 #
 #   Returns:
 #
-#       An arrayref of the index sections.  Index 0 is the symbols, index 1 is the numbers, and each following index is A through Z.
-#       The content of each section is its HTML, or undef if there is nothing for that section.
+#       The arrayref ( indexSections, tooltipSections ).
+#
+#       Index 0 is the symbols, index 1 is the numbers, and each following index is A through Z.  The content of each section
+#       is its HTML, or undef if there is nothing for that section.
 #
 sub BuildIndexSections #(index, outputFile)
     {
@@ -1660,25 +1669,38 @@ sub BuildIndexSections #(index, outputFile)
     $self->ResetToolTips();
 
     my $contentSections = [ ];
+    my $tooltipSections = [ ];
 
     for (my $section = 0; $section < scalar @$indexSections; $section++)
         {
         if (defined $indexSections->[$section])
             {
-            foreach my $indexEntry ( @{$indexSections->[$section]} )
+            my $total = scalar @{$indexSections->[$section]};
+
+            for (my $i = 0; $i < $total; $i++)
                 {
-                $contentSections->[$section] .= $self->BuildIndexElement($indexEntry, $outputFile);
+                my $id;
+
+                if ($i == 0)
+                    {
+                    if ($total == 1)
+                        {  $id = 'IOnlySymbolPrefix';  }
+                    else
+                        {  $id = 'IFirstSymbolPrefix';  };
+                    }
+                elsif ($i == $total - 1)
+                    {  $id = 'ILastSymbolPrefix';  };
+
+                $contentSections->[$section] .= $self->BuildIndexElement($indexSections->[$section]->[$i], $outputFile, $id);
                 };
 
-            # Add the tooltips to each section.
-
-            $contentSections->[$section] .= $self->BuildToolTips();
+            $tooltipSections->[$section] .= $self->BuildToolTips();
             $self->ResetToolTips(1);
             };
         };
 
 
-    return $contentSections;
+    return ( $contentSections, $tooltipSections );
     };
 
 
@@ -1687,14 +1709,25 @@ sub BuildIndexSections #(index, outputFile)
 #
 #   Converts a <NaturalDocs::SymbolTable::IndexElement> to HTML and returns it.  It will handle all sub-elements automatically.
 #
-sub BuildIndexElement #(element, outputFile)
+#   Parameters:
+#
+#       element - The <NaturalDocs::SymbolTable::IndexElement> to build.
+#       outputFile - The output <FileName> this is appearing in.
+#       id - The CSS ID to apply to the prefix.
+#
+#   Recursion-Only Parameters:
+#
+#       These parameters are used internally for recursion, and should not be set.
+#
+#       symbol - If the element is below symbol level, the <SymbolString> to use.
+#       package - If the element is below package level, the package <SymbolString> to use.
+#       hasPackage - Whether the element is below package level.  Is necessary because package may need to be undef.
+#
+sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
     {
-    # Hidden parameters: symbol, package, hasPackage.  These are used for recursion.
-    # HasPackage is included because package may be undef and we don't want that to affect recursion.
+    my ($self, $element, $outputFile, $id, $symbol, $package, $hasPackage) = @_;
 
-    my ($self, $element, $outputFile, $symbol, $package, $hasPackage) = @_;
-
-    my $output = '<div class=IEntry>';
+    my $output;
 
 
     # If we're doing a file sub-index entry...
@@ -1703,9 +1736,10 @@ sub BuildIndexElement #(element, outputFile)
         {
         my ($inputDirectory, $relativePath) = NaturalDocs::Settings->SplitFromInputDirectory($element->File());
 
-        $output .= $self->BuildIndexLink($self->StringToHTML($relativePath, ADD_HIDDEN_BREAKS), $symbol,
-                                                         $package, $element->File(), $element->Type(), $element->Prototype(),
-                                                         $element->Summary(), $outputFile, 'IFile');
+        $output =
+        $self->BuildIndexLink($self->StringToHTML($relativePath, ADD_HIDDEN_BREAKS), $symbol,
+                                        $package, $element->File(), $element->Type(), $element->Prototype(),
+                                        $element->Summary(), $outputFile, 'IFile')
         }
 
 
@@ -1713,7 +1747,8 @@ sub BuildIndexElement #(element, outputFile)
 
     elsif (defined $symbol)
         {
-        my $text = $self->IndexSymbolToHTML($element->Package(), $element);
+        my $text = NaturalDocs::SymbolString->ToText($element->Package(), $element->PackageSeparator());
+        $text = $self->StringToHTML($text, ADD_HIDDEN_BREAKS);
 
         if (!$element->HasMultipleFiles())
             {
@@ -1732,7 +1767,7 @@ sub BuildIndexElement #(element, outputFile)
             my $fileElements = $element->File();
             foreach my $fileElement (@$fileElements)
                 {
-                $output .= $self->BuildIndexElement($fileElement, $outputFile, $symbol, $element->Package(), 1);
+                $output .= $self->BuildIndexElement($fileElement, $outputFile, $id, $symbol, $element->Package(), 1);
                 };
 
             $output .=
@@ -1745,7 +1780,14 @@ sub BuildIndexElement #(element, outputFile)
 
     else
         {
-        my $symbolText = $self->IndexSymbolToHTML($element->Symbol(), $element);
+        my $symbolText = $self->StringToHTML($element->SortableSymbol(), ADD_HIDDEN_BREAKS);
+        my $symbolPrefix = $self->StringToHTML($element->StrippedPrefix());
+
+        $output .=
+        '<tr>'
+            . '<td class=ISymbolPrefix' . ($id ? ' id=' . $id : '') . '>'
+                . ($symbolPrefix || '&nbsp;')
+            . '</td><td class=IEntry>';
 
         if (!$element->HasMultiplePackages())
             {
@@ -1753,7 +1795,8 @@ sub BuildIndexElement #(element, outputFile)
 
             if (defined $element->Package())
                 {
-                $packageText = $self->IndexSymbolToHTML($element->Package(), $element);
+                $packageText = NaturalDocs::SymbolString->ToText($element->Package(), $element->PackageSeparator());
+                $packageText = $self->StringToHTML($packageText, ADD_HIDDEN_BREAKS);
                 };
 
             if (!$element->HasMultipleFiles())
@@ -1791,7 +1834,7 @@ sub BuildIndexElement #(element, outputFile)
                 my $fileElements = $element->File();
                 foreach my $fileElement (@$fileElements)
                     {
-                    $output .= $self->BuildIndexElement($fileElement, $outputFile, $element->Symbol(), $element->Package(), 1);
+                    $output .= $self->BuildIndexElement($fileElement, $outputFile, $id, $element->Symbol(), $element->Package(), 1);
                     };
 
                 $output .=
@@ -1810,16 +1853,16 @@ sub BuildIndexElement #(element, outputFile)
             my $packageElements = $element->Package();
             foreach my $packageElement (@$packageElements)
                 {
-                $output .= $self->BuildIndexElement($packageElement, $outputFile, $element->Symbol());
+                $output .= $self->BuildIndexElement($packageElement, $outputFile, $id, $element->Symbol());
                 };
 
             $output .=
             '</div>';
             };
+
+        $output .= '</td></tr>';
         };
 
-
-    $output .= '</div>';
 
     return $output;
     };
@@ -1854,53 +1897,6 @@ sub BuildIndexLink #(text, symbol, package, file, type, prototype, summary, outp
     return '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file)  )
                          . '#' . $self->SymbolToHTMLSymbol($symbol) . '" ' . $toolTipProperties . ' '
                 . 'class=' . $style . '>' . $text . '</a>';
-    };
-
-
-#
-#   Function: IndexSymbolToHTML
-#
-#   Converts an index <Symbol> or package <Symbol> to HTML.
-#
-#   Parameters:
-#
-#       symbol - The symbol to convert.
-#       element - The <NaturalDocs::SymbolTable::IndexElement> it comes from.  It doesn't matter if it's the top-level one, or
-#                      one from its packages or files.
-#
-#   Returns:
-#
-#       The symbol as HTML.
-#
-sub IndexSymbolToHTML #(symbol, element)
-    {
-    my ($self, $symbol, $element) = @_;
-
-    my $html;
-    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($symbol);
-
-    if (scalar @identifiers)
-        {
-        if ($element->HasMultiplePackages())
-            {  $element = $element->Package()->[0];  };
-        if ($element->HasMultipleFiles())
-            {  $element = $element->File()->[0];  };
-
-        my $separator;
-
-        if ($element->Type() eq ::TOPIC_FILE())
-            {  $separator = '.';  }
-        else
-            {  $separator = NaturalDocs::Languages->LanguageOf($element->File())->PackageSeparator();  };
-
-        $html = join($separator, @identifiers);
-        }
-    else
-        {  $html = $identifiers[0];  };
-
-    $html = $self->StringToHTML($html, ADD_HIDDEN_BREAKS);
-
-    return $html;
     };
 
 
