@@ -20,6 +20,13 @@ use base 'NaturalDocs::Languages::Language';
 
 
 #
+#   Topic: Inherits
+#
+#   <NaturalDocs::Languages::Language>
+#
+
+
+#
 #   Function: EndOfFunction
 #
 #   Returns the index of the end of the function prototype in a string.
