@@ -171,7 +171,7 @@ my @legacyTypes = ( TOPIC_GENERAL, TOPIC_CLASS, TOPIC_SECTION, TOPIC_FILE, TOPIC
 #       Section, Function, Variable, Property, Type, and Constant.  The default types can have their keywords or behaviors
 #       changed, though, either by editing the default file or by overriding them in the user file.
 #
-#       > Topic Keywords: [topic type]
+#       > Keywords: [topic type]
 #
 #       Starts a topic keyword section.  The name must correspond to a previously defined topic type.  It cannot be General.
 #
@@ -377,7 +377,7 @@ sub LoadFile #(isMain)
 
 
                 while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
-                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'topic keywords')
+                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
                     {
                     if ($keyword eq 'plural')
                         {
@@ -523,7 +523,7 @@ sub LoadFile #(isMain)
                     };
                 }
 
-            elsif ($keyword eq 'topic keywords')
+            elsif ($keyword eq 'keywords')
                 {
                 my $topicTypeName = $value;
                 my $topicType = $names{lc($topicTypeName)};
@@ -542,13 +542,13 @@ sub LoadFile #(isMain)
 
 
                 while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
-                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'topic keywords')
+                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
                     {
                     $value = lc($value);
 
                     if (defined $keyword)
                         {
-                        NaturalDocs::ConfigFile->AddError($keyword . ' lines are not allowed in Topic Keywords sections.');
+                        NaturalDocs::ConfigFile->AddError($keyword . ' lines are not allowed in Keywords sections.');
                         }
                     elsif ($value =~ /^([a-z0-9]+), ?([a-z0-9]+)$/)
                         {
@@ -579,7 +579,7 @@ sub LoadFile #(isMain)
 
             else
                 {
-                NaturalDocs::ConfigFile->AddError('The file must start with a Topic Type, Alter Topic Type, or Topic Keywords line.');
+                NaturalDocs::ConfigFile->AddError('The file must start with a Topic Type, Alter Topic Type, or Keywords line.');
                 last;
                 };
             };
