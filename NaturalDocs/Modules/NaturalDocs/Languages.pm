@@ -222,9 +222,9 @@ sub Load
     $self->LoadFile(1, \%tempExtensions, \%tempShebangStrings);  # Main
 
     if (!exists $languages{'shebang script'})
-        {
-        NaturalDocs::ConfigFile->AddError('You must define "Shebang Script" in the main languages file.');
-        };
+        {  NaturalDocs::ConfigFile->AddError('You must define "Shebang Script" in the main languages file.');  };
+    if (!exists $languages{'text file'})
+        {  NaturalDocs::ConfigFile->AddError('You must define "Text File" in the main languages file.');  };
 
     if (NaturalDocs::ConfigFile->ErrorCount())
         {
@@ -395,6 +395,12 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
                                                              . 'to override its settings.', $lineNumber);
             return;
             };
+
+        # Case is important with these two.
+        if ($lcLanguageName eq 'shebang script')
+            {  $languageName = 'Shebang Script';  }
+        elsif ($lcLanguageName eq 'text file')
+            {  $languageName = 'Text File';  };
 
         for (my $i = 3; $i < scalar @$properties; $i += 3)
             {
@@ -761,6 +767,13 @@ sub SaveFile #(isMain)
             if ($keyword eq 'language')
                 {
                 $currentProperties = { };
+
+                # Case is important with these two.
+                if (lc($value) eq 'shebang script')
+                    {  $value = 'Shebang Script';  }
+                elsif (lc($value) eq 'text file')
+                    {  $value = 'Text File';  };
+
                 push @segments, 'language', $value, $currentProperties;
                 }
 
@@ -1039,7 +1052,7 @@ sub SaveFile #(isMain)
     if ($isMain)
         {
         print FH_LANGUAGES "\n"
-        . "# The language \"Shebang Script\" MUST be defined in this file.\n";
+        . "# The languages \"Shebang Script\" and \"Text File\" MUST be defined in this file.\n";
         };
 
     my @topicTypeOrder = ( ::TOPIC_GENERAL(), ::TOPIC_CLASS(), ::TOPIC_FUNCTION(), ::TOPIC_VARIABLE(),
