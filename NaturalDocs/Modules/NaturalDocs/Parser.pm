@@ -672,6 +672,9 @@ sub MergeAutoTopics #(language, autoTopics)
         my $topic = $parsedFile[$topicIndex];
         my $autoTopic = $autoTopics->[$autoTopicIndex];
 
+        my $cleanTitle = $topic->Title();
+        $cleanTitle =~ s/[\t ]*\([^\(]*$//;
+
         # Add the auto-topic if it's higher in the file than the current topic.
         if ($autoTopic->LineNumber < $topic->LineNumber())
             {
@@ -691,9 +694,7 @@ sub MergeAutoTopics #(language, autoTopics)
             }
 
         # Transfer information if we have a match.
-        elsif ($topic->Type() == $autoTopic->Type() &&
-                index( $topic->Title(), substr($autoTopic->Title(),
-                                                           $language->IgnoredPrefixLength( $autoTopic->Title(), $autoTopic->Type() ))) != -1)
+        elsif ($topic->Type() == $autoTopic->Type() && index($autoTopic->Title(), $cleanTitle) != -1)
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
