@@ -20,112 +20,46 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Function: EndOfPrototype
-#
-#   Oracle 8.1's object oriented extensions allow functions and variables to end with a comma or a closing parenthesis.
-#
-#   (start code)
-#
-#   CREATE OR REPLACE TYPE obj_Test AS OBJECT (
-#       dummy NUMBER,
-#       dummy2 VARCHAR2(2),
-#       MEMBER FUNCTION test( p_lala IN NUMBER ) RETURN NUMBER,
-#       MEMBER FUNCTION test_2 RETURN NUMBER,
-#       MEMBER PROCEDURE test_3( p_lala IN NUMBER, p_lala2 IN NUMBER, p_lala3 OUT VARCHAR2 )
-#   ) NOT FINAL;
-#
-#   (end code)
-#
-#   Both symbols are included as enders.  We need to generate false positives for commas that appear within parenthesis, as
-#   well as for the closing parenthesis if an opening one is present.
+#   Function: OnPrototypeEnd
 #
 #   Microsoft's SQL specifies parameters as shown below.
 #
 #   > CREATE PROCEDURE Test @as int, @foo int AS ...
 #
 #   Having a parameter @is or @as is perfectly valid even though those words are also used to end the prototype.  We need to
-#   generate false positives created by this.  Also note that it does not have parenthesis for variable lists.  We generate false
-#   positives for all commas if the prototype doesn't have parenthesis but does have @ characters.
+#   ignore text-based enders preceded by an at sign.  Also note that it does not have parenthesis for parameter lists.  We need to
+#   skip all commas if the prototype doesn't have parenthesis but does have @ characters.
 #
-sub EndOfPrototype #(type, stringRef, falsePositives)
+#   Parameters:
+#
+#       type - The <TopicType> of the prototype.
+#       prototypeRef - A reference to the prototype so far, minus the ender in dispute.
+#       ender - The ender symbol.
+#
+#   Returns:
+#
+#       ENDER_ACCEPT - The ender is accepted and the prototype is finished.
+#       ENDER_IGNORE - The ender is rejected and parsing should continue.  Note that the prototype will be rejected as a whole
+#                                  if all enders are ignored before reaching the end of the code.
+#       ENDER_ACCEPT_AND_CONTINUE - The ender is accepted so the prototype may stand as is.  However, the prototype might
+#                                                          also continue on so continue parsing.  If there is no accepted ender between here and
+#                                                          the end of the code this version will be accepted instead.
+#       ENDER_REVERT_TO_ACCEPTED - The expedition from ENDER_ACCEPT_AND_CONTINUE failed.  Use the last accepted
+#                                                        version and end parsing.
+#
+sub OnPrototypeEnd #(type, prototypeRef, ender)
     {
-    my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
+    my ($self, $type, $prototypeRef, $ender) = @_;
 
-    my $falsePositives;
+    if ($ender =~ /^[a-z]+$/i && substr($$prototypeRef, -1) eq '@')
+        {  return ::ENDER_IGNORE();  }
 
-    if ($type eq ::TOPIC_FUNCTION() || $type eq ::TOPIC_VARIABLE() || $type eq ::TOPIC_PROPERTY())
-        {
-        $falsePositives = { };
+    elsif ($type eq ::TOPIC_FUNCTION() && $ender eq ',' &&
+            index($$prototypeRef, '@') != -1 && index($$prototypeRef, '(') == -1)
+        {  return ::ENDER_IGNORE();  }
 
-
-        # Generate false positives for @keyword enders.
-
-        foreach my $ender (@{$self->FunctionEnders()})
-            {
-            if ($ender =~ /^[a-z]/i)
-                {
-                my $index = 0;
-
-                for (;;)
-                    {
-                    $index = index($$stringRef, '@' . $ender, $index);
-
-                    if ($index == -1)
-                        {  last;  };
-
-                    # +1 because the positive will be after the @ symbol.
-                    $falsePositives->{$index + 1} = 1;
-                    $index++;
-                    };
-                };
-            };
-
-
-        # Generate a false positive for the closing parenthesis if there is an opening one.
-
-        my $openingParenthesis = index($$stringRef, '(');
-
-        if ($openingParenthesis != -1)
-            {
-            my $closingParenthesis = index($$stringRef, ')', $openingParenthesis);
-
-            if ($closingParenthesis != -1)
-                {  $falsePositives->{$closingParenthesis} = 1;  };
-
-
-            # Also generate false positives for all commas appearing inside the parenthesis.
-
-            my $index = $openingParenthesis;
-
-            for (;;)
-                {
-                $index = index($$stringRef, ',', $index + 1);
-
-                if ($index == -1 || ($closingParenthesis != -1 && $index > $closingParenthesis))
-                    {  last;  };
-
-                $falsePositives->{$index} = 1;
-                };
-            }
-
-        # If there are no parenthesis, the prototype is a function, and it contains an @ character, all commas are false positives.
-        elsif ($type eq ::TOPIC_FUNCTION() && index($$stringRef, '@') != -1)
-            {
-            my $index = index($$stringRef, ',');
-
-            while ($index != -1)
-                {
-                $falsePositives->{$index} = 1;
-                $index = index($$stringRef, ',', $index + 1);
-                };
-            };
-
-
-        if (!scalar keys %$falsePositives)
-            {  $falsePositives = undef;  };
-        };
-
-    return $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
+    else
+        {  return ::ENDER_ACCEPT();  };
     };
 
 
