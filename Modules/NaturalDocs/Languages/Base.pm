@@ -250,16 +250,10 @@ sub ParsePrototype #(type, prototype)
                 if ($token eq ')' && scalar @symbolStack == 1)
                     {
                     if ($parameter ne ' ')
-                        {
-                        push @parameterLines, $parameter;
-                        $finishedParameters = 1;
-                        $afterParameters .= $token;
-                        }
-                    else
-                        {
-                        $beforeParameters .= $token;
-                        $parameter = undef;
-                        }
+                        {  push @parameterLines, $parameter;  };
+
+                    $finishedParameters = 1;
+                    $afterParameters .= $token;
                     }
                 else
                     {  $parameter .= $token;  };
@@ -502,7 +496,7 @@ sub ParsePascalParameterLine #(line)
                 {  $type .= $token;  };
             }
 
-        elsif ($token eq ':')
+        elsif ($token eq ':' && !scalar @symbolStack)
             {
             $name .= $token;
             $afterName = 1;
