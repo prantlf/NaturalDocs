@@ -344,6 +344,11 @@ sub ParsePrototype #(type, prototype)
 #
 #   Parses a prototype parameter line and returns it as a <NaturalDocs::Languages::Prototype::Parameter> object.
 #
+#   This vesion assumes a C++ style line.  If you need a Pascal style line, override this function to forward to
+#   <ParsePascalParameterLine()>.
+#
+#   > Function(parameter, type parameter, type parameter = value);
+#
 sub ParseParameterLine #(line)
     {
     my ($self, $line) = @_;
@@ -457,7 +462,11 @@ sub ParseParameterLine #(line)
 #   Parses a Pascal-like prototype parameter line and returns it as a <NaturalDocs::Languages::Prototype::Parameter> object.
 #   Pascal lines are as follows:
 #
-#   Function (name: type; name, name: type := value)
+#   > Function (name: type; name, name: type := value)
+#
+#   Also supports ActionScript lines
+#
+#   > Function (name: type, name, name: type = value)
 #
 sub ParsePascalParameterLine #(line)
     {
@@ -511,7 +520,7 @@ sub ParsePascalParameterLine #(line)
 
         elsif ($afterName)
             {
-            if ($token eq ':=' && !scalar @symbolStack)
+            if (($token eq ':=' || $token eq '=') && !scalar @symbolStack)
                 {
                 $defaultValue .= $token;
                 $afterDefaultValue = 1;
