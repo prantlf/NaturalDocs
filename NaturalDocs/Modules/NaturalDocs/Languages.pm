@@ -152,12 +152,6 @@ my @mainLanguageNames;
 #       another language to redefine them.
 #
 #
-#       > Package Separator: [symbol]
-#
-#       Defines the default package separator symbol, such as . or ::.  This is for presentation only and will not affect how
-#       Natural Docs links are parsed.  The default is a dot.
-#
-#
 #       > Ignore[d] Prefix[es] in Index: [prefix] [prefix] ...
 #       > Ignore[d] [Topic Type] Prefix[es] in Index: [prefix] [prefix] ...
 #       > [Add/Replace] Ignore[d] Prefix[es] in Index: ...
@@ -181,6 +175,12 @@ my @mainLanguageNames;
 #       > Block Comment[s]: [opening symbol] [closing symbol] [opening symbol] [closing symbol] ...
 #
 #       Defines a space-separated list of symbol pairs that are used for block comments, if any.  ex. "Block Comment: /* */".
+#
+#
+#       > Package Separator: [symbol]
+#
+#       Defines the default package separator symbol, such as . or ::.  This is for presentation only and will not affect how
+#       Natural Docs links are parsed.  The default is a dot.
 #
 #
 #       > [Topic Type] Prototype Ender[s]: [symbol] [symbol] ...
@@ -209,7 +209,16 @@ my @mainLanguageNames;
 #
 #       Specifies the Perl package that has the parsing routines necessary for full language support.
 #
-
+#
+#   Revisions:
+#
+#       1.32:
+#
+#           - Package Separator is now a basic language support only property.
+#
+#       1.3:
+#
+#           - The file was introduced.
 
 
 ###############################################################################
@@ -311,7 +320,7 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
 
     if ($version = NaturalDocs::ConfigFile->Open($file))
         {
-        # The format hasn't changed since the file was introduced.
+        # The format hasn't changed significantly since the file was introduced.
 
         if ($status == ::FILE_CHANGED())
             {
@@ -332,7 +341,7 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
                 if ($isMain && $properties[1] eq 'language')
                     {  push @mainLanguageNames, $properties[2];  };
 
-                $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);
+                $self->ProcessProperties(\@properties, $version, $tempExtensions, $tempShebangStrings);
                 @properties = ( );
                 };
 
@@ -355,7 +364,7 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
             if ($isMain && $properties[1] eq 'language')
                 {  push @mainLanguageNames, $properties[2];  };
 
-            $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);
+            $self->ProcessProperties(\@properties, $version, $tempExtensions, $tempShebangStrings);
             };
         }
 
@@ -376,15 +385,16 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
 #
 #       properties - An arrayref of properties where each entry is the three consecutive values ( lineNumber, keyword, value ).
 #                         It must start with the Language or Alter Language property.
+#       version - The <VersionInt> of the file.
 #       tempExtensions - A hashref where the keys are all-lowercase extensions, and the values are arrayrefs of the all-lowercase
 #                                 names of the languages that defined them, earliest first.  It will be changed by this function.
 #       tempShebangStrings - A hashref where the keys are all-lowercase shebang strings, and the values are arrayrefs of the
 #                                        all-lowercase names of the languages that defined them, earliest first.  It will be changed by this
 #                                        function.
 #
-sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
+sub ProcessProperties #(properties, version, tempExtensions, tempShebangStrings)
     {
-    my ($self, $properties, $tempExtensions, $tempShebangStrings) = @_;
+    my ($self, $properties, $version, $tempExtensions, $tempShebangStrings) = @_;
 
 
     # First validate the name and check whether the language has full support.
@@ -424,6 +434,10 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
             {  $languageName = 'Shebang Script';  }
         elsif ($lcLanguageName eq 'text file')
             {  $languageName = 'Text File';  };
+
+
+        # Go through the properties looking for whether the language has basic or full support and which package to use to create
+        # it.
 
         for (my $i = 3; $i < scalar @$properties; $i += 3)
             {
@@ -606,7 +620,17 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
 
         elsif ($keyword eq 'package separator')
             {
-            $language->SetPackageSeparator($value);
+            if ($fullLanguageSupport)
+                {
+                # Prior to 1.32, package separator was used with full language support too.  Accept it without complaining, even though
+                # we ignore it.
+                if ($version >= NaturalDocs::Version->FromString('1.32'))
+                    {
+                    NaturalDocs::ConfigFile->AddError('You cannot define this property when using full language support.', $lineNumber);
+                    };
+                }
+            else
+                {  $language->SetPackageSeparator($value);  };
             }
 
         elsif ($keyword =~ /^(?:(add|replace) )?ignored? (?:(.+) )?prefix(?:es)? in index$/)
@@ -788,8 +812,9 @@ sub SaveFile #(isMain)
     my @ignoredExtensions;
 
     my $currentProperties;
+    my $version;
 
-    if (NaturalDocs::ConfigFile->Open($file))
+    if ($version = NaturalDocs::ConfigFile->Open($file))
         {
         # We can assume the file is valid.
 
@@ -1029,10 +1054,7 @@ sub SaveFile #(isMain)
         };
 
     print FH_LANGUAGES
-    "# Package Separator: [symbol]\n"
-    . "#    Defines the default package separator symbol.  The default is a dot.\n"
-    . "#\n"
-    . "# Ignore Prefixes in Index: [prefix] [prefix] ...\n"
+    "# Ignore Prefixes in Index: [prefix] [prefix] ...\n"
     . (!$isMain ? "# [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...\n#\n" : '')
     . "# Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n"
     . (!$isMain ? "# [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n" : '')
@@ -1049,6 +1071,9 @@ sub SaveFile #(isMain)
     . "# Block Comments: [opening sym] [closing sym] [opening sym] [closing sym] ...\n"
     . "#    Defines a space-separated list of symbol pairs that are used for block\n"
     . "#    comments, if any.\n"
+    . "#\n"
+    . "# Package Separator: [symbol]\n"
+    . "#    Defines the default package separator symbol.  The default is a dot.\n"
     . "#\n"
     . "# [Topic Type] Prototype Enders: [symbol] [symbol] ...\n"
     . "#    When defined, Natural Docs will attempt to get a prototype from the code\n"
@@ -1204,7 +1229,9 @@ sub SaveFile #(isMain)
 
         if (exists $properties->{'package separator'})
             {
-            print FH_LANGUAGES '   Package Separator: ' . $properties->{'package separator'} . "\n";
+            # Prior to 1.32, Package Separator was allowed for full language support.  Ignore it when reformatting.
+            if ($version >= NaturalDocs::Version->FromString('1.32') || !exists $properties->{'full language support'})
+                {  print FH_LANGUAGES '   Package Separator: ' . $properties->{'package separator'} . "\n";  };
             };
 
         if (exists $properties->{'prototype enders'})
