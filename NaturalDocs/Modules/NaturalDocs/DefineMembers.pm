@@ -11,7 +11,8 @@
 #   that you can *not* use multiple inheritance with this method.
 #
 #   If a parameter ends in parenthesis, it will be generated as an accessor for the previous member.  If it also starts with "Set",
-#   the accessor will accept a single parameter to replace the value with.
+#   the accessor will accept a single parameter to replace the value with.  If it's followed with "duparrayref", it will assume the
+#   parameter is either an arrayref or undef, and if the former, will duplicate it to set the value.
 #
 #   Example:
 #
@@ -19,7 +20,8 @@
 #   >
 #   > use NaturalDocs::DefineMembers 'VAR_A', 'VarA()', 'SetVarA()',
 #   >                                'VAR_B', 'VarB()',
-#   >                                'VAR_C';
+#   >                                'VAR_C',
+#   >                                'VAR_D', 'VarD()', 'SetVarD() duparrayref';
 #   >
 #   > sub SetC #(C)
 #   >    {
@@ -48,19 +50,33 @@ sub import #(member, member, member ...)
     my $lastMemberName;
 
     if (defined $parent && $parent->can('END_OF_MEMBERS'))
-        {  $member = $parent->END_OF_MEMBERS();  };
+        {  $memberConstant = $parent->END_OF_MEMBERS();  };
 
     my $code = '{ package ' . $package . ";\n";
 
     foreach my $parameter (@parameters)
         {
-        if ($parameter =~ /^(.+)\(\)$/)
+        if ($parameter =~ /^(.+)\(\) *(duparrayref)?$/i)
             {
-            my $functionName = $1;
+            my ($functionName, $pragma) = ($1, lc($2));
 
             if ($functionName =~ /^Set/)
                 {
-                $code .= 'sub ' . $functionName . ' { $_[0]->[' . $lastMemberName . '] = $_[1];  };' . "\n";
+                if ($pragma eq 'duparrayref')
+                    {
+                    $code .=
+                    'sub ' . $functionName . '
+                        {
+                        if (defined $_[1])
+                            {  $_[0]->[' . $lastMemberName . '] = [ @{$_[1]} ];  }
+                        else
+                            {  $_[0]->[' . $lastMemberName . '] = undef;  };
+                        };' . "\n";
+                    }
+                else
+                    {
+                    $code .= 'sub ' . $functionName . ' { $_[0]->[' . $lastMemberName . '] = $_[1];  };' . "\n";
+                    };
                 }
             else
                 {
