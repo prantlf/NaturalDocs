@@ -331,7 +331,7 @@ Topic: Summary Structure
     >
     >   </Summary>
 
-    On to the table content.  Cells may have the <SMarked> class, which means they should be tinted for easier readablity.
+    On to the table content.  Rows may have the <SMarked> style, which means they should be tinted for easier readablity.
 
     Since we many attributes left to apply, they're done with a kludgy mess of styles within each cell.  It's hacky and verbose, but it
     works and is compatible everywhere.  We apply the type, whether it's an entry or a description, and if it's in a group or class as
