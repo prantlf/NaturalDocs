@@ -25,12 +25,12 @@ package NaturalDocs::Menu::Entry;
 #
 #   The object is implemented as a blessed arrayref with the indexes below.
 #
-#       TYPE      - The type of entry.  Will be one of the <Menu Entry Types>.
+#       TYPE      - The <MenuEntryType>
 #       TITLE     - The title of the entry.
-#       TARGET  - The target of the entry.  If the type is <MENU_FILE>, it will be the source file name.  If the type is <MENU_LINK>,
-#                       it will be the URL.  If the type is <MENU_GROUP>, it will be an arrayref of <NaturalDocs::Menu::Entry>
-#                       objects representing the group's content.  If the type is <MENU_INDEX>, it will be
-#                       one of the <Topic Types> or undef for the general index.
+#       TARGET  - The target of the entry.  If the type is <MENU_FILE>, it will be the source <FileName>.  If the type is
+#                       <MENU_LINK>, it will be the URL.  If the type is <MENU_GROUP>, it will be an arrayref of
+#                       <NaturalDocs::Menu::Entry> objects representing the group's content.  If the type is <MENU_INDEX>, it will be
+#                       a <TopicType> or undef for the general index.
 #       FLAGS    - Any <Menu Entry Flags> that apply.
 #
 use constant TYPE => 0;
@@ -41,7 +41,7 @@ use constant FLAGS => 3;
 
 
 ###############################################################################
-# Group: Modification Functions
+# Group: Functions
 
 #
 #   Function: New
@@ -50,10 +50,10 @@ use constant FLAGS => 3;
 #
 #   Parameters:
 #
-#       type     - The type of the entry.  Must be one of the <Menu Entry Types>.
+#       type     - The <MenuEntryType>.
 #       title      - The title of the entry.
-#       target   - The target of the entry, if applicable.  If the type is <MENU_FILE>, use the source file name.  If the type is
-#                     <MENU_LINK>, use the URL.  If the type is <MENU_INDEX>, use one of the <Topic Types> or undef for general.
+#       target   - The target of the entry, if applicable.  If the type is <MENU_FILE>, use the source <FileName>.  If the type is
+#                     <MENU_LINK>, use the URL.  If the type is <MENU_INDEX>, use the <TopicType> or undef for general.
 #                     Otherwise set it to undef.
 #       flags     - Any <Menu Entry Flags> that apply.
 #
@@ -75,51 +75,26 @@ sub New #(type, title, target, flags)
     };
 
 
+#   Function: Type
+#   Returns the <MenuEntryType>.
+sub Type
+    {  return $_[0]->[TYPE];  };
+
+#   Function: Title
+#   Returns the title of the entry.
+sub Title
+    {  return $_[0]->[TITLE];  };
+
 # Function: SetTitle
 # Replaces the entry's title.
 sub SetTitle #(title)
     {  $_[0]->[TITLE] = $_[1];  };
 
-# Function: SetTarget
-# Replaces the entry's target.
-sub SetTarget #(target)
-    {  $_[0]->[TARGET] = $_[1];  };
-
-# Function: SetFlags
-# Replaces the <Menu Entry Flags>.
-sub SetFlags #(flags)
-    {  $_[0]->[FLAGS] = $_[1];  };
-
-
-###############################################################################
-# Group: Information Functions
-
-
-#
-#   Function: Type
-#
-#   Returns the type of the entry.  Will be one of the <Menu Entry Types>.
-#
-sub Type
-    {  return $_[0]->[TYPE];  };
-
-
-#
-#   Function: Title
-#
-#   Returns the title of the entry.
-#
-sub Title
-    {
-    return $_[0]->[TITLE];
-    };
-
-
 #
 #   Function: Target
 #
-#   Returns the target of the entry, if applicable.  If the type is <MENU_FILE>, it returns the source file name.  If the type is
-#   <MENU_LINK>, it returns the URL.  If the type is <MENU_INDEX>, it returns one of the <Topic Types> or undef for the
+#   Returns the target of the entry, if applicable.  If the type is <MENU_FILE>, it returns the source <FileName>.  If the type is
+#   <MENU_LINK>, it returns the URL.  If the type is <MENU_INDEX>, it returns the <TopicType> or undef for the
 #   general index.  Otherwise it returns undef.
 #
 sub Target
@@ -133,16 +108,21 @@ sub Target
         {  return $self->[TARGET];  };
     };
 
+# Function: SetTarget
+# Replaces the entry's target.
+sub SetTarget #(target)
+    {  $_[0]->[TARGET] = $_[1];  };
 
-#
 #   Function: Flags
-#
 #   Returns the <Menu Entry Flags>.
-#
 sub Flags
-    {
-    return $_[0]->[FLAGS];
-    };
+    {  return $_[0]->[FLAGS];  };
+
+# Function: SetFlags
+# Replaces the <Menu Entry Flags>.
+sub SetFlags #(flags)
+    {  $_[0]->[FLAGS] = $_[1];  };
+
 
 
 ###############################################################################
