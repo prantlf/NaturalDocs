@@ -172,7 +172,7 @@ package NaturalDocs::Builder::Base;
 #
 sub CommandLineOption
     {
-    die $_[0] . " didn't define CommandLineOption().\n";
+    NaturalDocs::Error->SoftDeath($_[0] . " didn't define CommandLineOption().");
     };
 
 
@@ -190,7 +190,7 @@ sub CommandLineOption
 #
 sub BuildFile #(sourceFile, parsedFile)
     {
-    die $_[0] . " didn't define BuildFile().\n";
+    NaturalDocs::Error->SoftDeath($_[0] . " didn't define BuildFile().");
     };
 
 

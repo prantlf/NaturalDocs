@@ -44,7 +44,10 @@ sub CheckCompatibility
     };
 
     if ($@)
-        {  die "Natural Docs requires a newer version of File::Spec than you have.\nYou must either upgrade it or upgrade Perl.\n";  };
+        {
+        NaturalDocs::Error->SoftDeath("Natural Docs requires a newer version of File::Spec than you have.  "
+                                                    . "You must either upgrade it or upgrade Perl.");
+        };
     };
 
 
