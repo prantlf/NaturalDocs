@@ -24,8 +24,6 @@ require Exporter;
 
                    'RESOLVE_RELATIVE', 'RESOLVE_ABSOLUTE', 'RESOLVE_NOPLURAL', 'RESOLVE_NOUSING',
 
-                   'AUTOGROUP_NONE', 'AUTOGROUP_BASIC', 'AUTOGROUP_FULL',
-
                    'MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
                    'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL', 'MENU_DATA',
 
@@ -70,24 +68,6 @@ require Exporter;
 use constant REFERENCE_TEXT => 1;
 use constant REFERENCE_CH_CLASS => 2;
 use constant REFERENCE_CH_PARENT => 3;
-
-
-#
-#   Constants: AutoGroupLevel
-#
-#   The level of auto-grouping to do.
-#
-#   AUTOGROUP_NONE - No auto-grouping at all.
-#   AUTOGROUP_BASIC - Functions, variables, and properties only.
-#   AUTOGROUP_FULL - Everything auto-groupable as specified in <NaturalDocs::Topics>.
-#
-#   Dependencies:
-#
-#       - <PreviousSettings.nd> requires that these values fit into a UInt8, i.e. are <= 255.
-#
-use constant AUTOGROUP_NONE => 1;
-use constant AUTOGROUP_BASIC => 2;
-use constant AUTOGROUP_FULL => 3;
 
 
 #
