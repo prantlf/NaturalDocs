@@ -50,12 +50,14 @@ use constant REFERENCES => 2;
 #
 sub New
     {
+    my $package = shift;
+
     # Let's make it safe, since normally you can pass values to New.  Having them just be ignored would be an obscure error.
     if (scalar @_)
-        {  die "You can't pass values to NaturalDocs::SymbolTable::Symbol::New()\n";  };
+        {  die "You can't pass values to NaturalDocs::SymbolTable::Symbol->New()\n";  };
 
     my $object = [ undef, undef, undef ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };
@@ -85,7 +87,7 @@ sub AddDefinition #(file, type, prototype, summary)
 
     if (!exists $self->[DEFINITIONS]{$file})
         {
-        $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype, $summary);
+        $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition->New($type, $prototype, $summary);
         };
     };
 

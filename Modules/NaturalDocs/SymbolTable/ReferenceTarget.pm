@@ -62,8 +62,11 @@ use constant SUMMARY => 5;
 sub New #(class, symbol, file, type, prototype, summary)
     {
     # DEPENDENCY: This code depends on the order of the member constants.
+
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };

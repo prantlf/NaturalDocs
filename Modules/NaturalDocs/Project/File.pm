@@ -64,8 +64,10 @@ sub New #(hasContent, lastModified, status, defaultMenuTitle)
     # DEPENDENCY: This function depends on its parameter list being in the same order as the member constants.  If either order
     # changes, this function needs to be changed.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };

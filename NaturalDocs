@@ -182,11 +182,6 @@ use integer;
 #
 #       Greg Valure (gregvalure@naturaldocs.org)
 #
-#
-#   About: Contributors
-#
-#       Brett Michael - Contributed to language definitions for C#, Visual Basic, Python, Ada, and Pascal.
-#
 
 ###############################################################################
 #
@@ -232,9 +227,9 @@ use integer;
 #         <NaturalDocs::Builder>, you don't need to worry about this unless you're writing one.  How any other functions in these
 #         packages are called depends on the package, since they shouldn't be called externally anyway.
 #
-#       - All other lower-level NaturalDocs:: packages (i.e. <NaturalDocs::Project::File>, <NaturalDocs::Languages::Language>)
-#         are object packages.  You call New() as Package::Function(), and then everything else is called on the object with
-#         Object->Function().
+#       - All other lower-level NaturalDocs:: packages (i.e. <NaturalDocs::Project::File>, <NaturalDocs::Parser::ParsedTopic>)
+#         are object packages.  You call New() as Package->New(), and then everything else is called on the object as
+#         $object->Function().
 #
 
 

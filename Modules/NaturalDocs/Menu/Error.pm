@@ -50,8 +50,10 @@ sub New #(line, description)
     {
     # DEPENDENCY: This gode depends on the order of the constants.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };

@@ -61,8 +61,10 @@ sub New #(type, title, target, flags)
     {
     # DEPENDENCY: This gode depends on the order of the constants.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     if ($object->[TYPE] == ::MENU_GROUP())
         {  $object->[TARGET] = [ ];  };
@@ -207,7 +209,7 @@ sub MarkEndOfOriginal
 
     if (($self->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
         {
-        $self->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_ENDOFORIGINAL(), undef, undef, undef) );
+        $self->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_ENDOFORIGINAL(), undef, undef, undef) );
         $self->SetFlags( $self->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
         };
     };

@@ -49,13 +49,15 @@ use constant CURRENT_INTERPRETATION => 2;
 #
 sub New
     {
+    my $package = shift;
+
     # Let's make it safe, since normally you can pass values to New.  Having them just be ignored would be an obscure error.
     if (scalar @_)
-        {  die "You can't pass values to NaturalDocs::SymbolTable::Reference::New()\n";  };
+        {  die "You can't pass values to NaturalDocs::SymbolTable::Reference->New()\n";  };
 
     # DEPENDENCY: This code depends on the order of the member constants.
     my $object = [ { }, { }, undef ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };

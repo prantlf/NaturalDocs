@@ -70,8 +70,10 @@ sub New #(type, name, class, scope, prototype, summary, body)
     {
     # DEPENDENCY: This depends on the order of the parameter list being the same as the constants.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };
