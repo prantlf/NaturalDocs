@@ -56,6 +56,19 @@ blockquote {
 .IE blockquote {
     width: 400px;  }
 
+.Gecko blockquote {
+    padding-bottom: .5em;
+    }
+
+/*  Turn off scrolling when printing.  */
+@media print {
+    blockquote {
+        overflow: visible;
+        }
+    .IE blockquote {
+        width: auto;
+        }
+    }
 
 
 
