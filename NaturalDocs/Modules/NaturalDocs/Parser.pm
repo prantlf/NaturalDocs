@@ -287,7 +287,7 @@ sub Parse
     NaturalDocs::Parser::Native->Start();
     @parsedFile = ( );
 
-    my ($autoTopics, $scopeRecord, $exportedSymbols) = $language->ParseFile($sourceFile, \@parsedFile);
+    my ($autoTopics, $scopeRecord) = $language->ParseFile($sourceFile, \@parsedFile);
 
 
     $self->AddToClassHierarchy();
