@@ -86,14 +86,49 @@ sub Add #(package)
 #
 sub Run
     {
+    # Determine what we're doing.
+
     my @outputFormats = keys %{NaturalDocs::Settings::OutputFormats()};
     my $filesToBuild = NaturalDocs::Project::FilesToBuild();
 
     my $numberToPurge = scalar keys %{NaturalDocs::Project::FilesToPurge()};
     my $numberToBuild = scalar keys %$filesToBuild;
 
+    my %indexesToBuild;
+    my %indexesToPurge;
+
+    my $currentIndexes = NaturalDocs::Menu::Indexes();
+    my $previousIndexes = NaturalDocs::Menu::PreviousIndexes();
+
+    foreach my $index (keys %$currentIndexes)
+        {
+        if (NaturalDocs::Settings::RebuildAll() || NaturalDocs::SymbolTable::IndexChanged($index eq '*' ? undef : $index) ||
+            !exists $previousIndexes->{$index})
+            {
+            $indexesToBuild{$index} = 1;
+            };
+        };
+
+    # All indexes that still exist should have been deleted.
+    foreach my $index (keys %$previousIndexes)
+        {
+        if (!exists $currentIndexes->{$index})
+            {
+            $indexesToPurge{$index} = 1;
+            };
+        };
+
+    my $numberOfIndexesToBuild = scalar keys %indexesToBuild;
+    my $numberOfIndexesToPurge = scalar keys %indexesToPurge;
+
+
+    # Start the build process
+
     foreach my $format (@outputFormats)
-        {  $format->BeginBuild($numberToPurge, $numberToBuild, NaturalDocs::Menu::HasChanged());  };
+        {
+        $format->BeginBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
+                                       NaturalDocs::Menu::HasChanged());
+        };
 
     if ($numberToPurge)
         {
@@ -102,6 +137,15 @@ sub Run
 
         foreach my $format (@outputFormats)
             {  $format->PurgeFiles();  };
+        };
+
+    if ($numberOfIndexesToPurge)
+        {
+        if (!NaturalDocs::Settings::IsQuiet())
+            {  print 'Purging ' . $numberOfIndexesToPurge . ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . "...\n";  };
+
+        foreach my $format (@outputFormats)
+            {  $format->PurgeIndexes(\%indexesToPurge);  };
         };
 
     if ($numberToBuild)
@@ -118,6 +162,18 @@ sub Run
             };
         };
 
+    if ($numberOfIndexesToBuild)
+        {
+        if (!NaturalDocs::Settings::IsQuiet())
+            {  print 'Building ' . $numberOfIndexesToBuild . ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . "...\n";  };
+
+        foreach my $index (keys %indexesToBuild)
+            {
+            foreach my $format (@outputFormats)
+                {  $format->BuildIndex($index eq '*' ? undef : $index);  };
+            };
+        };
+
     if (NaturalDocs::Menu::HasChanged())
         {
         if (!NaturalDocs::Settings::IsQuiet())
@@ -128,7 +184,10 @@ sub Run
         };
 
     foreach my $format (@outputFormats)
-        {  $format->EndBuild($numberToPurge, $numberToBuild, NaturalDocs::Menu::HasChanged());  };
+        {
+        $format->EndBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
+                                       NaturalDocs::Menu::HasChanged());
+        };
     };
 
 

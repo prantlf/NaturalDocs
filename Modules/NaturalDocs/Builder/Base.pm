@@ -27,7 +27,9 @@ package NaturalDocs::Builder::Base;
 #
 #   - <BeginBuild()> will always be called.
 #   - <PurgeFiles()> will be called next only if there's files that need to be purged.
+#   - <PurgeIndexes()> will be called next only if there's indexes that need to be purged.
 #   - <BuildFile()> will be called once for each file that needs to be built, if any.
+#   - <BuildIndex()> will be called once for each index that changed and is part of the menu, if any.
 #   - <UpdateMenu()> will be called next only if the menu changed.
 #   - <EndBuild()> will always be called.
 #
@@ -51,7 +53,11 @@ package NaturalDocs::Builder::Base;
 #
 #       Implement <PurgeFiles()> to delete the output files associated with the purged files.
 #
+#       Implement <PurgeIndexes()> to delete the output files associated with the purged indexes.
+#
 #       Implement <BuildFile()> to create an output file for the parsed source file.  Use the menu function described earlier.
+#
+#       Implement <BuildIndex()> to create an output file for each index.  Use the menu function described earlier for each page.
 #
 #       Implement <UpdateMenu()> to go through the list of unbuilt files and update their menus.  You can get the list from
 #       <NaturalDocs::Project::UnbuiltFilesWithContent()>.  You need to open their output files, replace the menu, and save it back
@@ -59,6 +65,8 @@ package NaturalDocs::Builder::Base;
 #       _very_ inefficient since there could potentially be a _lot_ of files in this group.  Plus, <NaturalDocs::SymbolTable> may not
 #       be available to this function, so this is impossible anyway.  (Without changing the main code, that is, and I'm not going to
 #       do that because it's grossly inefficient.  So just suck it up.)
+#
+#       Also make sure <UpdateMenu()> goes through the unchanged indexes and updates them as well.
 #
 #       <EndBuild()> isn't important.  You don't need to implement it.
 #
@@ -72,7 +80,11 @@ package NaturalDocs::Builder::Base;
 #
 #       Implement <PurgeFiles()> to delete the output files associated with the purged files.
 #
+#       Implement <PurgeIndexes()> to delete the output files associated with the purged indexes.
+#
 #       Implement <BuildFile()> to generate an output file from the parsed source file.
+#
+#       Implement <BuildIndex()> to generate an output file for each index.
 #
 #       Implement <UpdateMenu()> to rebuild the menu file.
 #
@@ -89,12 +101,16 @@ package NaturalDocs::Builder::Base;
 #
 #       Implement <PurgeFiles()> to delete the intermediate files associated with the purged files.
 #
+#       Implement <PurgeIndexes()> to delete the intermediate files associated with the purged indexes.
+#
 #       Implement <BuildFile()> to generate an intermediate file from the parsed source file.
+#
+#       Implement <BuildIndex()> to generate an intermediate file for the specified index.
 #
 #       Implement <UpdateMenu()> to generate the intermediate file for the menu.
 #
-#       Implement <EndBuild()> so that if any of the parameters are true, it stiches the intermediate files together into the final
-#       output file.  Make sure you check the parameters, because the function will be called when no source files change too.
+#       Implement <EndBuild()> so that if the project changed, it stiches the intermediate files together into the final
+#       output file.  Make sure you check the parameter because the function will be called when nothing changes too.
 #
 #
 #   Single Output File using Direct Changes:
@@ -102,15 +118,19 @@ package NaturalDocs::Builder::Base;
 #       This example is for when you want to build one output file, such as a PDF file, but engineering it in such a way that you don't
 #       need to use intermediate files.  In other words, you're able to add, delete, and modify entries directly in the output file.
 #
-#       Implement <BeginBuild()> so that if any of the parameters are true, it opens the output file and does anything it needs to do
+#       Implement <BeginBuild()> so that if the project changed, it opens the output file and does anything it needs to do
 #       to get ready for editing.
 #
 #       Implement <PurgeFiles()> to remove the entries associated with the purged files.
 #
+#       Implement <PurgeIndexes()> to remove the entries associated with the purged indexes.
+#
 #       Implement <BuildFile()> to add or replace a section of the output file with a new one generated from the parsed file.  You
 #       can detect whether the file is new or has changed via <NaturalDocs::Project::StatusOf()>.
 #
-#       Implement <EndBuild()> so that if any of the parameters are true, it saves the output file to disk.
+#       Implement <BuildIndex()> to add or replace an index in the output file with a new one generated from the specified index.
+#
+#       Implement <EndBuild()> so that if the project changed, it saves the output file to disk.
 #
 #       How you handle the menu depends on how the output file references other sections of itself.  If it can do so by name, then
 #       you can implement <UpdateMenu()> to update the menu section of the file and you're done.  If it has to reference itself
@@ -184,18 +204,16 @@ sub BuildFile #(sourceFile, parsedFile)
 #   Function: BeginBuild
 #
 #   Define this function if the package needs to do anything at the beginning of the build process.  This function will be called
-#   every time Natural Docs is run, even if all the parameters below are false.  This allows you to manage dependencies specific
-#   to the output format that may change independently from the source tree.  For example, <NaturalDocs::Builder::HTML> needs
-#   to keep the CSS files in sync regardless of whether the source tree changed or not.
+#   every time Natural Docs is run, even if the project hasn't changed.  This allows you to manage dependencies specific
+#   to the output format that may change independently from the source tree and menu.  For example,
+#   <NaturalDocs::Builder::HTML> needs to keep the CSS files in sync regardless of whether the source tree changed or not.
 #
 #   Parameters:
 #
-#       needToPurgeFiles     - Whether <PurgeFiles()> will be called in this build process.
-#       needToBuildFiles      - Whether <BuildFile()> will be called in this build process.  If this parameter is false,
-#                                       <NaturalDocs::SymbolTable> will not be available during the build process.
-#       needToUpdateMenu  - Whether <UpdateMenu()> will be called in this build process.
+#       hasChanged - Whether the project has changed, such as source files or the menu file.  If false, <NaturalDocs::SymbolTable>
+#                            and <NaturalDocs::Menu> won't be available and nothing else is going to be called except <EndBuild()>.
 #
-sub BeginBuild #(needToPurge, needToBuildFiles, needToUpdateMenu)
+sub BeginBuild #(hasChanged)
     {
     };
 
@@ -204,20 +222,35 @@ sub BeginBuild #(needToPurge, needToBuildFiles, needToUpdateMenu)
 #   Function: EndBuild
 #
 #   Define this function if the package needs to do anything at the end of the build process.  This function will be called every time
-#   Natural Docs is run, even if all the parameters below are false.  This allows you to manage dependencies specific to the output
+#   Natural Docs is run, even if the project hasn't changed.  This allows you to manage dependencies specific to the output
 #   format that may change independently from the source tree.  For example, <NaturalDocs::Builder::HTML> needs to keep the
 #   CSS files in sync regardless of whether the source tree changed or not.
 #
 #   Parameters:
 #
-#       purgedFiles     - Whether <PurgeFiles()> was called.
-#       builtFiles         - Whether <BuildFile()> was called.  If this parameter is false, <NaturalDocs::SymbolTable> is not available.
-#       updatedMenu  - Whether <UpdateMenu()> was called.
+#       hasChanged - Whether the project has changed, such as source files or the menu file.  If false, <NaturalDocs::SymbolTable>
+#                            and <NaturalDocs::Menu> won't be available and the only other function that was called was <BeginBuild()>.
 #
-sub EndBuild #(purgedFiles, builtFiles, updatedMenu)
+sub EndBuild #(hasChanged)
     {
     };
 
+
+#
+#   Function: BuildIndex
+#
+#   Define this function to create an index for the passed topic.  You can get the index from <NaturalDocs::SymbolTable::Index()>.
+#
+#   The reason it's not passed directly to this function is because indexes may be time-consuming to create.  As such, they're
+#   generated on demand because some output packages may choose not to implement them.
+#
+#   Parameters:
+#
+#       topic  - The topic to limit the index by, or undef if none.  If specified, will be one of the <Topic Types>.
+#
+sub BuildIndex #(topic)
+    {
+    };
 
 #
 #   Function: PurgeFiles
@@ -230,6 +263,22 @@ sub EndBuild #(purgedFiles, builtFiles, updatedMenu)
 #       files - An existence hashref of the files to purge.
 #
 sub PurgeFiles #(files)
+    {
+    };
+
+
+#
+#   Function: PurgeIndexes
+#
+#   Define this function to make the package remove all output related to the passed indexes.  These indexes are no longer part
+#   of the menu.
+#
+#   Parameters:
+#
+#       indexes  - An existence hashref of the indexes to purge.  Each entry will be either one of the <Topic Types> or * for the
+#                      general index.
+#
+sub PurgeIndexes #(indexes)
     {
     };
 
