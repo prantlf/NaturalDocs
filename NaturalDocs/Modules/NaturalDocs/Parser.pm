@@ -972,10 +972,19 @@ sub BreakLists
 
             $newBody .= substr($body, $bodyIndex);
 
-            unshift @newTopics, NaturalDocs::Parser::ParsedTopic->New( ::TOPIC_GROUP(), $topic->Title(), $topic->Package(),
-                                                                                                      $topic->Using(), undef,
-                                                                                                      $self->GetSummaryFromBody($newBody), $newBody,
-                                                                                                      $topic->LineNumber(), undef );
+            # Remove trailing headings.
+            $newBody =~ s/(?:<h>[^<]+<\/h>)+$//;
+
+            # Remove empty headings.
+            $newBody =~ s/(?:<h>[^<]+<\/h>)+(<h>[^<]+<\/h>)/$1/g;
+
+            if ($newBody)
+                {
+                unshift @newTopics, NaturalDocs::Parser::ParsedTopic->New( ::TOPIC_GROUP(), $topic->Title(), $topic->Package(),
+                                                                                                          $topic->Using(), undef,
+                                                                                                          $self->GetSummaryFromBody($newBody), $newBody,
+                                                                                                          $topic->LineNumber(), undef );
+                };
 
             splice(@parsedFile, $index, 1, @newTopics);
 
