@@ -30,9 +30,17 @@ use integer;
 package NaturalDocs::Parser;
 
 
+
 ###############################################################################
 # Group: Variables
 
+
+#
+#   var: sourceFile
+#
+#   The name of the source file currently being parsed.
+#
+my $sourceFile;
 
 #
 #   Array: parsedFile
@@ -40,6 +48,13 @@ package NaturalDocs::Parser;
 #   An array of <NaturalDocs::Parser::ParsedTopic> objects.
 #
 my @parsedFile;
+
+
+#
+#   bool: parsingForInformation
+#   Whether <ParseForInformation()> was called.  If false, then <ParseForBuild()> was called.
+#
+my $parsingForInformation;
 
 
 
@@ -59,17 +74,21 @@ my @parsedFile;
 sub ParseForInformation #(file)
     {
     my ($self, $file) = @_;
+    $sourceFile = $file;
 
-    # Have the symbol table watch this parse so we detect any changes.
-    NaturalDocs::SymbolTable->WatchFileForChanges($file);
+    $parsingForInformation = 1;
 
-    my $defaultMenuTitle = $self->Parse($file);
+    # Watch this parse so we detect any changes.
+    NaturalDocs::SymbolTable->WatchFileForChanges($sourceFile);
+    NaturalDocs::ClassHierarchy->WatchFileForChanges($sourceFile);
+
+    my $defaultMenuTitle = $self->Parse();
 
     foreach my $topic (@parsedFile)
         {
         # Add a symbol for the topic.
 
-        NaturalDocs::SymbolTable->AddSymbol($topic->Class(), $topic->Name(), $file, $topic->Type(),
+        NaturalDocs::SymbolTable->AddSymbol($topic->Class(), $topic->Name(), $sourceFile, $topic->Type(),
                                                                   $topic->Prototype(), $topic->Summary());
 
 
@@ -91,7 +110,7 @@ sub ParseForInformation #(file)
                 $listSummary = $1 . $2;
 
                 NaturalDocs::SymbolTable->AddSymbol($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($listSymbol),
-                                                                          $file, $listType, undef, $listSummary);
+                                                                          $sourceFile, $listType, undef, $listSummary);
                 };
             };
 
@@ -99,18 +118,22 @@ sub ParseForInformation #(file)
         # Add references in the topic.
 
         while ($body =~ /<link>([^<]+)<\/link>/g)
-            {  NaturalDocs::SymbolTable->AddReference($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($1), $file);  };
+            {
+            NaturalDocs::SymbolTable->AddReference($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($1),
+                                                                           $sourceFile);
+            };
         };
 
     # Handle any changes to the file.
+    NaturalDocs::ClassHierarchy->AnalyzeChanges();
     NaturalDocs::SymbolTable->AnalyzeChanges();
 
     # Update project on the file's characteristics.
     my $hasContent = (scalar @parsedFile > 0);
 
-    NaturalDocs::Project->SetHasContent($file, $hasContent);
+    NaturalDocs::Project->SetHasContent($sourceFile, $hasContent);
     if ($hasContent)
-        {  NaturalDocs::Project->SetDefaultMenuTitle($file, $defaultMenuTitle);  };
+        {  NaturalDocs::Project->SetDefaultMenuTitle($sourceFile, $defaultMenuTitle);  };
 
     # We don't need to keep this around.
     @parsedFile = ( );
@@ -137,8 +160,11 @@ sub ParseForInformation #(file)
 sub ParseForBuild #(file)
     {
     my ($self, $file) = @_;
+    $sourceFile = $file;
 
-    $self->Parse($file);
+    $parsingForInformation = undef;
+
+    $self->Parse();
 
     return \@parsedFile;
     };
@@ -176,6 +202,45 @@ sub OnComment #(commentLines, lineNumber)
     };
 
 
+#
+#   Function: OnClass
+#
+#   A function called by <NaturalDocs::Languages::Base>-derived objects when their parsers encounter a class declaration.
+#
+#   Parameters:
+#
+#       class - The class encountered.
+#
+sub OnClass #(class)
+    {
+    my ($self, $class) = @_;
+
+    if ($parsingForInformation)
+        {  NaturalDocs::ClassHierarchy->AddClass($sourceFile, $class);  };
+    };
+
+
+#
+#   Function: OnClassParent
+#
+#   A function called by <NaturalDocs::Languages::Base>-derived objects when their parsers encounter a declaration of
+#   inheritance.
+#
+#   Parameters:
+#
+#       class - The class we're in.
+#       parent - The class it inherits.
+#       protection - Public/private/protected, if applicable.  Undef otherwise.
+#
+sub OnClassParent #(class, parent, protection)
+    {
+    my ($self, $class, $parent, $protection) = @_;
+
+    if ($parsingForInformation)
+        {  NaturalDocs::ClassHierarchy->AddParent($sourceFile, $class, $parent);  };
+    };
+
+
 
 ###############################################################################
 # Group: Support Functions
@@ -188,28 +253,24 @@ sub OnComment #(commentLines, lineNumber)
 #
 #   *Do not call externally.*  Rather, call <ParseForInformation()> or <ParseForBuild()>.
 #
-#   Parameters:
-#
-#       file - The name of the file to parse.
-#
 #   Returns:
 #
 #       The default menu title of the file.  Will be the file name if nothing better is found.
 #
-sub Parse #(file)
+sub Parse
     {
-    my ($self, $file) = @_;
+    my ($self) = @_;
 
-    my $language = NaturalDocs::Languages->LanguageOf($file);
+    my $language = NaturalDocs::Languages->LanguageOf($sourceFile);
     NaturalDocs::Parser::Native->Start();
     @parsedFile = ( );
 
-    my ($autoTopics, $scopeRecord) = $language->ParseFile($file, \@parsedFile);
+    my ($autoTopics, $scopeRecord) = $language->ParseFile($sourceFile, \@parsedFile);
 
 
     # Set the menu title.
 
-    my $defaultMenuTitle = $file;
+    my $defaultMenuTitle = $sourceFile;
 
     if (scalar @parsedFile)
         {
@@ -227,7 +288,7 @@ sub Parse #(file)
             # If the title ended up being the file name, add a leading section for it.
             my $name;
 
-            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($file);
+            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($sourceFile);
             my @directories = NaturalDocs::File->SplitDirectories($dirString);
 
             if (scalar @directories > 2)
@@ -243,8 +304,10 @@ sub Parse #(file)
             };
 
         # We only want to call the hook if it has content.
-        NaturalDocs::Extensions->AfterFileParsed($file, \@parsedFile);
+        NaturalDocs::Extensions->AfterFileParsed($sourceFile, \@parsedFile);
         };
+
+    $self->AddToClassHierarchy();
 
     if (defined $autoTopics)
         {
@@ -634,6 +697,26 @@ sub RepairScope #(autoTopics, scopeRecord)
 
 
 #
+#   Function: AddToClassHierarchy
+#
+#   Adds any class topics to the class hierarchy, since they may not have been called with <OnClass()> if they didn't match up to
+#   an auto-topic.
+#
+sub AddToClassHierarchy
+    {
+    my ($self) = @_;
+
+    foreach my $topic (@parsedFile)
+        {
+        if ($topic->Type() == ::TOPIC_CLASS())
+            {
+            $self->OnClass($topic->Name());
+            };
+        };
+    };
+
+
+#
 #   Function: MergeAutoTopics
 #
 #   Merges the automatically generated topics into the file.  If an auto-topic matches an existing topic, it will be deleted and,
@@ -652,6 +735,9 @@ sub MergeAutoTopics #(language, autoTopics)
     my $topicIndex = 0;
     my $autoTopicIndex = 0;
 
+    my %functionsInLists;
+    my %variablesInLists;
+
     while ($topicIndex < scalar @parsedFile && $autoTopicIndex < scalar @$autoTopics)
         {
         my $topic = $parsedFile[$topicIndex];
@@ -660,10 +746,22 @@ sub MergeAutoTopics #(language, autoTopics)
         # Add the auto-topic if it's higher in the file than the current topic.
         if ($autoTopic->LineNumber < $topic->LineNumber())
             {
-            if (!NaturalDocs::Settings->DocumentedOnly())
-                {  splice(@parsedFile, $topicIndex, 0, $autoTopic);  };
+            if ($autoTopic->Type() == ::TOPIC_FUNCTION() &&
+                exists $functionsInLists{$autoTopic->Name()})
+                {
+                delete $functionsInLists{$autoTopic->Name()};
+                }
+            elsif ($autoTopic->Type() == ::TOPIC_VARIABLE() &&
+                    exists $variablesInLists{$autoTopic->Name()})
+                {
+                delete $variablesInLists{$autoTopic->Name()};
+                }
+            elsif (!NaturalDocs::Settings->DocumentedOnly())
+                {
+                splice(@parsedFile, $topicIndex, 0, $autoTopic);
+                $topicIndex++;
+                };
 
-            $topicIndex++;
             $autoTopicIndex++;
             }
 
@@ -677,6 +775,26 @@ sub MergeAutoTopics #(language, autoTopics)
 
             $topicIndex++;
             $autoTopicIndex++;
+            }
+
+        # Extract functions and variables in lists.
+        elsif ($topic->Type() == ::TOPIC_FUNCTION_LIST())
+            {
+            my $body = $topic->Body();
+
+            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+                {  $functionsInLists{$1} = 1;  };
+
+            $topicIndex++;
+            }
+        elsif ($topic->Type() == ::TOPIC_VARIABLE_LIST())
+            {
+            my $body = $topic->Body();
+
+            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+                {  $variablesInLists{$1} = 1;  };
+
+            $topicIndex++;
             }
 
         # Otherwise there's no match.  Skip the topic.  The auto-topic will be added later.
