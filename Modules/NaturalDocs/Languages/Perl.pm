@@ -57,7 +57,14 @@ my $mustBreakPOD;
 #
 sub PackageSeparator
     {  return '::';  };
-    
+
+#
+#   Function: EnumValues
+#   Returns the <EnumValuesType> that describes how the language handles enums.
+#
+sub EnumValues
+    {  return ::ENUM_GLOBAL();  };
+
 
 #
 #   Function: ParseFile
