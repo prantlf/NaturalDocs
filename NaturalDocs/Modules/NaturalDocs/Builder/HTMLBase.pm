@@ -15,6 +15,8 @@
 # Natural Docs is licensed under the GPL
 
 
+use Tie::RefHash;
+
 use strict;
 use integer;
 
@@ -88,23 +90,44 @@ my $menuGroupNumber;
 #
 #   array: menuSelectionHierarchy
 #
-#   An array of the group numbers surrounding the selected menu item.  Starts at the group immediately encompassing it, and
-#   works its way towards the outermost group.
+#   An array of the <NaturalDocs::Menu::Entry> objects of each group surrounding the selected menu item.  First entry is the
+#   group immediately encompassing it, and each subsequent entries works its way towards the outermost group.
 #
 my @menuSelectionHierarchy;
 
 
+#
 #   int: menuLength
 #
-#   The length of the entire menu, fully expanded.  The value is computed from <MENU_FILELENGTH> and
-#   <MENU_GROUPLENGTH>.
+#   The length of the entire menu, fully expanded.  The value is computed from the <Menu Length Constants>.
 #
 my $menuLength;
 
+
 #
-#   constants: menuLength Constants
+#   hash: menuGroupLengths
 #
-#   Constants used in conjunction with <menuLength>.
+#   A hash of the length of each group, *not* including any subgroup contents.  The keys are references to each groups'
+#   <NaturalDocs::Menu::Entry> object, and the values are their lengths computed from the <Menu Length Constants>.
+#
+my %menuGroupLengths;
+tie %menuGroupLengths, 'Tie::RefHash';
+
+
+#
+#   hash: menuGroupNumbers
+#
+#   A hash of the number of each group, as managed by <menuGroupNumber>.  The keys are references to each groups'
+#   <NaturalDocs::Menu::Entry> object, and the values are the number.
+#
+my %menuGroupNumbers;
+tie %menuGroupNumbers, 'Tie::RefHash';
+
+
+#
+#   constants: Menu Length Constants
+#
+#   Constants used to approximate the lengths of the menu or its groups.
 #
 #   MENU_TITLELENGTH       - The length of the title.
 #   MENU_SUBTITLELENGTH - The length of the subtitle.
@@ -122,6 +145,7 @@ use constant MENU_FILELENGTH => 1;
 use constant MENU_GROUPLENGTH => 2; # because it's a line and a blank space
 use constant MENU_TEXTLENGTH => 1;
 use constant MENU_LINKLENGTH => 1;
+use constant MENU_INDEXLENGTH => 1;
 
 use constant MENU_LENGTHLIMIT => 35;
 
@@ -259,6 +283,8 @@ sub BuildMenu #(outputFile, isFramed)
     $menuGroupNumber = 1;
     @menuSelectionHierarchy = ( );
     $menuLength = 0;
+    %menuGroupLengths = ( );
+    %menuGroupNumbers = ( );
 
 
     # Comment needed for UpdateFile().
@@ -291,7 +317,10 @@ sub BuildMenu #(outputFile, isFramed)
         };
 
 
-    $output .= $self->BuildMenuSegment($outputFile, NaturalDocs::Menu::Content(), undef, $isFramed);
+    my ($segmentOutput, $hasSelection, $rootLength) =
+        $self->BuildMenuSegment($outputFile, $isFramed, NaturalDocs::Menu::Content());
+
+    $output .= $segmentOutput;
 
 
     # If the completely expanded menu is too long, collapse all the groups that aren't in the selection hierarchy.  By doing this
@@ -312,11 +341,16 @@ sub BuildMenu #(outputFile, isFramed)
 
             if (scalar @menuSelectionHierarchy)
                 {
+                my @selectionNumbers;
+
+                foreach my $group (@menuSelectionHierarchy)
+                    {  push @selectionNumbers, $menuGroupNumbers{$group};  };
+
                 $output .=
 
                 'for (var menu = 1; menu < ' . $menuGroupNumber . '; menu++)'
                     . '{'
-                    . 'if (menu != ' . join(' && menu != ', @menuSelectionHierarchy) . ')'
+                    . 'if (menu != ' . join(' && menu != ', @selectionNumbers) . ')'
                         . '{'
                         . 'document.getElementById("MGroupContent" + menu).style.display = "none";'
                         . '};'
@@ -354,64 +388,67 @@ sub BuildMenu #(outputFile, isFramed)
 #   Parameters:
 #
 #       outputFile - The output file the menu is being built for.
-#
-#       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the content
-#                               of a group.
-#       hasSelectionRef - A reference to a boolean variable, which will be set to true if this function call had the selection in it.
-#                                 Won't be set if undef.
 #       isFramed - Whether the menu will be in a HTML frame or not.  Assumes that if it is, the <base> HTML tag will be set so that
 #                       links are directed to the proper frame.
+#       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the contents
+#                               of a group.
 #
 #   Returns:
 #
-#       The menu segment in HTML.
+#       The array ( menuHTML, hasSelection, length ).
 #
-sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
+#       menuHTML - The menu segment in HTML.
+#       hasSelection - Whether the group or any of its subgroups contains the entry for the selected file.
+#       groupLength - The length of the group, *not* including the contents of any subgroups, as computed from the
+#                            <Menu Length Constants>.
+#
+sub BuildMenuSegment #(outputFile, isFramed, menuSegment)
     {
-    my ($self, $outputFile, $menuSegment, $hasSelectionRef, $isFramed) = @_;
+    my ($self, $outputFile, $isFramed, $menuSegment) = @_;
 
-    my $output;
+    my ($output, $hasSelection, $groupLength);
 
     foreach my $entry (@$menuSegment)
         {
         if ($entry->Type() == ::MENU_GROUP())
             {
-            my $myGroupNumber = $menuGroupNumber;
+            my $entryNumber = $menuGroupNumber;
             $menuGroupNumber++;
 
-            $menuLength += MENU_GROUPLENGTH;
+            my ($entryOutput, $entryHasSelection, $entryLength) =
+                $self->BuildMenuSegment($outputFile, $isFramed, $entry->GroupContent());
 
-            my $hasSelection;
+            $menuGroupLengths{$entry} = $entryLength;
+            $menuGroupNumbers{$entry} = $entryNumber;
 
             $output .=
             '<div class=MEntry>'
                 . '<div class=MGroup>'
 
-                    . '<a href="javascript:ToggleMenu(\'MGroupContent' . $myGroupNumber . '\')"'
+                    . '<a href="javascript:ToggleMenu(\'MGroupContent' . $entryNumber . '\')"'
                          . ($isFramed ? ' target="_self"' : '') . '>'
                         . $self->StringToHTML($entry->Title())
                     . '</a>'
 
-                    . '<div class=MGroupContent id=MGroupContent' . $myGroupNumber . '>'
-                        . $self->BuildMenuSegment($outputFile, $entry->GroupContent(), \$hasSelection, $isFramed)
+                    . '<div class=MGroupContent id=MGroupContent' . $entryNumber . '>'
+                        . $entryOutput
                     . '</div>'
 
                 . '</div>'
             . '</div>';
 
-            if ($hasSelection)
+            if ($entryHasSelection)
                 {
-                push @menuSelectionHierarchy, $myGroupNumber;
-
-                if ($hasSelectionRef)
-                    {  $$hasSelectionRef = 1;  };
+                $hasSelection = 1;
+                push @menuSelectionHierarchy, $entry;
                 };
+
+            $menuLength += MENU_GROUPLENGTH;
+            $groupLength += MENU_GROUPLENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_FILE())
             {
-            $menuLength += MENU_FILELENGTH;
-
             my $targetOutputFile = $self->OutputFileOf($entry->Target());
 
             if ($outputFile eq $targetOutputFile)
@@ -423,8 +460,7 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
                     . '</div>'
                 . '</div>';
 
-                if ($hasSelectionRef)
-                    {  $$hasSelectionRef = 1;  };
+                $hasSelection = 1;
                 }
             else
                 {
@@ -437,6 +473,9 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
                     . '</div>'
                 . '</div>';
                 };
+
+            $menuLength += MENU_FILELENGTH;
+            $groupLength += MENU_FILELENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_TEXT())
@@ -447,6 +486,9 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
                     . $self->StringToHTML( $entry->Title() )
                 . '</div>'
             . '</div>';
+
+            $menuLength += MENU_TEXTLENGTH;
+            $groupLength += MENU_TEXTLENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_LINK())
@@ -459,6 +501,9 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
                     . '</a>'
                 . '</div>'
             . '</div>';
+
+            $menuLength += MENU_LINKLENGTH;
+            $groupLength += MENU_LINKLENGTH;
             }
 
         elsif ($entry->Type() == ::MENU_INDEX())
@@ -474,8 +519,7 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
                     . '</div>'
                 . '</div>';
 
-                if ($hasSelectionRef)
-                    {  $$hasSelectionRef = 1;  };
+                $hasSelection = 1;
                 }
             else
                 {
@@ -488,10 +532,13 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
                     . '</div>'
                 . '</div>';
                 };
+
+            $menuLength += MENU_INDEXLENGTH;
+            $groupLength += MENU_INDEXLENGTH;
             };
         };
 
-    return $output;
+    return ($output, $hasSelection, $groupLength);
     };
 
 
@@ -518,9 +565,8 @@ sub BuildContent #(sourceFile, parsedFile)
 
     while ($i < scalar @$parsedFile)
         {
-        $output .= '<div class=CTopic>';
-
         my $anchor = $self->SymbolToHTMLSymbol( $parsedFile->[$i]->Class(), $parsedFile->[$i]->Name() );
+        my $hasCBody;
 
 
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
@@ -531,6 +577,7 @@ sub BuildContent #(sourceFile, parsedFile)
             $output .=
 
             '<div class=CMain>'
+                . '<div class=CTopic>'
 
                 . '<h1 class=CTitle>'
                     . '<a name="' . $anchor . '"></a>'
@@ -542,6 +589,7 @@ sub BuildContent #(sourceFile, parsedFile)
             $output .=
 
             '<div class=C' . $topicNames{ $parsedFile->[$i]->Type() } . '>'
+                . '<div class=CTopic>'
 
                 . '<h2 class=CTitle>'
                     . '<a name="' . $anchor . '"></a>'
@@ -553,6 +601,7 @@ sub BuildContent #(sourceFile, parsedFile)
             $output .=
 
             '<div class=C' . $topicNames{ $parsedFile->[$i]->Type() } . '>'
+                . '<div class=CTopic>'
 
                 . '<h3 class=CTitle>'
                     . '<a name="' . $anchor . '"></a>'
@@ -563,18 +612,24 @@ sub BuildContent #(sourceFile, parsedFile)
 
         if (defined $parsedFile->[$i]->Prototype())
             {
-            $output .=
-            # A surrounding table as a hack to make the div form-fit.
-            '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
-                . '<div class=CPrototype>'
-                    . $self->StringToHTML( $parsedFile->[$i]->Prototype() )
-                . '</div>'
-            . '</tr></td></table>';
+            if (!$hasCBody)
+                {
+                $output .= '<div class=CBody>';
+                $hasCBody = 1;
+                };
+
+            $output .= $self->BuildPrototype($parsedFile->[$i]->Prototype());
             };
 
 
         if (defined $parsedFile->[$i]->Body())
             {
+            if (!$hasCBody)
+                {
+                $output .= '<div class=CBody>';
+                $hasCBody = 1;
+                };
+
             $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Scope() );
             };
 
@@ -582,13 +637,22 @@ sub BuildContent #(sourceFile, parsedFile)
         if ($i == 0 ||
             $parsedFile->[$i]->Type() == ::TOPIC_CLASS() || $parsedFile->[$i]->Type() == ::TOPIC_SECTION())
             {
+            if (!$hasCBody)
+                {
+                $output .= '<div class=CBody>';
+                $hasCBody = 1;
+                };
+
             $output .= $self->BuildSummary($sourceFile, $parsedFile, $i);
             };
 
 
+        if ($hasCBody)
+            {  $output .= '</div>';  };
+
         $output .=
-            '</div>' # CType
-        . '</div>'; # CTopic
+            '</div>' # CTopic
+        . '</div>'; # CType
 
         $i++;
         };
@@ -679,7 +743,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
 
             $output .=
-             '<tr><td' . ($isMarkedAttr | $entrySizeAttr) . '>'
+             '<tr' . $isMarkedAttr . '><td' . $entrySizeAttr . '>'
                 . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$type}) . '>'
                     . '<div class=SEntry>';
 
@@ -721,7 +785,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
                     '</div>' # Entry
                 . '</div>' # Type
 
-            . '</td><td' . ($isMarkedAttr | $descriptionSizeAttr) . '>'
+            . '</td><td' . $descriptionSizeAttr . '>'
 
                 . '<div class=S' . ($index == 0 ? 'Main' : $topicNames{$type}) . '>'
                     . '<div class=SDescription>';
@@ -789,7 +853,6 @@ sub BuildSummary #(sourceFile, parsedFile, index)
             $entrySizeAttr = undef;
             $descriptionSizeAttr = undef;
 
-
             $index++;
             };
 
@@ -801,6 +864,74 @@ sub BuildSummary #(sourceFile, parsedFile, index)
     return $output;
     };
 
+
+#
+#   Function: BuildPrototype
+#
+#   Builds and returns the prototype as HTML.
+#
+sub BuildPrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+
+    my $output;
+
+    if ($prototype =~ /^  ([^\(]+?)  ( [\ \t]?  \(   [\ \t]? )  (.+?)  ( [\ \t]?  \)  [\ \t]? )  ([^\)]*)  $/x)
+        {
+        my ($pre, $openParen, $paramString, $closeParen, $post) = ($1, $2, $3, $4, $5);
+
+        $openParen =~ s/[ \t]/&nbsp;/g;
+        $closeParen =~ s/[ \t]/&nbsp;/g;
+
+        my @params = split(/\, */, $paramString);
+
+        my $firstParam = shift @params;
+        my $lastParam = pop @params;
+
+        $output =
+        '<table border=0 cellspacing=0 cellpadding=0 class=CPrototype><tr>'
+
+            . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
+            . '<td style="vertical-align: bottom">' . $openParen . '</td>'
+            . '<td style="vertical-align: bottom">' . $firstParam . (defined $lastParam ? ',' : '') . '</td>';
+
+            if (scalar @params)
+                {
+                $output .=
+                    '<td colspan=2></td>'
+                . '</tr><tr>'
+                    . '<td colspan=2></td>'
+                    . '<td>' . join(',<br>', @params) . ',</td>';
+                };
+
+            if (defined $lastParam)
+                {
+                $output .=
+                    '<td colspan=2></td>'
+                . '</tr><tr>'
+                    . '<td colspan=2></td>'
+                    . '<td style="vertical-align: top">' . $lastParam . '</td>';
+                };
+
+            $output .=
+            '<td style="vertical-align: top">' . $closeParen . '</td>'
+            . '<td style="vertical-align: top">' . $post . '</td>'
+        . '</tr></table>';
+        }
+
+    else
+        {
+        $output =
+        # A surrounding table as a hack to make the div form-fit.
+        '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
+            . '<div class=CPrototype>'
+                . $prototype
+            . '</div>'
+        . '</tr></td></table>';
+        };
+
+    return $output;
+    };
 
 #
 #   Function: BuildFooter
@@ -1679,12 +1810,33 @@ sub AddDoubleSpaces #(text)
     my ($self, $text) = @_;
 
     # Question marks and exclamation points get double spaces unless followed by a lowercase letter.
-    $text =~ s/([\!\?])(&quot;|&[lr][sd]quo;|[\'\"\]\}\)]?) (?![a-z])/$1$2&nbsp; /g;
+
+    $text =~ s/  ([^\ \t\r\n] [\!\?])  # Must appear after a non-whitespace character to apply.
+
+                      (&quot;|&[lr][sd]quo;|[\'\"\]\}\)]?)  # Tolerate closing quotes, parenthesis, etc.
+                      ((?:<[^>]+>)*)  # Tolerate tags
+
+                      \   # The space
+                      (?![a-z])  # Not followed by a lowercase character.
+
+                   /$1$2$3&nbsp;\ /gx;
+
 
     # Periods get double spaces if it's not followed by a lowercase letter.  However, if it's followed by a capital letter and the
     # preceding word is in the list of acceptable abbreviations, it won't get the double space.  Yes, I do realize I am seriously
     # over-engineering this.
-    $text =~ s/([^\ \r\n]+)\.(&quot;|&[lr][sd]quo;|[\'\"\]\}\)]?) ([^a-z])/$1 . '.' . $2 . MaybeExpand($1, $3) . $3/ge;
+
+    $text =~ s/  ([^\ \t\r\n]+)  # The word prior to the period.
+
+                      \.
+
+                      (&quot;|&[lr][sd]quo;|[\'\"\]\}\)]?)  # Tolerate closing quotes, parenthesis, etc.
+                      ((?:<[^>]+>)*)  # Tolerate tags
+
+                      \   # The space
+                      ([^a-z])   # The next character, if it's not a lowercase letter.
+
+                  /$1 . '.' . $2 . $3 . MaybeExpand($1, $4) . $4/gex;
 
     sub MaybeExpand #(leadWord, nextLetter)
         {
@@ -1754,7 +1906,10 @@ sub AddHiddenBreaks #(string)
     {
     my ($self, $string) = @_;
 
-    $string =~ s/(\w(?:\.|::|\\|\/))(\w)/$1 . $self->HiddenBreak() . $2/ge;
+    # \.(?=.{5,}) instead of \. so file extensions don't get breaks.
+    # :+ instead of :: because Mac paths are separated by a : and we want to get those too.
+
+    $string =~ s/(\w(?:\.(?=.{5,})|:+|->|\\|\/))(\w)/$1 . $self->HiddenBreak() . $2/ge;
 
     return $string;
     };
