@@ -747,6 +747,8 @@ sub SaveFile #(isMain)
                 if (!defined $keywords{$topicTypeName})
                     {  $keywords{$topicTypeName} = [ ];  };
 
+                push @keywordOrder, $topicTypeName;
+
                 while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
                           $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
                     {
