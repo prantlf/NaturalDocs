@@ -268,7 +268,7 @@ sub BuildTitle #(sourceFile)
 #
 #   Parameters:
 #
-#       outputFile - The output file to build the menu for.
+#       outputFile - The output file to build the menu for.  Does not have to be on the menu itself.
 #       isFramed - Whether the menu will appear in a frame.  If so, it assumes the <base> HTML tag is set to make links go to the
 #                       appropriate frame.
 #
@@ -329,6 +329,8 @@ sub BuildMenu #(outputFile, isFramed)
 
     if ($menuLength > MENU_LENGTHLIMIT())
         {
+        my $toExpand = $self->ExpandMenu($outputFile, $rootLength);
+
         $output .=
 
         '<script language=JavaScript><!--' . "\n"
@@ -339,18 +341,13 @@ sub BuildMenu #(outputFile, isFramed)
         . 'if (document.getElementById)'
             . '{';
 
-            if (scalar @menuSelectionHierarchy)
+            if (scalar @$toExpand)
                 {
-                my @selectionNumbers;
-
-                foreach my $group (@menuSelectionHierarchy)
-                    {  push @selectionNumbers, $menuGroupNumbers{$group};  };
-
                 $output .=
 
                 'for (var menu = 1; menu < ' . $menuGroupNumber . '; menu++)'
                     . '{'
-                    . 'if (menu != ' . join(' && menu != ', @selectionNumbers) . ')'
+                    . 'if (menu != ' . join(' && menu != ', @$toExpand) . ')'
                         . '{'
                         . 'document.getElementById("MGroupContent" + menu).style.display = "none";'
                         . '};'
@@ -387,7 +384,7 @@ sub BuildMenu #(outputFile, isFramed)
 #
 #   Parameters:
 #
-#       outputFile - The output file the menu is being built for.
+#       outputFile - The output file the menu is being built for.  Does not have to be on the menu itself.
 #       isFramed - Whether the menu will be in a HTML frame or not.  Assumes that if it is, the <base> HTML tag will be set so that
 #                       links are directed to the proper frame.
 #       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the contents
@@ -1945,6 +1942,159 @@ sub FindFirstFile #(arrayref)
         };
 
     return undef;
+    };
+
+
+#
+#   Function: ExpandMenu
+#
+#   Determines which groups should be expanded.
+#
+#   Parameters:
+#
+#       outputFile - The file the menu is being built for.  Does not have to be on the menu itself.
+#       rootLength - The length of the menu's root group, *not* including the contents of subgroups.
+#
+#   Returns:
+#
+#       An arrayref of all the group numbers that should be expanded.  At minimum, it will contain the numbers of the groups
+#       present in <menuSelectionHierarchy>, though it may contain more.
+#
+sub ExpandMenu #(outputFile, rootLength)
+    {
+    my ($self, $outputFile, $rootLength) = @_;
+
+    my $toExpand = [ ];
+
+
+    # First expand everything in the selection hierarchy.
+
+    my $length = $rootLength;
+
+    foreach my $entry (@menuSelectionHierarchy)
+        {
+        $length += $menuGroupLengths{$entry};
+        push @$toExpand, $menuGroupNumbers{$entry};
+        };
+
+
+    # Now do multiple passes of group expansion as necessary.  We start from bottomIndex and expand outwards.  We stop going
+    # in a direction if a group there is too long -- we do not skip over it and check later groups as well.  However, if one direction
+    # stops, the other can keep going.
+
+    my $pass = 1;
+    my $hasSubGroups;
+
+    while ($length < MENU_LENGTHLIMIT)
+        {
+        my $content;
+        my $topIndex;
+        my $bottomIndex;
+
+
+        if ($pass == 1)
+            {
+            # First pass, we expand the selection's siblings.
+
+            if (scalar @menuSelectionHierarchy)
+                {  $content = $menuSelectionHierarchy[0]->GroupContent();  }
+            else
+                {  $content = NaturalDocs::Menu::Content();  };
+
+            $bottomIndex = 0;
+
+            while ($bottomIndex < scalar @$content &&
+                     !($content->[$bottomIndex]->Type() == ::MENU_FILE() &&
+                       $self->OutputFileOf($content->[$bottomIndex]->Target()) eq $outputFile) &&
+                     !($content->[$bottomIndex]->Type() != ::MENU_INDEX() &&
+                       $self->IndexFileOf($content->[$bottomIndex]->Target()) eq $outputFile) )
+                {  $bottomIndex++;  };
+
+            if ($bottomIndex == scalar @$content)
+                {  $bottomIndex = 0;  };
+            $topIndex = $bottomIndex - 1;
+            }
+
+        elsif ($pass == 2)
+            {
+            # If the section we just expanded had no sub-groups, do another pass trying to expand the parent's sub-groups.  The
+            # net effect is that groups won't collapse as much unnecessarily.  Someone can click on a file in a sub-group and the
+            # groups in the parent will stay open.
+
+            if (!$hasSubGroups && scalar @menuSelectionHierarchy)
+                {
+                if (scalar @menuSelectionHierarchy > 1)
+                    {  $content = $menuSelectionHierarchy[1]->GroupContent();  }
+                else
+                    {  $content = NaturalDocs::Menu::Content();  };
+
+                $bottomIndex = 0;
+
+                while ($bottomIndex < scalar @$content &&
+                         $content->[$bottomIndex] != $menuSelectionHierarchy[0])
+                    {  $bottomIndex++;  };
+
+                $topIndex = $bottomIndex - 1;
+                $bottomIndex++;  # Increment past our own group.
+                $hasSubGroups = undef;
+                }
+            else
+                {  last;  };
+            }
+
+        # No more passes.
+        else
+            {  last;  };
+
+
+        while ( ($topIndex >= 0 || $bottomIndex < scalar @$content) && $length < MENU_LENGTHLIMIT)
+            {
+            # We do the bottom first.
+
+            while ($bottomIndex < scalar @$content && $content->[$bottomIndex]->Type() != ::MENU_GROUP())
+                {  $bottomIndex++;  };
+
+            if ($bottomIndex < scalar @$content)
+                {
+                my $bottomEntry = $content->[$bottomIndex];
+                $hasSubGroups = 1;
+
+                if ($length + $menuGroupLengths{$bottomEntry} <= MENU_LENGTHLIMIT)
+                    {
+                    $length += $menuGroupLengths{$bottomEntry};
+                    push @$toExpand, $menuGroupNumbers{$bottomEntry};
+                    $bottomIndex++;
+                    }
+                else
+                    {  $bottomIndex = scalar @$content;  };
+                };
+
+            # Top next.
+
+            while ($topIndex >= 0 && $content->[$topIndex]->Type() != ::MENU_GROUP())
+                {  $topIndex--;  };
+
+            if ($topIndex >= 0)
+                {
+                my $topEntry = $content->[$topIndex];
+                $hasSubGroups = 1;
+
+                if ($length + $menuGroupLengths{$topEntry} <= MENU_LENGTHLIMIT)
+                    {
+                    $length += $menuGroupLengths{$topEntry};
+                    push @$toExpand, $menuGroupNumbers{$topEntry};
+                    $topIndex--;
+                    }
+                else
+                    {  $topIndex = -1;  };
+                };
+            };
+
+
+        $pass++;
+        };
+
+    return $toExpand;
     };
 
 
