@@ -16,13 +16,13 @@ use integer;
 
 package NaturalDocs::Languages::Perl;
 
-use base 'NaturalDocs::Languages::Language';
+use base 'NaturalDocs::Languages::Simple';
 
 
 #
 #   Topic: Inherits
 #
-#   <NaturalDocs::Languages::Language>
+#   <NaturalDocs::Languages::Simple>
 #
 
 
