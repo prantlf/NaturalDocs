@@ -205,7 +205,7 @@ sub LoadAndPurge
         # [symbol string]
 
         my $symbolString = $line;
-        my $symbolObject = NaturalDocs::SymbolTable::Symbol::New();
+        my $symbolObject = NaturalDocs::SymbolTable::Symbol->New();
 
         $line = <SYMBOLTABLEFILEHANDLE>;
         chomp($line);
@@ -224,7 +224,7 @@ sub LoadAndPurge
             $symbolObject->AddDefinition($file, $type, $prototype, $summary);
 
             if (!exists $files{$file})
-                {  $files{$file} = NaturalDocs::SymbolTable::File::New();  };
+                {  $files{$file} = NaturalDocs::SymbolTable::File->New();  };
 
             $files{$file}->AddSymbol($symbolString);
 
@@ -245,7 +245,7 @@ sub LoadAndPurge
         # [reference string]
 
         my $referenceString = $line;
-        my $referenceObject = NaturalDocs::SymbolTable::Reference::New();
+        my $referenceObject = NaturalDocs::SymbolTable::Reference->New();
 
         $line = <SYMBOLTABLEFILEHANDLE>;
         chomp($line);
@@ -259,7 +259,7 @@ sub LoadAndPurge
             $referenceObject->AddDefinition($definition);
 
             if (!exists $files{$definition})
-                {  $files{$definition} = NaturalDocs::SymbolTable::File::New();  };
+                {  $files{$definition} = NaturalDocs::SymbolTable::File->New();  };
 
             $files{$definition}->AddReference($referenceString);
             };
@@ -376,7 +376,7 @@ sub AddSymbol #(class, symbol, file, type, prototype, summary)
         {
         # Create the symbol.  There are no references that could be interpreted as this or else it would have existed already.
 
-        my $newSymbol = NaturalDocs::SymbolTable::Symbol::New();
+        my $newSymbol = NaturalDocs::SymbolTable::Symbol->New();
         $newSymbol->AddDefinition($file, $type, $prototype, $summary);
 
         $symbols{$symbolString} = $newSymbol;
@@ -444,7 +444,7 @@ sub AddSymbol #(class, symbol, file, type, prototype, summary)
     # Add it to the file index.
 
     if (!exists $files{$file})
-        {  $files{$file} = NaturalDocs::SymbolTable::File::New();  };
+        {  $files{$file} = NaturalDocs::SymbolTable::File->New();  };
 
     $files{$file}->AddSymbol($symbolString);
 
@@ -458,7 +458,7 @@ sub AddSymbol #(class, symbol, file, type, prototype, summary)
         if (!exists $watchedFileSymbolDefinitions{$symbolString})
             {
             $watchedFileSymbolDefinitions{$symbolString} =
-                 NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype, $summary);
+                 NaturalDocs::SymbolTable::SymbolDefinition->New($type, $prototype, $summary);
             };
         };
     };
@@ -485,7 +485,7 @@ sub AddReference #(scope, reference, file)
     # If the reference doesn't exist...
     if (!exists $references{$referenceString})
         {
-        my $referenceObject = NaturalDocs::SymbolTable::Reference::New();
+        my $referenceObject = NaturalDocs::SymbolTable::Reference->New();
         $referenceObject->AddDefinition($file);
 
         $references{$referenceString} = $referenceObject;
@@ -504,7 +504,7 @@ sub AddReference #(scope, reference, file)
     # Add it to the file index.
 
     if (!exists $files{$file})
-        {  $files{$file} = NaturalDocs::SymbolTable::File::New();  };
+        {  $files{$file} = NaturalDocs::SymbolTable::File->New();  };
 
     $files{$file}->AddReference($referenceString);
 
@@ -531,7 +531,7 @@ sub WatchFileForChanges #(file)
     {
     my $file = shift;
 
-    $watchedFile = NaturalDocs::SymbolTable::File::New();
+    $watchedFile = NaturalDocs::SymbolTable::File->New();
     $watchedFileName = $file;
     %watchedFileSymbolDefinitions = ( );
     };
@@ -757,7 +757,7 @@ sub References #(scope, reference, file)
             $summary = $targetObject->GlobalSummary();
             };
 
-        return NaturalDocs::SymbolTable::ReferenceTarget::New($class, $symbol, $targetFile, $type, $prototype, $summary);
+        return NaturalDocs::SymbolTable::ReferenceTarget->New($class, $symbol, $targetFile, $type, $prototype, $summary);
         }
 
     else
@@ -1402,7 +1402,7 @@ sub AddInterpretation #(referenceString, class, symbol, score)
     # Create a potential symbol if it doesn't exist.
 
     if (!exists $symbols{$interpretationString})
-        {  $symbols{$interpretationString} = NaturalDocs::SymbolTable::Symbol::New();  };
+        {  $symbols{$interpretationString} = NaturalDocs::SymbolTable::Symbol->New();  };
 
     $symbols{$interpretationString}->AddReference($referenceString, $score);
     };
@@ -1477,7 +1477,7 @@ sub MakeIndex #(type)
                 {
                 if (!defined $indexHash{$symbol})
                     {
-                    $indexHash{$symbol} = NaturalDocs::SymbolTable::IndexElement::New($symbol, $class, $definition,
+                    $indexHash{$symbol} = NaturalDocs::SymbolTable::IndexElement->New($symbol, $class, $definition,
                                                                                                                               $object->TypeDefinedIn($definition),
                                                                                                                               $object->PrototypeDefinedIn($definition),
                                                                                                                               $object->SummaryDefinedIn($definition) );

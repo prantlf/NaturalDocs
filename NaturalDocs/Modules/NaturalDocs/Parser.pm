@@ -335,7 +335,7 @@ sub ParseForBuild #(file)
     # If the title ended up being the file name, add a leading section for it.
     if ($defaultMenuTitle eq $file && $parsedFile[0]->Name() ne $file)
         {
-        unshift @parsedFile, NaturalDocs::Parser::ParsedTopic::New(::TOPIC_SECTION(), $file, undef, undef, undef, undef);
+        unshift @parsedFile, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), $file, undef, undef, undef, undef);
         };
 
     return \@parsedFile;
@@ -913,7 +913,7 @@ sub AddToParsedFile #(name, class, type, body)
         };
 
 
-    push @parsedFile, NaturalDocs::Parser::ParsedTopic::New($type, $name, $class, $scope, undef, $summary, $body);
+    push @parsedFile, NaturalDocs::Parser::ParsedTopic->New($type, $name, $class, $scope, undef, $summary, $body);
     };
 
 

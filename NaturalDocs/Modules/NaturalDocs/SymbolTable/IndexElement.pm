@@ -142,8 +142,10 @@ sub New #(symbol, class, file, type, prototype, summary)
     {
     # DEPENDENCY: This depends on the parameter list being in the same order as the constants.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };
@@ -178,10 +180,10 @@ sub Merge #(class, file, type, prototype, summary)
         # If there's one class and the new one is different...
         else
             {
-            my $selfDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, $self->Class(), $self->File(),
+            my $selfDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $self->Class(), $self->File(),
                                                                                                                 $self->Type(), $self->Prototype(),
                                                                                                                 $self->Summary());
-            my $newDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, $class, $file, $type, $prototype, $summary);
+            my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $class, $file, $type, $prototype, $summary);
 
             $self->[CLASS] = [ $selfDefinition, $newDefinition ];
             $self->[FILE] = undef;
@@ -216,7 +218,7 @@ sub Merge #(class, file, type, prototype, summary)
         else
             {
             push @{$self->Class()},
-                    NaturalDocs::SymbolTable::IndexElement::New(undef, $class, $file, $type, $prototype, $summary);
+                    NaturalDocs::SymbolTable::IndexElement->New(undef, $class, $file, $type, $prototype, $summary);
             };
         };
     };
@@ -314,9 +316,9 @@ sub MergeFile #(file, type, prototype, summary)
         # If there's one file and it's the different from the new one...
         if ($file ne $self->File())
             {
-            my $selfDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $self->File(), $self->Type(),
+            my $selfDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $self->File(), $self->Type(),
                                                                                                                 $self->Prototype(), $self->Summary());
-            my $newDefinition = NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $file, $type, $prototype, $summary);
+            my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype, $summary);
 
             $self->[FILE] = [ $selfDefinition, $newDefinition ];
             $self->[TYPE] = undef;
@@ -340,7 +342,7 @@ sub MergeFile #(file, type, prototype, summary)
                 };
             };
 
-        push @{$self->File()}, NaturalDocs::SymbolTable::IndexElement::New(undef, undef, $file, $type, $prototype, $summary);
+        push @{$self->File()}, NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype, $summary);
         };
     };
 

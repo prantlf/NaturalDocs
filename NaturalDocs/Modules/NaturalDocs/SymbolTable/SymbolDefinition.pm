@@ -53,8 +53,10 @@ sub New #(type, prototype, summary)
     {
     # This depends on the parameter list being the same as the constant order.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };

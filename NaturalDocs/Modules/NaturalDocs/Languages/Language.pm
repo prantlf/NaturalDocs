@@ -68,8 +68,10 @@ sub New #(name, lineComment, startComment, endComment, functionEnders, variableE
     # DEPENDENCY: This function depends on its parameter list being in the same order as the member constants.  If the order
     # changes, this function needs to be changed.
 
+    my $package = shift;
+
     my $object = [ @_ ];
-    bless $object;
+    bless $object, $package;
 
     return $object;
     };

@@ -604,7 +604,7 @@ sub LoadMenuFile
     # A stack of Menu::Entry object references as we move through the groups.
     my @groupStack;
 
-    $menu = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), undef, undef, undef);
+    $menu = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), undef, undef, undef);
     my $currentGroup = $menu;
 
     # Whether we're currently in a braceless group, since we'd have to find the implied end rather than an explicit one.
@@ -686,7 +686,7 @@ sub LoadMenuFile
 
             if ($segment eq '{')
                 {
-                push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Opening braces are only allowed after Group tags.');
+                push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Opening braces are only allowed after Group tags.');
                 }
             elsif ($segment eq '}')
                 {
@@ -701,7 +701,7 @@ sub LoadMenuFile
                 if (scalar @groupStack)
                     {  $currentGroup = pop @groupStack;  }
                 else
-                    {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Unmatched closing brace.');  };
+                    {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Unmatched closing brace.');  };
                 }
 
             # If the segment is a segment of text...
@@ -744,7 +744,7 @@ sub LoadMenuFile
                         # Currently index is the only type allowed modifiers.
                         if (defined $modifier && $type != ::MENU_INDEX())
                             {
-                            push @$errors, NaturalDocs::Menu::Error::New($lineNumber,
+                            push @$errors, NaturalDocs::Menu::Error->New($lineNumber,
                                                                                                  $modifier . ' ' . $menuSynonyms{$type}
                                                                                                  . ' is not a valid keyword.');
                             next;
@@ -759,7 +759,7 @@ sub LoadMenuFile
                                 $inBracelessGroup = undef;
                                 };
 
-                            my $entry = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), $name, undef, undef);
+                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), $name, undef, undef);
 
                             $currentGroup->PushToGroup($entry);
 
@@ -804,13 +804,13 @@ sub LoadMenuFile
 
                             if (!scalar @extras)
                                 {
-                                push @$errors, NaturalDocs::Menu::Error::New($lineNumber,
+                                push @$errors, NaturalDocs::Menu::Error->New($lineNumber,
                                                                                                      'File entries need to be in format '
                                                                                                      . '"File: [title] ([location])"');
                                 next;
                                 };
 
-                            my $entry = NaturalDocs::Menu::Entry::New(::MENU_FILE(), $name, $extras[0], $flags);
+                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $name, $extras[0], $flags);
 
                             $currentGroup->PushToGroup($entry);
 
@@ -823,7 +823,7 @@ sub LoadMenuFile
                             if (!defined $title)
                                 {  $title = $name;  }
                             else
-                                {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Title can only be defined once.');  };
+                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Title can only be defined once.');  };
                             }
                         elsif ($type == ::MENU_SUBTITLE())
                             {
@@ -832,22 +832,22 @@ sub LoadMenuFile
                                 if (!defined $subTitle)
                                     {  $subTitle = $name;  }
                                 else
-                                    {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'SubTitle can only be defined once.');  };
+                                    {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'SubTitle can only be defined once.');  };
                                 }
                             else
-                                {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Title must be defined before SubTitle.');  };
+                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Title must be defined before SubTitle.');  };
                             }
                         elsif ($type == ::MENU_FOOTER())
                             {
                             if (!defined $footer)
                                 {  $footer = $name;  }
                             else
-                                {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Copyright can only be defined once.');  };
+                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Copyright can only be defined once.');  };
                             }
 
                         elsif ($type == ::MENU_TEXT())
                             {
-                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_TEXT(), $name, undef, undef) );
+                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_TEXT(), $name, undef, undef) );
                             }
 
                         elsif ($type == ::MENU_LINK())
@@ -883,14 +883,14 @@ sub LoadMenuFile
                                 $target = $name;
                                 };
 
-                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_LINK(), $name, $target, undef) );
+                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_LINK(), $name, $target, undef) );
                             }
 
                         elsif ($type == ::MENU_INDEX())
                             {
                             if (!defined $modifier)
                                 {
-                                my $entry = NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, undef, undef);
+                                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, undef, undef);
                                 $currentGroup->PushToGroup($entry);
 
                                 $indexes{'*'} = 1;
@@ -914,11 +914,11 @@ sub LoadMenuFile
                                 {
                                 $modifier = $indexSynonyms{$modifier};
                                 $indexes{$modifier} = 1;
-                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, $modifier, undef) );
+                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, $modifier, undef) );
                                 }
                             else
                                 {
-                                push @$errors, NaturalDocs::Menu::Error::New($lineNumber, $modifier . ' is not a valid index type.');
+                                push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $modifier . ' is not a valid index type.');
                                 };
                             }
 
@@ -930,7 +930,7 @@ sub LoadMenuFile
                     # If the keyword doesn't exist...
                     else
                         {
-                        push @$errors, NaturalDocs::Menu::Error::New($lineNumber, $1 . ' is not a valid keyword.');
+                        push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $1 . ' is not a valid keyword.');
                         };
 
                     }
@@ -941,7 +941,7 @@ sub LoadMenuFile
                     # We check the length because the segment may just have been whitespace between symbols (i.e. "\n  {" or
                     # "} #")  If that's the case, the segment content would have been erased when we clipped the leading and trailing
                     # whitespace from the line.
-                    push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'Every line must start with a keyword.');
+                    push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Every line must start with a keyword.');
                     };
 
                 }; # segment of text
@@ -964,9 +964,9 @@ sub LoadMenuFile
             };
 
         if ($openGroups == 1)
-            {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'There is an unclosed group.');  }
+            {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'There is an unclosed group.');  }
         elsif ($openGroups > 1)
-            {  push @$errors, NaturalDocs::Menu::Error::New($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
+            {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
 
 
         no integer;
@@ -1270,7 +1270,7 @@ sub LoadPreviousMenuStateFile
 
     if ($fileIsOkay)
         {
-        $menu = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), undef, undef, undef);
+        $menu = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), undef, undef, undef);
         $indexes = { };
         $files = { };
 
@@ -1356,7 +1356,7 @@ sub LoadPreviousMenuStateFile
                 };
 
 
-            my $entry = NaturalDocs::Menu::Entry::New($type, $title, $target, ($flags || 0));
+            my $entry = NaturalDocs::Menu::Entry->New($type, $title, $target, ($flags || 0));
             $currentGroup->PushToGroup($entry);
 
 
@@ -1743,7 +1743,7 @@ sub AutoPlaceNewFiles #(fileInMenu)
                 };
 
             $targetGroup->MarkEndOfOriginal();
-            $targetGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_FILE(), undef, $file, undef) );
+            $targetGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_FILE(), undef, $file, undef) );
 
             $targetGroup->SetFlags( $targetGroup->Flags() | ::MENU_GROUP_UPDATETITLES() |
                                                  ::MENU_GROUP_UPDATESTRUCTURE() | ::MENU_GROUP_UPDATEORDER() );
@@ -2016,7 +2016,7 @@ sub AddAndRemoveIndexes
             {
             $menu->MarkEndOfOriginal();
 
-            my $newIndexGroup = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), 'Indexes', undef,
+            my $newIndexGroup = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), 'Indexes', undef,
                                                                                              ::MENU_GROUP_ISINDEXGROUP());
             $menu->PushToGroup($newIndexGroup);
 
@@ -2048,7 +2048,7 @@ sub AddAndRemoveIndexes
                     {  $title .= $indexNames{$index} . ' Index';  };
                 };
 
-            my $newEntry = NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $title, ($index eq '*' ? undef : $index), undef);
+            my $newEntry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $title, ($index eq '*' ? undef : $index), undef);
             $bestIndexGroup->PushToGroup($newEntry);
 
             $indexes{$index} = 1;
@@ -2270,7 +2270,7 @@ sub CreateDirectorySubGroups
                     {
                     if ($count >= MINFILESINNEWGROUP)
                         {
-                        my $newGroup = NaturalDocs::Menu::Entry::New( ::MENU_GROUP(), ucfirst($directory), undef,
+                        my $newGroup = NaturalDocs::Menu::Entry->New( ::MENU_GROUP(), ucfirst($directory), undef,
                                                                                                   ::MENU_GROUP_UPDATETITLES() |
                                                                                                   ::MENU_GROUP_UPDATEORDER() );
 
@@ -2530,7 +2530,7 @@ sub CreatePrefixSubGroups
 
                         #$newTitle[-1] =~ s/[:\.]+$//;
 
-                        my $newGroup = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), join('', @newTitle),
+                        my $newGroup = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), join('', @newTitle),
                                                                                                  undef, ::MENU_GROUP_UPDATETITLES());
                         if ($count > MAXFILESINGROUP)
                             {
@@ -2540,7 +2540,7 @@ sub CreatePrefixSubGroups
                         if (($groupEntry->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
                             {
                             push @{$groupEntry->GroupContent()},
-                                    NaturalDocs::Menu::Entry::New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
+                                    NaturalDocs::Menu::Entry->New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
                             $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
                             };
 
@@ -2578,7 +2578,7 @@ sub CreatePrefixSubGroups
                             if ($afterOriginal && ($targetGroup->Flags() & ::MENU_GROUP_HASENDOFORIGINAL()) == 0)
                                 {
                                 push @{$targetGroup->GroupContent()},
-                                        NaturalDocs::Menu::Entry::New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
+                                        NaturalDocs::Menu::Entry->New(::MENU_ENDOFORIGINAL(), undef, undef, undef);
                                 $targetGroup->SetFlags( $targetGroup->Flags() | ::MENU_GROUP_HASENDOFORIGINAL() );
                                 };
 

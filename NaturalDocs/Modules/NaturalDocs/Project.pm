@@ -554,7 +554,7 @@ sub GetAllSupportedFiles
 
                 if (NaturalDocs::Languages::IsSupported($relativeName) && $fullEntry ne $menuFile)
                     {
-                    $supportedFiles{$relativeName} = NaturalDocs::Project::File::New(undef, (stat($fullEntry))[9], undef, undef);
+                    $supportedFiles{$relativeName} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
                     };
                 };
             };
