@@ -1766,8 +1766,16 @@ sub MakeIndex #(type)
         {
         if (defined $sections->[$i])
             {
-            @{$sections->[$i]}
-                = sort { ::StringCompare($a->SortableSymbol(), $b->SortableSymbol()) } @{$sections->[$i]};
+            @{$sections->[$i]} = sort
+                {
+                my $result = ::StringCompare($a->SortableSymbol(), $b->SortableSymbol());
+
+                if ($result == 0)
+                    {  $result = ::StringCompare($a->StrippedPrefix(), $b->StrippedPrefix());  };
+
+                return $result;
+                }
+            @{$sections->[$i]};
             };
         };
 
