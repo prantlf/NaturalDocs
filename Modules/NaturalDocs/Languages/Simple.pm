@@ -1,11 +1,12 @@
 ###############################################################################
 #
-#   Class: NaturalDocs::Languages::Language
+#   Class: NaturalDocs::Languages::Simple
 #
 ###############################################################################
 #
-#   A class containing the characteristics of a particular programming language.  Also serves as a base class for languages
-#   that break from general conventions, such as not having parameter lists use parenthesis and commas.
+#   A class containing the characteristics of a particular programming language for basic support within Natural Docs.
+#   Also serves as a base class for languages that break from general conventions, such as not having parameter lists use
+#   parenthesis and commas.
 #
 ###############################################################################
 
@@ -15,11 +16,19 @@
 use strict;
 use integer;
 
-package NaturalDocs::Languages::Language;
+package NaturalDocs::Languages::Simple;
+
+use base 'NaturalDocs::Languages::Base';
 
 
 #############################################################################
 # Group: Implementation
+
+#
+#   Topic: Inherits
+#
+#   <NaturalDocs::Languages::Base>
+#
 
 #
 #   Constants: Members
@@ -27,6 +36,8 @@ package NaturalDocs::Languages::Language;
 #   The class is implemented as a blessed arrayref.  The following constants are used as indexes.
 #
 #   NAME                             - The name of the language.
+#   EXTENSIONS                  - An arrayref of the all-lowercase extensions of the language's files.
+#   SHEBANG_STRINGS        - An arrayref of the all-lowercase strings that can appear in the language's shebang lines.
 #   LINE_COMMENT_SYMBOLS         - An arrayref of symbols that start a single line comment.  Undef if none.
 #   OPENING_COMMENT_SYMBOLS  - An arrayref of symbols that start a multi-line comment.  Undef if none.
 #   CLOSING_COMMENT_SYMBOLS  - An arrayref of symbols that ends a multi-line comment.  Undef if none.
@@ -34,27 +45,10 @@ package NaturalDocs::Languages::Language;
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
 #
-#
-#   Constant: LAST_MEMBER
-#
-#   The last index in the arrayref used by this package.  When deriving from this package, start your constants at
-#
-#   > __PACKAGE__->SUPER::LAST_MEMBER() + 1
-#
-#   and continue incrementing.  Remember to define your own LAST_MEMBER to be the same as the last one.
-#
 
-# DEPENDENCY: New() depends on its parameter list being in the same order as these constants.  If the order changes, New()
-# needs to be changed.
-use constant NAME => 0;
-use constant LINE_COMMENT_SYMBOLS => 1;
-use constant OPENING_COMMENT_SYMBOLS => 2;
-use constant CLOSING_COMMENT_SYMBOLS => 3;
-use constant FUNCTION_ENDERS => 4;
-use constant VARIABLE_ENDERS => 5;
-use constant LINE_EXTENDER => 6;
-
-use constant LAST_MEMBER => 6;
+use NaturalDocs::DefineMembers 'NAME', 'EXTENSIONS', 'SHEBANG_STRINGS',
+                                                 'LINE_COMMENT_SYMBOLS', 'OPENING_COMMENT_SYMBOLS', 'CLOSING_COMMENT_SYMBOLS',
+                                                 'FUNCTION_ENDERS', 'VARIABLE_ENDERS', 'LINE_EXTENDER';
 
 
 #############################################################################
@@ -83,7 +77,7 @@ use constant LAST_MEMBER => 6;
 #
 sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSymbols, closingCommentSymbols, functionEnders, variableEnders, lineExtender)
     {
-    my ($package, $name, $extensions, $shebangStrings, $lineCommentSymbols, $openingCommentSymbols,
+    my ($self, $name, $extensions, $shebangStrings, $lineCommentSymbols, $openingCommentSymbols,
            $closingCommentSymbols, $functionEnders, $variableEnders, $lineExtender) = @_;
 
     # Since these function calls are the most likely piece of code to be changed by people unfamiliar with Perl, do some extra
@@ -91,7 +85,7 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
 
     if (scalar @_ != 10)
         {
-        die "You didn't pass the correct number of parameters to NaturalDocs::Languages::Language->New().  "
+        die "You didn't pass the correct number of parameters to " . $self . "->New().  "
            . "Check your code against the documentation and try again.\n";
         };
 
@@ -106,14 +100,34 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
         };
 
 
-    # DEPENDENCY:  This line is dependent on the order of the constants.  If they change, this needs to change.
+    # Convert extensions and shebang strings to lowercase.
 
-    my $object = [ $name, $lineCommentSymbols, $openingCommentSymbols, $closingCommentSymbols,
-                          $functionEnders, $variableEnders, $lineExtender ];
-    bless $object, $package;
+    if (defined $extensions)
+        {
+        for (my $i = 0; $i < scalar @$extensions; $i++)
+            {  $extensions->[$i] = lc( $extensions->[$i] );  };
+        };
 
-    NaturalDocs::Languages->Add($object, $extensions, $shebangStrings);
+    if (defined $shebangStrings)
+        {
+        for (my $i = 0; $i < scalar @$shebangStrings; $i++)
+            {  $shebangStrings->[$i] = lc( $shebangStrings->[$i] );  };
+        };
 
+
+    my $object = $self->SUPER::New();
+
+    $object->[NAME] = $name;
+    $object->[EXTENSIONS] = $extensions;
+    $object->[SHEBANG_STRINGS] = $shebangStrings;
+    $object->[LINE_COMMENT_SYMBOLS] = $lineCommentSymbols;
+    $object->[OPENING_COMMENT_SYMBOLS] = $openingCommentSymbols;
+    $object->[CLOSING_COMMENT_SYMBOLS] = $closingCommentSymbols;
+    $object->[FUNCTION_ENDERS] = $functionEnders;
+    $object->[VARIABLE_ENDERS] = $variableEnders;
+    $object->[LINE_EXTENDER] = $lineExtender;
+
+    NaturalDocs::Languages->Add($object);
 
     return $object;
     };
@@ -128,6 +142,17 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
 # Returns the name of the language.
 sub Name
     {  return $_[0]->[NAME];  };
+
+# Function: Extensions
+# Returns all the possible extensions of the language's files as an arrayref.  Each one is in all lowercase.
+sub Extensions
+    {  return $_[0]->[EXTENSIONS];  };
+
+# Function: ShebangStrings
+# Returns all the possible strings that can appear in a shebang line (#!) of the language's files.  It is returned as an arrayref,
+# or undef if not applicable, and all the strings are in all lowercase.
+sub ShebangStrings
+    {  return $_[0]->[SHEBANG_STRINGS];  };
 
 # Function: LineCommentSymbols
 # Returns an arrayref of symbols used to start a single line comment, or undef if none.
@@ -174,92 +199,65 @@ sub LineExtender
 
 
 #
-#   Function: StripLineCommentSymbol
+#   Function: OnCode
 #
-#   Determines if the line starts with a line comment symbol, and if so, replaces it with spaces.  This only happens if the only
-#   thing before it on the line is whitespace.
-#
-#   Parameters:
-#
-#       lineRef - A reference to the line to check.
-#
-#   Returns:
-#
-#       If the line starts with a line comment symbol, it will replace it in the line with spaces and return the symbol.  If the line
-#       doesn't, it will leave the line alone and return undef.
-#
-sub StripLineCommentSymbol #(lineRef)
-    {
-    my ($self, $lineRef) = @_;
-    return $self->StripCommentSymbol($lineRef, $self->LineCommentSymbols());
-    };
-
-
-#
-#   Function: StripOpeningCommentSymbol
-#
-#   Determines if the line starts with an opening multiline comment symbol, and if so, replaces it with spaces.  This only happens
-#   if the only thing before it on the line is whitespace.
+#   Called whenever a section of code is encountered by the parser.  Is used to find the prototype of the last topic created.
 #
 #   Parameters:
 #
-#       lineRef - A reference to the line to check.
+#       codeLines - The source code as an arrayref of lines.
+#       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
+#       lastCommentTopicCount - The number of Natural Docs topics that were created by the last comment.
 #
-#   Returns:
-#
-#       If the line starts with an opening multiline comment symbol, it will replace it in the line with spaces and return the symbol.
-#       If the line doesn't, it will leave the line alone and return undef.
-#
-sub StripOpeningCommentSymbol #(lineRef)
+sub OnCode #(codeLines, topicList, lastCommentTopicCount)
     {
-    my ($self, $lineRef) = @_;
-    return $self->StripCommentSymbol($lineRef, $self->OpeningCommentSymbols());
-    };
+    my ($self, $codeLines, $topicList, $lastCommentTopicCount) = @_;
 
-
-#
-#   Function: StripClosingCommentSymbol
-#
-#   Determines if the line contains a closing multiline comment symbol, and if so, truncates it just before the symbol.
-#
-#   Parameters:
-#
-#       lineRef - A reference to the line to check.
-#
-#   Returns:
-#
-#       The array ( symbol, lineRemainder ), or undef if the symbol was not found.
-#
-#       symbol - The symbol that was found.
-#       lineRemainder - Everything on the line following the symbol.
-#
-sub StripClosingCommentSymbol #(lineRef)
-    {
-    my ($self, $lineRef) = @_;
-
-    my $index = -1;
-    my $symbol;
-
-    foreach my $testSymbol (@{$self->ClosingCommentSymbols()})
+    if ($lastCommentTopicCount && $self->HasPrototype($topicList->[-1]->Type()))
         {
-        my $testIndex = index($$lineRef, $testSymbol);
+        my $index = 0;
+        my $prototype;
 
-        if ($testIndex != -1 && ($index == -1 || $testIndex < $index))
+        # Skip all blank lines before a prototype.
+        while ($index < scalar @$codeLines && $codeLines->[$index] =~ /^[ \t]*$/)
+            {  $index++;  };
+
+        # Add prototype lines until we reach the end of the prototype or the end of the comment lines.
+        while ($index < scalar @$codeLines)
             {
-            $index = $testIndex;
-            $symbol = $testSymbol;
+            # We need to add a line break because that may be a prototype ender.
+            my $line = $codeLines->[$index] . "\n";
+
+            my $endOfPrototype = $self->EndOfPrototype($topicList->[-1]->Type(), \$line, undef);
+
+            if ($endOfPrototype == -1)
+                {
+                # Use a space instead of a line break.
+                $line = $codeLines->[$index] . ' ';
+
+                $line =~ tr/\t/ /;
+                $prototype .= $line;
+
+                $index++;
+                }
+            else
+                {
+                # We found it!
+                $line = substr($line, 0, $endOfPrototype);
+                $line =~ tr/\t/ /;
+                $prototype .= $line;
+
+                $self->RemoveExtenders(\$line);
+
+                # Add it to the last topic.
+                $topicList->[-1]->SetPrototype($prototype);
+
+                return;
+                };
             };
+
+        # If we got out of that while loop by running out of lines, there was no prototype.
         };
-
-    if ($index != -1)
-        {
-        my $lineRemainder = substr($$lineRef, $index + length($symbol));
-        $$lineRef = substr($$lineRef, 0, $index);
-
-        return ($symbol, $lineRemainder);
-        }
-    else
-        {  return undef;  };
     };
 
 
@@ -341,178 +339,8 @@ sub RemoveExtenders #(stringRef)
     };
 
 
-#
-#   Function: FormatPrototype
-#
-#   Parses a prototype so that it can be formatted nicely in the output.  By default, this function assumes the parameter list is
-#   enclosed in parenthesis and parameters are separated by commas and semicolons.
-#
-#   Parameters:
-#
-#       type - The topic type.
-#       prototype - The text prototype.
-#
-#   Returns:
-#
-#       The array ( preParam, opening, params, closing, postParam ).
-#
-#       pre - The part of the prototype prior to the parameter list.
-#       open - The opening symbol to the parameter list, such as parenthesis.  If there is none, it will be a space.
-#       params - An arrayref of parameters, one per entry.  Will be undef if none.
-#       close - The closing symbol to the parameter list, such as parenthesis.  If there is none, it will be space.
-#       post - The part of the prototype after the parameter list, or undef if none.
-#
-sub FormatPrototype #(type, prototype)
-    {
-    my ($self, $type, $prototype) = @_;
-
-    $prototype =~ tr/\t\n /   /s;
-    $prototype =~ s/^ //;
-    $prototype =~ s/ $//;
-
-    # Cut out early if it's not a function.
-    if ($type != ::TOPIC_FUNCTION())
-        {  return ( $prototype, undef, undef, undef, undef );  };
-
-    # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look
-    # at this VB function declaration:
-    #
-    # <WebMethod()> Public Function RetrieveTable(ByRef Msg As Integer, ByVal Key As String) As String()
-
-    my @segments = split(/([\(\)])/, $prototype);
-    my ($pre, $open, $paramString, $params, $close, $post);
-    my $nest = 0;
-
-    while (scalar @segments)
-        {
-        my $segment = shift @segments;
-
-        if ($nest == 0)
-            {  $pre .= $segment;  }
-
-        elsif ($nest == 1 && $segment eq ')')
-            {
-            if ($paramString =~ /[,;]/)
-                {
-                $post = join('', $segment, @segments);
-                last;
-                }
-            else
-                {
-                $pre .= $paramString . $segment;
-                $paramString = undef;
-                };
-            }
-
-        else
-            {  $paramString .= $segment;  };
-
-        if ($segment eq '(')
-            {  $nest++;  }
-        elsif ($segment eq ')' && $nest > 0)
-            {  $nest--;  };
-        };
-
-    # If there wasn't closing parenthesis...
-    if ($paramString && !defined $post)
-        {
-        $pre .= $paramString;
-        $paramString = undef;
-        };
-
-
-    if (!defined $paramString)
-        {
-        return ( $pre, undef, undef, undef, undef );
-        }
-    else
-        {
-        if ($pre =~ /( ?\()$/)
-            {
-            $open = $1;
-            $pre =~ s/ ?\($//;
-            };
-
-        if ($post=~ /^(\) ?)/)
-            {
-            $close = $1;
-            $post =~ s/^\) ?//;
-
-            if (!length $post)
-                {  $post = undef;  };
-            };
-
-        my $params = [ ];
-
-        while ($paramString =~ /([^,;]+[,;]?) ?/g)
-            {  push @$params, $1;  };
-
-        return ( $pre, $open, $params, $close, $post );
-        };
-    };
-
-
-#
-#   Function: MakeSortableSymbol
-#
-#   Returns the symbol that should be used for sorting.  For example, in Perl, a scalar variable would be "$var".  However, we
-#   would want to sort on "var" so that all scalar variables don't get dumped into the symbols category in the indexes.
-#
-#   Parameters:
-#
-#       name - The name of the symbol.
-#       type  - The symbol's type.  One of the <Topic Types>.
-#
-#   Returns:
-#
-#       The symbol to sort on.  If the symbol doesn't need to be altered, just return name.
-#
-sub MakeSortableSymbol #(name, type)
-    {
-    my ($self, $name, $type) = @_;
-    return $name;
-    };
-
-
 ###############################################################################
 # Group: Support Functions
-
-
-#
-#   Function: StripCommentSymbol
-#
-#   Determines if the line starts with any of the passed comment symbols, and if so, replaces it with spaces.  This only happens
-#   if the only thing before it on the line is whitespace.
-#
-#   Parameters:
-#
-#       lineRef - A reference to the line to check.
-#       symbols - An arrayref of the symbols to check for.
-#
-#   Returns:
-#
-#       If the line starts with any of the passed comment symbols, it will replace it in the line with spaces and return the symbol.
-#       If the line doesn't, it will leave the line alone and return undef.
-#
-sub StripCommentSymbol #(lineRef, symbols)
-    {
-    my ($self, $lineRef, $symbols) = @_;
-
-    if (!defined $symbols)
-        {  return undef;  };
-
-    foreach my $symbol (@$symbols)
-        {
-        my $index = index($$lineRef, $symbol);
-
-        if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
-            {
-            return substr($$lineRef, $index, length($symbol), ' ' x length($symbol));
-            };
-        };
-
-    return undef;
-    };
 
 
 #
