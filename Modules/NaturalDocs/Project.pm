@@ -520,53 +520,42 @@ sub SetDefaultMenuTitle #(file, menuTitle)
 #   Gets all the supported files in the passed directory and its subdirectories and puts them into <supportedFiles>.  The only
 #   attribute that will be set is <NaturalDocs::Project::File->LastModified()>.
 #
-#   Parameters:
-#
-#       directory  - This is for the function's own recursive use only.  Do not specify.
-#
-sub GetAllSupportedFiles #(directory)
+sub GetAllSupportedFiles
     {
-    my $directory = shift;
+    my @directories = ( NaturalDocs::Settings::InputDirectory() );
+    my $menuFile = MenuFile();
 
-    if (!defined $directory)
-        {  $directory = NaturalDocs::Settings::InputDirectory();  };
-
-
-    # We need to ignore the menu file if we're at the project directory.
-
-    my $menuFile;
-
-    if ($directory eq NaturalDocs::Settings::ProjectDirectory())
-        {  $menuFile = MenuFile();  };
-
-
-    opendir DIRECTORYHANDLE, $directory;
-    my @entries = readdir DIRECTORYHANDLE;
-    closedir DIRECTORYHANDLE;
-
-    @entries = NaturalDocs::File::NoUpwards(@entries);
-
-    foreach my $entry (@entries)
+    while (scalar @directories)
         {
-        my $fullEntry = NaturalDocs::File::JoinPath($directory, $entry);
+        my $directory = pop @directories;
 
-        # If an entry is a directory, recurse.
-        if (-d $fullEntry)
+        opendir DIRECTORYHANDLE, $directory;
+        my @entries = readdir DIRECTORYHANDLE;
+        closedir DIRECTORYHANDLE;
+
+        @entries = NaturalDocs::File::NoUpwards(@entries);
+
+        foreach my $entry (@entries)
             {
-            # Join again with the noFile flag set in case the platform handles them differently.
-            GetAllSupportedFiles( NaturalDocs::File::JoinPath($directory, $entry, 1) );
-            }
+            my $fullEntry = NaturalDocs::File::JoinPath($directory, $entry);
 
-        # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
-        # their syntax is similar to Natural Docs content.
-        else
-            {
-            my $relativeName = NaturalDocs::File::MakeRelativePath(NaturalDocs::Settings::InputDirectory(), $fullEntry);
-
-            if (NaturalDocs::Languages::IsSupported($relativeName) &&
-                 (!defined $menuFile || $fullEntry ne $menuFile) )
+            # If an entry is a directory, recurse.
+            if (-d $fullEntry)
                 {
-                $supportedFiles{$relativeName} = NaturalDocs::Project::File::New(undef, (stat($fullEntry))[9], undef, undef);
+                # Join again with the noFile flag set in case the platform handles them differently.
+                push @directories, NaturalDocs::File::JoinPath($directory, $entry, 1);
+                }
+
+            # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
+            # their syntax is similar to Natural Docs content.
+            else
+                {
+                my $relativeName = NaturalDocs::File::MakeRelativePath(NaturalDocs::Settings::InputDirectory(), $fullEntry);
+
+                if (NaturalDocs::Languages::IsSupported($relativeName) && $fullEntry ne $menuFile)
+                    {
+                    $supportedFiles{$relativeName} = NaturalDocs::Project::File::New(undef, (stat($fullEntry))[9], undef, undef);
+                    };
                 };
             };
         };
