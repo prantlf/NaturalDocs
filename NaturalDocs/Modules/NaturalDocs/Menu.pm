@@ -51,8 +51,8 @@ use constant MINFILESINNEWGROUP => 3;
 #
 #   hash: menuSynonyms
 #
-#   A hash of the text synonyms for the menu tokens.  The keys are the lowercase synonyms, and the values are one of
-#   the <Menu Entry Types>.
+#   A hash of the text synonyms for the menu tokens.  The keys are the lowercase synonyms, and the values are
+#   <MenuEntryTypes>.
 #
 my %menuSynonyms = (
                                         'title'        => ::MENU_TITLE(),
@@ -100,7 +100,7 @@ my $menu;
 #   hash: defaultTitlesChanged
 #
 #   An existence hash of default titles that have changed, since <OnDefaultTitleChange()> will be called before
-#   <LoadAndUpdate()>.  Collects them to be applied later.  The keys are the file names.
+#   <LoadAndUpdate()>.  Collects them to be applied later.  The keys are the <FileNames>.
 #
 my %defaultTitlesChanged;
 
@@ -128,7 +128,7 @@ my $footer;
 #
 #   hash: indexes
 #
-#   An existence hash of all the defined index types appearing in the menu.  Keys are the <Topic Types> or * for the general
+#   An existence hash of all the defined index types appearing in the menu.  Keys are <TopicTypes> or * for the general
 #   index.
 #
 my %indexes;
@@ -136,7 +136,7 @@ my %indexes;
 #
 #   hash: previousIndexes
 #
-#   An existence hash of all the indexes that appeared in the menu last time.  Keys are the <Topic Types> or * for the general
+#   An existence hash of all the indexes that appeared in the menu last time.  Keys are <TopicTypes> or * for the general
 #   index.
 #
 my %previousIndexes;
@@ -145,7 +145,7 @@ my %previousIndexes;
 #   hash: bannedIndexes
 #
 #   An existence hash of all the indexes that the user has manually deleted, and thus should not be added back to the menu
-#   automatically.  Keys are the <Topic Types> or * for the general index.
+#   automatically.  Keys are <TopicTypes> or * for the general index.
 #
 my %bannedIndexes;
 
@@ -287,7 +287,7 @@ my %bannedIndexes;
 #   Dependencies:
 #
 #       - Because the type is represented by a UInt8, the <Menu Entry Types> must all be <= 255.
-#       - Because the index target is represented by a UInt8, the <Topic Types> must all be <= 255.
+#       - Because the index target is represented by a UInt8, the <TopicTypes> must all be <= 255.
 #
 #   Revisions:
 #
@@ -322,7 +322,7 @@ my %bannedIndexes;
 #   Function: LoadAndUpdate
 #
 #   Loads the menu file from disk and updates it.  Will add, remove, rearrange, and remove auto-titling from entries as
-#   necessary.
+#   necessary.  Will also call <NaturalDocs::Settings->GenerateDirectoryNames()>.
 #
 sub LoadAndUpdate
     {
@@ -500,7 +500,7 @@ sub Footer
 #
 #   Function: Indexes
 #
-#   Returns an existence hashref of all the indexes appearing in the menu.  The keys are the <Topic Types> or * for the general
+#   Returns an existence hashref of all the indexes appearing in the menu.  The keys are <TopicTypes> or * for the general
 #   index.  Do not change the arrayref.
 #
 sub Indexes
@@ -509,7 +509,7 @@ sub Indexes
 #
 #   Function: PreviousIndexes
 #
-#   Returns an existence hashref of all the indexes that previously appeared in the menu.  The keys are the <Topic Types> or *
+#   Returns an existence hashref of all the indexes that previously appeared in the menu.  The keys are <TopicTypes> or *
 #   for the general index.  Do not change the arrayref.
 #
 sub PreviousIndexes
@@ -519,7 +519,7 @@ sub PreviousIndexes
 #
 #   Function: FilesInMenu
 #
-#   Returns a hashref of all the files present in the menu.  The keys are the file names, and the values are references to their
+#   Returns a hashref of all the files present in the menu.  The keys are the <FileNames>, and the values are references to their
 #   <NaturalDocs::Menu::Entry> objects.
 #
 sub FilesInMenu
@@ -576,7 +576,7 @@ sub OnFileChange
 #
 #   Parameters:
 #
-#       file    - The source file that had its default menu title changed.
+#       file    - The source <FileName> that had its default menu title changed.
 #
 sub OnDefaultTitleChange #(file)
     {
@@ -604,7 +604,7 @@ sub OnDefaultTitleChange #(file)
 #
 #       inputDirectories - A hashref of all the input directories and their names stored in the menu file.  The keys are the directories,
 #                                 and the values are their names.  Undef if none.
-#       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the file names, and the values are
+#       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the <FileNames>, and the values are
 #                                the old locked titles.  Will be undef if none.  If a file entry from a pre-1.0 file was locked, it's
 #                                entry in <menu> is unlocked and its title is placed here instead, so that it can be compared with the
 #                                generated title and only locked again if absolutely necessary.
@@ -919,7 +919,7 @@ sub LoadMenuFile
                                     if ($bannedIndex eq 'general')
                                         {  $bannedIndex = '*';  }
                                     else
-                                        {  $bannedIndex = NaturalDocs::Topics->NonListConstantOf($bannedIndex);  };
+                                        {  $bannedIndex = NaturalDocs::Topics->BaseConstantOf($bannedIndex);  };
 
                                     if (defined $bannedIndex)
                                         {  $bannedIndexes{$bannedIndex} = 1;  };
@@ -927,7 +927,7 @@ sub LoadMenuFile
                                 }
                             else
                                 {
-                                my $modifierType = NaturalDocs::Topics->NonListConstantOf($modifier);
+                                my $modifierType = NaturalDocs::Topics->BaseConstantOf($modifier);
 
                                 if (defined $modifierType && NaturalDocs::Topics->IsIndexable($modifierType))
                                     {
@@ -1257,9 +1257,9 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 #
 #       previousMenu - A <MENU_GROUP> <NaturalDocs::Menu::Entry> object, similar to <menu>, which contains the entire
 #                              previous menu.
-#       previousIndexes - An existence hashref of the indexes present in the previous menu.  The keys are the <Topic Types> or
+#       previousIndexes - An existence hashref of the indexes present in the previous menu.  The keys are <TopicTypes> or
 #                                  '*' for general.
-#       previousFiles - A hashref of the files present in the previous menu.  The keys are the file names, and the entries are
+#       previousFiles - A hashref of the files present in the previous menu.  The keys are the <FileNames>, and the entries are
 #                             references to its object in previousMenu.
 #
 #       If there is no data available on a topic, it will be undef.  For example, if the file didn't exist, all three will be undef.  If the
@@ -1858,7 +1858,7 @@ sub ResolveFile #(relativePath, possibleBases, possibleBaseScores)
 #
 #   Parameters:
 #
-#       previousMenuFiles - A hashref of the files from the previous menu state.  The keys are the file names, and the values are
+#       previousMenuFiles - A hashref of the files from the previous menu state.  The keys are the <FileNames>, and the values are
 #                                    references to their <NaturalDocs::Menu::Entry> objects.
 #
 sub LockUserTitleChanges #(previousMenuFiles)
@@ -1944,7 +1944,7 @@ sub FlagAutoTitleChanges
 #
 #   Parameters:
 #
-#       filesInMenu - An existence hash of all the files present in the menu.
+#       filesInMenu - An existence hash of all the <FileNames> present in the menu.
 #
 sub AutoPlaceNewFiles #(fileInMenu)
     {
