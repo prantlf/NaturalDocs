@@ -95,7 +95,7 @@ sub FromTextFile #(fileHandle)
     my ($self, $fileHandle) = @_;
 
     my $version = <$fileHandle>;
-    chomp $version;
+    ::XChomp(\$version);
 
     return $self->FromString($version);
     };
