@@ -9,8 +9,12 @@
 
 body {
     font-family: Verdana, Arial, sans-serif;
-    color: #000000; background-color: #E8E8E8;
+    color: #000000;
     margin: 0px; padding: 0px }
+
+body.UnframedPage {
+    background-color: #E8E8E8 }
+
 
 a:link,
 a:visited { color: #900000; text-decoration: none }
@@ -32,10 +36,15 @@ p {
 
 
 
-.Menu {
+
+body.FramedMenuPage,
+.MenuSection {
     font-size: 9pt;
-    padding: 10px 0 0 0;
-    width: 27ex }
+    background-color: #E8E8E8;
+    padding: 10px 0 0 0 }
+
+.MenuSection {
+   width: 27ex }
 
     .MTitle {
         font-size: 16pt; font-weight: bold; font-variant: small-caps;
@@ -81,8 +90,7 @@ p {
     .MLink {
         font-style: italic }
 
-    .MFile#MSelected,
-    .MIndex#MSelected {
+    #MSelected {
         color: #000000; background-color: #FFFFFF;
         /*  Replace padding with border.  */
         padding: 0 10px 0 10px;
@@ -90,17 +98,26 @@ p {
         margin-right: 5px }
 
     /*  Close off the left side when its in a group.  */
-    .MGroup .MFile#MSelected,
-    .MGroup .MIndex#MSelected {
+    .MGroup #MSelected {
         padding-left: 9px; border-left-width: 1px }
 
+    /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
+    .Gecko #MSelected {
+        -moz-border-radius-topright: 10px;
+        -moz-border-radius-bottomright: 10px }
+    .Gecko .MGroup #MSelected {
+        -moz-border-radius-topleft: 10px;
+        -moz-border-radius-bottomleft: 10px }
 
 
 
 
-.Content {
+body.FramedContentPage,
+.ContentSection {
     background-color: #FFFFFF;
-    padding-bottom: 15px;
+    padding-bottom: 15px }
+
+.ContentSection {
     border-width: 0 0 1px 1px; border-style: solid; border-color: #000000 }
 
 
@@ -156,13 +173,17 @@ p {
 
     .CBulletList {
         /*  I don't know why CTopic's margin doesn't apply, but it's consistent across browsers so whatever.
-             Reapply it here as padding..  */
+             Reapply it here as padding.  */
         padding-left: 15px; padding-right: 15px;
         margin: .5em 5ex .5em 5ex;
         }
 
     .CDescriptionList {
         margin: .5em 5ex 0 5ex }
+
+    /* IE 4 always makes it too long.  */
+    .IE4 .CDescriptionList {
+        width: 85% }
 
         .CDLEntry {
             font: 10pt "Courier New", Courier, monospace; color: #808080;
@@ -186,10 +207,25 @@ p {
 
 
     .SBorder {
-        width: 100%;  /*  IE 5 needs this.  */
         background-color: #FFFFF0;
         padding: 15px;
         border: 1px solid #C0C060 }
+
+    /* Let's observe the evolution of IE's brokeness, shall we?
+        IE 4 always makes them too long, there's no way around it.  */
+    .IE4 .SBorder {
+        width: 85% }
+    /* IE 5 will make them too long unless you set the width to 100%.  Isn't this implied for a div?  */
+    .IE5 .SBorder {
+        width: 100% }
+    /* IE 6 behaves like 5 when it's in a frame, but without frames it will be correct without a width or slightly too long
+        (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
+    body.FramedContentPage .IE6 .SBorder {
+        width: 100% }
+
+    /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
+    .Gecko .SBorder {
+        -moz-border-radius: 20px }
 
     .STable {
         font-size: 9pt; width: 100% }
@@ -246,10 +282,15 @@ p {
 
 
 
-.Index {
+
+
+body.FramedIndexPage,
+.IndexSection {
     background-color: #FFFFFF;
     font-size: 10pt;
-    padding: 15px;
+    padding: 15px }
+
+.IndexSection {
     border-width: 0 0 1px 1px; border-style: solid; border-color: #000000 }
 
     .IPageTitle {
@@ -289,10 +330,18 @@ p {
 
 
 
+
+
 .Footer {
-    font-size: 8pt; color: #909090;
+    font-size: 8pt; color: #909090 }
+
+body.UnframedPage .Footer {
     text-align: right;
     margin: 2px }
+
+body.FramedMenuPage .Footer {
+    text-align: center;
+    margin: 5em 10px 0 10px}
 
     .Footer a:link,
     .Footer a:hover,
