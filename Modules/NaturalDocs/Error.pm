@@ -208,7 +208,12 @@ sub GenerateCrashReport
     my $errorMessage = $::EVAL_ERROR;
     $errorMessage =~ s/[\r\n]+$//;
 
-    my $file = NaturalDocs::File->JoinPaths($FindBin::RealBin, 'LastCrash.txt');
+    my $reportDirectory = NaturalDocs::Settings->ProjectDirectory();
+
+    if (!$reportDirectory || !-d $reportDirectory)
+        {  return undef;  };
+
+    my $file = NaturalDocs::File->JoinPaths($reportDirectory, 'LastCrash.txt');
 
     open(FH_CRASHREPORT, '>' . $file) or return undef;
 
