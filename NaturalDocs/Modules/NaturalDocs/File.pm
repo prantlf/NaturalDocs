@@ -384,6 +384,24 @@ sub NoFileName #(path)
     };
 
 
+#
+#   Function: ExtensionOf
+#
+#   Returns the extension of the passed path, or undef if none.
+#
+sub ExtensionOf #(path)
+    {
+    my ($self, $path) = @_;
+
+    my ($pathVolume, $pathDirString, $pathFile) = File::Spec->splitpath($path);
+
+    if ($pathFile =~ /\.([^\.]+)$/)
+        {  return $1;  }
+    else
+        {  return undef;  };
+    };
+
+
 ###############################################################################
 # Group: Disk Functions
 
