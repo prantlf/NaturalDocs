@@ -48,15 +48,19 @@ package NaturalDocs::Parser::ParsedTopic;
 #       TYPE           - The <TopicType>.
 #       TITLE          - The title of the topic.
 #       PACKAGE    - The package <SymbolString> the topic appears in, or undef if none.
-#       USING         - An arrayref of additional package <SymbolStrings> available to the topic via "using" statements, or undef if none.
+#       USING         - An arrayref of additional package <SymbolStrings> available to the topic via "using" statements, or undef if
+#                           none.
 #       PROTOTYPE - The prototype, if it exists and is applicable.
 #       SUMMARY    - The summary, if it exists.
 #       BODY          - The body of the topic, formatted in <NDMarkup>.  Some topics may not have bodies, and if not, this
 #                           will be undef.
 #       LINE_NUMBER  - The line number the topic appears at in the file.
+#       EXPORTED  - If set, a second, global topic should also be defined to forward to this one.
+#       EXPORTED_LIST  - If the <TopicType> is a list, a hashref of the symbols in that list that should be exported.  Undef if
+#                                   none or not applicable.
 #
 use NaturalDocs::DefineMembers 'TYPE', 'TITLE', 'PACKAGE', 'USING', 'PROTOTYPE', 'SUMMARY', 'BODY',
-                                                 'LINE_NUMBER';
+                                                 'LINE_NUMBER', 'EXPORTED', 'EXPORTED_LIST';
 # DEPENDENCY: New() depends on the order of these constants, and that this class is not inheriting any members.
 
 
@@ -90,7 +94,7 @@ sub New #(type, title, package, using, prototype, summary, body, lineNumber)
 
     my $package = shift;
 
-    my $object = [ @_ ];
+    my $object = [ @_, undef, undef ];  # for EXPORTED, EXPORTED_LIST
     bless $object, $package;
 
     return $object;
@@ -208,5 +212,38 @@ sub SetBody #(body)
 sub LineNumber
     {  return $_[0]->[LINE_NUMBER];  };
 
+# Function: IsExported
+# Returns whether a second, global version of the topic should be defined to forward to this one.
+sub IsExported
+    {  return $_[0]->[EXPORTED];  };
+
+# Function: SetIsExported
+# Sets whether the topic should have a second, global version to forward to this one.
+sub SetIsExported #(isExported)
+    {  $_[0]->[EXPORTED] = $_[1];  };
+
+# Function: IsListSymbolExported
+# Returns whether the passed list item is exported, provided the <TopicType> is a list type.
+sub IsListSymbolExported #(symbol)
+    {
+    my ($self, $symbol) = @_;
+
+    if (defined $self->[EXPORTED_LIST])
+        {  return exists $self->[EXPORTED_LIST]->{$symbol};  }
+    else
+        {  return undef;  };
+    };
+
+# Function: AddExportedListSymbol
+# Adds a list item to be exported, provided the <TopicType> is a list type.
+sub AddExportedListSymbol #(symbol)
+    {
+    my ($self, $symbol) = @_;
+
+    if (!defined $self->[EXPORTED_LIST])
+        {  $self->[EXPORTED_LIST] = { };  };
+
+    $self->[EXPORTED_LIST]->{$symbol} = 1;
+    };
 
 1;
