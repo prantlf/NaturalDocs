@@ -5,12 +5,14 @@
 ###############################################################################
 #
 #   A package that coordinates source file parsing between the <NaturalDocs::Languages::Base>-derived objects and its own
-#   sub-packages such as <NaturalDocs::Parser::Native>.  Also handles sending symbols to <NaturalDocs::SymbolTable>.
+#   sub-packages such as <NaturalDocs::Parser::Native>.  Also handles sending symbols to <NaturalDocs::SymbolTable> and
+#   other generic topic processing.
 #
 #   Usage and Dependencies:
 #
-#       - Prior to use, <NaturalDocs::Settings>, <NaturalDocs::Languages>, <NaturalDocs::Project>, and
-#         <NaturalDocs::SymbolTable> must be initialized.  <NaturalDocs::SymbolTable> does not have to be fully resolved.
+#       - Prior to use, <NaturalDocs::Settings>, <NaturalDocs::Languages>, <NaturalDocs::Project>, <NaturalDocs::SymbolTable>,
+#         and <NaturalDocs::ClassHierarchy> must be initialized.  <NaturalDocs::SymbolTable> and <NaturalDocs::ClassHierarchy>
+#         do not have to be fully resolved.
 #
 #       - Aside from that, the package is ready to use right away.  It does not have its own initialization function.
 #
@@ -176,16 +178,15 @@ sub OnComment #(commentLines, lineNumber)
 
 
 ###############################################################################
-# Group: Parser Stages
-#
-# Do not call these functions directly, as they are stages in the parsing process.  Rather, call <ParseForInformation()> or
-# <ParseForBuild()>.
+# Group: Support Functions
 
 
 #   Function: Parse
 #
 #   Opens the source file and parses process.  Most of the actual parsing is done in <NaturalDocs::Languages::Base->ParseFile()>
-#   and <OnComment()>, though.  Do not call directly; rather, call <ParseForInformation()> or <ParseForBuild()>.
+#   and <OnComment()>, though.
+#
+#   *Do not call externally.*  Rather, call <ParseForInformation()> or <ParseForBuild()>.
 #
 #   Parameters:
 #
@@ -203,7 +204,7 @@ sub Parse #(file)
     NaturalDocs::Parser::Native->Start();
     @parsedFile = ( );
 
-    $language->ParseFile($file, \@parsedFile);
+    my ($autoTopics, $scopeRecord) = $language->ParseFile($file, \@parsedFile);
 
 
     # Set the menu title.
@@ -244,6 +245,20 @@ sub Parse #(file)
         # We only want to call the hook if it has content.
         NaturalDocs::Extensions->AfterFileParsed($file, \@parsedFile);
         };
+
+    if (defined $autoTopics)
+        {
+        if (defined $scopeRecord)
+            {  $self->RepairScope($autoTopics, $scopeRecord);  };
+
+        $self->MergeAutoTopics($language, $autoTopics);
+        };
+
+    $self->MakeAutoGroups($autoTopics);
+
+    # We don't need to do this if there aren't any auto-topics because the only scope changes would be implied by the comments.
+    if (defined $autoTopics)
+        {  $self->AddScopeDelineators();  };
 
     return $defaultMenuTitle;
     };
@@ -425,6 +440,317 @@ sub CleanComment #(commentLines)
         $index++;
        };
 
+    };
+
+
+
+###############################################################################
+# Group: Processing Functions
+
+
+#
+#   Function: MakeAutoGroups
+#
+#   Creates group topics for files that do not have them.
+#
+sub MakeAutoGroups
+    {
+    my ($self) = @_;
+
+    # No groups if less than four topics.
+    if (scalar @parsedFile < 4)
+        {  return;  };
+
+    my $index = 0;
+    my $currentScope;
+    my $currentScopeIndex = 0;
+
+    while ($index < scalar @parsedFile)
+        {
+        if ($parsedFile[$index]->Scope() ne $currentScope)
+            {
+            $index += $self->MakeAutoGroupsFor($currentScopeIndex, $index);
+            $currentScope = $parsedFile[$index]->Scope();
+            $currentScopeIndex = $index;
+            };
+
+        $index++;
+        };
+
+    $self->MakeAutoGroupsFor($currentScopeIndex, $index);
+    };
+
+
+#
+#   Function: MakeAutoGroupsFor
+#
+#   Creates group topics for sections of files that do not have them.  A support function for <MakeAutoGroups()>.
+#
+#   Parameters:
+#
+#       startIndex - The index to start at.
+#       endIndex - The index to end at.  Not inclusive.
+#
+#   Returns:
+#
+#       The number of group topics added.
+#
+sub MakeAutoGroupsFor #(startIndex, endIndex)
+    {
+    my ($self, $startIndex, $endIndex) = @_;
+
+    # No groups if any are defined already.
+    for (my $i = $startIndex; $i < $endIndex; $i++)
+        {
+        if ($parsedFile[$i]->Type() == ::TOPIC_GROUP())
+            {  return 0;  };
+        };
+
+    my $currentType;
+    my $groupCount = 0;
+
+    while ($startIndex < $endIndex)
+        {
+        my $topic = $parsedFile[$startIndex];
+        my $type = $topic->Type();
+
+        if (NaturalDocs::Topics->IsList($type))
+            {  $type = NaturalDocs::Topics->IsListOf($type);  };
+
+        if ( ( $type == ::TOPIC_FUNCTION() || $type == ::TOPIC_VARIABLE() ||
+               $type == ::TOPIC_FILE() || $type == ::TOPIC_TYPE() ) &&
+             $type != $currentType)
+            {
+            splice(@parsedFile, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
+                                                                                                                          NaturalDocs::Topics->PluralNameOf($type),
+                                                                                                                          $topic->Scope(), $topic->Scope(),
+                                                                                                                          undef, undef, undef,
+                                                                                                                          $topic->LineNumber()) );
+
+            $currentType = $type;
+            $startIndex++;
+            $endIndex++;
+            $groupCount++;
+            }
+
+        elsif ($topic->Type() == ::TOPIC_CLASS())
+            {
+            $currentType = undef;
+            };
+
+        $startIndex++;
+        };
+
+    return $groupCount;
+    };
+
+
+#
+#   Function: RepairScope
+#
+#   Recalculates the scope for all comment topics using the auto-topics and the scope record.  Call this *before* calling
+#   <MergeAutoTopics()>.
+#
+#   Parameters:
+#
+#       autoTopics - A reference to the list of automatically generated topics.
+#       scopeRecord - A reference to an array of <NaturalDocs::Languages::Advanced::ScopeChanges>.
+#
+sub RepairScope #(autoTopics, scopeRecord)
+    {
+    my ($self, $autoTopics, $scopeRecord) = @_;
+
+    my $topicIndex = 0;
+    my $autoTopicIndex = 0;
+    my $scopeIndex = 0;
+
+    my $topic = $parsedFile[0];
+    my $autoTopic = $autoTopics->[0];
+    my $scopeChange = $scopeRecord->[0];
+
+    my $currentScope;
+    my $inFakeScope;
+
+    while (defined $topic)
+        {
+        # First update the scope via the record if its defined and has the lowest line number.
+        if (defined $scopeChange &&
+            $scopeChange->LineNumber() <= $topic->LineNumber() &&
+            (!defined $autoTopic || $scopeChange->LineNumber() <= $autoTopic->LineNumber()) )
+            {
+            $currentScope = $scopeChange->Scope();
+            $scopeIndex++;
+            $scopeChange = $scopeRecord->[$scopeIndex];  # Will be undef when past end.
+            $inFakeScope = undef;
+            }
+
+        # Next try to end a fake scope with an auto topic if its defined and has the lowest line number.
+        elsif (defined $autoTopic &&
+                $autoTopic->LineNumber() <= $topic->LineNumber())
+            {
+            if ($inFakeScope)
+                {
+                $currentScope = $autoTopic->Scope();
+                $inFakeScope = undef;
+                };
+
+            $autoTopicIndex++;
+            $autoTopic = $autoTopics->[$autoTopicIndex];  # Will be undef when past end.
+            }
+
+
+        # Finally try to handle the topic, since it has the lowest line number.
+        else
+            {
+            if ($topic->Type() == ::TOPIC_CLASS() || $topic->Type() == ::TOPIC_SECTION())
+                {
+                # They should already have the correct class and scope.
+                $currentScope = $topic->Scope();
+                $inFakeScope = 1;
+                }
+            elsif ($topic->Type() == ::TOPIC_FILE() || $topic->Type() == ::TOPIC_FILE_LIST())
+                {
+                # Fix the file's scope.  The class should be correct.
+                $topic->SetScope($currentScope);
+                }
+           else
+                {
+                # Fix the class and scope of everything not handled above, which includes functions, variables, and types.
+
+                # Note that the first function or variable topic to appear in a fake scope will assume that scope even if it turns out
+                # to be incorrect in the actual code, since the topic will come before the auto-topic.  This will be corrected in
+                # MergeAutoTopics().
+
+                $topic->SetClass($currentScope);
+                $topic->SetScope($currentScope);
+                };
+
+            $topicIndex++;
+            $topic = $parsedFile[$topicIndex];  # Will be undef when past end.
+            };
+        };
+
+    };
+
+
+#
+#   Function: MergeAutoTopics
+#
+#   Merges the automatically generated topics into the file.  If an auto-topic matches an existing topic, it will be deleted and,
+#   if appropriate, have it's prototype, class, and scope transferred.  If it doesn't, the auto-topic will be inserted into the list unless
+#   <NaturalDocs::Settings->DocumentedOnly()> is set.
+#
+#   Parameters:
+#
+#       language - The <NaturalDocs::Languages::Base>-derived class for the file.
+#       autoTopics - A reference to the list of automatically generated topics.
+#
+sub MergeAutoTopics #(language, autoTopics)
+    {
+    my ($self, $language, $autoTopics) = @_;
+
+    my $topicIndex = 0;
+    my $autoTopicIndex = 0;
+
+    while ($topicIndex < scalar @parsedFile && $autoTopicIndex < scalar @$autoTopics)
+        {
+        my $topic = $parsedFile[$topicIndex];
+        my $autoTopic = $autoTopics->[$autoTopicIndex];
+
+        # Add the auto-topic if it's higher in the file than the current topic.
+        if ($autoTopic->LineNumber < $topic->LineNumber())
+            {
+            if (!NaturalDocs::Settings->DocumentedOnly())
+                {  splice(@parsedFile, $topicIndex, 0, $autoTopic);  };
+
+            $topicIndex++;
+            $autoTopicIndex++;
+            }
+
+        # Transfer information if we have a match.
+        elsif ($topic->Type() == $autoTopic->Type() &&
+                index($topic->Name(), $language->MakeSortableSymbol($autoTopic->Name(), $autoTopic->Type())) != -1)
+            {
+            $topic->SetPrototype($autoTopic->Prototype());
+            $topic->SetClass($autoTopic->Class());
+            $topic->SetScope($autoTopic->Scope());
+
+            $topicIndex++;
+            $autoTopicIndex++;
+            }
+
+        # Otherwise there's no match.  Skip the topic.  The auto-topic will be added later.
+        else
+            {
+            $topicIndex++;
+            }
+        };
+
+    # Add any auto-topics remaining.
+    if ($autoTopicIndex < scalar @$autoTopics && !NaturalDocs::Settings->DocumentedOnly())
+        {
+        push @parsedFile, @$autoTopics[$autoTopicIndex..scalar @$autoTopics-1];
+        };
+    };
+
+
+#
+#   Function: AddScopeDelineators
+#
+#   Adds section and class topics to make sure the scope is correctly represented in the documentation.  Should be called last in
+#   this process.
+#
+sub AddScopeDelineators
+    {
+    my ($self) = @_;
+
+    my $index = 0;
+    my $currentScope;
+
+    my %usedScopes;
+
+    while ($index < scalar @parsedFile)
+        {
+        my $topic = $parsedFile[$index];
+
+        if ($topic->Scope() ne $currentScope)
+            {
+            $currentScope = $topic->Scope();
+
+            if ($topic->Type() != ::TOPIC_CLASS() && $topic->Type() != ::TOPIC_CLASS_LIST() &&
+                $topic->Type() != ::TOPIC_SECTION())
+                {
+                my $newTopic;
+
+                if (!defined $currentScope)
+                    {
+                    $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), 'Global',
+                                                                                                   undef, undef,
+                                                                                                   undef, undef, undef,
+                                                                                                   $topic->LineNumber());
+                    }
+                else
+                    {
+                    my $name = $currentScope;
+                    if (exists $usedScopes{$currentScope})
+                        {  $name .= ' (continued)';  };
+
+                    $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $name,
+                                                                                                   undef, $currentScope,
+                                                                                                   undef, undef, undef,
+                                                                                                   $topic->LineNumber());
+                    }
+
+                splice(@parsedFile, $index, 0, $newTopic);
+                $index++;
+                };
+
+            if (defined $currentScope)
+                {  $usedScopes{$currentScope} = 1;  };
+            };
+
+        $index++;
+        };
     };
 
 

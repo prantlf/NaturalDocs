@@ -209,6 +209,10 @@ sub LineExtender
 #       sourceFile - The name of the source file to parse.
 #       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
 #
+#   Returns:
+#
+#       Since this class cannot automatically document the code or generate a scope record, it always returns ( undef, undef ).
+#
 sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
@@ -347,7 +351,7 @@ sub ParseFile #(sourceFile, topicsList)
 
     close(SOURCEFILEHANDLE);
 
-    $self->OnEndParse($topicsList);
+    return ( undef, undef );
     };
 
 
@@ -408,22 +412,6 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
         };
     };
 
-
-#
-#   Function: OnEndParse
-#
-#   Called after parsing is over.
-#
-#   Parameters:
-#
-#       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> that was built by the file.
-#
-sub OnEndParse #(topicList)
-    {
-    my ($self, $topicList) = @_;
-
-    $self->MakeAutoGroups($topicList);
-    };
 
 
 ###############################################################################
