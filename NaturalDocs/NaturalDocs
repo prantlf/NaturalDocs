@@ -103,7 +103,7 @@ use integer;
 #
 #       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Languages>.
 #
-#       - C++ (.h and .hpp files only)
+#       - C++
 #       - C#
 #       - Java
 #       - JavaScript (.js files only)
@@ -345,7 +345,7 @@ use NaturalDocs::Builder::FramedHTML;
 eval {
 
     # Add the supported languages.
-    NaturalDocs::Languages::Add( 'C++', [ 'h', 'hpp' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'C++', [ 'h', 'hpp', 'c', 'cpp' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Add( 'C#', [ 'cs' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Add( 'Java', [ 'java' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Add( 'JavaScript', [ 'js' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ], undef );
