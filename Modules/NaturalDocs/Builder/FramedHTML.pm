@@ -249,7 +249,7 @@ sub UpdateMenu
 
     # Update index.html
 
-    my $firstMenuEntry = $self->FindFirstFile(NaturalDocs::Menu::Content());
+    my $firstMenuEntry = $self->FindFirstFile();
     my $indexFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'index.html' );
 
     # We have to check because it's possible that there may be no files with Natural Docs content and thus no files on the menu.

@@ -2144,31 +2144,30 @@ sub AddHiddenBreaks #(string)
 #
 #   Function: FindFirstFile
 #
-#   A recursive function that finds and returns the first file entry in the menu.
+#   A function that finds and returns the first file entry in the menu, or undef if none.
 #
-#   Parameters:
-#
-#       arrayref - The array to search.  Set to <NaturalDocs::Menu::Content()>.
-#
-sub FindFirstFile #(arrayref)
+sub FindFirstFile
     {
+    # Hidden parameter: arrayref
+    # Used for recursion only.
+
     my ($self, $arrayref) = @_;
 
-    my $i = 0;
-    while ($i < scalar @$arrayref)
+    if (!defined $arrayref)
+        {  $arrayref = NaturalDocs::Menu::Content();  };
+
+    foreach my $entry (@$arrayref)
         {
-        if ($arrayref->[$i]->Type() == ::MENU_FILE())
+        if ($entry->Type() == ::MENU_FILE())
             {
-            return $arrayref->[$i];
+            return $entry;
             }
-        elsif ($arrayref->[$i]->Type() == ::MENU_GROUP())
+        elsif ($entry->Type() == ::MENU_GROUP())
             {
-            my $result = $self->FindFirstFile($arrayref->[$i]->GroupContent());
+            my $result = $self->FindFirstFile($entry->GroupContent());
             if (defined $result)
                 {  return $result;  };
             };
-
-        $i++;
         };
 
     return undef;
