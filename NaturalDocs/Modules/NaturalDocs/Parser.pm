@@ -1364,10 +1364,14 @@ sub RichFormatTextBlock #(text)
                     $linkText .= $textBlocks[$index];
                     $index++;
                     };
-
                 # Index will be incremented again at the end of the loop.
 
-                $output .= '<link>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText) . '</link>';
+                if ($linkText =~ /^(?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z0-9]{2,4}$/i)
+                    {  $output .= '<email>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText) . '</email>';  }
+                elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:[a-z0-9\-\~\@\#\%\&\_\+\/\?\.\,]+$/i)
+                    {  $output .= '<url>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText ). '</url>';  }
+                else
+                    {  $output .= '<link>' . NaturalDocs::NDMarkup::ConvertAmpChars($linkText) . '</link>';  };
                 }
 
             else # it's not a link.
@@ -1429,7 +1433,60 @@ sub RichFormatTextBlock #(text)
 
         else # plain text or a > that isn't part of a link
             {
-            $output .= NaturalDocs::NDMarkup::ConvertAmpChars($textBlocks[$index]);
+            my $text = NaturalDocs::NDMarkup::ConvertAmpChars($textBlocks[$index]);
+
+            $text =~ s{   # Begin capture
+                                (
+
+                                # The user portion.  Alphanumeric and - _.  Dots can appear between, but not at the edges or more than
+                                # one in a row.
+                                (?:  [a-z0-9\-_]+  \.  )*   [a-z0-9\-_]+
+
+                                @
+
+                                # The domain.  Alphanumeric and -.  Dots same as above, however, there must be at least two sections
+                                # and the last one must be two to four alphanumeric characters (.com, .uk, .info, .203 for IP addresses)
+                                (?:  [a-z0-9\-]+  \.  )+  [a-z0-9]{2,4}
+
+                                # End capture.
+                                )
+
+                                # The next character can't be an alphanumeric, which should prevent .abcde from matching the two to
+                                # for character requirement.
+                                (?!  [a-z0-9]  )
+
+                                }
+
+                           {<email>$1<\/email>}igx;
+
+            $text =~ s{
+                                # The previous character can't be an alphanumeric.
+                                (?<!  [a-z0-9]  )
+
+                                # Begin capture.
+                                (
+
+                                # URL must start with one of the acceptable protocols.
+                                (?:http|https|ftp|news|file)\:
+
+                                # The acceptable URL characters as far as I know.
+                                [a-z0-9\-\~\@\#\%\&\_\+\/\?\.\,]*
+
+                                # The URL characters minus period, comma, and question mark.  If it ends on them, they're probably
+                                # intended as punctuation.
+                                [a-z0-9\-\~\@\#\%\&\_\+\/]
+
+                                # End capture.
+                                )
+
+                                # The next character must not be an acceptable character.  This will prevent the URL from ending early just
+                                # to get a match.
+                                (?!  [a-z0-9\-\~\@\#\%\&\_\+\/]  )
+
+                                }
+                               {<url>$1<\/url>}igx;
+
+            $output .= $text;
             };
 
         $index++;
