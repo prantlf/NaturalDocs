@@ -810,7 +810,8 @@ sub SkipRestOfStatement #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipWhitespace
-#   If the current position is on a whitespace or line break token, skip all line breaks and whitespace and return true.
+#   If the current position is on a whitespace token, line break token, or comment, it skips them and returns true.  If there are
+#   a number of these in a row, it skips them all.
 #
 sub TryToSkipWhitespace #(indexRef, lineNumberRef)
     {
