@@ -177,7 +177,7 @@ sub SeparateMember #(string)
 
 
 #
-#   Function:
+#   Function: Add
 #
 #   Adds a <NaturalDocs::Languages::Language> object to the package.
 #
