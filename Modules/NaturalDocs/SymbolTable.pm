@@ -70,7 +70,7 @@ my %files;
 #
 #   object: watchedFile
 #
-#   A <NaturalDocs::SymbolTable::File> object of the file being watched for deletions.  This is compared to the version in <files>
+#   A <NaturalDocs::SymbolTable::File> object of the file being watched for changes.  This is compared to the version in <files>
 #   to see if anything was changed since the last parse.
 #
 my $watchedFile;
@@ -81,6 +81,14 @@ my $watchedFile;
 #   The file name of the watched file, if any.  If there is no watched file, this will be undef.
 #
 my $watchedFileName;
+
+#
+#   hash: watchedFileSymbolDefinitions
+#
+#   A hashref of the symbol definition information for all the symbols in the watched file.  The keys are the symbol strings, and the
+#   values are <NaturalDocs::SymbolTable::SymbolDefinition> objects.
+#
+my %watchedFileSymbolDefinitions;
 
 
 ###############################################################################
@@ -389,39 +397,6 @@ sub AddSymbol #(class, symbol, file, type, prototype)
             # and everything else is either using that or its own definition, and thus wouldn't be affected by this.
             }
 
-        # If the symbol is defined in this file...
-        else
-            {
-            # If we're watching this file for changes, and this file has the global definition of the symbol, detect if the type or prototype
-            # changed, since that would require the files that reference this to be rebuilt.  We have to do it here instead of in
-            # AnalyzeChanges() because watchedFile is stored as a NaturalDocs::SymbolTable::File object, which doesn't store those
-            # things.  The only drawback to doing this way, besides putting logic here that should be in AnalyzeChanges(), is that if a
-            # symbol is defined twice in one file with two different types or prototypes, it will always treat that symbol as changing
-            # whenever the file is reparsed.  However, if someone does that they're an idiot, so I'm not going to worry about it.
-
-            # We don't have to worry if they changed and this isn't the global definition because then the only links that point to this
-            # definition are in the file itself, and if it's being parsed and has content, it's being built.
-            if (defined $watchedFileName && $symbolObject->GlobalDefinition() eq $file &&
-                ( $type != $symbolObject->TypeDefinedIn($file) || $prototype ne $symbolObject->PrototypeDefinedIn($file) ))
-                {
-                # Replace the previous type and prototype.
-                $symbolObject->AddDefinition($file, $type, $prototype);
-
-                # Rebuild the files that have references to this symbol
-                my @references = $symbolObject->References();
-                foreach my $reference (@references)
-                    {
-                    my $referenceObject = $references{$reference};
-                    if ($referenceObject->CurrentInterpretation() eq $symbolString)
-                        {
-                        my @definitions = $referenceObject->Definitions();
-                        foreach my $referenceFile (@definitions)
-                            {  NaturalDocs::Project::RebuildFile($referenceFile);  };
-                        };
-                    };
-                };
-            };
-
         };
 
 
@@ -436,7 +411,15 @@ sub AddSymbol #(class, symbol, file, type, prototype)
     # Add it to the watched file, if necessary.
 
     if (defined $watchedFileName)
-        {  $watchedFile->AddSymbol($symbolString);  };
+        {
+        $watchedFile->AddSymbol($symbolString);
+
+        if (!exists $watchedFileSymbolDefinitions{$symbolString})
+            {
+            $watchedFileSymbolDefinitions{$symbolString} =
+                 NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype);
+            };
+        };
     };
 
 
@@ -509,6 +492,7 @@ sub WatchFileForChanges #(file)
 
     $watchedFile = NaturalDocs::SymbolTable::File::New();
     $watchedFileName = $file;
+    %watchedFileSymbolDefinitions = ( );
     };
 
 
@@ -522,6 +506,9 @@ sub AnalyzeChanges
     if (exists $files{$watchedFileName})
         {
 
+        # Go through the references and remove any that were deleted.  Ones that were added will have already been added to
+        # the table in AddReference().
+
         my @references = $files{$watchedFileName}->References();
         foreach my $reference (@references)
             {
@@ -529,17 +516,57 @@ sub AnalyzeChanges
                 {  DeleteReference($reference, $watchedFileName);  };
             };
 
+
+        # Go through the symbols and remove any that were deleted.  Ones that were added will have already been added to the
+        # table in AddSymbol().  Update files that link to symbols that already existed but the symbol types or prototypes changed.
+
         my @symbols = $files{$watchedFileName}->Symbols();
         foreach my $symbol (@symbols)
             {
             if (!$watchedFile->DefinesSymbol($symbol))
-                {  DeleteSymbol($symbol, $watchedFileName);  };
-            };
+                {
+                DeleteSymbol($symbol, $watchedFileName);
+                }
+
+            else
+                {
+                my $symbolObject = $symbols{$symbol};
+                my $newSymbolDef = $watchedFileSymbolDefinitions{$symbol};
+
+                if ( $symbolObject->TypeDefinedIn($watchedFileName) != $newSymbolDef->Type() ||
+                     $symbolObject->PrototypeDefinedIn($watchedFileName) ne $newSymbolDef->Prototype() )
+                    {
+                    # Replace the previous type and prototype.
+                    $symbolObject->ChangeDefinition($watchedFileName, $newSymbolDef->Type(), $newSymbolDef->Prototype());
+
+                    # If the symbol definition was the global one, we need to update all files that reference it.  If it wasn't, the only file
+                    # that could references it is itself, and the only way the symbol definition could change in the first place was if it was
+                    # itself changed.
+                    if ($symbolObject->GlobalDefinition() eq $watchedFileName)
+                        {
+                        # Rebuild the files that have references to this symbol
+                        my @references = $symbolObject->References();
+                        foreach my $reference (@references)
+                            {
+                            my $referenceObject = $references{$reference};
+                            if ($referenceObject->CurrentInterpretation() eq $symbol)
+                                {
+                                my @definitions = $referenceObject->Definitions();
+                                foreach my $referenceFile (@definitions)
+                                    {  NaturalDocs::Project::RebuildFile($referenceFile);  };
+                                }; # If reference interprets as symbol
+                            }; # While references
+                        }; # If global definition is watched file
+                    }; # If the symbol definition changed
+                }; # If the symbol still exists
+            }; # foreach symbol in watched file
 
         };
 
+
     $watchedFile = undef;
     $watchedFileName = undef;
+    %watchedFileSymbolDefinitions = ( );
     };
 
 
