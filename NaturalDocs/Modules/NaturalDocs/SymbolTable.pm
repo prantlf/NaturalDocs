@@ -31,6 +31,7 @@ use NaturalDocs::SymbolTable::SymbolDefinition;
 use NaturalDocs::SymbolTable::Reference;
 use NaturalDocs::SymbolTable::File;
 use NaturalDocs::SymbolTable::ReferenceTarget;
+use NaturalDocs::SymbolTable::IndexElement;
 
 use strict;
 use integer;
@@ -89,6 +90,24 @@ my $watchedFileName;
 #   values are <NaturalDocs::SymbolTable::SymbolDefinition> objects.
 #
 my %watchedFileSymbolDefinitions;
+
+
+#
+#   hash: indexes;
+#
+#   A hash of generated symbol indexes.  The keys are <Topic Types> or *, and the values are sorted arrayrefs of
+#   <NaturalDocs::SymbolTable::IndexElements>.  A key of * means the index is not limited to a topic type.
+#
+my %indexes;
+
+
+#
+#   hash: indexChanges
+#
+#   An existence hash of all the indexes that have changed.  The keys are the <Topic Types>.  Unlike <indexes>, there is no *
+#   entry.  Simply check if there are any defined keys instead.
+#
+my %indexChanges;
 
 
 ###############################################################################
@@ -346,6 +365,8 @@ sub AddSymbol #(class, symbol, file, type, prototype)
         $newSymbol->AddDefinition($file, $type, $prototype);
 
         $symbols{$symbolString} = $newSymbol;
+
+        $indexChanges{$type} = 1;
         }
 
 
@@ -381,12 +402,15 @@ sub AddSymbol #(class, symbol, file, type, prototype)
                     };
                 };
 
+            $indexChanges{$type} = 1;
             }
 
         # If the symbol is defined but not in this file...
         elsif (!$symbolObject->IsDefinedIn($file))
             {
             $symbolObject->AddDefinition($file, $type, $prototype);
+
+            $indexChanges{$type} = 1;
 
             # There's only one potential issue here, which is if this definition is new and the file references this symbol.  The file would
             # need to be rebuilt because its own definition takes precedence over the global one.  However, the only way for a file
@@ -395,7 +419,9 @@ sub AddSymbol #(class, symbol, file, type, prototype)
 
             # We don't have to check other files, by the way, because if the symbol is defined it already has a global definiton,
             # and everything else is either using that or its own definition, and thus wouldn't be affected by this.
-            }
+            };
+
+        # If the symbol was already defined in this file, ignore it.
 
         };
 
@@ -517,12 +543,13 @@ sub AnalyzeChanges
             };
 
 
-        # Go through the symbols and remove any that were deleted.  Ones that were added will have already been added to the
-        # table in AddSymbol().  Update files that link to symbols that already existed but the symbol types or prototypes changed.
+        # Go through the symbols.
 
         my @symbols = $files{$watchedFileName}->Symbols();
         foreach my $symbol (@symbols)
             {
+            # Delete symbols that don't exist.
+
             if (!$watchedFile->DefinesSymbol($symbol))
                 {
                 DeleteSymbol($symbol, $watchedFileName);
@@ -533,10 +560,14 @@ sub AnalyzeChanges
                 my $symbolObject = $symbols{$symbol};
                 my $newSymbolDef = $watchedFileSymbolDefinitions{$symbol};
 
+                # Update symbols that changed.
+
                 if ( $symbolObject->TypeDefinedIn($watchedFileName) != $newSymbolDef->Type() ||
                      $symbolObject->PrototypeDefinedIn($watchedFileName) ne $newSymbolDef->Prototype() )
                     {
-                    # Replace the previous type and prototype.
+                    $indexChanges{$symbolObject->TypeDefinedIn($watchedFileName)} = 1;
+                    $indexChanges{$newSymbolDef->Type()} = 1;
+
                     $symbolObject->ChangeDefinition($watchedFileName, $newSymbolDef->Type(), $newSymbolDef->Prototype());
 
                     # If the symbol definition was the global one, we need to update all files that reference it.  If it wasn't, the only file
@@ -599,6 +630,17 @@ sub PurgeResolvingInfo
     # We don't need the information by file at all.
 
     %files = ( );
+    };
+
+
+#
+#   Function: PurgeIndexes
+#
+#   Clears all generated indexes.
+#
+sub PurgeIndexes
+    {
+    %indexes = ( );
     };
 
 
@@ -703,65 +745,55 @@ sub References #(scope, reference, file)
     };
 
 
-#    use constant SYMLIST_NAME => 0;
-#    use constant SYMLIST_CLASS => 1;
-#    use constant SYMLIST_DEFINITIONS => 2;
 #
-#   xFunction: List
+#   Function: Index
 #
-#   Returns an arrayref of defined symbols, optionally meeting certain criteria.
+#   Returns a symbol index.
+#
+#   Indexes are generated on demand, but they are stored so subsequent calls for the same index will be fast.  Call
+#   <PurgeIndexes()> to clear the generated indexes.
 #
 #   Parameters:
 #
-#       type - If specified, only returns symbols of this type.  If undef, returns them all.
+#       type  - The type of symbol to limit the index to, or undef for none.  Should be one of the <Topic Types>.
 #
 #   Returns:
 #
-#       An arrayref of symbols.  Each entry is an arrayref with the keys SYMLIST_NAME, SYMLIST_CLASS, and
-#       SYMLIST_DEFINITIONS.  If the symbol is global, SYMLIST_CLASS will be undef.  SYMLIST_DEFINITIONS will be an
-#       arrayref of all the files that define this symbol.
+#       A sorted arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
 #
-#       Since this list was generated just for the caller, it is a copy of all applicable data and can be changed.  If there are no
-#       matches, the function will return undef.
+sub Index #(type)
+    {
+    my $type = shift;
+
+    my $key = ($type || '*');
+
+    if (!exists $indexes{$key})
+        {
+        $indexes{$key} = MakeIndex($type);
+        };
+
+    return $indexes{$key};
+    };
+
+
 #
-#sub List #(type)
-#    {
-#    my $type = shift;
+#   Function: IndexChanged
 #
-#    my $list = [ ];
+#   Returns whether the specified index has changed.
 #
-#    while (my ($symbol, $symbolArray) = each %symbols)
-#        {
-#        if (exists $symbolArray->[GLOBAL_DEFINITION])
-#            {
-#            my $listEntry = [ ];
-#            $listEntry->[::SYMLIST_DEFINITIONS()] = [ ];
+#   Parameters:
 #
-#            while (my ($definition, $definitionType) = each %{$symbolArray->[DEFINITIONS]})
-#                {
-#                if (!defined $type || $definitionType == $type)
-#                    {
-#                    push @{$listEntry->[::SYMLIST_DEFINITIONS()]}, $definition;
-#                    };
-#                };
+#       type  - The type of symbol to limit the index to, or undef if none.  Should be one of the <Topic Types>.
 #
-#            if (scalar @{$listEntry->[::SYMLIST_DEFINITIONS()]})
-#                {
-#                my %symbolName = DecodeSymbolString($symbol);
-#
-#                $listEntry->[::SYMLIST_NAME()] = $symbolName{Name};
-#                $listEntry->[::SYMLIST_CLASS()] = $symbolName{Class};
-#
-#                push @$list, $listEntry;
-#                };
-#            };
-#        };
-#
-#    if (scalar @$list)
-#        {  return $list;  }
-#    else
-#        {  return undef;  };
-#    };
+sub IndexChanged #(type)
+    {
+    my $type = shift;
+
+    if (defined $type)
+        {  return (exists $indexChanges{$type});  }
+    else
+        {  return (scalar keys %indexChanges > 0);  };
+    };
 
 
 ###############################################################################
@@ -974,6 +1006,8 @@ sub DeleteSymbol #(symbolString, file)
         my $symbolObject = $symbols{$symbolString};
         my $wasGlobal = ($symbolObject->GlobalDefinition() eq $file);
 
+        $indexChanges{$symbolObject->TypeDefinedIn($file)} = 1;
+
         $symbolObject->DeleteDefinition($file);
 
         # If this was one definition of many...
@@ -1046,8 +1080,6 @@ sub DeleteSymbol #(symbolString, file)
                 delete $symbols{$symbolString};
                 };
             };
-
-
 
         # Remove it from the file index.
 
@@ -1219,5 +1251,67 @@ sub InterpretReference #(referenceString)
         {  $referenceObject->SetCurrentInterpretation(undef);  };
     };
 
+
+#
+#   Function: MakeIndex
+#
+#   Generates a symbol index.
+#
+#   Parameters:
+#
+#       type  - The type to limit the index to, or undef if none.  Should be one of the <Topic Types>.
+#
+#   Returns:
+#
+#       A sorted arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
+#
+sub MakeIndex #(type)
+    {
+    my $type = shift;
+
+    my %indexHash;
+
+    while (my ($symbolString, $object) = each %symbols)
+        {
+        my ($class, $symbol) = DecodeSymbolString($symbolString);
+        my @definitions = $object->Definitions();
+
+        foreach my $definition (@definitions)
+            {
+            if (!defined $type || $type == $object->TypeDefinedIn($definition))
+                {
+                if (!defined $indexHash{$symbol})
+                    {
+                    $indexHash{$symbol} = NaturalDocs::SymbolTable::IndexElement::New($symbol, $class, $definition,
+                                                                                                                              $object->TypeDefinedIn($definition),
+                                                                                                                              $object->PrototypeDefinedIn($definition) );
+                    }
+                else
+                    {
+                    $indexHash{$symbol}->Merge($class, $definition, $object->TypeDefinedIn($definition),
+                                                                 $object->PrototypeDefinedIn($definition) );
+                    };
+                }; # If type matches
+            }; # Each definition
+        }; # Each symbol
+
+
+    # Sort them and migrate them to an array.
+
+    my $indexArray = [ keys %indexHash ];
+
+    @$indexArray = sort { NaturalDocs::StringSort::Compare($a, $b) } @$indexArray;
+
+    for (my $i = 0; $i < scalar @$indexArray; $i++)
+        {
+        # Replace symbol names to IndexElement objects.
+        $indexArray->[$i] = $indexHash{$indexArray->[$i]};
+
+        # Sort its internal content as well.
+        $indexArray->[$i]->Sort();
+        };
+
+    return $indexArray;
+    };
 
 1;
