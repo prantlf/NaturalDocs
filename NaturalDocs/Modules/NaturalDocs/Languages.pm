@@ -950,10 +950,15 @@ sub SaveFile #(isMain)
     . "#\n"
     . "#   Defines a new language.  Its name can use any characters.\n"
     . "#\n"
-    . "#   The languages \"Text File\" and \"Shebang Script\" have special meanings.\n"
-    . "#   Text files are treated like one big comment and don't have comment symbols.\n"
-    . "#   Shebang scripts have their language determined by the shebang string\n"
-    . "#   instead of the extension and include files with no extension.\n"
+    . "#   The language Shebang Script is special.  It's entry is only used for\n"
+    . "#   extensions, and files with those extensions have their shebang (#!) lines\n"
+    . "#   read to determine the real language of the file.  Extensionless files are\n"
+    . "#   always treated this way.\n"
+    . "#\n"
+    . "#   The language Text File is also special.  It's treated as one big comment\n"
+    . "#   so you can put Natural Docs content in them without special symbols.  Also,\n"
+    . "#   if you don't specify a package separator or any ignored prefixes, it will\n"
+    . "#   copy those settings from the language that is used most in the source tree.\n"
     . "#\n"
     . "#\n"
     . "#   Alter Language: [name]\n"
@@ -1381,26 +1386,28 @@ sub LanguageOf #(sourceFile)
 
 
 #
-#   Function: IsSupported
+#   Function: OnMostUsedLanguageChange
 #
-#   Returns whether the language of the passed file is supported.
+#   Called if <NaturalDocs::Project->MostUsedLanguage()> changes since the last parse.
 #
-#   Parameters:
-#
-#       file - The <FileName> to test.
-#
-#   Returns:
-#
-#       Whether the file's language is supported.
-#
-sub IsSupported #(file)
+sub OnMostUsedLanguageChange
     {
-    my ($self, $file) = @_;
+    my $self = shift;
 
-    # This function used to be slightly more efficient than just testing if LanguageOf returns undef, but now that we support
-    # shebangs, it's really not worth it.
+    if (!$languages{'text file'}->HasIgnoredPrefixes() || !$languages{'text file'}->PackageSeparatorWasSet())
+        {
+        my $language = $languages{lc( NaturalDocs::Project->MostUsedLanguage() )};
 
-    return (defined $self->LanguageOf($file));
+        if ($language)
+            {
+            if (!$languages{'text file'}->HasIgnoredPrefixes())
+                {  $languages{'text file'}->CopyIgnoredPrefixesOf($language);  };
+            if (!$languages{'text file'}->PackageSeparatorWasSet())
+                {  $languages{'text file'}->SetPackageSeparator($language->PackageSeparator());  };
+            };
+
+        NaturalDocs::SymbolTable->RebuildAllIndexes();
+        };
     };
 
 
