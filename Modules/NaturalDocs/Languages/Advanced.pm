@@ -123,6 +123,26 @@ sub ScopeRecord
 
 
 #
+#   Function: OnEndParse
+#
+#   A function to be called after the file parsing is complete.  Is a catch-all for the <Processing Functions>.
+#
+#   Parameters:
+#
+#       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> to merge into.
+#
+sub OnEndParse #(topicList)
+    {
+    my ($self, $topicList) = @_;
+
+    $self->RepairScope($topicList);
+    $self->MergeAutoTopics($topicList);
+    $self->MakeAutoGroups($topicList);
+    $self->AddScopeDelineators($topicList);
+    };
+
+
+#
 #   Function: ParseForCommentsAndTokens
 #
 #   Loads the passed file, sends all appropriate comments to <NaturalDocs::Parser->OnComment()>, and breaks the rest into
@@ -748,26 +768,6 @@ sub SetProtection #(protection, lineNumber)
 
 
 #
-#   Function: HandleAutoTopics
-#
-#   A catch-all function for dealing with auto-topics.
-#
-#   Parameters:
-#
-#       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> to merge into.
-#
-sub HandleAutoTopics #(topicList)
-    {
-    my ($self, $topicList) = @_;
-
-    $self->RepairScope($topicList);
-    $self->MergeAutoTopics($topicList);
-    $self->MakeAutoGroups($topicList);
-    $self->AddScopeDelineators($topicList);
-    };
-
-
-#
 #   Function: RepairScope
 #
 #   Recalculates the scope for all comment topics using the auto-topics and the scope record.  Call this *before* calling
@@ -921,115 +921,6 @@ sub MergeAutoTopics #(topicList)
 
 
 #
-#   Function: MakeAutoGroups
-#
-#   Creates group topics for files that do not have them.
-#
-#   Parameters:
-#
-#       topicList - The list of topics to work on.
-#
-#   Private Parameters:
-#
-#       These are used internally for recursion.  Do not set when calling externally.
-#
-#       startingIndex - The index to start at.
-#       endingIndex - The index to end at.
-#
-sub MakeAutoGroups #(topicList)
-    {
-    my ($self, $topics) = @_;
-
-    # No groups if less than four topics.
-    if (scalar @$topics < 4)
-        {  return;  };
-
-    my $index = 0;
-    my $currentScope;
-    my $currentScopeIndex = 0;
-
-    while ($index < scalar @$topics)
-        {
-        if ($topics->[$index]->Scope() ne $currentScope)
-            {
-            $index += $self->MakeSectionAutoGroups($topics, $currentScopeIndex, $index);
-            $currentScope = $topics->[$index]->Scope();
-            $currentScopeIndex = $index;
-            };
-
-        $index++;
-        };
-
-    $self->MakeSectionAutoGroups($topics, $currentScopeIndex, $index);
-    };
-
-
-#
-#   Function: MakeSectionAutoGroups
-#
-#   Creates group topics for sections of files that do not have them.  A support function for <MakeAutoGroups()>.
-#
-#   Parameters:
-#
-#       topicList - The list of topics to work on.
-#       startIndex - The index to start at.
-#       endIndex - The index to end at.  Not inclusive.
-#
-#   Returns:
-#
-#       The number of group topics added.
-#
-sub MakeSectionAutoGroups #(topicList, startIndex, endIndex)
-    {
-    my ($self, $topics, $startIndex, $endIndex) = @_;
-
-    # No groups if any are defined already.
-    for (my $i = $startIndex; $i < $endIndex; $i++)
-        {
-        if ($topics->[$i]->Type() == ::TOPIC_GROUP())
-            {  return 0;  };
-        };
-
-    my $currentType;
-    my $groupCount = 0;
-
-    while ($startIndex < $endIndex)
-        {
-        my $topic = $topics->[$startIndex];
-        my $type = $topic->Type();
-
-        if (NaturalDocs::Topics->IsList($type))
-            {  $type = NaturalDocs::Topics->IsListOf($type);  };
-
-        if ( ( $type == ::TOPIC_FUNCTION() || $type == ::TOPIC_VARIABLE() ||
-               $type == ::TOPIC_FILE() || $type == ::TOPIC_TYPE() ) &&
-             $type != $currentType)
-            {
-            splice(@$topics, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
-                                                                                                                      NaturalDocs::Topics->PluralNameOf($type),
-                                                                                                                      $topic->Scope(), $topic->Scope(),
-                                                                                                                      undef, undef, undef,
-                                                                                                                      $topic->LineNumber()) );
-
-            $currentType = $type;
-            $startIndex++;
-            $endIndex++;
-            $groupCount++;
-            }
-
-        elsif ($topic->Type() == ::TOPIC_CLASS())
-            {
-            $currentType = undef;
-            };
-
-        $startIndex++;
-        };
-
-    return $groupCount;
-    };
-
-
-#
 #   Function: AddScopeDelineators
 #
 #   Adds section and class topics to make sure the scope is correctly represented in the documentation.  Should be called last in
@@ -1134,7 +1025,7 @@ sub AddToScopeRecord #(newScope, lineNumber)
 #
 #   Returns:
 #
-#       The string. linky to <$x>.
+#       The string.
 #
 sub CreateString #(startIndex, endIndex)
     {
