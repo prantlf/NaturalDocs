@@ -87,7 +87,7 @@ sub ParsePrototype #(type, prototype)
 
     my $noParenthesisParameters = ($type eq ::TOPIC_FUNCTION() && $prototype =~ /^[^\(]*\@/);
 
-    if ($prototype !~ /\(.*,.*\)/ && !$noParenthesisParameters)
+    if ($prototype !~ /\(.*[^ ].*\)/ && !$noParenthesisParameters)
         {  return $self->SUPER::ParsePrototype($type, $prototype);  };
 
 
@@ -298,7 +298,7 @@ sub ParseParameterLine #(line)
             };
         };
 
-    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, $defaultValue);
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, undef, $defaultValue);
     };
 
 
