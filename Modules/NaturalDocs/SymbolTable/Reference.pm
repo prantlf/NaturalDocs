@@ -25,9 +25,9 @@ package NaturalDocs::SymbolTable::Reference;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#       DEFINITIONS                        - An existence hashref of the files that define this reference.
-#       INTERPRETATIONS                - A hashref of the possible interpretations of this reference.  The keys are the symbol
-#                                                    strings, and the values are their scores.
+#       DEFINITIONS                        - An existence hashref of the <FileNames> that define this reference.
+#       INTERPRETATIONS                - A hashref of the possible interpretations of this reference.  The keys are the <SymbolStrings>
+#                                                     and the values are the scores.
 #       CURRENT_INTERPRETATION  - The interpretation currently used as the reference target.  It will be the interpretation with
 #                                                     the highest score that is actually defined.  If none are defined, this item will be undef.
 #
@@ -70,7 +70,7 @@ sub New
 #
 #   Parameters:
 #
-#       file   - The file that defines the reference.
+#       file   - The <FileName> that defines the reference.
 #
 sub AddDefinition #(file)
     {
@@ -87,7 +87,7 @@ sub AddDefinition #(file)
 #
 #   Parameters:
 #
-#       file - The definition to delete.
+#       file - The <FileName> which has the definition to delete.
 #
 sub DeleteDefinition #(file)
     {
@@ -104,14 +104,14 @@ sub DeleteDefinition #(file)
 #
 #   Parameters:
 #
-#       symbolString - The string of the symbol.
-#       score            - The score of this interpretation.
+#       symbol  - The <SymbolString>.
+#       score     - The score of this interpretation.
 #
-sub AddInterpretation #(referenceString, score)
+sub AddInterpretation #(symbol, score)
     {
-    my ($self, $referenceString, $score) = @_;
+    my ($self, $symbol, $score) = @_;
 
-    $self->[INTERPRETATIONS]{$referenceString} = $score;
+    $self->[INTERPRETATIONS]{$symbol} = $score;
     };
 
 
@@ -122,13 +122,13 @@ sub AddInterpretation #(referenceString, score)
 #
 #   Parameters:
 #
-#       symbolString - The string of the symbol to delete.
+#       symbol - The <SymbolString> to delete.
 #
-sub DeleteInterpretation #(symbolString)
+sub DeleteInterpretation #(symbol)
     {
-    my ($self, $symbolString) = @_;
+    my ($self, $symbol) = @_;
 
-    delete $self->[INTERPRETATIONS]{$symbolString};
+    delete $self->[INTERPRETATIONS]{$symbol};
     };
 
 
@@ -158,13 +158,13 @@ sub DeleteAllInterpretationsButCurrent
 #
 #   Parameters:
 #
-#       symbolString - The string of the symbol to make the current interpretation.  Can be set to undef to clear it.
+#       symbol - The <SymbolString>l to make the current interpretation.  Can be set to undef to clear it.
 #
-sub SetCurrentInterpretation #(symbolString)
+sub SetCurrentInterpretation #(symbol)
     {
-    my ($self, $symbolString) = @_;
+    my ($self, $symbol) = @_;
 
-    $self->[CURRENT_INTERPRETATION] = $symbolString;
+    $self->[CURRENT_INTERPRETATION] = $symbol;
     };
 
 
@@ -175,7 +175,7 @@ sub SetCurrentInterpretation #(symbolString)
 #
 #   Function: Definitions
 #
-#   Returns an array of all the files that define this reference.  If none do, returns an empty array.
+#   Returns an array of all the <FileNames> that define this reference.  If none do, returns an empty array.
 #
 sub Definitions
     {
@@ -197,7 +197,7 @@ sub IsDefined
 #
 #   Function: IsDefinedIn
 #
-#   Returns whether the reference is defined in the passed file.
+#   Returns whether the reference is defined in the passed <FileName>.
 #
 sub IsDefinedIn #(file)
     {
@@ -210,7 +210,7 @@ sub IsDefinedIn #(file)
 #
 #   Function: Interpretations
 #
-#   Returns an array of all the symbol strings that this reference can be interpreted as.  If none, returns an empty array.
+#   Returns an array of all the <SymbolStrings> that this reference can be interpreted as.  If none, returns an empty array.
 #
 sub Interpretations
     {
@@ -221,8 +221,8 @@ sub Interpretations
 #
 #   Function: InterpretationsAndScores
 #
-#   Returns a hash of all the symbol strings that this reference can be interpreted as and their scores.  The keys are the symbol
-#   strings, and the values are the scores.  If none, returns an empty hash.
+#   Returns a hash of all the <SymbolStrings> that this reference can be interpreted as and their scores.  The keys are the <SymbolStrings>
+#   and the values are the scores.  If none, returns an empty hash.
 #
 sub InterpretationsAndScores
     {
@@ -244,7 +244,7 @@ sub HasCurrentInterpretation
 #
 #   Function: CurrentInterpretation
 #
-#   Returns the symbol string of the current interpretation, or undef if none.
+#   Returns the <SymbolString> of the current interpretation, or undef if none.
 #
 sub CurrentInterpretation
     {
