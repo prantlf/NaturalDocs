@@ -19,6 +19,9 @@ use integer;
 package NaturalDocs::Languages::Simple;
 
 use base 'NaturalDocs::Languages::Base';
+use base 'Exporter';
+
+our @EXPORT = ( 'ENDER_ACCEPT', 'ENDER_IGNORE', 'ENDER_ACCEPT_AND_CONTINUE', 'ENDER_REVERT_TO_ACCEPTED' );
 
 
 use NaturalDocs::DefineMembers 'LINE_COMMENT_SYMBOLS', 'LineCommentSymbols()', 'SetLineCommentSymbols() duparrayref',
@@ -256,47 +259,106 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
     {
     my ($self, $codeLines, $codeLineNumber, $topicList, $lastCommentTopicCount) = @_;
 
-    if ($lastCommentTopicCount && $self->HasPrototype($topicList->[-1]->Type()))
+    if ($lastCommentTopicCount && defined $self->PrototypeEndersFor($topicList->[-1]->Type()))
         {
-        my $index = 0;
+        my $lineIndex = 0;
         my $prototype;
 
         # Skip all blank lines before a prototype.
-        while ($index < scalar @$codeLines && $codeLines->[$index] =~ /^[ \t]*$/)
-            {  $index++;  };
+        while ($lineIndex < scalar @$codeLines && $codeLines->[$lineIndex] =~ /^[ \t]*$/)
+            {  $lineIndex++;  };
 
-        # Add prototype lines until we reach the end of the prototype or the end of the comment lines.
-        while ($index < scalar @$codeLines)
+        my @tokens;
+        my $tokenIndex = 0;
+
+        my @brackets;
+        my $enders = $self->PrototypeEndersFor($topicList->[-1]->Type());
+
+        # Add prototype lines until we reach the end of the prototype or the end of the code lines.
+        while ($lineIndex < scalar @$codeLines)
             {
-            # We need to add a line break because that may be a prototype ender.
-            $prototype .= $codeLines->[$index] . "\n";
+            my $line = $self->RemoveLineExtender($codeLines->[$lineIndex] . "\n");
 
-            my $endOfPrototype = $self->EndOfPrototype($topicList->[-1]->Type(), \$prototype, undef);
+            push @tokens, $line =~ /([^\(\)\[\]\{\}\<\>]+|.)/g;
 
-            if ($endOfPrototype == -1)
+            while ($tokenIndex < scalar @tokens)
                 {
-                $index++;
-                }
-            else
-                {
-                # We found it!
-                $prototype = substr($prototype, 0, $endOfPrototype);
-                $self->RemoveExtenders(\$prototype);
-
-                # Try to match the title to the prototype.
-
-                my $titleInPrototype = $topicList->[-1]->Title();
-
-                # Strip parenthesis so Function(2) and Function(int, int) will still match Function(anything).
-                $titleInPrototype =~ s/[\t ]*\(.*$//;
-
-                if (index($prototype, $titleInPrototype) != -1)
+                # If we're not inside brackets, check for ender symbols.
+                if (!scalar @brackets)
                     {
-                    $topicList->[-1]->SetPrototype($prototype);
+                    my $startingIndex = 0;
+                    my $testPrototype;
+
+                    for (;;)
+                        {
+                        my ($enderIndex, $ender) = ::FindFirstSymbol($tokens[$tokenIndex], $enders, $startingIndex);
+
+                        if ($enderIndex == -1)
+                            {  last;  }
+                        else
+                            {
+                            # We do this here so we don't duplicate prototype for every single token.  Just the first time an ender symbol
+                            # is found in one.
+                            if (!defined $testPrototype)
+                                {  $testPrototype = $prototype;  };
+
+                            $testPrototype .= substr($tokens[$tokenIndex], $startingIndex, $enderIndex - $startingIndex);
+
+                            my $enderResult = $self->OnPrototypeEnd($topicList->[-1]->Type(), \$testPrototype, $ender);
+
+                            if ($enderResult == ENDER_IGNORE())
+                                {
+                                $testPrototype .= $ender;
+                                $startingIndex = $enderIndex + length($ender);
+                                }
+                            elsif ($enderResult == ENDER_REVERT_TO_ACCEPTED())
+                                {
+                                return;
+                                }
+                            else # ENDER_ACCEPT || ENDER_ACCEPT_AND_CONTINUE
+                                {
+                                my $titleInPrototype = $topicList->[-1]->Title();
+
+                                # Strip parenthesis so Function(2) and Function(int, int) will still match Function(anything).
+                                $titleInPrototype =~ s/[\t ]*\([^\(]*$//;
+
+                                if (index($testPrototype, $titleInPrototype) != -1)
+                                    {
+                                    $topicList->[-1]->SetPrototype($testPrototype);
+                                    };
+
+                                if ($enderResult == ENDER_ACCEPT())
+                                    {  return;  }
+                                else # ENDER_ACCEPT_AND_CONTINUE
+                                    {
+                                    $testPrototype .= $ender;
+                                    $startingIndex = $enderIndex + length($ender);
+                                    };
+                                };
+                            };
+                        };
+                    }
+
+                # If we are inside brackets, check for closing symbols.
+                elsif ( ($tokens[$tokenIndex] eq ')' && $brackets[-1] eq '(') ||
+                         ($tokens[$tokenIndex] eq ']' && $brackets[-1] eq '[') ||
+                         ($tokens[$tokenIndex] eq '}' && $brackets[-1] eq '{') ||
+                         ($tokens[$tokenIndex] eq '>' && $brackets[-1] eq '<') )
+                    {
+                    pop @brackets;
                     };
 
-                return;
+                # Check for opening brackets.
+                if ($tokens[$tokenIndex] =~ /^[\(\[\{\<]$/)
+                    {
+                    push @brackets, $tokens[$tokenIndex];
+                    };
+
+                $prototype .= $tokens[$tokenIndex];
+                $tokenIndex++;
                 };
+
+            $lineIndex++;
             };
 
         # If we got out of that while loop by running out of lines, there was no prototype.
@@ -304,212 +366,61 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
     };
 
 
-
-###############################################################################
-# Group: Support Functions
-
-
-#
-#   Function: HasPrototype
-#
-#   Returns whether the language accepts prototypes from the passed <TopicType>.
-#
-sub HasPrototype #(type)
-    {
-    my ($self, $type) = @_;
-    return ( defined $self->PrototypeEndersFor($type) );
-    };
-
+use constant ENDER_ACCEPT => 1;
+use constant ENDER_IGNORE => 2;
+use constant ENDER_ACCEPT_AND_CONTINUE => 3;
+use constant ENDER_REVERT_TO_ACCEPTED => 4;
 
 #
-#   Function: EndOfPrototype
+#   Function: OnPrototypeEnd
 #
-#   Returns the index of the end of the prototype in a string.
+#   Called whenever the end of a prototype is found so that there's a chance for derived classes to mark false positives.
 #
 #   Parameters:
 #
 #       type - The <TopicType> of the prototype.
-#       stringRef  - A reference to the string.
-#       falsePositives  - An existence hashref of indexes into the string that would trigger false positives, and thus should be
-#                              ignored.  This is for use by derived classes only, so set to undef.
+#       prototypeRef - A reference to the prototype so far, minus the ender in dispute.
+#       ender - The ender symbol.
 #
 #   Returns:
 #
-#       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol that would
-#       end it.
+#       ENDER_ACCEPT - The ender is accepted and the prototype is finished.
+#       ENDER_IGNORE - The ender is rejected and parsing should continue.  Note that the prototype will be rejected as a whole
+#                                  if all enders are ignored before reaching the end of the code.
+#       ENDER_ACCEPT_AND_CONTINUE - The ender is accepted so the prototype may stand as is.  However, the prototype might
+#                                                          also continue on so continue parsing.  If there is no accepted ender between here and
+#                                                          the end of the code this version will be accepted instead.
+#       ENDER_REVERT_TO_ACCEPTED - The expedition from ENDER_ACCEPT_AND_CONTINUE failed.  Use the last accepted
+#                                                        version and end parsing.
 #
-sub EndOfPrototype #(type, stringRef, falsePositives)
+sub OnPrototypeEnd #(type, prototypeRef, ender)
     {
-    my ($self, $type, $stringRef, $falsePositives) = @_;
-
-    my $symbols = $self->PrototypeEndersFor($type);
-    if (!defined $symbols)
-        {  return -1;  };
-
-    if (!defined $falsePositives)
-        {  $falsePositives = { };  };
-
-    my $enderIndex = -1;
-
-    foreach my $ender (@$symbols)
-        {
-        my $testIndex;
-
-        if ($ender eq "\n" && defined $self->LineExtender())
-            {
-            my $startingIndex = 0;
-
-            for (;;)
-                {
-                $testIndex = index($$stringRef, $ender, $startingIndex);
-
-                if ($testIndex == -1)
-                    {  last;  };
-
-                my $extenderIndex = rindex($$stringRef, $self->LineExtender(), $testIndex);
-
-                if ($extenderIndex == -1 ||
-                    ( substr( $$stringRef, $extenderIndex + length($self->LineExtender()),
-                                 $testIndex - $extenderIndex - length($self->LineExtender()) ) !~ /^[ \t]*$/ &&
-                      !exists $falsePositives->{$testIndex}) )
-                    {
-                    last;
-                    };
-
-                $startingIndex = $testIndex + 1;
-                };
-            }
-
-        elsif ($ender =~ /^[a-z]+$/i)
-            {
-            my $startingIndex = 0;
-
-            for (;;)
-                {
-                $testIndex = index($$stringRef, $ender, $startingIndex);
-
-                if ($testIndex == -1)
-                    {  last;  };
-
-                # If the ender is a text keyword, the next and previous character can't be alphanumeric.
-                if ( ($testIndex == 0 || substr($$stringRef, $testIndex - 1, 1) !~ /^[a-z0-9_]$/i) &&
-                     substr($$stringRef, $testIndex + length($ender), 1) !~ /^[a-z0-9_]$/i &&
-                     !exists $falsePositives->{$testIndex} )
-                    {
-                    last;
-                    };
-
-                $startingIndex = $testIndex + 1;
-                };
-            }
-
-        else # ender is a symbol or a line break with no defined line extender.
-            {
-            my $startingIndex = 0;
-
-            for (;;)
-                {
-                $testIndex = index($$stringRef, $ender, $startingIndex);
-
-                if ($testIndex == -1 || !exists $falsePositives->{$testIndex})
-                    {  last;  };
-
-                $startingIndex = $testIndex + 1;
-                };
-            };
-
-
-        if ($testIndex != -1 && ($enderIndex == -1 || $testIndex < $enderIndex))
-            {  $enderIndex = $testIndex;  };
-        };
-
-    return $enderIndex;
+    return ENDER_ACCEPT();
     };
 
 
 #
-#   Function: FalsePositivesForSemicolonsInParenthesis
+#   Function: RemoveLineExtender
 #
-#   Returns an existence hashref of potential false positives for languages that can end a function prototype with a semicolon
-#   but also use them to separate parameters.  For example:
+#   If the passed line has a line extender, returns it without the extender or the line break that follows.  If it doesn't, or there are
+#   no line extenders defined, returns the passed line unchanged.
 #
-#   > function MyFunction( param1: type; param2, param3: type; param4: type);
-#
-#   It will create false positives for every semicolon appearing within parenthesis.
-#
-#   Parameters:
-#
-#       stringRef - The potential function prototype.
-#
-#   Returns:
-#
-#       An existence hashref of false positive indexes.  If none, will return an empty hashref.
-#
-sub FalsePositivesForSemicolonsInParenthesis #(stringRef)
+sub RemoveLineExtender #(line)
     {
-    my ($self, $stringRef) = @_;
-
-    my $falsePositives = { };
-    my $startingParenIndex = 0;
-
-    for (;;)
-        {
-        my $openingParenIndex = index($$stringRef, '(', $startingParenIndex);
-
-        if ($openingParenIndex == -1)
-            {  last;  };
-
-        my $closingParenIndex = index($$stringRef, ')', $openingParenIndex);
-        my $startingSemicolonIndex = $openingParenIndex;
-
-        for (;;)
-            {
-            my $semicolonIndex = index($$stringRef, ';', $startingSemicolonIndex);
-
-            if ($semicolonIndex == -1 || ($closingParenIndex != -1 && $semicolonIndex > $closingParenIndex))
-                {  last;  };
-
-            $falsePositives->{$semicolonIndex} = 1;
-            $startingSemicolonIndex = $semicolonIndex + 1;
-            };
-
-        if ($closingParenIndex == -1)
-            {  last;  }
-        else
-            {  $startingParenIndex = $closingParenIndex + 1;  };
-        };
-
-    return $falsePositives;
-    };
-
-
-#
-#   Function: RemoveExtenders
-#
-#   Strips any <LineExtender()> symbols out of the prototype.
-#
-#   Parameters:
-#
-#       stringRef - A reference to the string.  It will be altered rather than a new one returned.
-#
-sub RemoveExtenders #(stringRef)
-    {
-    my ($self, $stringRef) = @_;
+    my ($self, $line) = @_;
 
     if (defined $self->LineExtender())
         {
-        my @lines = split(/\n/, $$stringRef);
+        my $lineExtenderIndex = index($line, $self->LineExtender());
 
-        for (my $i = 0; $i < scalar @lines; $i++)
+        if ($lineExtenderIndex != -1 &&
+            substr($line, $lineExtenderIndex + length($self->LineExtender())) =~ /^[ \t]*\n$/)
             {
-            my $extenderIndex = rindex($lines[$i], $self->LineExtender());
-
-            if ($extenderIndex != -1 && substr($lines[$i], $extenderIndex + length($self->LineExtender())) =~ /^[ \t]*$/)
-                {  $lines[$i] = substr($lines[$i], 0, $extenderIndex);  };
+            $line = substr($line, 0, $lineExtenderIndex) . ' ';
             };
-
-        $$stringRef = join(' ', @lines);
         };
+
+    return $line;
     };
 
 
