@@ -307,6 +307,11 @@ sub SymbolTableFile
 sub MenuFile
     {  return NaturalDocs::File::JoinPath( NaturalDocs::Settings::ProjectDirectory(), 'NaturalDocs_Menu.txt' );  };
 
+# Function: PreviousMenuStateFile
+# Returns the full path to the project's previous menu state file.
+sub PreviousMenuStateFile
+    {  return NaturalDocs::File::JoinPath( NaturalDocs::Settings::ProjectDirectory(), 'NaturalDocs.m' );  };
+
 # Function: MenuBackupFile
 # Returns the full path to the project's menu backup file, which is used to save the original menu in some situations.
 sub MenuBackupFile
