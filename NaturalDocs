@@ -332,7 +332,6 @@ eval {
     #   when the language's syntax needs special handling.  Simple->New() should be fine in most cases.
 
     NaturalDocs::Languages::Simple->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef, '::' );
-    NaturalDocs::Languages::Simple->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
@@ -353,6 +352,7 @@ eval {
 
     # These have full language support, hence no parameters.
     NaturalDocs::Languages::Perl->New();
+    NaturalDocs::Languages::CSharp->New();
 
 
     # Migrate from the old file names that were used prior to 1.14.
