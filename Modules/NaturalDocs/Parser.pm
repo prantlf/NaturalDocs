@@ -831,7 +831,7 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
 
     # Third pass: Combine groups based on "noise".  Noise means types go from A to B to A at least once, and there are at least
     # two groups in a row with three or less, and at least one of those groups is two or less.  So 3, 3, 3 doesn't count as noise, but
-    # 3, 2, 3 does.  Also, there is no stretch with seven or more.
+    # 3, 2, 3 does.
 
     $groupIndex = 0;
 
@@ -846,63 +846,64 @@ sub MakeAutoGroupsFor #(startIndex, endIndex)
             my $firstType = $groups[$groupIndex + TYPE];
             my $secondType = $groups[$groupIndex + SIZE + TYPE];
 
-            my $hasNoise;
-
-            my $hasThrees;
-            my $hasTwosOrOnes;
-
-            my $endIndex = $groupIndex;
-
-            while ($endIndex < scalar @groups &&
-                     ($groups[$endIndex + TYPE] eq $firstType || $groups[$endIndex + TYPE] eq $secondType) &&
-                     $groups[$endIndex + COUNT] < 7 )
+            if (NaturalDocs::Topics->TypeInfo($firstType)->CanGroupWith($secondType) ||
+                NaturalDocs::Topics->TypeInfo($secondType)->CanGroupWith($firstType))
                 {
-                if ($groups[$endIndex + COUNT] > 3)
-                    {
-                    # They must be consecutive to count.
-                    $hasThrees = 0;
-                    $hasTwosOrOnes = 0;
-                    }
-                elsif ($groups[$endIndex + COUNT] == 3)
-                    {
-                    $hasThrees = 1;
+                my $hasNoise;
 
-                    if ($hasTwosOrOnes)
-                        {  $hasNoise = 1;  };
-                    }
-                else # < 3
-                    {
-                    if ($hasThrees || $hasTwosOrOnes)
-                        {  $hasNoise = 1;  };
+                my $hasThrees;
+                my $hasTwosOrOnes;
 
-                    $hasTwosOrOnes = 1;
+                my $endIndex = $groupIndex;
+
+                while ($endIndex < scalar @groups &&
+                         ($groups[$endIndex + TYPE] eq $firstType || $groups[$endIndex + TYPE] eq $secondType))
+                    {
+                    if ($groups[$endIndex + COUNT] > 3)
+                        {
+                        # They must be consecutive to count.
+                        $hasThrees = 0;
+                        $hasTwosOrOnes = 0;
+                        }
+                    elsif ($groups[$endIndex + COUNT] == 3)
+                        {
+                        $hasThrees = 1;
+
+                        if ($hasTwosOrOnes)
+                            {  $hasNoise = 1;  };
+                        }
+                    else # < 3
+                        {
+                        if ($hasThrees || $hasTwosOrOnes)
+                            {  $hasNoise = 1;  };
+
+                        $hasTwosOrOnes = 1;
+                        };
+
+                    $endIndex += SIZE;
                     };
 
-                $endIndex += SIZE;
-                };
+                if (!$hasNoise)
+                    {
+                    $groupIndex = $endIndex - SIZE;
+                    }
+                else # hasNoise
+                    {
+                    $groups[$groupIndex + SECOND_TYPE] = $secondType;
 
-            if (!$hasNoise)
-                {
-                # Skip everything we checked except the last one, since we may have A > B > A > C > A where A and B can't group
-                # but A and C can.  However, also check that this actually advances the index because we may have A > B > A where
-                # the first A is over seven.
+                    for (my $noiseIndex = $groupIndex + SIZE; $noiseIndex < $endIndex; $noiseIndex += SIZE)
+                        {
+                        $groups[$groupIndex + COUNT] += $groups[$noiseIndex + COUNT];
+                        };
 
-                if ($groupIndex + SIZE > $endIndex - SIZE)
-                    {  $groupIndex += SIZE;  }
-                else
-                    {  $groupIndex = $endIndex - SIZE;  }
+                    splice(@groups, $groupIndex + SIZE, $endIndex - $groupIndex - SIZE);
+
+                    $groupIndex += SIZE;
+                    };
                 }
-            else # hasNoise
+
+            else # They can't group together
                 {
-                $groups[$groupIndex + SECOND_TYPE] = $secondType;
-
-                for (my $noiseIndex = $groupIndex + SIZE; $noiseIndex < $endIndex; $noiseIndex += SIZE)
-                    {
-                    $groups[$groupIndex + COUNT] += $groups[$noiseIndex + COUNT];
-                    };
-
-                splice(@groups, $groupIndex + SIZE, $endIndex - $groupIndex - SIZE);
-
                 $groupIndex += SIZE;
                 };
             }
