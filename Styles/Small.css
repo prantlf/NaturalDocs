@@ -425,14 +425,18 @@ body.FramedIndexPage,
     .INavigationBar a {
         font-weight: bold }
 
-    .ISection {
-        margin-bottom: 2.5em;
-        }
-
     .IHeading {
         font-size: 14pt; font-weight: bold;
-        margin-bottom: .5em;
+        padding: 2.5em 0 .5em 0;
+        text-align: center;
+        width: 3.5ex;
         }
+    #IFirstHeading {
+        padding-top: 0;
+        }
+
+    .IEntry {
+        padding-left: 1ex;  }
 
     .ISubIndex {
         padding-left: 3ex; padding-bottom: .5em }
@@ -442,6 +446,29 @@ body.FramedIndexPage,
     .ISymbol {
         font-weight: bold; color: #900000  }
 
+    .ISymbolPrefix {
+        text-align: right;
+        color: #C47C7C;
+        background-color: #F8F8F8;
+        border-right: 3px solid #E0E0E0;
+        border-left: 1px solid #E0E0E0;
+        padding: 0 1px 0 2px;
+        }
+    #IFirstSymbolPrefix {
+        border-top: 1px solid #E0E0E0;
+        }
+    #ILastSymbolPrefix {
+        border-bottom: 1px solid #E0E0E0;
+        }
+    #IOnlySymbolPrefix {
+        border-top: 1px solid #E0E0E0;
+        border-bottom: 1px solid #E0E0E0;
+        }
+
+    a.IParent,
+    a.IFile {
+        display: block;
+        }
 
 
 
