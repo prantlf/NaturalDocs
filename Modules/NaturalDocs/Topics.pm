@@ -534,7 +534,7 @@ sub LoadFile #(isMain)
                             };
                         }
 
-                    elsif ($keyword eq 'auto group')
+                    elsif ($keyword =~ /auto[ -]?group/)
                         {
                         $value = lc($value);
 
@@ -729,10 +729,13 @@ sub SaveFile #(isMain)
                     elsif ($keyword eq 'index' ||
                             $keyword eq 'scope' ||
                             $keyword eq 'page title if first' ||
-                            $keyword eq 'break lists' ||
-                            $keyword eq 'auto group')
+                            $keyword eq 'break lists')
                         {
                         $properties{$topicTypeName}->{$keyword} = lc($value);
+                        }
+                    elsif ($keyword =~ /auto[ -]?group/)
+                        {
+                        $properties{$topicTypeName}->{'auto-group'} = lc($value);
                         };
                     };
                 }
@@ -851,7 +854,7 @@ sub SaveFile #(isMain)
 #   Defaults to no.
 #
 #
-#   Auto Group: [yes|no|full only]
+#   Auto-Group: [yes|no|full only]
 #
 #   Whether the topics have groups created for them automatically if none are
 #   created manually.  Defaults to no.
@@ -863,6 +866,13 @@ sub SaveFile #(isMain)
 #
 ###############################################################################\n";
 
+    if ($isMain)
+        {
+        print FH_TOPICS "\n"
+        . "# The following topics MUST be defined in this file:\n"
+        . "# " . join(', ', @requiredTypeNames) . "\n";
+        };
+
     # Existence hash.  We do this because we want the required ones to go first by adding them to @topicTypeOrder, but we don't
     # want them to appear twice.
     my %doneTopicTypes;
@@ -870,7 +880,7 @@ sub SaveFile #(isMain)
     if ($isMain)
         {  unshift @topicTypeOrder, @requiredTypeNames;  };
 
-    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Page Title If First', 'Break Lists', 'Auto Group');
+    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Page Title If First', 'Break Lists', 'Auto-Group');
 
     foreach my $topicType (@topicTypeOrder)
         {
@@ -892,7 +902,7 @@ sub SaveFile #(isMain)
                 if (exists $properties{$topicType}->{lc($property)})
                     {
                     print FH_TOPICS
-                    '   ' . $property . ': ' . $properties{$topicType}->{lc($property)} . "\n";
+                    '   ' . $property . ': ' . ucfirst( $properties{$topicType}->{lc($property)} ) . "\n";
                     };
                 };
 
