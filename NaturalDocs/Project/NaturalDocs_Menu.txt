@@ -200,10 +200,6 @@ Group: Extensions  {
 
    File: Base  (Modules\NaturalDocs\Extensions\Base.pm)
 
-   File: Test  (Modules\NaturalDocs\Extensions\Test.pm)
-
-   File: Test2  (Modules\NaturalDocs\Extensions\Test2.pm)
-
    }  # Group: Extensions
 
 
