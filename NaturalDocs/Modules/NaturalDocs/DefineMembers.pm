@@ -4,22 +4,27 @@
 #
 ###############################################################################
 #
-#   A custom Perl pragma to define member constants for use in Natural Docs objects while supporting inheritance.
+#   A custom Perl pragma to define member constants and accessors for use in Natural Docs objects while supporting inheritance.
 #
-#   Each parameter will be defined as a numeric constant which should be used as that variable's index into the object arrayref.
+#   Each member will be defined as a numeric constant which should be used as that variable's index into the object arrayref.
 #   They will be assigned sequentially from zero, and take into account any members defined this way in parent classes.  Note
 #   that you can *not* use multiple inheritance with this method.
+#
+#   If a parameter ends in parenthesis, it will be generated as an accessor for the previous member.  If it also starts with "Set",
+#   the accessor will accept a single parameter to replace the value with.
 #
 #   Example:
 #
 #   > package MyPackage;
 #   >
-#   > use NaturalDocs::DefineMembers 'VAR_A', 'VAR_B', 'VAR_C';
+#   > use NaturalDocs::DefineMembers 'VAR_A', 'VarA()', 'SetVarA()',
+#   >                                'VAR_B', 'VarB()',
+#   >                                'VAR_C';
 #   >
-#   > sub SetA #(A)
+#   > sub SetC #(C)
 #   >    {
-#   >    my ($self, $a) = @_;
-#   >    $self->[VAR_A] = $a;
+#   >    my ($self, $c) = @_;
+#   >    $self->[VAR_C] = $c;
 #   >    };
 #
 ###############################################################################
@@ -32,27 +37,45 @@ package NaturalDocs::DefineMembers;
 
 sub import #(member, member, member ...)
     {
-    my ($self, @constants) = @_;
+    my ($self, @parameters) = @_;
     my $package = caller();
 
     no strict 'refs';
     my $parent = ${$package . '::ISA'}[0];
     use strict 'refs';
 
-    my $member = 0;
+    my $memberConstant = 0;
+    my $lastMemberName;
 
     if (defined $parent && $parent->can('END_OF_MEMBERS'))
         {  $member = $parent->END_OF_MEMBERS();  };
 
     my $code = '{ package ' . $package . ";\n";
 
-    foreach my $constant (@constants)
+    foreach my $parameter (@parameters)
         {
-        $code .= 'use constant ' . $constant . ' => ' . $member . ";\n";
-        $member++;
+        if ($parameter =~ /^(.+)\(\)$/)
+            {
+            my $functionName = $1;
+
+            if ($functionName =~ /^Set/)
+                {
+                $code .= 'sub ' . $functionName . ' { $_[0]->[' . $lastMemberName . '] = $_[1];  };' . "\n";
+                }
+            else
+                {
+                $code .= 'sub ' . $functionName . ' { return $_[0]->[' . $lastMemberName . '];  };' . "\n";
+                };
+            }
+        else
+            {
+            $code .= 'use constant ' . $parameter . ' => ' . $memberConstant . ";\n";
+            $memberConstant++;
+            $lastMemberName = $parameter;
+            };
         };
 
-    $code .= 'use constant END_OF_MEMBERS => ' . $member . ";\n";
+    $code .= 'use constant END_OF_MEMBERS => ' . $memberConstant . ";\n";
     $code .= '};';
 
     eval $code;
