@@ -223,6 +223,7 @@ sub LoadSourceFileInfo
     my ($self) = @_;
 
     $self->GetAllSupportedFiles();
+    NaturalDocs::Languages->OnMostUsedLanguageKnown();
 
     my $fileIsOkay;
     my $version;
@@ -262,16 +263,12 @@ sub LoadSourceFileInfo
         my $line = <FH_FILEINFO>;
         ::XChomp(\$line);
 
-        if ($version >= NaturalDocs::Version->FromString('1.3'))
+        # Prior to 1.3 it was the last modification time of Menu.txt, which we ignore and treat as though the most used language
+        # changed.  Prior to 1.32 the settings didn't transfer over correctly to Menu.txt so we need to behave that way again.
+        if ($version < NaturalDocs::Version->FromString('1.32') || lc($mostUsedLanguage) ne lc($line))
             {
-            # The most used language name.
-            if (lc($mostUsedLanguage) ne lc($line))
-                {  NaturalDocs::Languages->OnMostUsedLanguageChange();  };
-            }
-        else
-            {
-            # The last modification time of Menu.txt
-            NaturalDocs::Languages->OnMostUsedLanguageChange();
+            $reparseEverything = 1;
+            NaturalDocs::SymbolTable->RebuildAllIndexes();
             };
 
 
