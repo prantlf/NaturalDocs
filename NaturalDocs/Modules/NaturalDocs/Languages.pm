@@ -878,163 +878,163 @@ sub SaveFile #(isMain)
     if ($isMain)
         {
         print FH_LANGUAGES
-"# This is the main Natural Docs languages file.  If you change anything here,
-# it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
-# change something for just one project, edit the Languages.txt in its project
-# directory instead.\n";
+        "# This is the main Natural Docs languages file.  If you change anything here,\n"
+        . "# it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to\n"
+        . "# change something for just one project, edit the Languages.txt in its project\n"
+        . "# directory instead.\n";
         }
     else
         {
         print FH_LANGUAGES
-"# This is the Natural Docs languages file for this project.  If you change
-# anything here, it will apply to THIS PROJECT ONLY.  If you'd like to change
-# something for all your projects, edit the Languages.txt in Natural Docs'
-# Config directory instead.\n";
+        "# This is the Natural Docs languages file for this project.  If you change\n"
+        . "# anything here, it will apply to THIS PROJECT ONLY.  If you'd like to change\n"
+        . "# something for all your projects, edit the Languages.txt in Natural Docs'\n"
+        . "# Config directory instead.\n";
         };
 
     print FH_LANGUAGES
-    "\n" .
-"# Also, if you add something that you think would be useful to other developers
-# and should be included in Natural Docs by default, please e-mail it to
-# languages [at] naturaldocs [dot] org.
+    "\n"
+    . "# Also, if you add something that you think would be useful to other developers\n"
+    . "# and should be included in Natural Docs by default, please e-mail it to\n"
+    . "# languages [at] naturaldocs [dot] org.\n\n\n"
 
 
-###############################################################################
-#
-#   Syntax
-#
-#   Unlike other Natural Docs configuration files, in this file all comments
-#   MUST be alone on a line.  Some languages deal with the # character, so you
-#   cannot put comments on the same line as content.
-#
-###############################################################################
-#
-#   Ignore Extensions: [extension] [extension] ...
-#
-#   Causes the listed file extensions to be ignored, even if they were
-#   previously defined to be part of a language.  The list is
-#   space-separated.  ex. \"Ignore Extensions: cvs txt\"
-#
-#
-#   Language: [name]
-#
-#   Defines a new language.  Its name can use any characters.
-#
-#   The languages \"Text File\" and \"Shebang Script\" have special meanings.
-#   Text files are treated like one big comment and don't have comment symbols.
-#   Shebang scripts have their language determined by the shebang string
-#   instead of the extension and include files with no extension.
-#
-#
-#   Alter Language: [name]
-#
-#   Alters an existing language so you can override its settings.  Note that if
-#   a property has an Add/Replace form and that property has already been
-#   defined, you have to specify whether you're adding to the list or replacing
-#   it.  Otherwise assume you're replacing the value.
-#
-#
-###############################################################################
-#
-#   Language Properties
-#
-###############################################################################
-#
-#   Extensions: [extension] [extension] ...
-#   [Add/Replace] Extensions: [extension] [extension] ...
-#
-#   Defines the file extensions for the language's source files.  The list is
-#   space-separated.  ex. \"Extensions: c cpp\".  You can use extensions that
-#   were previously used by another language to redefine them.
-#
-#
-#   Shebang Strings: [string] [string] ...
-#   [Add/Replace] Shebang Strings: [string] [string] ...
-#
-#   Defines a list of strings that can appear in the shebang (#!) line to
-#   designate that it's part of the language.  They can appear anywhere in the
-#   line, so \"php\" will work for \"#!/user/bin/php4\".  You can use strings
-#   that were previously used by another language to redefine them.
-#
-#
-#   Package Separator: [symbol]
-#
-#   Defines the default package separator symbol, such as . or ::.  This is
-#   for presentation only and will not affect how Natural Docs links are
-#   parsed.  The default is a dot.
-#
-#
-#   Ignore Prefixes in Index: [prefix] [prefix] ...
-#   [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...
-#
-#   Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...
-#   [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...
-#
-#   Specifies prefixes that should be ignored when sorting symbols in an
-#   index.  Can be specified in general or for a specific topic type.  The
-#   prefixes will still appear, the symbols will just be sorted as if they're
-#   not there.  For example, specifying \"ADO_\" for functions will mean that
-#   \"ADO_DoSomething\" will appear under D instead of A.
-#
-#
-###############################################################################
-#
-#   Basic Language Support Properties
-#
-#   These properties are only available for languages with basic language
-#   support.
-#
-###############################################################################
-#
-#   Line Comments: [symbol] [symbol] ...
-#
-#   Defines a space-separated list of symbols that are used for line comments,
-#   if any.  ex. \"Line Comments: //\".
-#
-#
-#   Block Comments: [opening sym] [closing sym] [opening sym] [closing sym] ...
-#
-#   Defines a space-separated list of symbol pairs that are used for block
-#   comments, if any.  ex. \"Block Comments: /* */\".
-#
-#
-#   [Topic Type] Prototype Enders: [symbol] [symbol] ...
-#
-#   When defined, Natural Docs will attempt to get a prototype from the code
-#   immediately following the specified topic type.  It grabs code until the
-#   first ender symbol or the next Natural Docs comment, and if it contains the
-#   topic name, it serves as its prototype.  Use \\n to specify a line break.
-#   ex. \"Function Prototype Enders: { ;\", \"Variable Prototype Enders: = ;\".
-#
-#
-#   Line Extender: [symbol]
-#
-#   Defines the symbol that allows a prototype to span multiple lines if
-#   normally a line break would end it.
-#
-#
-#   Perl Package: [perl package]
-#
-#   Specifies the Perl package used to fine-tune the language behavior in ways
-#   too complex to do in this file.
-#
-#
-###############################################################################
-#
-#   Full Language Support Properties:
-#
-#   These properties are only available for languages with full language
-#   support.
-#
-###############################################################################
-#
-#   Full Language Support: [perl package]
-#
-#   Specifies the Perl package that has the parsing routines necessary for full
-#   language support.
-#
-#
-###############################################################################\n";
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Syntax\n"
+    . "#\n"
+    . "#   Unlike other Natural Docs configuration files, in this file all comments\n"
+    . "#   MUST be alone on a line.  Some languages deal with the # character, so you\n"
+    . "#   cannot put comments on the same line as content.\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Ignore Extensions: [extension] [extension] ...\n"
+    . "#\n"
+    . "#   Causes the listed file extensions to be ignored, even if they were\n"
+    . "#   previously defined to be part of a language.  The list is\n"
+    . "#   space-separated.  ex. \"Ignore Extensions: cvs txt\"\n"
+    . "#\n"
+    . "#\n"
+    . "#   Language: [name]\n"
+    . "#\n"
+    . "#   Defines a new language.  Its name can use any characters.\n"
+    . "#\n"
+    . "#   The languages \"Text File\" and \"Shebang Script\" have special meanings.\n"
+    . "#   Text files are treated like one big comment and don't have comment symbols.\n"
+    . "#   Shebang scripts have their language determined by the shebang string\n"
+    . "#   instead of the extension and include files with no extension.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Alter Language: [name]\n"
+    . "#\n"
+    . "#   Alters an existing language so you can override its settings.  Note that if\n"
+    . "#   a property has an Add/Replace form and that property has already been\n"
+    . "#   defined, you have to specify whether you're adding to the list or replacing\n"
+    . "#   it.  Otherwise assume you're replacing the value.\n"
+    . "#\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Language Properties\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Extensions: [extension] [extension] ...\n"
+    . "#   [Add/Replace] Extensions: [extension] [extension] ...\n"
+    . "#\n"
+    . "#   Defines the file extensions for the language's source files.  The list is\n"
+    . "#   space-separated.  ex. \"Extensions: c cpp\".  You can use extensions that\n"
+    . "#   were previously used by another language to redefine them.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Shebang Strings: [string] [string] ...\n"
+    . "#   [Add/Replace] Shebang Strings: [string] [string] ...\n"
+    . "#\n"
+    . "#   Defines a list of strings that can appear in the shebang (#!) line to\n"
+    . "#   designate that it's part of the language.  They can appear anywhere in the\n"
+    . "#   line, so \"php\" will work for \"#!/user/bin/php4\".  You can use strings\n"
+    . "#   that were previously used by another language to redefine them.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Package Separator: [symbol]\n"
+    . "#\n"
+    . "#   Defines the default package separator symbol, such as . or ::.  This is\n"
+    . "#   for presentation only and will not affect how Natural Docs links are\n"
+    . "#   parsed.  The default is a dot.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Ignore Prefixes in Index: [prefix] [prefix] ...\n"
+    . "#   [Add/Replace] Ignored Prefixes in Index: [prefix] [prefix] ...\n"
+    . "#\n"
+    . "#   Ignore [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n"
+    . "#   [Add/Replace] Ignored [Topic Type] Prefixes in Index: [prefix] [prefix] ...\n"
+    . "#\n"
+    . "#   Specifies prefixes that should be ignored when sorting symbols in an\n"
+    . "#   index.  Can be specified in general or for a specific topic type.  The\n"
+    . "#   prefixes will still appear, the symbols will just be sorted as if they're\n"
+    . "#   not there.  For example, specifying \"ADO_\" for functions will mean that\n"
+    . "#   \"ADO_DoSomething\" will appear under D instead of A.\n"
+    . "#\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Basic Language Support Properties\n"
+    . "#\n"
+    . "#   These properties are only available for languages with basic language\n"
+    . "#   support.\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Line Comments: [symbol] [symbol] ...\n"
+    . "#\n"
+    . "#   Defines a space-separated list of symbols that are used for line comments,\n"
+    . "#   if any.  ex. \"Line Comments: //\".\n"
+    . "#\n"
+    . "#\n"
+    . "#   Block Comments: [opening sym] [closing sym] [opening sym] [closing sym] ...\n"
+    . "#\n"
+    . "#   Defines a space-separated list of symbol pairs that are used for block\n"
+    . "#   comments, if any.  ex. \"Block Comments: /* */\".\n"
+    . "#\n"
+    . "#\n"
+    . "#   [Topic Type] Prototype Enders: [symbol] [symbol] ...\n"
+    . "#\n"
+    . "#   When defined, Natural Docs will attempt to get a prototype from the code\n"
+    . "#   immediately following the specified topic type.  It grabs code until the\n"
+    . "#   first ender symbol or the next Natural Docs comment, and if it contains the\n"
+    . "#   topic name, it serves as its prototype.  Use \\n to specify a line break.\n"
+    . "#   ex. \"Function Prototype Enders: { ;\", \"Variable Prototype Enders: = ;\".\n"
+    . "#\n"
+    . "#\n"
+    . "#   Line Extender: [symbol]\n"
+    . "#\n"
+    . "#   Defines the symbol that allows a prototype to span multiple lines if\n"
+    . "#   normally a line break would end it.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Perl Package: [perl package]\n"
+    . "#\n"
+    . "#   Specifies the Perl package used to fine-tune the language behavior in ways\n"
+    . "#   too complex to do in this file.\n"
+    . "#\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Full Language Support Properties:\n"
+    . "#\n"
+    . "#   These properties are only available for languages with full language\n"
+    . "#   support.\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Full Language Support: [perl package]\n"
+    . "#\n"
+    . "#   Specifies the Perl package that has the parsing routines necessary for full\n"
+    . "#   language support.\n"
+    . "#\n"
+    . "#\n"
+    . "###############################################################################\n";
 
     if ($isMain)
         {

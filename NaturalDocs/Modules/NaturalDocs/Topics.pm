@@ -777,96 +777,96 @@ sub SaveFile #(isMain)
     if ($isMain)
         {
         print FH_TOPICS
-"# This is the main Natural Docs topics file.  If you change anything here, it
-# will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
-# change something for just one project, edit the Topics.txt in its project
-# directory instead.\n";
+        "# This is the main Natural Docs topics file.  If you change anything here, it\n"
+        . "# will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to\n"
+        . "# change something for just one project, edit the Topics.txt in its project\n"
+        . "# directory instead.\n";
         }
     else
         {
         print FH_TOPICS
-"# This is the Natural Docs topics file for this project.  If you change anything
-# here, it will apply to THIS PROJECT ONLY.  If you'd like to change something
-# for all your projects, edit the Topics.txt in Natural Docs' Config directory
-# instead.\n";
+        "# This is the Natural Docs topics file for this project.  If you change anything\n"
+        . "# here, it will apply to THIS PROJECT ONLY.  If you'd like to change something\n"
+        . "# for all your projects, edit the Topics.txt in Natural Docs' Config directory\n"
+        . "# instead.\n";
         };
 
     print FH_TOPICS # [CFChars]
-    "\n" .
-"# Also, if you add something that you think would be useful to other developers
-# and should be included in Natural Docs by default, please e-mail it to
-# topics [at] naturaldocs [dot] org.
+    "\n"
+    . "# Also, if you add something that you think would be useful to other developers\n"
+    . "# and should be included in Natural Docs by default, please e-mail it to\n"
+    . "# topics [at] naturaldocs [dot] org.\n\n\n"
 
 
-###############################################################################
-#
-#   Topic Type Syntax
-#
-#   Each topic type has its own behavior and index.  If you just want to add a
-#   keyword for an existing type, scroll down to the keywords section instead.
-#
-###############################################################################
-#
-#   Topic Type: [name]
-#
-#   Creates a new topic type.  Its name can have letters, numbers, spaces, and
-#   these charaters: - / . '  You cannot use the name General.
-#
-#
-#   Alter Topic Type: [name]
-#
-#   Alters an existing topic type so you can override its settings.
-#
-#
-###############################################################################
-#
-#   Plural: [name]
-#
-#   The plural name of the topic type, if different from the singular.  It can
-#   have letters, numbers, spaces, and these charaters: - / . '
-#
-#
-#   Index: [yes|no]
-#
-#   Whether the topics are indexed.  Defaults to no.
-#
-#
-#   Scope: [normal|start|end|always global]
-#
-#   How the topics affects scope.  Defaults to normal.
-#
-#   normal        - Topics stay within the current scope.
-#   start         - Topics start a new scope for all the topics beneath it,
-#                   like class topics.
-#   end           - Topics reset the scope back to global for all the topics
-#                   beneath it.
-#   always global - Topics are defined as global, but do not change the scope
-#                   for any other topics.
-#
-#
-#   Page Title If First: [yes|no]
-#
-#   Whether the topic's title becomes the page title if it's the first one in
-#   a file.  Defaults to no.
-#
-#
-#   Break Lists: [yes|no]
-#
-#   Whether list topics should be broken into individual topics in the output.
-#   Defaults to no.
-#
-#
-#   Auto-Group: [yes|no|full only]
-#
-#   Whether the topics have groups created for them automatically if none are
-#   created manually.  Defaults to no.
-#
-#   no        - The topics will never be auto-grouped.
-#   yes       - The topics will always be auto-grouped.
-#   full only - The topics will be auto-grouped unless using --autogroup basic.
-#
-#
-###############################################################################\n";
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Topic Type Syntax\n"
+    . "#\n"
+    . "#   Each topic type has its own behavior and index.  If you just want to add a\n"
+    . "#   keyword for an existing type, scroll down to the keywords section instead.\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Topic Type: [name]\n"
+    . "#\n"
+    . "#   Creates a new topic type.  Its name can have letters, numbers, spaces, and\n"
+    . "#   these charaters: - / . '  You cannot use the name General.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Alter Topic Type: [name]\n"
+    . "#\n"
+    . "#   Alters an existing topic type so you can override its settings.\n"
+    . "#\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Plural: [name]\n"
+    . "#\n"
+    . "#   The plural name of the topic type, if different from the singular.  It can\n"
+    . "#   have letters, numbers, spaces, and these charaters: - / . '\n"
+    . "#\n"
+    . "#\n"
+    . "#   Index: [yes|no]\n"
+    . "#\n"
+    . "#   Whether the topics are indexed.  Defaults to no.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Scope: [normal|start|end|always global]\n"
+    . "#\n"
+    . "#   How the topics affects scope.  Defaults to normal.\n"
+    . "#\n"
+    . "#   normal        - Topics stay within the current scope.\n"
+    . "#   start         - Topics start a new scope for all the topics beneath it,\n"
+    . "#                   like class topics.\n"
+    . "#   end           - Topics reset the scope back to global for all the topics\n"
+    . "#                   beneath it.\n"
+    . "#   always global - Topics are defined as global, but do not change the scope\n"
+    . "#                   for any other topics.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Page Title If First: [yes|no]\n"
+    . "#\n"
+    . "#   Whether the topic's title becomes the page title if it's the first one in\n"
+    . "#   a file.  Defaults to no.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Break Lists: [yes|no]\n"
+    . "#\n"
+    . "#   Whether list topics should be broken into individual topics in the output.\n"
+    . "#   Defaults to no.\n"
+    . "#\n"
+    . "#\n"
+    . "#   Auto-Group: [yes|no|full only]\n"
+    . "#\n"
+    . "#   Whether the topics have groups created for them automatically if none are\n"
+    . "#   created manually.  Defaults to no.\n"
+    . "#\n"
+    . "#   no        - The topics will never be auto-grouped.\n"
+    . "#   yes       - The topics will always be auto-grouped.\n"
+    . "#   full only - The topics will be auto-grouped unless using --autogroup basic.\n"
+    . "#\n"
+    . "#\n"
+    . "###############################################################################\n";
 
     if ($isMain)
         {
@@ -913,31 +913,31 @@ sub SaveFile #(isMain)
         };
 
     print FH_TOPICS "\n\n\n" .
-"###############################################################################
-#
-#   Keyword Syntax
-#
-#   Each topic type can have multiple keywords.
-#
-###############################################################################
-#
-#   Keywords: [topic type]
-#
-#   Starts a list of keywords for the specified topic type.
-#
-#
-#   [keyword]
-#   [keyword], [plural keyword]
-#
-#   Each line until the next Topic Keyword line is the keyword and optionally
-#   its plural form.  The plural form is needed if you want to document topics
-#   as a list.
-#
-#   Keywords can only have letters and numbers, and are not case-sensitive.
-#   You can include keywords that were previously used by a different type to
-#   redefine them.
-#
-###############################################################################\n";
+    "###############################################################################\n"
+    . "#\n"
+    . "#   Keyword Syntax\n"
+    . "#\n"
+    . "#   Each topic type can have multiple keywords.\n"
+    . "#\n"
+    . "###############################################################################\n"
+    . "#\n"
+    . "#   Keywords: [topic type]\n"
+    . "#\n"
+    . "#   Starts a list of keywords for the specified topic type.\n"
+    . "#\n"
+    . "#\n"
+    . "#   [keyword]\n"
+    . "#   [keyword], [plural keyword]\n"
+    . "#\n"
+    . "#   Each line until the next Topic Keyword line is the keyword and optionally\n"
+    . "#   its plural form.  The plural form is needed if you want to document topics\n"
+    . "#   as a list.\n"
+    . "#\n"
+    . "#   Keywords can only have letters and numbers, and are not case-sensitive.\n"
+    . "#   You can include keywords that were previously used by a different type to\n"
+    . "#   redefine them.\n"
+    . "#\n"
+    . "###############################################################################\n";
 
     if ($isMain)
         {  unshift @keywordOrder, @requiredTypeNames;  };
