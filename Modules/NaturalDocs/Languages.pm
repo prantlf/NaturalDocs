@@ -755,10 +755,16 @@ sub SaveFile #(isMain)
             $value .= $comment;
             $value =~ s/^ //;
 
-            if ($keyword eq 'language' || $keyword eq 'alter language')
+            if ($keyword eq 'language')
                 {
                 $currentProperties = { };
-                push @segments, $keyword, $value, $currentProperties;
+                push @segments, 'language', $value, $currentProperties;
+                }
+
+            elsif ($keyword eq 'alter language')
+                {
+                $currentProperties = { };
+                push @segments, 'alter language', $languages{lc($value)}->Name(), $currentProperties;
                 }
 
             elsif ($keyword =~ /^ignored? extensions?$/)
