@@ -288,6 +288,17 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_TYPE() => 1,
                              TOPIC_CONSTANT() => 1 );
 
+#
+#   hash: autoGroupable
+#
+#   An existence hash of the <Topic Types> that auto-groups should be created for.
+#
+my %autoGroupable = ( TOPIC_FUNCTION() => 1,
+                                    TOPIC_VARIABLE() => 1,
+                                    TOPIC_FILE() => 1,
+                                    TOPIC_TYPE() => 1,
+                                    TOPIC_CONSTANT() => 1 );
+
 
 
 ###############################################################################
@@ -325,6 +336,18 @@ sub IsIndexable #(topic)
     {
     my ($self, $topic) = @_;
     return $indexable{$topic};
+    };
+
+
+#
+#   Function: IsAutoGroupable
+#
+#   Returns whether the topic should have auto-groups created for it.
+#
+sub IsAutoGroupable #(topic)
+    {
+    my ($self, $topic) = @_;
+    return $autoGroupable{$topic};
     };
 
 
