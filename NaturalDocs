@@ -488,8 +488,8 @@ eval {
     NaturalDocs::Languages::PHP->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
                                                           [ '//', '#' ], '/*', '*/', [ '{', ';' ], [ ';', '=' ], undef );
 
-    NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
-                                                              [ ';', ':=', 'default', 'DEFAULT' ], undef );
+    NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ',', ';', ')', 'as', 'AS', 'is', 'IS' ],
+                                                              [ ',', ';', ')', ':=', 'default', 'DEFAULT' ], undef );
     NaturalDocs::Languages::Simple->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
     NaturalDocs::Languages::Pascal->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Simple->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
