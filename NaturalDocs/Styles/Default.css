@@ -38,14 +38,14 @@ p {
     width: 27ex }
 
     .MTitle {
-        font-size: 16pt; font-weight: bold; color: #000000;
+        font-size: 16pt; font-weight: bold; font-variant: small-caps;
         text-align: center;
         padding: 5px 10px 15px 10px;
         border-bottom: 1px dotted #000000;
         margin-bottom: 15px }
 
     .MSubTitle {
-        font-size: 9pt; font-weight: normal;
+        font-size: 9pt; font-weight: normal; font-variant: normal;
         margin-top: 1ex; margin-bottom: 5px }
 
 
