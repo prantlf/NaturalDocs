@@ -165,6 +165,10 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
     my $line = <SOURCEFILEHANDLE>;
     my $lineNumber = 1;
 
+    # On the very first line, remove a Unicode BOM if present.  Information on it available at:
+    # http://www.unicode.org/faq/utf_bom.html#BOM
+    $line =~ s/^\xEF\xBB\xBF//;
+
     while (defined $line)
         {
         ::XChomp(\$line);
