@@ -14,7 +14,7 @@ use integer;
 package NaturalDocs::Languages::Prototype::Parameter;
 
 use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
-                                                 'TYPE_SUFFIX', 'TypeSuffix()', 'SetTypeSuffix()',
+                                                 'SUFFIX', 'Suffix()', 'SetSuffix()',
                                                  'NAME', 'Name()', 'SetName()',
                                                  'DEFAULT_VALUE', 'DefaultValue()', 'SetDefaultValue()';
 # Dependency: New() depends on the order of these constants and that they don't inherit from another class.
@@ -28,7 +28,7 @@ use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
 #   Parameters:
 #
 #       type - The parameter type, if any.
-#       typeSuffix - The parameter type suffix, if any.
+#       suffix - The suffix, if any.  This is for whichever item is on the left, the type or the name.
 #       name - The parameter name.
 #       defaultValue - The default value expression, if any.
 #
@@ -51,8 +51,8 @@ sub New
 #
 #   Type - The parameter type, if any.
 #   SetType - Replaces the parameter type.
-#   TypeSuffix - The parameter type suffix, if any.
-#   SetTypeSuffix - Replaces the parameter type suffix.
+#   Suffix - The suffix for whatever is on the left, type or name, if any.
+#   SetSuffix - Replaces the suffix.
 #   Name - The parameter name.
 #   SetName - Replaces the parameter name.
 #   DefaultValue - The default value expression, if any.
