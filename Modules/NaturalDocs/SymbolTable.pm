@@ -163,7 +163,7 @@ sub LoadAndPurge
 
     my $fileIsOkay;
 
-    if (!NaturalDocs::Settings::RebuildAll() && open($fileHandle, '<' . NaturalDocs::Project::SymbolTableFile()))
+    if (!NaturalDocs::Settings::RebuildData() && open($fileHandle, '<' . NaturalDocs::Project::SymbolTableFile()))
         {
         # Check if the version is okay.
 
@@ -171,12 +171,16 @@ sub LoadAndPurge
         chomp $line;
 
         # Currently, the file format hasn't changed between public versions, so any version <= our own is okay.
-        # If the version is "1" with no ".x", that means 0.91 and prior because we were using a separate FileVersion() function then.
+        # If the version is "1" with no ".0", that means 0.91 and prior because we were using a separate FileVersion() function then.
+
+        no integer;
 
         if ($line <= NaturalDocs::Settings::AppVersion() || $line eq '1')
             {  $fileIsOkay = 1;  }
         else
             {  close($fileHandle);  };
+
+        use integer;
         };
 
 

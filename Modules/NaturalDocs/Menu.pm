@@ -934,18 +934,22 @@ sub ParsePreviousMenuStateFile
     my $fileIsOkay;
     my $fileHandle;
 
-    if (open($fileHandle, '<' . NaturalDocs::Project::PreviousMenuStateFile()))
+    if (!NaturalDocs::Settings::RebuildData() && open($fileHandle, '<' . NaturalDocs::Project::PreviousMenuStateFile()))
         {
         my $fileVersion = <$fileHandle>;
         chomp($fileVersion);
 
         # Currently, the file format hasn't changed since it's been released publicly, so anything <= the current version is fine.
-        # If the version is "1" with no ".x", that means 0.91 and prior because we were using a separate FileVersion() function then.
+        # If the version is "1" with no ".0", that means 0.91 and prior because we were using a separate FileVersion() function then.
+
+        no integer;
 
         if ($fileVersion <= NaturalDocs::Settings::AppVersion() || $fileVersion eq '1')
             {  $fileIsOkay = 1;  }
         else
             {  close ($fileHandle);  };
+
+        use integer;
         };
 
     if ($fileIsOkay)
