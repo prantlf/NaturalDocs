@@ -19,12 +19,6 @@ use integer;
 
 package NaturalDocs::Builder::FramedHTML;
 
-
-#
-#   Topic: Inherits
-#
-#   <NaturalDocs::Builder::HTMLBase>
-#
 use base 'NaturalDocs::Builder::HTMLBase';
 
 

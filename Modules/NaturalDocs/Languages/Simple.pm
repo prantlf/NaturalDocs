@@ -25,12 +25,6 @@ use base 'NaturalDocs::Languages::Base';
 # Group: Implementation
 
 #
-#   Topic: Inherits
-#
-#   <NaturalDocs::Languages::Base>
-#
-
-#
 #   Constants: Members
 #
 #   The class is implemented as a blessed arrayref.  The following constants are used as indexes.
