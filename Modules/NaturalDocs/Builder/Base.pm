@@ -267,7 +267,7 @@ sub EndBuild #(hasChanged)
 #
 #   Parameters:
 #
-#       topic  - The topic to limit the index by, or undef if none.  If specified, will be one of the <Topic Types>.
+#       topic  - The <TopicType> to limit the index by, or undef if none.
 #
 sub BuildIndex #(topic)
     {
@@ -296,7 +296,7 @@ sub PurgeFiles #(files)
 #
 #   Parameters:
 #
-#       indexes  - An existence hashref of the indexes to purge.  Each entry will be either one of the <Topic Types> or * for the
+#       indexes  - An existence hashref of the indexes to purge.  Each entry will be either a <TopicType> or * for the
 #                      general index.
 #
 sub PurgeIndexes #(indexes)
