@@ -67,6 +67,7 @@ Group: Objects  {
    Group: SymbolTable  {
 
       File: Symbol  (Modules\NaturalDocs\SymbolTable\Symbol.pm)
+      File: SymbolDefinition  (Modules\NaturalDocs\SymbolTable\SymbolDefinition.pm)
       File: Reference  (Modules\NaturalDocs\SymbolTable\Reference.pm)
       File: ReferenceTarget  (Modules\NaturalDocs\SymbolTable\ReferenceTarget.pm)
       File: File  (Modules\NaturalDocs\SymbolTable\File.pm)

@@ -27,6 +27,7 @@
 
 
 use NaturalDocs::SymbolTable::Symbol;
+use NaturalDocs::SymbolTable::SymbolDefinition;
 use NaturalDocs::SymbolTable::Reference;
 use NaturalDocs::SymbolTable::File;
 use NaturalDocs::SymbolTable::ReferenceTarget;
