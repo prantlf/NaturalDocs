@@ -771,22 +771,20 @@ sub LoadMenuFile
                 $value =~ /^(\d)\((.*)\)$/;
                 my ($number, $data) = ($1, $2);
 
-                # The only data prior to 1.32 was the directory names (data 1 and 2).  We're switching to numbers with the new output
-                # directory layout, so we ignore any generated names before then.
-                if ($version >= NaturalDocs::Version->FromString('1.32'))
-                    {
-                    $data = NaturalDocs::ConfigFile->Unobscure($data);
+                $data = NaturalDocs::ConfigFile->Unobscure($data);
 
-                    if ($number == 1)
-                        {
-                        my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
-                        $inputDirectories->{$inputDir} = $dirName;
-                        }
-                    elsif ($number == 2)
-                        {  $onlyDirectoryName = $data;  };
-                    # Ignore other numbers because it may be from a future format and we don't want to make the user delete it
-                    # manually.
-                    };
+                # The input directory naming convention changed with version 1.32, but NaturalDocs::Settings will handle that
+                # automatically.
+
+                if ($number == 1)
+                    {
+                    my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
+                    $inputDirectories->{$inputDir} = $dirName;
+                    }
+                elsif ($number == 2)
+                    {  $onlyDirectoryName = $data;  };
+                # Ignore other numbers because it may be from a future format and we don't want to make the user delete it
+                # manually.
                 }
 
             elsif ($keyword eq "don't index")
