@@ -12,7 +12,6 @@ sub INIT
     };
 
 use NaturalDocs::Constants;
-use NaturalDocs::StringSort;
 use NaturalDocs::File;
 use NaturalDocs::NDMarkup;
 use NaturalDocs::Languages;
@@ -216,6 +215,75 @@ use integer;
 #         are object packages.  You call New() as Package::Function(), and then everything else is called on the object with
 #         Object->Function().
 #
+
+
+###############################################################################
+#
+#   Group: Support Functions
+#
+#   General functions that are used throughout the program, and that don't really fit anywhere else.
+#
+###############################################################################
+
+
+#
+#   Function: StringCompare
+#
+#   Compares two strings so that the result is good for proper sorting.  A proper sort orders the characters as
+#   follows:
+#
+#   - End of string.
+#   - Whitespace.  Line break-tab-space.
+#   - Symbols, which is anything not included in the other entries.
+#   - Numbers, 0-9.
+#   - Letters, case insensitive except to break ties.
+#
+#   If you use cmp instead of this function, the result would go by ASCII/Unicode values which would place certain symbols
+#   between letters and numbers instead of having them all grouped together.  Also, you would have to choose between case
+#   sensitivity or complete case insensitivity, in which ties are broken arbitrarily.
+#
+#   Returns:
+#
+#   Like cmp, it returns zero if A and B are equal, a positive value if A is greater than B, and a negative value if A is less than B.
+#
+sub StringCompare #(a, b)
+    {
+    my ($a, $b) = @_;
+
+    if (!defined $a)
+        {
+        if (!defined $b)
+            {  return 0;  }
+        else
+            {  return -1;  };
+        }
+    elsif (!defined $b)
+        {
+        return 1;
+        };
+
+    my $translatedA = lc($a);
+    my $translatedB = lc($b);
+
+    $translatedA =~ tr/\n\r\t 0-9a-z/\x01\x02\x03\x04\xDB-\xFE/;
+    $translatedB =~ tr/\n\r\t 0-9a-z/\x01\x02\x03\x04\xDB-\xFE/;
+
+    my $result = $translatedA cmp $translatedB;
+
+    if ($result == 0)
+        {
+        # Break the tie by comparing their case.  Lowercase before uppercase.
+
+        # If statement just to keep everything theoretically kosher, even though in practice we don't need this.
+        if (ord('A') > ord('a'))
+            {  return ($a cmp $b);  }
+        else
+            {  return ($b cmp $a);  };
+        }
+    else
+        {  return $result;  };
+    };
+
 
 
 ###############################################################################
