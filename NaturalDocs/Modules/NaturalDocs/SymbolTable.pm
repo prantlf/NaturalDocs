@@ -120,7 +120,8 @@ my %indexChanges;
 #
 #   Format:
 #
-#       The first line of the file is <NaturalDocs::Settings::AppVersion()>.
+#       The beginning of the file is the application version that generated it.  Handle it using the text file functions in
+#       <NaturalDocs::Version>.
 #
 #       > [app version]
 #
@@ -145,6 +146,11 @@ my %indexChanges;
 #       > [reference string]
 #       > [definition file] tab [definition file] tab [definition file] ...
 #
+#   Revisions:
+#
+#       Prior to 0.95, the version line was 1.  Test for "1" instead of "1.0" to distinguish.  Other than that, the file format has not
+#       changed since its public release.
+#
 
 
 ###############################################################################
@@ -167,20 +173,14 @@ sub LoadAndPurge
         {
         # Check if the version is okay.
 
-        $line = <$fileHandle>;
-        chomp $line;
+        my $version = NaturalDocs::Version::FromTextFile($fileHandle);
 
         # Currently, the file format hasn't changed between public versions, so any version <= our own is okay.
-        # If the version is "1" with no ".0", that means 0.91 and prior because we were using a separate FileVersion() function then.
 
-        no integer;
-
-        if ($line <= NaturalDocs::Settings::AppVersion() || $line eq '1')
+        if ($version <= NaturalDocs::Settings::AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close($fileHandle);  };
-
-        use integer;
         };
 
 
@@ -287,7 +287,7 @@ sub Save
         or die "Couldn't save project file " . NaturalDocs::Project::SymbolTableFile() . "\n";
 
 
-    print $fileHandle '' . NaturalDocs::Settings::AppVersion() . "\n";
+    NaturalDocs::Version::ToTextFile($fileHandle, NaturalDocs::Settings::AppVersion());
 
 
     # Symbols
