@@ -54,9 +54,13 @@ sub OnPrototypeEnd #(type, prototypeRef, ender)
     if ($ender =~ /^[a-z]+$/i && substr($$prototypeRef, -1) eq '@')
         {  return ::ENDER_IGNORE();  }
 
-    elsif ($type eq ::TOPIC_FUNCTION() && $ender eq ',' &&
-            index($$prototypeRef, '@') != -1 && index($$prototypeRef, '(') == -1)
-        {  return ::ENDER_IGNORE();  }
+    elsif ($type eq ::TOPIC_FUNCTION() && $ender eq ',')
+        {
+        if ($$prototypeRef =~ /^[^\(]*\@/)
+            {  return ::ENDER_IGNORE();  }
+        else
+            {  return ::ENDER_ACCEPT();  };
+        }
 
     else
         {  return ::ENDER_ACCEPT();  };
@@ -81,25 +85,22 @@ sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type ne ::TOPIC_FUNCTION())
+    my $noParenthesisParameters = ($type eq ::TOPIC_FUNCTION() && $prototype =~ /^[^\(]*\@/);
+
+    if ($prototype !~ /\(.*,.*\)/ && !$noParenthesisParameters)
         {  return $self->SUPER::ParsePrototype($type, $prototype);  };
 
 
-    my ($beforeParameters, $afterParameters, $noParenthesisParameters, $isAfterParameters);
 
-    my $atIndex = index($prototype, '@');
-    my $openParenIndex = index($prototype, '(');
+    my ($beforeParameters, $afterParameters, $isAfterParameters);
 
-    if ($atIndex != -1 && ($openParenIndex == -1 || $atIndex < $openParenIndex))
+    if ($noParenthesisParameters)
         {
         ($beforeParameters, $prototype) = split(/\@/, $prototype, 2);
         $prototype = '@' . $prototype;
-
-        $noParenthesisParameters = 1;
         };
 
-
-    my @tokens = $prototype =~ /([^\(\)\[\]\{\}\<\>\,]+|.)/g;
+    my @tokens = $prototype =~ /([^\(\)\[\]\{\}\<\>\'\"\,]+|.)/g;
 
     my $parameter;
     my @parameterLines;
@@ -111,7 +112,18 @@ sub ParsePrototype #(type, prototype)
         if ($isAfterParameters)
             {  $afterParameters .= $token;  }
 
-        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+        elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
+            {
+            if ($noParenthesisParameters || $symbolStack[0] eq '(')
+                {  $parameter .= $token;  }
+            else
+                {  $beforeParameters .= $token;  };
+
+            if ($token eq $symbolStack[-1])
+                {  pop @symbolStack;  };
+            }
+
+        elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
             if ($noParenthesisParameters || $symbolStack[0] eq '(')
                 {  $parameter .= $token;  }
@@ -208,7 +220,7 @@ sub ParseParameterLine #(line)
     $line =~ s/^ //;
     $line =~ s/ $//;
 
-    my @tokens = $line =~ /([^\(\)\[\]\{\}\<\>\:\=\ ]+|\:\=|.)/g;
+    my @tokens = $line =~ /([^\(\)\[\]\{\}\<\>\'\"\:\=\ ]+|\:\=|.)/g;
 
     my ($name, $type, $defaultValue, $inType, $inDefaultValue);
 
@@ -220,7 +232,18 @@ sub ParseParameterLine #(line)
         if ($inDefaultValue)
             {  $defaultValue .= $token;  }
 
-        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+        elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
+            {
+            if ($inType)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+
+            if ($token eq $symbolStack[-1])
+                {  pop @symbolStack;  };
+            }
+
+        elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
             if ($inType)
                 {  $type .= $token;  }
