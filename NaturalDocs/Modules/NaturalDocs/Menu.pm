@@ -1119,37 +1119,7 @@ sub SaveMenuFile
         . "# this would be the place to do it.\n";
         };
 
-    print MENUFILEHANDLE
-
-    "\n"
-
-    # Remember to keep lines below eighty characters.
-
-    . "# --------------------------------------------------------------------------\n"
-    . "# \n"
-    . "# Cut and paste the lines below to change the order in which your files\n"
-    . "# appear on the menu.  Don't worry about adding or removing files, Natural\n"
-    . "# Docs will take care of that.\n"
-    . "# \n"
-    . "# You can further organize the menu by grouping the entries.  Add a\n"
-    . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.  Groups\n"
-    . "# can appear within each other.\n"
-    . "# \n"
-    . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
-    . "# \"Link: [name] ([URL])\" lines, respectively.\n"
-    . "# \n"
-    . "# The formatting and comments are auto-generated, so don't worry about\n"
-    . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
-    . "# time it is run.  When working with groups, just deal with the braces and\n"
-    . "# forget about the indentation and comments.\n"
-    . "# \n"
-    . "# You can use this file on other computers even if they use different\n"
-    . "# directories.  As long as the command line points to the same source files,\n"
-    . "# Natural Docs will be able to correct the locations automatically.\n"
-    . "# \n"
-    . "# --------------------------------------------------------------------------\n"
-
-    . "\n";
+    print MENUFILEHANDLE "\n";
 
     if (scalar keys %bannedIndexes)
         {
@@ -1175,8 +1145,40 @@ sub SaveMenuFile
                 {  print MENUFILEHANDLE NaturalDocs::Topics->PluralNameOf($index);  };
             };
 
-        print MENUFILEHANDLE "\n\n\n";
+        print MENUFILEHANDLE "\n\n";
         };
+
+
+    # Remember to keep lines below eighty characters.
+
+    print MENUFILEHANDLE
+    "\n"
+    . "# --------------------------------------------------------------------------\n"
+    . "# \n"
+    . "# Cut and paste the lines below to change the order in which your files\n"
+    . "# appear on the menu.  Don't worry about adding or removing files, Natural\n"
+    . "# Docs will take care of that.\n"
+    . "# \n"
+    . "# You can further organize the menu by grouping the entries.  Add a\n"
+    . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.  Groups\n"
+    . "# can appear within each other.\n"
+    . "# \n"
+    . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
+    . "# \"Link: [name] ([URL])\" lines, respectively.\n"
+    . "# \n"
+    . "# The formatting and comments are auto-generated, so don't worry about\n"
+    . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
+    . "# time it is run.  When working with groups, just deal with the braces and\n"
+    . "# forget about the indentation and comments.\n"
+    . "# \n"
+    . "# You can use this file on other computers even if they use different\n"
+    . "# directories.  As long as the command line points to the same source files,\n"
+    . "# Natural Docs will be able to correct the locations automatically.\n"
+    . "# \n"
+    . "# --------------------------------------------------------------------------\n"
+
+    . "\n\n";
+
 
     $self->WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef);
 
@@ -1199,6 +1201,7 @@ sub SaveMenuFile
 sub WriteMenuEntries #(entries, fileHandle, indentChars)
     {
     my ($self, $entries, $fileHandle, $indentChars) = @_;
+    my $lastEntryType;
 
     foreach my $entry (@$entries)
         {
@@ -1209,7 +1212,10 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
             }
         elsif ($entry->Type() == ::MENU_GROUP())
             {
-            print $fileHandle "\n" . $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
+            if (defined $lastEntryType && $lastEntryType != ::MENU_GROUP())
+                {  print $fileHandle "\n";  };
+
+            print $fileHandle $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
             $self->WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars);
             print $fileHandle '   ' . $indentChars . '}  # Group: ' . $entry->Title() . "\n\n";
             }
@@ -1231,6 +1237,8 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
 
             print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
             };
+
+        $lastEntryType = $entry->Type();
         };
     };
 
