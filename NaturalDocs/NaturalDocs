@@ -6,7 +6,7 @@
 #
 ###############################################################################
 #
-#       Version 1.22
+#       Version 1.3
 #
 #       Copyright © 2003-2004 Greg Valure
 #
@@ -40,6 +40,9 @@
 #
 #       - No constant will ever be zero or undef.  Those are reserved so any piece of code can allow a "none of the above" option
 #         and not worry about conflicts with an existing value.
+#
+#       - Existence hashes are hashes where the value doesn't matter.  It acts more as a set, where the existence of the key is
+#         the significant part.
 #
 #
 #   Topic: File Format Conventions
@@ -322,6 +325,11 @@ eval {
     NaturalDocs::Settings->Load();
 
 
+    NaturalDocs::Project->LoadConfigFileInfo();
+
+    NaturalDocs::Topics->Load();
+
+
     # Add the supported languages.
 
     my $cExtensions = [ 'h', 'hpp' ];
@@ -371,7 +379,7 @@ eval {
     if (!NaturalDocs::Settings->IsQuiet())
         {  print "Finding files and detecting changes...\n";  };
 
-    NaturalDocs::Project->LoadAndDetectChanges();
+    NaturalDocs::Project->LoadSourceFileInfo();
 
     NaturalDocs::SymbolTable->Load();
     NaturalDocs::ClassHierarchy->Load();
@@ -412,14 +420,16 @@ eval {
     NaturalDocs::Builder->Run();
 
 
-    # Write the changes back to disk.  The menu must be saved before the project because the project file stores when the
-    # menu file was last changed.
+    # Write the changes back to disk.
 
     NaturalDocs::Menu->Save();
-    NaturalDocs::Project->Save();
+    NaturalDocs::Project->SaveSourceFileInfo();
     NaturalDocs::SymbolTable->Save();
     NaturalDocs::ClassHierarchy->Save();
     NaturalDocs::Settings->Save();
+
+    # Must be done last.
+    NaturalDocs::Project->SaveConfigFileInfo();
 
     if (!NaturalDocs::Settings->IsQuiet())
         {  print "Done.\n";  };
