@@ -52,42 +52,31 @@ sub FromText #(textSymbol)
     $textSymbol =~ s/\(\)$//;
 
     # Split the string into pieces.
-    my @identifiers;
+    my @pieces = split(/(\.+|::|->)/, $textSymbol);
+    my $symbolString;
 
-    for (;;)
+    my $lastWasSeparator = 1;
+
+    foreach my $piece (@pieces)
         {
-        my $separatorIndex = -1;
-        my $separatorLength;
-
-        foreach my $separator (@separators)
+        if ($piece =~ /^(?:\.|::|->)$/)
             {
-            my $testIndex = index($textSymbol, $separator);
-
-            if ($testIndex != -1 && ($separatorIndex == -1 || $testIndex < $separatorIndex))
+            if (!$lastWasSeparator)
                 {
-                $separatorIndex = $testIndex;
-                $separatorLength = length($separator);
+                $symbolString .= "\x1F";
+                $lastWasSeparator = 1;
                 };
-            };
-
-        if ($separatorIndex == -1)
-            {  last;  }
-
-        # We test for zero because we don't want to add undef members to the symbol.
-        elsif ($separatorIndex != 0)
+            }
+        else
             {
-            push @identifiers, substr($textSymbol, 0, $separatorIndex);
+            $symbolString .= $piece;
+            $lastWasSeparator = 0;
             };
-
-        $textSymbol = substr($textSymbol, $separatorIndex + $separatorLength);
         };
 
-    if (defined $textSymbol && length $textSymbol)
-        {
-        push @identifiers, $textSymbol;
-        };
+    $symbolString =~ s/\x1F$//;
 
-    return join("\x1F", @identifiers);
+    return $symbolString;
     };
 
 
