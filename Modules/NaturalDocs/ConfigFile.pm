@@ -184,7 +184,7 @@ sub Close
 #   Returns:
 #
 #       Returns the array ( keyword, value, comment ), or an empty array if none.  All tabs will be converted to spaces, and all
-#       whitespace will be condensed.
+#       whitespace will be condensed into a single space.
 #
 #       keyword - The keyword part of the line, if any.  Is converted to lowercase and doesn't include the colon.  If the file supports
 #                       brace groups, opening and closing braces will be returned as keywords.
@@ -252,6 +252,8 @@ sub GetLine
 
         $line =~ s/^ //;
         $line =~ s/ $//;
+        $comment =~ s/ $//;
+        # We want to keep the leading space on a comment.
         }
     while (!$line);
 
@@ -403,6 +405,23 @@ sub PrintErrorsAndAnnotateFile
                 };
 
             $originalLineNumber++;
+            };
+
+        # Clean up any remaining errors.
+        while (scalar @errors)
+            {
+            my $errorLine = shift @errors;
+            my $errorMessage = shift @errors;
+
+            print CONFIG_FILEHANDLE "# ERROR: " . $errorMessage . "\n";
+
+            # Use the GNU error format, which should make it easier to handle errors when Natural Docs is part of a build process.
+            # See http://www.gnu.org/prep/standards_15.html
+
+            $errorMessage = lcfirst($errorMessage);
+            $errorMessage =~ s/\.$//;
+
+            print STDERR 'NaturalDocs:' . $file . ':' . $lineNumber . ': ' . $errorMessage . "\n";
             };
 
         close(CONFIG_FILEHANDLE);
