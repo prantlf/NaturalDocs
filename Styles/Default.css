@@ -264,11 +264,15 @@ body.FramedContentPage,
         }
 
     .PDefaultValue,
+    .PDefaultValuePrefix,
     .PTypePrefix {
         color: #8F8F8F;
         }
     .PTypePrefix {
         text-align: right;
+        }
+    .PAfterParameters {
+        vertical-align: bottom;
         }
 
     .IE .Prototype table {
