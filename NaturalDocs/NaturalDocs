@@ -92,6 +92,7 @@ use NaturalDocs::ClassHierarchy;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
 use NaturalDocs::Extensions;
+use NaturalDocs::Error;
 
 
 ###############################################################################
@@ -378,28 +379,5 @@ eval {
 
 if ($EVAL_ERROR)  # Oops.
     {
-    my $perlVersion;
-
-    if ($^V)
-        {  $perlVersion = sprintf('%vd', $^V);  }
-    if (!$perlVersion || substr($perlVersion, 0, 1) eq '%')
-        {  $perlVersion = $];  };
-
-    die
-         "\n"
-         . "Natural Docs encountered the following error and was stopped:\n"
-         . "\n"
-         . "   " . $@
-         . "\n"
-
-         . "You can get help at the following web site:\n"
-         . "\n"
-         . "   " . NaturalDocs::Settings->AppURL() . "\n"
-         . "\n"
-
-         . "If sending an error report, please include the following information:\n"
-         . "\n"
-         . "   Natural Docs version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
-         . "   Perl version: " .$perlVersion . " on " . $OSNAME . "\n"
-         . "\n";
+    NaturalDocs::Error->HandleDeath();
     };
