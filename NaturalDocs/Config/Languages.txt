@@ -163,6 +163,7 @@ Language: Shebang Script
 Language: C/C++
 
    Extensions: c cpp h hpp cxx hxx
+   Ignore Function Prefix in Index: ~
    Line Comment: //
    Block Comment: /* */
    Package Separator: ::
@@ -173,6 +174,7 @@ Language: C/C++
 Language: C#
 
    Extension: cs
+   Ignore Prefix in Index: @
    Full Language Support: NaturalDocs::Languages::CSharp
 
 
@@ -198,6 +200,7 @@ Language: Perl
 
    Extensions: pl pm
    Shebang String: perl
+   Ignore Variable Prefixes in Index: $ @ % *
    Package Separator: ::
    Full Language Support: NaturalDocs::Languages::Perl
 
@@ -216,6 +219,7 @@ Language: PHP
 
    Extensions: inc php php3 php4 phtml
    Shebang String: php
+   Ignore Variable Prefix in Index: $
    Line Comments: // #
    Block Comment: /* */
    Function Prototype Enders: ; {
@@ -284,6 +288,7 @@ Language: Ruby
 
    Extension: rb
    Shebang String: ruby
+   Ignore Variable Prefixes in Index: $ @ @@
    Line Comment: #
    Function Prototype Enders: ; \n
    Variable Prototype Enders: ; \n =
