@@ -52,6 +52,14 @@ my $mustBreakPOD;
 
 
 #
+#   Function: PackageSeparator
+#   Returns the package separator symbol.
+#
+sub PackageSeparator
+    {  return '::';  };
+    
+
+#
 #   Function: ParseFile
 #
 #   Parses the passed source file, sending comments acceptable for documentation to <NaturalDocs::Parser->OnComment()>.
