@@ -12,7 +12,10 @@
 #
 #       - Prior to initialization, <NaturalDocs::Builder> must have all its output packages registered.
 #
-#       - To initialize, call <Load()>.  All other functions will then be available.
+#       - To initialize, call <Load()>.  All functions except <InputDirectoryNameOf()> will then be available.
+#
+#       - <GenerateDirectoryNames()> must be called before <InputDirectoryNameOf()> will work.  Currently it is called by
+#          <NaturalDocs::Menu->LoadAndUpdate()>.
 #
 ###############################################################################
 
@@ -346,7 +349,7 @@ sub BuildTargets
 #
 #   Parameters:
 #
-#       object - The builder object.
+#       object - The builder object, whose class is derived from <NaturalDocs::Builder::Base>.
 #
 #   Returns:
 #
@@ -373,7 +376,7 @@ sub OutputDirectoryOf #(object)
 #
 #   Parameters:
 #
-#       object - The builder object.
+#       object - The builder object, whose class is derived from <NaturalDocs::Builder::Base>.
 #
 #   Returns:
 #
@@ -1131,7 +1134,7 @@ sub LoadSettingsFile
 #                                    if ($bannedIndex eq 'general')
 #                                        {  $bannedIndex = '*';  }
 #                                    else
-#                                        {  $bannedIndex = NaturalDocs::Topics->NonListConstantOf($bannedIndex);  };
+#                                        {  $bannedIndex = NaturalDocs::Topics->BaseConstantOf($bannedIndex);  };
 
 #                                    if (defined $bannedIndex)
 #                                        {  $bannedIndexes{$bannedIndex} = 1;  };
@@ -1139,7 +1142,7 @@ sub LoadSettingsFile
 #                                }
 #                            else
 #                                {
-#                                my $modifierType = NaturalDocs::Topics->NonListConstantOf($modifier);
+#                                my $modifierType = NaturalDocs::Topics->BaseConstantOf($modifier);
 
 #                                if (defined $modifierType && NaturalDocs::Topics->IsIndexable($modifierType))
 #                                    {
