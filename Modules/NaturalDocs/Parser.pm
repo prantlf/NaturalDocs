@@ -158,18 +158,19 @@ sub ParseForBuild #(file)
 #       commentLines - An arrayref of the comment's lines.  The language's comment symbols should be converted to spaces,
 #                               and there should be no line break characters at the end of each line.  *The original memory may be
 #                               changed.*
+#       lineNumber - The line number of the first of the comment lines.
 #
 #   Returns:
 #
 #       The number of topics created by this comment, or zero if none.
 #
-sub OnComment #(commentLines)
+sub OnComment #(commentLines, lineNumber)
     {
-    my ($self, $commentLines) = @_;
+    my ($self, $commentLines, $lineNumber) = @_;
 
     $self->CleanComment($commentLines);
 
-    return NaturalDocs::Parser::Native->ParseComment($commentLines, \@parsedFile);
+    return NaturalDocs::Parser::Native->ParseComment($commentLines, $lineNumber, \@parsedFile);
     };
 
 
@@ -236,7 +237,8 @@ sub Parse #(file)
             else
                 {  $name = $file;  };
 
-            unshift @parsedFile, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), $name, undef, undef, undef, undef);
+            unshift @parsedFile,
+                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), $name, undef, undef, undef, undef, undef);
             };
 
         # We only want to call the hook if it has content.
@@ -251,8 +253,8 @@ sub Parse #(file)
 #   Function: CleanComment
 #
 #   Removes any extraneous formatting and whitespace from the comment.  Eliminates comment boxes, horizontal lines, leading
-#   and trailing line breaks, trailing whitespace from lines, more than two line breaks in a row, and expands all tab characters.
-#   It keeps leading whitespace, though, since it may be needed for example code.
+#   and trailing line breaks, trailing whitespace from lines, and expands all tab characters.  It keeps leading whitespace, though,
+#   since it may be needed for example code, and multiple blank lines, since the original line numbers are needed.
 #
 #   Parameters:
 #
@@ -393,7 +395,6 @@ sub CleanComment #(commentLines)
 
 
     $index = 0;
-    my $prevLineBlank = 1;
 
     while ($index < scalar @$commentLines)
         {
@@ -421,35 +422,9 @@ sub CleanComment #(commentLines)
             };
 
 
-        # Condense line breaks.  This also strips leading ones since prevLineBlank defaults to set.
+        $index++;
+       };
 
-        if (!length($commentLines->[$index]))
-            {
-            if ($prevLineBlank)
-                {
-                splice(@$commentLines, $index, 1);
-                }
-            else
-                {
-                $prevLineBlank = 1;
-                $index++;
-                };
-            }
-
-        else # the line isn't blank
-            {
-            $prevLineBlank = 0;
-            $index++;
-            };
-        };
-
-
-    # Strip trailing blank lines.
-
-    while ($index > 0 && !length( $commentLines->[$index - 1] ))
-        {  $index--;  };
-
-    splice(@$commentLines, $index);
     };
 
 

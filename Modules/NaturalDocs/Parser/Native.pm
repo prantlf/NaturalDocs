@@ -77,16 +77,18 @@ sub Start
 #   Parameters:
 #
 #       commentLines - An arrayref of the comment's lines.  All tabs must be expanded into spaces, and all comment symbols,
-#                               boxes, lines, and trailing whitespace should be removed.  Leading whitespace should be preserved.
+#                               boxes, lines, and trailing whitespace should be removed.  Leading whitespace and multiple blank lines
+#                               should be preserved.
+#       lineNumber - The line number of the first of the comment lines.
 #       parsedTopics - A reference to the array where any new <NaturalDocs::Parser::ParsedTopics> should be placed.
 #
 #   Returns:
 #
 #       The number of parsed topics added to the array, or zero if none.
 #
-sub ParseComment #(commentLines, parsedTopics)
+sub ParseComment #(commentLines, lineNumber, parsedTopics)
     {
-    my ($self, $commentLines, $parsedTopics) = @_;
+    my ($self, $commentLines, $lineNumber, $parsedTopics) = @_;
 
     my $topicCount = 0;
     my $prevLineBlank = 1;
@@ -116,22 +118,14 @@ sub ParseComment #(commentLines, parsedTopics)
                 {  $inCodeSection = undef;  };
 
             $prevLineBlank = 0;
-            $bodyEnd = $index + 1;
+            $bodyEnd++;
             }
 
         # If the line is empty...
         elsif (!length($commentLines->[$index]))
             {
             $prevLineBlank = 1;
-
-            # If this is the beginning of a body, make sure the leading blank is excluded.
-            if ($bodyStart == $index)
-                {
-                $bodyStart = $index + 1;
-                $bodyEnd = $index + 1;
-                };
-            # If this isn't the beginning of a body, we ignore it completely.  It will be included if there is any content after it when
-            # bodyEnd is advanced for that content.
+            $bodyEnd++;
             }
 
         # If the line has a recognized header and the previous line is blank...
@@ -147,7 +141,7 @@ sub ParseComment #(commentLines, parsedTopics)
             if (defined $type)
                 {
                 my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-                push @$parsedTopics, $self->MakeParsedTopic($name, $class, $type, $body);
+                push @$parsedTopics, $self->MakeParsedTopic($name, $class, $type, $body, $lineNumber + $bodyStart - 1);
                 $topicCount++;
                 };
 
@@ -191,7 +185,7 @@ sub ParseComment #(commentLines, parsedTopics)
         else
             {
             $prevLineBlank = 0;
-            $bodyEnd = $index + 1;
+            $bodyEnd++;
 
             if ($commentLines->[$index] =~ /^ *\( *(?:(?:start|begin)? +)?(?:table|code|example|diagram) *\)$/i)
                 {  $inCodeSection = 1;  };
@@ -206,7 +200,7 @@ sub ParseComment #(commentLines, parsedTopics)
     if (defined $type)
         {
         my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-        push @$parsedTopics, $self->MakeParsedTopic($name, $class, $type, $body);
+        push @$parsedTopics, $self->MakeParsedTopic($name, $class, $type, $body, $lineNumber + $bodyStart - 1);
         $topicCount++;
         };
 
@@ -231,14 +225,15 @@ sub ParseComment #(commentLines, parsedTopics)
 #       class        - The class of the section.
 #       type         - The section type.
 #       body        - The section's body in <NDMarkup>.
+#       lineNumber - The topic's line number.
 #
 #   Returns:
 #
 #       The <NaturalDocs::Parser::ParsedTopic> object.
 #
-sub MakeParsedTopic #(name, class, type, body)
+sub MakeParsedTopic #(name, class, type, body, lineNumber)
     {
-    my ($self, $name, $class, $type, $body) = @_;
+    my ($self, $name, $class, $type, $body, $lineNumber) = @_;
     # $scope is a package variable.
 
     my $summary;
@@ -256,7 +251,7 @@ sub MakeParsedTopic #(name, class, type, body)
         };
 
 
-    return NaturalDocs::Parser::ParsedTopic->New($type, $name, $class, $scope, undef, $summary, $body);
+    return NaturalDocs::Parser::ParsedTopic->New($type, $name, $class, $scope, undef, $summary, $body, $lineNumber);
     };
 
 

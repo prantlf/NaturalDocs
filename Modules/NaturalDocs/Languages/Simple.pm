@@ -206,12 +206,13 @@ sub LineExtender
 #   Parameters:
 #
 #       codeLines - The source code as an arrayref of lines.
+#       codeLineNumber - The line number of the first line of code.
 #       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
 #       lastCommentTopicCount - The number of Natural Docs topics that were created by the last comment.
 #
-sub OnCode #(codeLines, topicList, lastCommentTopicCount)
+sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
     {
-    my ($self, $codeLines, $topicList, $lastCommentTopicCount) = @_;
+    my ($self, $codeLines, $codeLineNumber, $topicList, $lastCommentTopicCount) = @_;
 
     if ($lastCommentTopicCount && $self->HasPrototype($topicList->[-1]->Type()))
         {
