@@ -42,11 +42,19 @@ require Exporter;
 #
 #   Note: Assumptions
 #
-#   No constant here will ever be zero.
+#   - No constant here will ever be zero.
+#   - All constants are exported by default.
 #
 
+
+###############################################################################
+# Group: Virtual Types
+# These are only groups of constants, but should be treated like typedefs or enums.  Each one represents a distinct type and
+# their values should only be one of their constants or undef.
+
+
 #
-#   enum: ReferenceType
+#   Constants: ReferenceType
 #
 #   The type of a reference.
 #
@@ -63,45 +71,9 @@ use constant REFERENCE_TEXT => 1;
 use constant REFERENCE_CH_CLASS => 2;
 use constant REFERENCE_CH_PARENT => 3;
 
-#
-#   Function: IsClassHierarchyReference
-#   Returns whether the passed <ReferenceType> belongs to <NaturalDocs::ClassHierarchy>.
-#
-sub IsClassHierarchyReference #(reference)
-    {
-    my ($self, $reference) = @_;
-    return ($reference == REFERENCE_CH_CLASS || $reference == REFERENCE_CH_PARENT);
-    };
-
 
 #
-#   enum: Resolving Flags
-#
-#   Used to influence the method of resolving references in <NaturalDocs::SymbolTable>.
-#
-#       RESOLVE_RELATIVE - The reference text is truly relative, rather than Natural Docs' semi-relative.
-#       RESOLVE_ABSOLUTE - The reference text is always absolute.  No local, relative, or using references.  This implies
-#                                        <RESOLVE_NOUSING>.
-#       RESOLVE_NOPLURAL - The reference text may not be interpreted as a plural, and thus match singular forms as well.
-#       RESOLVE_NOUSING - The reference text may not include "using" statements when being resolved.  This is implied if
-#                                       <RESOLVE_ABSOLUTE> is specified.
-#
-#       If neither <RESOLVE_RELATIVE> or <RESOLVE_ABSOLUTE> is specified, Natural Docs' semi-relative kicks in instead,
-#       which is where links are interpreted as local, then global, then relative.  <RESOLVE_RELATIVE> states that links are
-#       local, then relative, then global.
-#
-#   Dependencies:
-#
-#       - <NaturalDocs::ReferenceString->ToBinaryFile()> and <NaturalDocs::ReferenceString->FromBinaryFile()> require that
-#         these values fit into a UInt8, i.e. are <= 255.
-#
-use constant RESOLVE_RELATIVE => 0x01;
-use constant RESOLVE_ABSOLUTE => 0x02;
-use constant RESOLVE_NOPLURAL => 0x04;
-use constant RESOLVE_NOUSING => 0x08;
-
-#
-#   enum: AutoGroupLevel
+#   Constants: AutoGroupLevel
 #
 #   The level of auto-grouping to do.
 #
@@ -109,14 +81,19 @@ use constant RESOLVE_NOUSING => 0x08;
 #   AUTOGROUP_BASIC - Functions, variables, and properties only.
 #   AUTOGROUP_FULL - Everything auto-groupable as specified in <NaturalDocs::Topics>.
 #
+#   Dependencies:
+#
+#       - <PreviousSettings.nd> requires that these values fit into a UInt8, i.e. are <= 255.
+#
 use constant AUTOGROUP_NONE => 1;
 use constant AUTOGROUP_BASIC => 2;
 use constant AUTOGROUP_FULL => 3;
 
+
 #
-#   Constants: Menu Entry Type Constants
+#   Constants: MenuEntryType
 #
-#   Constants representing all the types of sections that can appear in the menu file.
+#   The types of entries that can appear in the menu.
 #
 #       MENU_TITLE         - The title of the menu.
 #       MENU_SUBTITLE   - The sub-title of the menu.
@@ -147,6 +124,55 @@ use constant MENU_INDEX => 8;
 use constant MENU_FORMAT => 9;
 use constant MENU_ENDOFORIGINAL => 10;
 use constant MENU_DATA => 11;
+
+
+#
+#   Constants: FileStatus
+#
+#   What happened to a file since Natural Docs' last execution.
+#
+#       FILE_NEW                - The file has been added since the last run.
+#       FILE_CHANGED        - The file has been modified since the last run.
+#       FILE_SAME               - The file hasn't been modified since the last run.
+#       FILE_DOESNTEXIST  - The file doesn't exist, or was deleted.
+#
+use constant FILE_NEW => 1;
+use constant FILE_CHANGED => 2;
+use constant FILE_SAME => 3;
+use constant FILE_DOESNTEXIST => 4;
+
+
+
+###############################################################################
+# Group: Flags
+# These constants can be combined with each other.
+
+
+#
+#   Constants: Resolving Flags
+#
+#   Used to influence the method of resolving references in <NaturalDocs::SymbolTable>.
+#
+#       RESOLVE_RELATIVE - The reference text is truly relative, rather than Natural Docs' semi-relative.
+#       RESOLVE_ABSOLUTE - The reference text is always absolute.  No local, relative, or using references.  This implies
+#                                        <RESOLVE_NOUSING>.
+#       RESOLVE_NOPLURAL - The reference text may not be interpreted as a plural, and thus match singular forms as well.
+#       RESOLVE_NOUSING - The reference text may not include "using" statements when being resolved.  This is implied if
+#                                       <RESOLVE_ABSOLUTE> is specified.
+#
+#       If neither <RESOLVE_RELATIVE> or <RESOLVE_ABSOLUTE> is specified, Natural Docs' semi-relative kicks in instead,
+#       which is where links are interpreted as local, then global, then relative.  <RESOLVE_RELATIVE> states that links are
+#       local, then relative, then global.
+#
+#   Dependencies:
+#
+#       - <NaturalDocs::ReferenceString->ToBinaryFile()> and <NaturalDocs::ReferenceString->FromBinaryFile()> require that
+#         these values fit into a UInt8, i.e. are <= 255.
+#
+use constant RESOLVE_RELATIVE => 0x01;
+use constant RESOLVE_ABSOLUTE => 0x02;
+use constant RESOLVE_NOPLURAL => 0x04;
+use constant RESOLVE_NOUSING => 0x08;
 
 
 #
@@ -190,18 +216,10 @@ use constant MENU_GROUP_EVERYTHINGSORTED => 0x0080;
 use constant MENU_GROUP_ISINDEXGROUP => 0x0100;
 
 
-#
-#   Constants: File Status Constants
-#
-#       FILE_NEW                - The file has been added since the last run.
-#       FILE_CHANGED        - The file has been modified since the last run.
-#       FILE_SAME               - The file hasn't been modified since the last run.
-#       FILE_DOESNTEXIST  - The file doesn't exist, or was deleted.
-#
-use constant FILE_NEW => 1;
-use constant FILE_CHANGED => 2;
-use constant FILE_SAME => 3;
-use constant FILE_DOESNTEXIST => 4;
+
+###############################################################################
+# Group: Other Constants
+
 
 #
 #   Constant: BINARY_FORMAT
@@ -211,5 +229,23 @@ use constant FILE_DOESNTEXIST => 4;
 #
 use constant BINARY_FORMAT => pack('C', 0x06);
 # Which is ACK or acknowledge in ASCII.  Is the cool spade character in DOS displays.
+
+
+
+###############################################################################
+# Group: Support Functions
+
+
+#
+#   Function: IsClassHierarchyReference
+#   Returns whether the passed <ReferenceType> belongs to <NaturalDocs::ClassHierarchy>.
+#
+sub IsClassHierarchyReference #(reference)
+    {
+    my ($self, $reference) = @_;
+    return ($reference == REFERENCE_CH_CLASS || $reference == REFERENCE_CH_PARENT);
+    };
+
+
 
 1;
