@@ -102,7 +102,7 @@ sub Run
 
     foreach my $index (keys %$currentIndexes)
         {
-        if (NaturalDocs::Settings::RebuildAll() || NaturalDocs::SymbolTable::IndexChanged($index eq '*' ? undef : $index) ||
+        if (NaturalDocs::Settings::RebuildOutput() || NaturalDocs::SymbolTable::IndexChanged($index eq '*' ? undef : $index) ||
             !exists $previousIndexes->{$index})
             {
             $indexesToBuild{$index} = 1;
