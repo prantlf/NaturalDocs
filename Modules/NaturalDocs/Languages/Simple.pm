@@ -30,7 +30,31 @@ use NaturalDocs::DefineMembers 'LINE_COMMENT_SYMBOLS', 'LineCommentSymbols()', '
                                                  'PROTOTYPE_ENDERS',
                                                  'LINE_EXTENDER', 'LineExtender()', 'SetLineExtender()',
                                                  'PACKAGE_SEPARATOR', 'PackageSeparator()',
-                                                 'PACKAGE_SEPARATOR_WAS_SET', 'PackageSeparatorWasSet()';
+                                                 'PACKAGE_SEPARATOR_WAS_SET', 'PackageSeparatorWasSet()',
+                                                 'ENUM_VALUES', 'EnumValues()',
+                                                 'ENUM_VALUES_WAS_SET', 'EnumValuesWasSet()';
+
+#
+#   Function: New
+#
+#   Creates and returns a new object.
+#
+#   Parameters:
+#
+#       name - The name of the language.
+#
+sub New #(name)
+    {
+    my ($selfPackage, $name) = @_;
+
+    my $object = $selfPackage->SUPER::New($name);
+
+    $object->[ENUM_VALUES] = ::ENUM_GLOBAL();
+    $object->[PACKAGE_SEPARATOR] = '.';
+
+    return $object;
+    };
+
 
 #
 #   Functions: Members
@@ -56,6 +80,25 @@ sub SetPackageSeparator #(separator)
     my ($self, $separator) = @_;
     $self->[PACKAGE_SEPARATOR] = $separator;
     $self->[PACKAGE_SEPARATOR_WAS_SET] = 1;
+    };
+
+
+#
+#   Functions: Members
+#
+#   EnumValues - Returns the <EnumValuesType> that describes how the language handles enums.
+#   EnumValuesWasSet - Returns whether <EnumValues> was ever changed from the default.
+
+
+#
+#   Function: SetEnumValues
+#   Replaces the <EnumValuesType> that describes how the language handles enums.
+#
+sub SetEnumValues #(EnumValuesType newBehavior)
+    {
+    my ($self, $behavior) = @_;
+    $self->[ENUM_VALUES] = $behavior;
+    $self->[ENUM_VALUES_WAS_SET] = 1;
     };
 
 
@@ -94,6 +137,7 @@ sub SetPrototypeEndersFor #(type, enders)
         $self->[PROTOTYPE_ENDERS]->{$type} = [ @$enders ];
         };
     };
+
 
 
 
