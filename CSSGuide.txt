@@ -1,0 +1,321 @@
+
+Title: CSS Guide
+_______________________________________________________________________________
+
+It's important to understand the internal HTML file structure and styles in order to design your own CSS style for Natural Docs.  If
+you're content with the default styles, there's no need to read this document.
+
+The diagrams are designed for clarity.  In the actual HTML, you'd obviously see "<pre class=CCode></pre>" instead of
+"<pre CCode></pre CCode>".  If there's no element in the diagram tag, for example "<CTitle></CTitle>", that means you
+shouldn't rely on what HTML element it is.  Just refer to them as .Style in your CSS file instead of Element.Style.
+
+
+Group: Content
+
+Topic: Structure
+
+    All the content of a given file is contained in a single <Content>.  All other content styles are prefixed with a C.
+
+    Each piece of content is a <CTopic>, and inside each of those is the type.  For example, <CFunction> for a function.  Inside
+    that are analogues to all the top-level <NDMarkup> tags: <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so
+    that you only style explicit <NDMarkup> paragraphs, and not any p that is a descendant of <Content>.
+
+    In addition to the top-level <NDMarkup> tags, you also have <CPrototype>, <CTitle>, and <Summaries>.  <Summaries> are
+    described in their own section.
+
+    >   <Content>
+    >
+    >       <CTopic>
+    >           <CType (CFunction, CItem, etc.)>
+    >
+    >               <CTitle>
+    >                   Topic title
+    >               </CTitle>
+    >
+    >               <CPrototype>
+    >                   Prototype
+    >               </CPrototype>
+    >
+    >               <p CParagraph>
+    >                   Paragraph
+    >               </p CParagraph>
+    >
+    >               <CHeading>
+    >                   Heading
+    >               </CHeading>
+    >
+    >               <pre CCode>
+    >                   Code
+    >               </pre CCode>
+    >
+    >               <ul CBulletList>
+    >                   <li>
+    >                       Bullet item
+    >                   </li>
+    >               </ul CBulletList>
+    >
+    >               <table CDescriptionList>
+    >                   <tr>
+    >                       <td CDLEntry>
+    >                           Entry
+    >                       </td CDLEntry>
+    >                       <td CDLDescription>
+    >                           Description
+    >                       </td CDLDescription>
+    >                   </tr>
+    >               </table CDescriptionList>
+    >
+    >               <Summary> (See it's section)
+    >
+    >           </CType (CFunction, CItem, etc.)>
+    >       </CTopic>
+    >
+    >   </Content>
+
+    Take advantange of the CSS inheritance model.  For example, you can style all titles via .Content .CTitle, and you can style
+    specific titles with .Content .CType .CTitle.
+
+
+Styles: Styles
+
+    Content - One <Content> surrounds all <CTopic>s.
+
+    CTopic - An individual topic.
+
+    CTitle - The title of a topic.
+    CPrototype - A prototype.
+    CParagraph - A paragraph.  Is implemented with a p.
+    CHeading - A heading.
+    CBulletList - A bullet list.  Is implemented with a ul.
+    CCode - A section of code.  Is implemented with a pre.
+
+    CDescriptionList - A description list, which is the type of list you're reading right now.  Is implemented with a table.
+    CDLEntry - A description list entry, which is the left side.
+    CDLDescription - A description list description, which is the right side.
+
+    CMain - The main topic.
+    CClass - A class topic.
+    CSection - A section topic.
+    CFile - A file topic.
+    CGroup - A group topic.
+    CFunction - A function topic.
+    CVariable - A variable topic.
+    CGeneric - A generic topic.
+    CClassList - A class list topic.
+    CFileList - A file list topic.
+    CFunctionList - A function list topic.
+    CVariableList - A variable list topic.
+    CGenericList - A generic list topic.
+
+
+_______________________________________________________________________________
+
+Group: Menu
+
+Topic: Structure
+
+    Everything is enclosed in a single <Menu>.  All other menu styles are prefixed with an M.
+
+    The title is an <MTitle> and will always be at the beginning of the <Menu> if it exists.  If a subtitle exists as well, it will appear
+    as an <MSubTitle> inside <MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
+     <MEntry>, inside of which there's the type, such as <MFile> and <MGroup>.  Inside of that is the content.  With <MGroup>s,
+    there's also a section inside called <MGroupContent> which can contain more entries.  Here's the diagram:
+
+    >   <Menu>
+    >
+    >       <MTitle>
+    >           Menu title
+    >
+    >           <MSubTitle>
+    >               Menu sub title
+    >           </MSubTitle>
+    >
+    >       </MTitle>
+    >
+    >       <MEntry>
+    >           <MFile>
+    >               <a href>File</a href>
+    >           </MFile>
+    >       </MEntry>
+    >
+    >       <MEntry>
+    >           <MText>
+    >               Text
+    >           </MText>
+    >       </MEntry>
+    >
+    >       <MEntry>
+    >           <MLink>
+    >               <a href>Link</a href>
+    >           </MLink>
+    >       </MEntry>
+    >
+    >       <MEntry>
+    >           <MGroup>
+    >               <a href>Group</a href>
+    >               <MGroupContent>
+    >
+    >                   (MEntries)
+    >
+    >               </MGroupContent>
+    >          </MGroup>
+    >       </MEntry>
+    >
+    >   </Menu>
+
+    The <MFile> entry that's currently selected will have the <#MSelected> ID, so you can reference it in CSS via .Menu
+    .MFile#MSelected.
+
+
+Styles: Styles
+
+    Menu - One <Menu> holds the entire menu.
+
+    MTitle - The title of the menu.
+    MSubTitle - The subtitle of the menu.  Will appear within <MTitle>.
+
+    MEntry - The parent container of <MFile> and <MGroup> entries.
+
+    MFile - A file entry.
+    MGroup - A group entry.
+    MGroupContent - A container for a <MGroup>s content.
+    MText - A plain text entry.
+    MLink - An external link entry.
+
+    #MSelected - The ID of the currently selected <MFile>.
+
+
+_______________________________________________________________________________
+
+Group: Summaries
+
+Topic: Structure
+
+    Everything is enclosed in a single <Summary>.  All the other summary styles are prefixed with an S.
+
+    <STitle> holds the actual word "Summary" and <SBorder> and <STable> hold the content.  <SBorder> exists because different
+    browsers apply table padding attributes in different ways.  <STable> exists as a class to separate the main table from any other
+    tables that may be necessary.  Here's a diagram:
+
+    >   <Summary>
+    >
+    >       <STitle>
+    >           Title
+    >       </STitle>
+    >
+    >       <SBorder>
+    >           <table STable>
+    >               ...
+    >           </table STable>
+    >       </SBorder>
+    >
+    >   </Summary>
+
+    On to the table content.  Cells may have the <SMarked> class, which means they should be tinted for easier readablity.
+
+    Since we many attributes left to apply, they're done with a kludgy mess of styles within each cell.  It's hacky and verbose, but it
+    works and is compatible everywhere.  We apply the type, whether it's an entry or a description, and if it's in a group or class as
+    shown below:
+
+    >   <tr>
+    >       <td SMarked?>
+    >
+    >           <SType (SFunction, SClass, etc.)>
+    >               <SEntry>
+    >                   <SInClass/Section>? <SInGroup>?
+    >
+    >                       <a href>Entry</a href>
+    >
+    >                    </SInGroup>? </SInClass/Section>?
+    >               </SEntry>
+    >           </SType>
+    >
+    >       </td SMarked?>
+    >       <td SMarked?>
+    >
+    >           <SType (SFunction, SClass, etc.)>
+    >               <SDescription>
+    >                   <SInClass/Section>? <SInGroup>?
+    >
+    >                       Description
+    >
+    >                   </SInGroup>? </SInClass/Section>?
+    >               </SDescription>
+    >           </SType>
+    >
+    >       </td SMarked?>
+    >   </tr>
+
+    <SInGroup>, <SInClass>, and <SInSection> exist to allow indenting.  They're there in their current arrangement (all three
+    "there"s in one sentence :) because implementing it as nested tables, while structurally cleaner, won't allow the desciptions to
+    line up on the right throughout the entire summary.
+
+    Use the power of CSS's inheritance rules to specify styles.  For example, to set the style of a group entry, apply it to
+    .Summary .SGroup .SEntry.  However, you could also apply a style to both the group's entry and description by applying the
+    style to .Summary .SGroup.  Or, you could apply a style to all the entries by applying it to .Summary .SEntry.  And so on.
+
+
+Styles: Styles
+
+    Summary - The topmost style containing the entire summary.
+
+    STitle - Contains the summary title, which is the part that actually says "Summary".
+
+    SBorder - Surrounds <STable>, since some browsers can't do table padding right.  A hack, I know.
+    STable - The actual summary table.  This class separates it from other layout tables that may appear.
+
+    SMarked - A class applied to cells that should have a slightly different color than the rest of the cells to make it easier to read.
+
+    SEntry - The entry (left) side of the table.
+    SDescription - The description (right) side of the table.
+
+    SInGroup - Surrounding entries and descriptions that are part of a group.
+    SInClass - Surrounding entries and descriptions that are part of a class.
+    SInSection - Surrounds entries and descriptions that are part of a section.
+
+    SMain - The main summary.
+    SClass - For class summaries.
+    SSection - For section summaries.
+    SFile - For file summaries.
+    SGroup - For group summaries.
+    SFunction - For function summaries.
+    SVariable - For item summaries.
+    SGeneric - For generic summaries.
+    SClassList - For class list summaries.
+    SFileList - For file list summaries.
+    SFunctionList - For function list summaries.
+    SVariableList - For variable list summaries.
+    SGenericList - For generic list summaries.
+
+
+_______________________________________________________________________________
+
+Group: Links
+
+Topic: Structure
+
+    All links to symbols have a type style prefixed with L.  The only exceptions are summary entries; summary descriptions use
+    them as well.
+
+    >   <a LType (LFunction, LClass, etc.)>
+    >       Link
+    >   </a LType (LFunction, LClass, etc.)>
+
+    You can use this to make links to different symbols appear in different styles.  For example, making .LClass bold will make all
+    links to classes bold, except when appearing in summary entries.  You can combine this with other styles to be even more
+    specific.  For example, you can apply a style to function links appearing in summary descriptions with .SDescription .LFunction.
+
+Styles: Styles
+
+    LClass - Link to a class.
+    LSection - Link to a section.
+    LFile - Link to a file.
+    LGroup - Link to a group.
+    LFunction - Link to a function.
+    LVariable - Link to a item.
+    LGeneric - Link to a generic.
+    LClassList - Link to a class list.
+    LFileList - Link to a file list.
+    LFunctionList - Link to a function list.
+    LVariableList - Link to a variable list.
+    LGenericList - Link to a generic list.
