@@ -8,8 +8,7 @@
 #
 #   Usage and Dependencies:
 #
-#       - Prior to use, <NaturalDocs::Settings> must be initialized and all supported languages need to be registered via
-#         <Register()>.
+#       - Prior to use, <NaturalDocs::Settings> must be initialized and all supported languages need to be added via <Add()>.
 #
 ###############################################################################
 
@@ -178,13 +177,13 @@ sub SeparateMember #(string)
 
 
 #
-#   Function: Register
+#   Function: Add
 #
-#   Registers a <NaturalDocs::Languages::Language> object with the package.
+#   Adds a <NaturalDocs::Languages::Language> object to the package.
 #
 #   Usage:
 #
-#       This function is *only* to be called by <NaturalDocs::Languages::Language::New()>.  Languages self-register when
+#       This function is *only* to be called by <NaturalDocs::Languages::Language::New()>.  Languages self-add when
 #       created, so there is no need to call anywhere else.
 #
 #   Parameters:
@@ -194,9 +193,17 @@ sub SeparateMember #(string)
 #       shebangStrings  - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
 #                                 has a .cgi extension or no extension at all.  Undef if not applicable.
 #
-sub Register #(languageObject, extensions, shebangStrings)
+sub Add #(languageObject, extensions, shebangStrings)
     {
     my ($languageObject, $extensions, $shebangStrings) = @_;
+
+    # Prior to 1.13, Add() was called from the main script to add languages.  Since people may be cutting and pasting old code,
+    # they may not be aware that the method changed.  We want to throw a specific error message for this situation so it's clear.
+    # We can detect an old Add() call because it had many more parameters.
+    if (scalar @_ > 3)
+        {
+        die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Languages->New().\n";
+        };
 
     my $languageIndex = scalar @languages;
     push @languages, $languageObject;
@@ -215,13 +222,5 @@ sub Register #(languageObject, extensions, shebangStrings)
         };
     };
 
-
-# Undocumented legacy function.  Add() was the old way of addding languages.  We want to throw a more specific error message
-# when people call it because they may just be cutting and pasting their old code into new versions and not be aware of the
-# changes.
-sub Add
-    {
-    die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Languages->New().\n";
-    };
 
 1;

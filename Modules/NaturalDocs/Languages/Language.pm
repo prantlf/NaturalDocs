@@ -52,7 +52,7 @@ use constant LINE_EXTENDER => 6;
 #
 #   Function: New
 #
-#   Returns a new language object and registers it with <NaturalDocs::Languages>.
+#   Returns a new language object and adds it to <NaturalDocs::Languages>.
 #
 #   Parameters:
 #
@@ -101,7 +101,7 @@ sub New #(name, extensions, shebangStrings, lineCommentSymbols, openingCommentSy
                           $functionEnders, $variableEnders, $lineExtender ];
     bless $object, $package;
 
-    NaturalDocs::Languages::Register($object, $extensions, $shebangStrings);
+    NaturalDocs::Languages::Add($object, $extensions, $shebangStrings);
 
 
     return $object;
