@@ -102,6 +102,14 @@ my $mainTopicsFileStatus;
 # The <FileStatus> of the project's user topics file.
 my $userTopicsFileStatus;
 
+# var: mainLanguagesFileStatus
+# The <FileStatus> of the project's main languages file.
+my $mainLanguagesFileStatus;
+
+# var: userLanguagesFileStatus
+# The <FileStatus> of the project's user languages file.
+my $userLanguagesFileStatus;
+
 # bool: reparseEverything
 # Whether all the source files need to be reparsed.
 my $reparseEverything;
@@ -168,6 +176,8 @@ my $rebuildEverything;
 #       > [UInt32: last modification time of menu]
 #       > [UInt32: last modification of main topics file]
 #       > [UInt32: last modification of user topics file]
+#       > [UInt32: last modification of main languages file]
+#       > [UInt32: last modification of user languages file]
 #
 #       Next are the last modification times of various configuration files as UInt32s in the standard Unix format.
 #
@@ -177,7 +187,7 @@ my $rebuildEverything;
 #       1.3:
 #
 #           - The file was added to Natural Docs.  Previously the last modification of <Menu.txt> was stored in <FileInfo.nd>, and
-#             <Topics.txt> didn't exist.
+#             <Topics.txt> and <Languages.txt> didn't exist.
 #
 
 
@@ -430,12 +440,16 @@ sub LoadConfigFileInfo
         {
         my $raw;
 
-        read(FH_CONFIGFILEINFO, $raw, 12);
-        my ($menuDate, $mainTopicsDate, $userTopicsDate) = unpack('NNN', $raw);
+        read(FH_CONFIGFILEINFO, $raw, 20);
+        my ($menuDate, $mainTopicsDate, $userTopicsDate, $mainLanguagesDate, $userLanguagesDate) = unpack('NNNNN', $raw);
 
         $menuFileStatus         = ($menuDate         == (stat($self->MenuFile()         ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
         $mainTopicsFileStatus = ($mainTopicsDate == (stat($self->MainTopicsFile() ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
         $userTopicsFileStatus  = ($userTopicsDate  == (stat($self->UserTopicsFile()))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
+        $mainLanguagesFileStatus =
+            ($mainLanguagesDate == (stat($self->MainLanguagesFile() ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
+        $userLanguagesFileStatus  =
+            ($userLanguagesDate  == (stat($self->UserLanguagesFile()))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
 
         close(FH_CONFIGFILEINFO);
         }
@@ -444,6 +458,8 @@ sub LoadConfigFileInfo
         $menuFileStatus = ::FILE_CHANGED();
         $mainTopicsFileStatus = ::FILE_CHANGED();
         $userTopicsFileStatus = ::FILE_CHANGED();
+        $mainLanguagesFileStatus = ::FILE_CHANGED();
+        $userLanguagesFileStatus = ::FILE_CHANGED();
         };
     };
 
@@ -466,9 +482,11 @@ sub SaveConfigFileInfo
 
     NaturalDocs::Version->ToBinaryFile(\*FH_CONFIGFILEINFO, NaturalDocs::Settings->AppVersion());
 
-    print FH_CONFIGFILEINFO pack('NNN', (stat($self->MenuFile()))[9],
-                                                               (stat($self->MainTopicsFile()))[9],
-                                                               (stat($self->UserTopicsFile()))[9] );
+    print FH_CONFIGFILEINFO pack('NNNNN', (stat($self->MenuFile()))[9],
+                                                                (stat($self->MainTopicsFile()))[9],
+                                                                (stat($self->UserTopicsFile()))[9],
+                                                                (stat($self->MainLanguagesFile()))[9],
+                                                                (stat($self->UserLanguagesFile()))[9] );
 
     close(FH_CONFIGFILEINFO);
     };
@@ -558,6 +576,26 @@ sub UserTopicsFile
 # Returns the <FileStatus> of the project's user topics file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
 sub UserTopicsFileStatus
     {  return $userTopicsFileStatus;  };
+
+# Function: MainLanguagesFile
+# Returns the full path to the main languages file.
+sub MainLanguagesFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), 'Languages.txt' );  };
+
+# Function: MainLanguagesFileStatus
+# Returns the <FileStatus> of the project's main languages file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+sub MainLanguagesFileStatus
+    {  return $mainLanguagesFileStatus;  };
+
+# Function: UserLanguagesFile
+# Returns the full path to the user's languages file.
+sub UserLanguagesFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Languages.txt' );  };
+
+# Function: UserLanguagesFileStatus
+# Returns the <FileStatus> of the project's user languages file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+sub UserLanguagesFileStatus
+    {  return $userLanguagesFileStatus;  };
 
 # Function: SettingsFile
 # Returns the full path to the project's settings file.
