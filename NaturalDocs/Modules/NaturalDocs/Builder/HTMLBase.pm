@@ -1183,9 +1183,12 @@ sub BuildPrototype #(type, prototype, file)
                     {
                     if ($hasTypePrefix)
                         {
+                        my $htmlTypePrefix = $self->ConvertAmpChars($params->[$i]->TypePrefix());
+                        $htmlTypePrefix =~ s/ $/&nbsp;/;
+
                         $output .=
                         '<td class=PTypePrefix nowrap>'
-                            . $self->ConvertAmpChars($params->[$i]->TypePrefix()) . '&nbsp;'
+                            . $htmlTypePrefix
                         . '</td>';
                         };
 
