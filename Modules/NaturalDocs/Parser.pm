@@ -139,7 +139,7 @@ sub ParseForInformation #(file)
                     {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);  }
                 elsif ($behavior == ::ENUM_UNDER_TYPE())
                     {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Symbol(), $listSymbol);  };
-                    
+
                 NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $type, undef,
                                                                            $self->GetSummaryFromDescriptionList($listSummary));
                 };
@@ -477,7 +477,12 @@ sub CleanComment #(commentLines)
                             {  $leftSide = IS_NOT_UNIFORM;  };
                         };
                     }
-                else
+                # We'll tolerate the lack of symbols on the left on the first line, because it may be a
+                # /* Function: Whatever
+                #  * Description.
+                #  */
+                # comment which would have the leading /* blanked out.
+                elsif ($index != 0)
                     {
                     $leftSide = IS_NOT_UNIFORM;
                     };
@@ -525,8 +530,8 @@ sub CleanComment #(commentLines)
 
         if ($leftSide == IS_UNIFORM)
             {
-            # This works because every line should either start this way or be blank.
-            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9 ])\1*//;
+            # This works because every line should either start this way, be blank, or be the first line that doesn't start with a symbol.
+            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1*//;
             };
 
         if ($rightSide == IS_UNIFORM)
@@ -546,7 +551,7 @@ sub CleanComment #(commentLines)
 
 
         $index++;
-       };
+        };
 
     };
 
