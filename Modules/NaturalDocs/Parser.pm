@@ -114,16 +114,13 @@ sub ParseForInformation #(file)
                 my ($listTextSymbol, $listSummary) = ($1, $2);
 
                 $listTextSymbol = NaturalDocs::NDMarkup->RestoreAmpChars($listTextSymbol);
-
-                $listSummary =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
-                $listSummary = $1 . $2;
-
                 my $listSymbol = NaturalDocs::SymbolString->FromText($listTextSymbol);
 
                 if ($scope != ::SCOPE_ALWAYS_GLOBAL())
                     {  $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);  };
 
-                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $topic->Type(), undef, $listSummary);
+                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $topic->Type(), undef,
+                                                                           $self->GetSummaryFromDescriptionList($listSummary));
                 };
             };
 
@@ -291,6 +288,8 @@ sub Parse
 
 
     $self->AddToClassHierarchy();
+
+    $self->BreakLists();
 
     if (defined $autoTopics)
         {
@@ -917,6 +916,133 @@ sub AddPackageDelineators
 
         $index++;
         };
+    };
+
+
+#
+#   Function: BreakLists
+#
+#   Breaks list topics into individual topics.
+#
+sub BreakLists
+    {
+    my $self = shift;
+
+    my $index = 0;
+
+    while ($index < scalar @parsedFile)
+        {
+        my $topic = $parsedFile[$index];
+
+        if ($topic->IsList() && NaturalDocs::Topics->TypeInfo( $topic->Type() )->BreakLists())
+            {
+            my $body = $topic->Body();
+
+            my @newTopics;
+            my $newBody;
+
+            my $bodyIndex = 0;
+
+            for (;;)
+                {
+                my $startList = index($body, '<dl>', $bodyIndex);
+
+                if ($startList == -1)
+                    {  last;  };
+
+                $newBody .= substr($body, $bodyIndex, $startList - $bodyIndex);
+
+                my $endList = index($body, '</dl>', $startList);
+                my $listBody = substr($body, $startList, $endList - $startList);
+
+                while ($listBody =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
+                    {
+                    my ($symbol, $description) = ($1, $2);
+
+                    push @newTopics, NaturalDocs::Parser::ParsedTopic->New( $topic->Type(), $symbol, $topic->Package(),
+                                                                                                            $topic->Using(), undef,
+                                                                                                            $self->GetSummaryFromDescriptionList($description),
+                                                                                                            '<p>' . $description .  '</p>', $topic->LineNumber(),
+                                                                                                            undef );
+                    };
+
+                $bodyIndex = $endList + 5;
+                };
+
+            $newBody .= substr($body, $bodyIndex);
+
+            unshift @newTopics, NaturalDocs::Parser::ParsedTopic->New( ::TOPIC_GROUP(), $topic->Title(), $topic->Package(),
+                                                                                                      $topic->Using(), undef,
+                                                                                                      $self->GetSummaryFromBody($newBody), $newBody,
+                                                                                                      $topic->LineNumber(), undef );
+
+            splice(@parsedFile, $index, 1, @newTopics);
+
+            $index += scalar @newTopics;
+            }
+
+        else # not a list
+            {  $index++;  };
+        };
+    };
+
+
+#
+#   Function: GetSummaryFromBody
+#
+#   Returns the summary text from the topic body.
+#
+#   Parameters:
+#
+#       body - The complete topic body, in <NDMarkup>.
+#
+#   Returns:
+#
+#       The topic summary, or undef if none.
+#
+sub GetSummaryFromBody #(body)
+    {
+    my ($self, $body) = @_;
+
+    my $summary;
+
+    # Extract the first sentence from the leading paragraph, if any.  We'll tolerate a single header beforehand, but nothing else.
+
+    if ($body =~ /^(?:<h>[^<]*<\/h>)?<p>(.*?)(<\/p>|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/x)
+        {
+        $summary = $1;
+
+        if ($2 ne '</p>')
+            {  $summary .= $2;  };
+        };
+
+    return $summary;
+    };
+
+
+#
+#   Function: GetSummaryFromDescriptionList
+#
+#   Returns the summary text from a description list entry.
+#
+#   Parameters:
+#
+#       description - The description in <NDMarkup>.  Should be the content between the <dd></dd> tags only.
+#
+#   Returns:
+#
+#       The description summary, or undef if none.
+#
+sub GetSummaryFromDescriptionList #(description)
+    {
+    my ($self, $description) = @_;
+
+    my $summary;
+
+    if ($description =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/)
+        {  $summary = $1 . $2;  };
+
+    return $summary;
     };
 
 
