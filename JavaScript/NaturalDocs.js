@@ -202,3 +202,73 @@ function HideTip(tooltipID)
         {  tooltip.style.visibility = "hidden";  }
     }
 
+
+//
+//  Event Handlers
+// ____________________________________________________________________________
+
+
+function NDOnLoad()
+    {
+    if (browserType == "IE")
+        {
+        var scrollboxes = document.getElementsByTagName('blockquote');
+
+        if (scrollboxes.item(0))
+            {
+            var width = scrollboxes.item(0).parentNode.offsetWidth - scrollboxes.item(0).offsetLeft;
+
+            var i = 0;
+            var item;
+
+            while (item = scrollboxes.item(i))
+                {
+                item.style.width = width;
+                i++;
+                };
+
+            window.onresize=NDOnResize;
+            };
+        };
+    }
+
+
+var resizeTimer = 0;
+
+function NDOnResize()
+    {
+    if (browserType == "IE")
+        {
+        if (resizeTimer != 0)
+            {  clearTimeout(resizeTimer);  };
+
+        resizeTimer = setTimeout(NDDoResize, 500);
+        };
+    };
+
+function NDDoResize()
+    {
+    var scrollboxes = document.getElementsByTagName('blockquote');
+
+    var i;
+    var item;
+
+    i = 0;
+    while (item = scrollboxes.item(i))
+        {
+        item.style.width = "100px";
+        i++;
+        };
+
+    var width = scrollboxes.item(0).parentNode.offsetWidth - scrollboxes.item(0).offsetLeft;
+
+    i = 0;
+    while (item = scrollboxes.item(i))
+        {
+        item.style.width = width;
+        i++;
+        };
+
+    clearTimeout(resizeTimer);
+    resizeTimer = 0;
+    }
