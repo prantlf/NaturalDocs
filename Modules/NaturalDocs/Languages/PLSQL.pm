@@ -81,21 +81,25 @@ sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
+    if ($type ne ::TOPIC_FUNCTION())
+        {  return $self->SUPER::ParsePrototype($type, $prototype);  };
+
+
+    my ($beforeParameters, $afterParameters, $noParenthesisParameters, $isAfterParameters);
+
     my $atIndex = index($prototype, '@');
     my $openParenIndex = index($prototype, '(');
 
-    if ( !( $type eq ::TOPIC_FUNCTION() && $atIndex != -1 && ($openParenIndex == -1 || $atIndex < $openParenIndex) ))
+    if ($atIndex != -1 && ($openParenIndex == -1 || $atIndex < $openParenIndex))
         {
-        return $self->SUPER::ParsePrototype($type, $prototype);
+        ($beforeParameters, $prototype) = split(/\@/, $prototype, 2);
+        $prototype = '@' . $prototype;
+
+        $noParenthesisParameters = 1;
         };
 
 
-    # Skip to the first @ sign.
-
-    $prototype =~ /^([^\@]*)(\@.*)$/;
-    my ($beforeParameters, $parameterString) = ($1, $2);
-
-    my @tokens = $parameterString =~ /([^\(\)\[\]\{\}\<\>\,]+|.)/g;
+    my @tokens = $prototype =~ /([^\(\)\[\]\{\}\<\>\,]+|.)/g;
 
     my $parameter;
     my @parameterLines;
@@ -104,9 +108,16 @@ sub ParsePrototype #(type, prototype)
 
     foreach my $token (@tokens)
         {
-        if ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+        if ($isAfterParameters)
+            {  $afterParameters .= $token;  }
+
+        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
             {
-            $parameter .= $token;
+            if ($noParenthesisParameters || $symbolStack[0] eq '(')
+                {  $parameter .= $token;  }
+            else
+                {  $beforeParameters .= $token;  };
+
             push @symbolStack, $token;
             }
 
@@ -115,7 +126,14 @@ sub ParsePrototype #(type, prototype)
                  ($token eq '}' && $symbolStack[-1] eq '{') ||
                  ($token eq '>' && $symbolStack[-1] eq '<') )
             {
-            $parameter .= $token;
+            if (!$noParenthesisParameters && $token eq ')' && scalar @symbolStack == 1 && $symbolStack[0] eq '(')
+                {
+                $afterParameters .= $token;
+                $isAfterParameters = 1;
+                }
+            else
+                {  $parameter .= $token;  };
+
             pop @symbolStack;
             }
 
@@ -123,27 +141,48 @@ sub ParsePrototype #(type, prototype)
             {
             if (!scalar @symbolStack)
                 {
-                push @parameterLines, $parameter . $token;
-                $parameter = undef;
+                if ($noParenthesisParameters)
+                    {
+                    push @parameterLines, $parameter . $token;
+                    $parameter = undef;
+                    }
+                else
+                    {
+                    $beforeParameters .= $token;
+                    };
                 }
             else
                 {
-                $parameter .= $token;
+                if (scalar @symbolStack == 1 && $symbolStack[0] eq '(' && !$noParenthesisParameters)
+                    {
+                    push @parameterLines, $parameter . $token;
+                    $parameter = undef;
+                    }
+                else
+                    {
+                    $parameter .= $token;
+                    };
                 };
             }
 
         else
             {
-            $parameter .= $token;
+            if ($noParenthesisParameters || $symbolStack[0] eq '(')
+                {  $parameter .= $token;  }
+            else
+                {  $beforeParameters .= $token;  };
             };
         };
 
     push @parameterLines, $parameter;
 
-    $beforeParameters =~ s/^ //;
-    $beforeParameters =~ s/ $//;
+    foreach my $item (\$beforeParameters, \$afterParameters)
+        {
+        $$item =~ s/^ //;
+        $$item =~ s/ $//;
+        }
 
-    my $prototypeObject = NaturalDocs::Languages::Prototype->New($beforeParameters, undef);
+    my $prototypeObject = NaturalDocs::Languages::Prototype->New($beforeParameters, $afterParameters);
 
 
     # Parse the actual parameters.
@@ -156,5 +195,91 @@ sub ParsePrototype #(type, prototype)
     return $prototypeObject;
     };
 
+
+#
+#   Function: ParseParameterLine
+#
+#   Parses a prototype parameter line and returns it as a <NaturalDocs::Languages::Prototype::Parameter> object.
+#
+sub ParseParameterLine #(line)
+    {
+    my ($self, $line) = @_;
+
+    $line =~ s/^ //;
+    $line =~ s/ $//;
+
+    my @tokens = $line =~ /([^\(\)\[\]\{\}\<\>\:\=\ ]+|\:\=|.)/g;
+
+    my ($name, $type, $defaultValue, $inType, $inDefaultValue);
+
+
+    my @symbolStack;
+
+    foreach my $token (@tokens)
+        {
+        if ($inDefaultValue)
+            {  $defaultValue .= $token;  }
+
+        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+            {
+            if ($inType)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+
+            push @symbolStack, $token;
+            }
+
+        elsif ( ($token eq ')' && $symbolStack[-1] eq '(') ||
+                 ($token eq ']' && $symbolStack[-1] eq '[') ||
+                 ($token eq '}' && $symbolStack[-1] eq '{') ||
+                 ($token eq '>' && $symbolStack[-1] eq '<') )
+            {
+            if ($inType)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+
+            pop @symbolStack;
+            }
+
+        elsif ($token eq ' ')
+            {
+            if ($inType)
+                {  $type .= $token;  }
+            elsif (!scalar @symbolStack)
+                {  $inType = 1;  }
+            else
+                {  $name .= $token;  };
+            }
+
+        elsif ($token eq ':=' || $token eq '=')
+            {
+            if (!scalar @symbolStack)
+                {
+                $defaultValue .= $token;
+                $inDefaultValue = 1;
+                }
+            elsif ($inType)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+            }
+
+        else
+            {
+            if ($inType)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+            };
+        };
+
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, $defaultValue);
+    };
+
+
+sub TypeBeforeParameter
+    {  return 0;  };
 
 1;
