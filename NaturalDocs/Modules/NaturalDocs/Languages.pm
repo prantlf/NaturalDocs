@@ -77,6 +77,13 @@ my %shebangStrings;
 #
 my %shebangFiles;
 
+#
+#   array: mainLanguageNames
+#
+#   An array of the language names that are defined in the main <Languages.txt>.
+#
+my @mainLanguageNames;
+
 
 
 ###############################################################################
@@ -314,6 +321,9 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
             # Process previous properties.
             if (($keyword eq 'language' || $keyword eq 'alter language') && scalar @properties)
                 {
+                if ($isMain && $properties[1] eq 'language')
+                    {  push @mainLanguageNames, $properties[2];  };
+
                 $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);
                 @properties = ( );
                 };
@@ -333,7 +343,12 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
             };
 
         if (scalar @properties)
-            {  $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);  };
+            {
+            if ($isMain && $properties[1] eq 'language')
+                {  push @mainLanguageNames, $properties[2];  };
+
+            $self->ProcessProperties(\@properties, $tempExtensions, $tempShebangStrings);
+            };
         }
 
     else # couldn't open file
@@ -740,7 +755,9 @@ sub SaveFile #(isMain)
         }
     else
         {
-        if (NaturalDocs::Project->UserLanguagesFileStatus() == ::FILE_SAME())
+        # Have to check the main too because this file lists the languages defined there.
+        if (NaturalDocs::Project->UserLanguagesFileStatus() == ::FILE_SAME() &&
+            NaturalDocs::Project->MainLanguagesFileStatus() == ::FILE_SAME())
             {  return;  };
         $file = NaturalDocs::Project->UserLanguagesFile();
         };
@@ -947,11 +964,9 @@ sub SaveFile #(isMain)
     . "#   it.  Otherwise assume you're replacing the value.\n"
     . "#\n"
     . "#\n"
-    . "###############################################################################\n"
-    . "#\n"
-    . "#   Language Properties\n"
-    . "#\n"
-    . "###############################################################################\n"
+    . "#------------------------------------------------------------------------------\n"
+    . "#   General Properties\n"
+    . "#------------------------------------------------------------------------------\n"
     . "#\n"
     . "#   Extensions: [extension] [extension] ...\n"
     . "#   [Add/Replace] Extensions: [extension] [extension] ...\n"
@@ -990,14 +1005,12 @@ sub SaveFile #(isMain)
     . "#   \"ADO_DoSomething\" will appear under D instead of A.\n"
     . "#\n"
     . "#\n"
-    . "###############################################################################\n"
-    . "#\n"
+    . "#------------------------------------------------------------------------------\n"
     . "#   Basic Language Support Properties\n"
     . "#\n"
     . "#   These properties are only available for languages with basic language\n"
     . "#   support.\n"
-    . "#\n"
-    . "###############################################################################\n"
+    . "#------------------------------------------------------------------------------\n"
     . "#\n"
     . "#   Line Comments: [symbol] [symbol] ...\n"
     . "#\n"
@@ -1032,14 +1045,12 @@ sub SaveFile #(isMain)
     . "#   too complex to do in this file.\n"
     . "#\n"
     . "#\n"
-    . "###############################################################################\n"
-    . "#\n"
+    . "#------------------------------------------------------------------------------\n"
     . "#   Full Language Support Properties:\n"
     . "#\n"
     . "#   These properties are only available for languages with full language\n"
     . "#   support.\n"
-    . "#\n"
-    . "###############################################################################\n"
+    . "#------------------------------------------------------------------------------\n"
     . "#\n"
     . "#   Full Language Support: [perl package]\n"
     . "#\n"
@@ -1052,7 +1063,48 @@ sub SaveFile #(isMain)
     if ($isMain)
         {
         print FH_LANGUAGES "\n"
-        . "# The languages \"Shebang Script\" and \"Text File\" MUST be defined in this file.\n";
+        . "# The following languages MUST be defined in this file:\n"
+        . "#\n"
+        . "#    Text File, Shebang Script\n";
+        }
+    else
+        {
+        print FH_LANGUAGES "\n"
+        . "# The following languages are defined in the main file, if you'd like to alter\n"
+        . "# them:\n"
+        . "#\n";
+
+        my $i = 0;
+
+        while ($i < scalar @mainLanguageNames)
+            {
+            print FH_LANGUAGES "#    " . $mainLanguageNames[$i];
+            my $characters = 5 + length($mainLanguageNames[$i]);
+
+            $i++;
+
+            if ($i < scalar @mainLanguageNames)
+                {
+                print FH_LANGUAGES ', ';
+                $characters += 2;
+
+                while ($i < scalar @mainLanguageNames && $characters + length($mainLanguageNames[$i]) + 1 < 80)
+                    {
+                    print FH_LANGUAGES $mainLanguageNames[$i];
+                    $characters += length($mainLanguageNames[$i]);
+
+                    $i++;
+
+                    if ($i < scalar @mainLanguageNames)
+                        {
+                        print FH_LANGUAGES ', ';
+                        $characters += 2;
+                        };
+                    };
+                };
+
+            print FH_LANGUAGES "\n";
+            };
         };
 
     my @topicTypeOrder = ( ::TOPIC_GENERAL(), ::TOPIC_CLASS(), ::TOPIC_FUNCTION(), ::TOPIC_VARIABLE(),
