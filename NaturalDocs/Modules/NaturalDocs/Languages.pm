@@ -515,7 +515,7 @@ sub ProcessProperties #(properties, tempExtensions, tempShebangStrings)
             # Add new extensions.
 
             # Ignore stars and dots so people could use .ext or *.ext.
-            $value =~ tr/*.//d;
+            $value =~ s/\*\.|\.//g;
 
             my @extensions = split(/ /, lc($value));
 
@@ -1004,7 +1004,8 @@ sub SaveFile #(isMain)
     if ($isMain)
         {
         print FH_LANGUAGES
-        "#    Defines the file extensions of the language's source files.\n"
+        "#    Defines the file extensions of the language's source files.  You can use *\n"
+        . "#    to mean any undefined extension.\n"
         . "#\n"
         . "# Shebang Strings: [string] [string] ...\n"
         . "#    Defines a list of strings that can appear in the shebang (#!) line to\n"
@@ -1016,7 +1017,8 @@ sub SaveFile #(isMain)
         print FH_LANGUAGES
         "# [Add/Replace] Extensions: [extension] [extension] ...\n"
         . "#    Defines the file extensions of the language's source files.  You can\n"
-        . "#    redefine extensions found in the main languages file.\n"
+        . "#    redefine extensions found in the main languages file.  You can use * to\n"
+        . "#    mean any undefined extension.\n"
         . "#\n"
         . "# Shebang Strings: [string] [string] ...\n"
         . "# [Add/Replace] Shebang Strings: [string] [string] ...\n"
@@ -1057,7 +1059,7 @@ sub SaveFile #(isMain)
     . "#    Defines the symbol that allows a prototype to span multiple lines if\n"
     . "#    normally a line break would end it.\n"
     . "#\n"
-    . "#   Perl Package: [perl package]\n"
+    . "# Perl Package: [perl package]\n"
     . "#    Specifies the Perl package used to fine-tune the language behavior in ways\n"
     . "#    too complex to do in this file.\n"
     . "#\n"
@@ -1286,13 +1288,16 @@ sub LanguageOf #(sourceFile)
     my $languageName;
 
     if (!defined $extension)
-        {  $languageName = 'Shebang Script';  }
+        {  $languageName = 'shebang script';  }
     else
         {  $languageName = $extensions{$extension};  };
 
+    if (!defined $languageName)
+        {  $languageName = $extensions{'*'};  };
+
     if (defined $languageName)
         {
-        if ($languageName eq 'Shebang Script')
+        if ($languageName eq 'shebang script')
             {
             if (exists $shebangFiles{$sourceFile})
                 {
@@ -1340,7 +1345,7 @@ sub LanguageOf #(sourceFile)
                 };
             }
 
-        else # language name ne 'Shebang Script'
+        else # language name ne 'shebang script'
             {  return $languages{$languageName};  };
         }
     else # !defined $language
