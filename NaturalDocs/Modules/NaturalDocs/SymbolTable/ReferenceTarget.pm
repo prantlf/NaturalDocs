@@ -25,21 +25,19 @@ package NaturalDocs::SymbolTable::ReferenceTarget;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#       CLASS    - The target class, or undef if global.
-#       SYMBOL  - The target symbol.
-#       FILE        - The file the target is defined as.
-#       TYPE       - The target type.  Will be one of the <Topic Types>.
+#       SYMBOL  - The target <SymbolString>.
+#       FILE        - The <FileName> the target is defined in.
+#       TYPE       - The target <TopicType>.
 #       PROTOTYPE - The target's prototype, or undef if none.
 #       SUMMARY    - The target's summary, or undef if none.
 #
 
 # DEPENDENCY: New() depends on the order of these constants.  If they change, New() has to be updated.
-use constant CLASS => 0;
-use constant SYMBOL => 1;
-use constant FILE => 2;
-use constant TYPE => 3;
-use constant PROTOTYPE => 4;
-use constant SUMMARY => 5;
+use constant SYMBOL => 0;
+use constant FILE => 1;
+use constant TYPE => 2;
+use constant PROTOTYPE => 3;
+use constant SUMMARY => 4;
 
 ###############################################################################
 # Group: Functions
@@ -52,14 +50,13 @@ use constant SUMMARY => 5;
 #
 #   Parameters:
 #
-#       class    - The target class, or undef if global.
-#       symbol - The target symbol.
-#       file       - The file the target is defined in.
-#       type     - The type of the target symbol.  Will be one of the <Topic Types>.
+#       symbol - The target <SymbolString>.
+#       file       - The <FileName> the target is defined in.
+#       type     - The <TopicType> of the target symbol.
 #       prototype - The target's prototype.  Set to undef if not defined or not applicable.
 #       summary - The target's summary.  Set to undef if not defined or not applicable.
 #
-sub New #(class, symbol, file, type, prototype, summary)
+sub New #(symbol, file, type, prototype, summary)
     {
     # DEPENDENCY: This code depends on the order of the member constants.
 
@@ -72,23 +69,18 @@ sub New #(class, symbol, file, type, prototype, summary)
     };
 
 
-# Function: Class
-# Returns the target's class, or undef if it's global.
-sub Class
-    {  return $_[0]->[CLASS];  };
-
 # Function: Symbol
-# Returns the target's symbol.
+# Returns the target's <SymbolString>.
 sub Symbol
     {  return $_[0]->[SYMBOL];  };
 
 # Function: File
-# Returns the file the target is defined in.
+# Returns the <FileName> the target is defined in.
 sub File
     {  return $_[0]->[FILE];  };
 
 # Function: Type
-# Returns the target's type.  Will be one of the <Topic Types>.
+# Returns the target's <TopicType>.
 sub Type
     {  return $_[0]->[TYPE];  };
 
