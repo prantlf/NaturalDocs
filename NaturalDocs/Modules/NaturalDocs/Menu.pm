@@ -393,7 +393,10 @@ sub LoadAndUpdate
 
     $self->CheckForTrashedMenu(scalar keys %$filesInMenu, $numberRemoved);
 
-    $self->BanAndUnbanIndexes();
+    # Don't ban indexes if they deleted Menu.txt.  They may have not deleted PreviousMenuState.nd and we don't want everything
+    # to be banned because of it.
+    if (NaturalDocs::Project->MenuFileStatus() != ::FILE_DOESNTEXIST())
+        {  $self->BanAndUnbanIndexes();  };
 
     # Index groups need to be detected before adding new ones.
 
