@@ -111,12 +111,13 @@ sub ParseFile #(sourceFile, topicsList)
             push @commentLines, $line;
             };
 
-        NaturalDocs::Parser->OnComment(\@commentLines);
+        NaturalDocs::Parser->OnComment(\@commentLines, 1);
         }
 
     else
         {
         my $line = <SOURCEFILEHANDLE>;
+        my $lineNumber = 1;
 
         while (defined $line)
             {
@@ -203,11 +204,13 @@ sub ParseFile #(sourceFile, topicsList)
                 # First process any code lines before the comment.
                 if (scalar @codeLines)
                     {
-                    $self->OnCode(\@codeLines, $topicsList, $lastCommentTopicCount);
+                    $self->OnCode(\@codeLines, $lineNumber, $topicsList, $lastCommentTopicCount);
+                    $lineNumber += scalar @codeLines;
                     @codeLines = ( );
                     };
 
-                $lastCommentTopicCount = NaturalDocs::Parser->OnComment(\@commentLines);
+                $lastCommentTopicCount = NaturalDocs::Parser->OnComment(\@commentLines, $lineNumber);
+                $lineNumber += scalar @commentLines;
                 @commentLines = ( );
                 };
 
@@ -217,7 +220,7 @@ sub ParseFile #(sourceFile, topicsList)
         # Clean up any remaining code.
         if (scalar @codeLines)
             {
-            $self->OnCode(\@codeLines, $topicsList, $lastCommentTopicCount);
+            $self->OnCode(\@codeLines, $lineNumber, $topicsList, $lastCommentTopicCount);
             @codeLines = ( );
             };
 
@@ -379,10 +382,11 @@ sub MakeSortableSymbol #(name, type)
 #   Parameters:
 #
 #       codeLines - The source code as an arrayref of lines.
+#       codeLineNumber - The line number of the first line of code.
 #       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
 #       lastCommentTopicCount - The number of Natural Docs topics that were created by the last comment.
 #
-sub OnCode #(codeLines, topicList, lastCommentTopicCount)
+sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
     {
     };
 
