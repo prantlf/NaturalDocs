@@ -17,10 +17,6 @@
 use strict;
 use integer;
 
-# XXX This is necessary to keep OptiPerl's live syntax checking from complaining.
-# It shouldn't be, but I couldn't reproduce the bug for them easily and don't feel like going to great lengths to do so.
-use NaturalDocs::Constants;
-
 package NaturalDocs::Builder::HTML;
 
 
