@@ -21,7 +21,7 @@ require Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = ('MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
-                   'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL',
+                   'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL', 'MENU_DATA',
 
                    'MENU_FILE_NOAUTOTITLE', 'MENU_GROUP_UPDATETITLES', 'MENU_GROUP_UPDATESTRUCTURE',
                    'MENU_GROUP_UPDATEORDER', 'MENU_GROUP_HASENDOFORIGINAL',
@@ -62,6 +62,7 @@ require Exporter;
 #       MENU_ENDOFORIGINAL - A dummy entry that marks where the original group content ends.  This is used when automatically
 #                                           changing the groups so that the alphabetization or lack thereof can be detected without being
 #                                           affected by new entries tacked on to the end.
+#       MENU_DATA - Data not meant for user editing.
 #
 #   Dependency:
 #
@@ -77,6 +78,7 @@ use constant MENU_FOOTER => 7;
 use constant MENU_INDEX => 8;
 use constant MENU_FORMAT => 9;
 use constant MENU_ENDOFORIGINAL => 10;
+use constant MENU_DATA => 11;
 
 
 #
