@@ -33,15 +33,10 @@ package NaturalDocs::Parser::ParsedTopic;
 #       SUMMARY    - The summary, if it exists.
 #       BODY          - The body of the topic, formatted in <NDMarkup>.  Some topics may not have bodies, and if not, this
 #                           will be undef.
+#       LINE_NUMBER  - The line number the topic appears at in the file.
 #
-use constant TYPE => 0;
-use constant NAME => 1;
-use constant CLASS => 2;
-use constant SCOPE => 3;
-use constant PROTOTYPE => 4;
-use constant SUMMARY => 5;
-use constant BODY => 6;
-# DEPENDENCY: New() depends on the order in which these are defined.
+use NaturalDocs::DefineMembers 'TYPE', 'NAME', 'CLASS', 'SCOPE', 'PROTOTYPE', 'SUMMARY', 'BODY', 'LINE_NUMBER';
+# DEPENDENCY: New() depends on the order of these constants, and that this class is not inheriting any members.
 
 
 ###############################################################################
@@ -61,14 +56,16 @@ use constant BODY => 6;
 #       prototype  - If the type is <TOPIC_FUNCTION> or <TOPIC_VARIABLE>, the prototype, if it exists.  Otherwise set to undef.
 #       summary  - The summary of the topic, if any.
 #       body         - The body of the topic, formatted in <NDMarkup>.  May be undef, as some topics may not have bodies.
+#       lineNumber - The line number the topic appears at in the file.
 #
 #   Returns:
 #
 #       The new object.
 #
-sub New #(type, name, class, scope, prototype, summary, body)
+sub New #(type, name, class, scope, prototype, summary, body, lineNumber)
     {
-    # DEPENDENCY: This depends on the order of the parameter list being the same as the constants.
+    # DEPENDENCY: This depends on the order of the parameter list being the same as the constants, and that there are no
+    # members inherited from a base class.
 
     my $package = shift;
 
@@ -129,6 +126,11 @@ sub SetBody #(body)
     my ($self, $body) = @_;
     $self->[BODY] = $body;
     };
+
+# Function: LineNumber
+# Returns the line the topic appears at in the file.
+sub LineNumber
+    {  return $_[0]->[LINE_NUMBER];  };
 
 
 1;
