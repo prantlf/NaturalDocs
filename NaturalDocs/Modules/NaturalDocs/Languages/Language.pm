@@ -120,82 +120,92 @@ sub LineExtender
 
 
 #
-#   Function: IsLineComment
+#   Function: StripLineComment
 #
-#   Determines whether the passed line begins with a line comment symbol.
+#   Determines if the line starts with a line comment symbol, and if so, replaces it with spaces.  This only happens if the only
+#   thing before it on the line is whitespace.
 #
 #   Parameters:
 #
-#       line - The line to test.  All whitespace at the beginning of the line must be removed beforehand.
+#       lineRef - A reference to the line to check.
 #
 #   Returns:
 #
-#       The length of the comment symbol if true, undef if false.
+#       If the line starts with a line comment symbol, it will replace it in the line with spaces and return the symbol.  If the line
+#       doesn't, it will leave the line alone and return undef.
 #
-sub IsLineComment #(line)
+sub StripLineComment #(lineRef)
     {
-    my ($self, $line) = @_;
+    my ($self, $lineRef) = @_;
+    return $self->StripComment($lineRef, $self->LineComment());
+    };
 
-    if (!defined $self->LineComment())
-        {  return undef;  }
-    else
+
+#
+#   Function: StripStartComment
+#
+#   Determines if the line starts with an opening multiline comment symbol, and if so, replaces it with spaces.  This only happens
+#   if the only thing before it on the line is whitespace.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#
+#   Returns:
+#
+#       If the line starts with an opening multiline comment symbol, it will replace it in the line with spaces and return the symbol.
+#       If the line doesn't, it will leave the line alone and return undef.
+#
+sub StripStartComment #(lineRef)
+    {
+    my ($self, $lineRef) = @_;
+    return $self->StripComment($lineRef, $self->StartComment());
+    };
+
+
+#
+#   Function: StripEndComment
+#
+#   Determines if the line contains a closing multiline comment symbol, and if so, truncates it just before the symbol.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#
+#   Returns:
+#
+#       The array ( symbol, lineRemainder ), or undef if the symbol was not found.
+#
+#       symbol - The symbol that was found.
+#       lineRemainder - Everything on the line following the symbol.
+#
+sub StripEndComment #(lineRef)
+    {
+    my ($self, $lineRef) = @_;
+
+    my $index = -1;
+    my $symbol;
+
+    foreach my $testSymbol (@{$self->EndComment()})
         {
-        foreach my $commentSymbol (@{$self->LineComment()})
+        my $testIndex = index($$lineRef, $testSymbol);
+
+        if ($testIndex != -1 && ($index == -1 || $testIndex < $index))
             {
-            if (substr($line, 0, length($commentSymbol)) eq $commentSymbol)
-                {  return length($commentSymbol);  };
+            $index = $testIndex;
+            $symbol = $testSymbol;
             };
-
-        return undef;
         };
-    };
 
-#
-#   Function: NextStartComment
-#
-#   Determines the position of the next opening multiline comment symbol.
-#
-#   Parameters:
-#
-#       stringRef - A reference to the string.
-#       startingIndex - Optional.  The index to start looking from.  If not specified, starts at the beginning of the string.
-#
-#   Returns:
-#
-#       The array ( index, symbolLength ).
-#
-#       index - The index where the next opening comment symbol is, or -1 if there is none.
-#       symbolLength - The number of characters in the next opening comment symbol, or undef if there is none.
-#
-sub NextStartComment #(stringRef, startingIndex)
-    {
-    my ($self, $stringRef, $startingIndex) = @_;
+    if ($index != -1)
+        {
+        my $lineRemainder = substr($$lineRef, $index + length($symbol));
+        $$lineRef = substr($$lineRef, 0, $index);
 
-    return $self->NextSymbol($stringRef, $startingIndex, $self->StartComment());
-    };
-
-#
-#   Function: NextEndComment
-#
-#   Determines the position of the next closing multiline comment symbol.
-#
-#   Parameters:
-#
-#       stringRef - A reference to the string.
-#       startingIndex - Optional.  The index to start looking from.  If not specified, starts at the beginning of the string.
-#
-#   Returns:
-#
-#       The array ( index, symbolLength ).
-#
-#       index - The index where the next closing comment symbol is, or -1 if there is none.
-#       symbolLength - The number of characters in the next closing comment symbol, or undef if there is none.
-#
-sub NextEndComment #(stringRef, startingIndex)
-    {
-    my ($self, $stringRef, $startingIndex) = @_;
-
-    return $self->NextSymbol($stringRef, $startingIndex, $self->EndComment());
+        return ($symbol, $lineRemainder);
+        }
+    else
+        {  return undef;  };
     };
 
 
@@ -206,20 +216,19 @@ sub NextEndComment #(stringRef, startingIndex)
 #
 #   Parameters:
 #
-#       stringRef        - A reference to the string.
-#       startingIndex  - Optional.  The starting index.  If not specified, starts at the beginning of the string.
+#       stringRef  - A reference to the string.
 #
 #   Returns:
 #
 #       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from
 #       <FunctionEnders()>.
 #
-sub EndOfFunction #(stringRef, startingIndex optional)
+sub EndOfFunction #(stringRef)
     {
-    my ($self, $stringRef, $startingIndex) = @_;
+    my ($self, $stringRef) = @_;
 
     if (defined $self->FunctionEnders())
-        {  return $self->EndOfPrototype($stringRef, $startingIndex, $self->FunctionEnders());  }
+        {  return $self->EndOfPrototype($stringRef, $self->FunctionEnders());  }
     else
         {  return -1;  };
     };
@@ -232,20 +241,19 @@ sub EndOfFunction #(stringRef, startingIndex optional)
 #
 #   Parameters:
 #
-#       stringRef        - A reference to the string.
-#       startingIndex  - Optional.  The starting index.  If not specified, starts at the beginning of the string.
+#       stringRef  - A reference to the string.
 #
 #   Returns:
 #
 #       The zero-based offset into the string of the end of the declaration, or -1 if the string doesn't contain a symbol from
 #       <VariableEnders()>.
 #
-sub EndOfVariable #(stringRef, startingIndex optional)
+sub EndOfVariable #(stringRef)
     {
-    my ($self, $stringRef, $startingIndex) = @_;
+    my ($self, $stringRef) = @_;
 
     if (defined $self->VariableEnders())
-        {  return $self->EndOfPrototype($stringRef, $startingIndex, $self->VariableEnders());  }
+        {  return $self->EndOfPrototype($stringRef, $self->VariableEnders());  }
     else
         {  return -1;  };
     };
@@ -286,45 +294,39 @@ sub RemoveExtenders #(stringRef)
 
 
 #
-#   Function: NextSymbol
+#   Function: StripComment
 #
-#   Determines the position of the next symbol in a string out of an arrayref of possible symbols.
+#   Determines if the line starts with any of the passed comment symbols, and if so, replaces it with spaces.  This only happens
+#   if the only thing before it on the line is whitespace.
 #
 #   Parameters:
 #
-#       stringRef - A reference to the string.
-#       startingIndex - The index to start looking from.  If not specified, starts at the beginning of the string.
-#       symbols - An arrayref of symbols to look for.  Accepts undef.
+#       lineRef - A reference to the line to check.
+#       symbols - An arrayref of the symbols to check for.
 #
 #   Returns:
 #
-#       The array ( index, symbolLength ).
+#       If the line starts with any of the passed comment symbols, it will replace it in the line with spaces and return the symbol.
+#       If the line doesn't, it will leave the line alone and return undef.
 #
-#       index - The index where the next symbol is, or -1 if there is none.
-#       symbolLength - The number of characters in the next symbol, or undef if there is none.
-#
-sub NextSymbol #(stringRef, startingIndex, symbols)
+sub StripComment #(lineRef, symbols)
     {
-    my ($self, $stringRef, $startingIndex, $symbols) = @_;
+    my ($self, $lineRef, $symbols) = @_;
 
     if (!defined $symbols)
-        {  return ( -1, undef );  };
-
-    my $result = -1;
-    my $symbolLength;
+        {  return undef;  };
 
     foreach my $symbol (@$symbols)
         {
-        my $symbolResult = index($$stringRef, $symbol, $startingIndex);
+        my $index = index($$lineRef, $symbol);
 
-        if ($symbolResult != -1 && ( $result == -1 || $symbolResult < $result ) )
+        if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
             {
-            $result = $symbolResult;
-            $symbolLength = length($symbol);
+            return substr($$lineRef, $index, length($symbol), ' ' x length($symbol));
             };
         };
 
-    return ( $result, $symbolLength );
+    return undef;
     };
 
 
@@ -336,7 +338,6 @@ sub NextSymbol #(stringRef, startingIndex, symbols)
 #   Parameters:
 #
 #       stringRef        - A reference to the string.
-#       startingIndex  - The starting index.  If undef, starts at the beginning of the string.
 #       symbols         - An arrayref of the symbols that can end the prototype.
 #
 #   Returns:
@@ -344,11 +345,9 @@ sub NextSymbol #(stringRef, startingIndex, symbols)
 #       The zero-based offset into the string of the end of the prototype, or -1 if the string doesn't contain a symbol from the
 #       arrayref.
 #
-sub EndOfPrototype #(stringRef, startingIndex, symbols)
+sub EndOfPrototype #(stringRef, symbols)
     {
-    my ($self, $stringRef, $startingIndex, $symbols) = @_;
-    if (!defined $startingIndex)
-        {  $startingIndex = 0;  };
+    my ($self, $stringRef, $symbols) = @_;
 
     my $enderIndex = -1;
 
@@ -358,11 +357,11 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
 
         if ($ender eq "\n" && defined $self->LineExtender())
             {
-            my $newStartingIndex = $startingIndex;
+            my $startingIndex = 0;
 
             for (;;)
                 {
-                $testIndex = index($$stringRef, $ender, $newStartingIndex);
+                $testIndex = index($$stringRef, $ender, $startingIndex);
 
                 if ($testIndex == -1)
                     {  last;  };
@@ -376,16 +375,17 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
                     last;
                     };
 
-                $newStartingIndex = $testIndex + 1;
+                $startingIndex = $testIndex + 1;
                 };
             }
+
         elsif ($ender =~ /^[a-z]+$/i)
             {
-            my $newStartingIndex = $startingIndex;
+            my $startingIndex = 0;
 
             for (;;)
                 {
-                $testIndex = index($$stringRef, $ender, $newStartingIndex);
+                $testIndex = index($$stringRef, $ender, $startingIndex);
 
                 if ($testIndex == -1)
                     {  last;  };
@@ -404,18 +404,19 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
                         {  last;  };
                     };
 
-                $newStartingIndex = $testIndex + 1;
+                $startingIndex = $testIndex + 1;
                 };
             }
-        else # ender is a symbol
+
+        else # ender is a symbol or a line break with no defined line extender.
             {
-            $testIndex = index($$stringRef, $ender, $startingIndex);
+            $testIndex = index($$stringRef, $ender);
 
             # An exception for Pascal.  Semicolons are used both to end functions and to separate parameters.  Parenthesis are
             # required if you want parameters, but parameters are not required themselves.
             if ($self->Name() eq 'Pascal' && $ender eq ';' && $testIndex != -1)
                 {
-                my $openParenIndex = index($$stringRef, '(', $startingIndex);
+                my $openParenIndex = index($$stringRef, '(');
 
                 if ($openParenIndex != -1 && $openParenIndex < $testIndex)
                     {
