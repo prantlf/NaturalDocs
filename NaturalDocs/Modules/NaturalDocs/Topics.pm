@@ -206,7 +206,7 @@ my @mainTopicNames;
 #       the original case is remembered for presentation.
 #
 #       The name General is reserved.  There are a number of default types that must be defined in the main file as well, but those
-#       are governed by <NaturalDocs::Topics> and are not included here..  The default types can have their keywords or behaviors
+#       are governed by <NaturalDocs::Topics> and are not included here.  The default types can have their keywords or behaviors
 #       changed, though, either by editing the default file or by overriding them in the user file.
 #
 #
@@ -214,7 +214,7 @@ my @mainTopicNames;
 #
 #       > Plural: [name]
 #
-#       Specifies the plural name of the topic type.  Defaults to the signular name.  Has the same restrictions as the topic type
+#       Specifies the plural name of the topic type.  Defaults to the singular name.  Has the same restrictions as the topic type
 #       name.
 #
 #       > Index: [yes|no]
