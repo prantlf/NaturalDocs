@@ -3,7 +3,7 @@
 use 5.005;  # When File::Spec was included by default
 
 use FindBin;
-use lib "$FindBin::Bin/Modules";
+use lib "$FindBin::RealBin/Modules";
 
 sub INIT
     {
@@ -366,7 +366,7 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 sub UseDirectory #(directory, directory, directory ...)
     {
     my $extraPath = NaturalDocs::File->JoinDirectories(@_);
-    my $fullPath = NaturalDocs::File->JoinPath($FindBin::Bin, $extraPath, 1);
+    my $fullPath = NaturalDocs::File->JoinPath($FindBin::RealBin, $extraPath, 1);
 
     my @directories = ( $fullPath );
 
