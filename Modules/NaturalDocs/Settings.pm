@@ -123,7 +123,7 @@ sub ParseCommandLine
                 splice(@ARGV, $index + 1, 0, $2);
                 };
 
-            if (substr($option, 1, 1) eq '-')
+            if (substr($option, 1, 1) eq '-' && exists $synonyms{$option})
                 {  $option = $synonyms{$option};  }
 
             if ($option eq '-i')
@@ -350,10 +350,10 @@ sub PrintSyntax
     . "\n"
     . "Parameters:\n"
     . "\n"
-    . "-i, --input, --source\n"
+    . " -i [dir]\n--input [dir]\n--source [dir]\n"
     . "     Specifies the input (source) directory.  Required.\n"
     . "\n"
-    . "-o, --output\n"
+    . " -o [fmt] [dir]\n--output [fmt] [dir]\n"
     . "     Specifies the output format and directory.  Required.\n"
     . "     Can be specified multiple times, but only once per output format.\n"
     . "     Possible output formats:\n";
@@ -367,35 +367,35 @@ sub PrintSyntax
 
     $output .=
     "\n"
-    . "-p, --project\n"
+    . " -p [dir]\n--project [dir]\n"
     . "     Specifies the project directory.  Required.\n"
     . "     There needs to be a unique project directory for every source directory.\n"
     . "\n"
-    . "-s, --style\n"
+    . " -s [style]\n--style [style]\n"
     . "     Specifies the CSS style when building HTML output.  Can be a single style\n"
     . "     (\"Small\") for all output or a series of [format]=[style] entries\n"
     . "     (\"HTML=Small\") separated by spaces to distinguish between them.  If set\n"
     . "     to \"Custom\", Natural Docs will not sync the output's CSS file with one\n"
     . "     from its style directory.\n"
     . "\n"
-    . "-t, --tablength\n"
+    . " -t [len]\n--tablength [len]\n"
     . "   Specifies the number of spaces tabs should be expanded to.  This only needs\n"
     . "   to be set if you use tabs in example code and text diagrams.  Defaults to 4.\n"
     . "\n"
-    . "-r, --rebuild\n"
+    . " -r\n--rebuild\n"
     . "     Rebuilds all output and data files from scratch.\n"
     . "     Does not affect the menu file.\n"
     . "\n"
-    . "-ro, --rebuildoutput\n"
+    . " -ro\n--rebuildoutput\n"
     . "     Rebuilds all output files from scratch.\n"
     . "\n"
-    . "-q, --quiet\n"
+    . " -q\n--quiet\n"
     . "     Suppresses all non-error output.\n"
     . "\n"
-    . "-ho, --headersonly\n"
+    . " -ho\n--headersonly\n"
     . "     For C/C++, only check the headers and not the source files.\n"
     . "\n"
-    . "-h, --help\n"
+    . " -h\n--help\n"
     . "     Displays this syntax reference.\n";
 
     print $output;
