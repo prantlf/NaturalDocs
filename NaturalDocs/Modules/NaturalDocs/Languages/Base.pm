@@ -19,9 +19,7 @@ package NaturalDocs::Languages::Base;
 use NaturalDocs::DefineMembers 'NAME', 'Name()',
                                                  'EXTENSIONS', 'Extensions()', 'SetExtensions() duparrayref',
                                                  'SHEBANG_STRINGS', 'ShebangStrings()', 'SetShebangStrings() duparrayref',
-                                                 'PACKAGE_SEPARATOR', 'PackageSeparator()',
-                                                 'IGNORED_PREFIXES',
-                                                 'PACKAGE_SEPARATOR_WAS_SET', 'PackageSeparatorWasSet()';
+                                                 'IGNORED_PREFIXES';
 
 
 #
@@ -47,7 +45,6 @@ sub New #(name)
     my $object = [ ];
 
     $object->[NAME] = $name;
-    $object->[PACKAGE_SEPARATOR] = '.';
 
     bless $object, $selfPackage;
     return $object;
@@ -62,21 +59,21 @@ sub New #(name)
 #   SetExtensions - Replaces the arrayref of the language's file extensions.
 #   ShebangStrings - Returns an arrayref of the language's shebang strings, or undef if none.
 #   SetShebangStrings - Replaces the arrayref of the language's shebang strings.
-#   PackageSeparator - Returns the language's package separator string.
-#   PackageSeparatorWasSet - Returns whether the language's package separator string was ever changed from the default.
 #
 
+#
+#   Function: PackageSeparator
+#   Returns the language's package separator string.
+#
+sub PackageSeparator
+    {  return '.';  };
 
 #
-#   Function: SetPackageSeparator
-#   Replaces the language's package separator string.
+#   Function: PackageSeparatorWasSet
+#   Returns whether the language's package separator string was ever changed from the default.
 #
-sub SetPackageSeparator #(separator)
-    {
-    my ($self, $separator) = @_;
-    $self->[PACKAGE_SEPARATOR] = $separator;
-    $self->[PACKAGE_SEPARATOR_WAS_SET] = 1;
-    };
+sub PackageSeparatorWasSet
+    {  return 0;  };
 
 
 #
