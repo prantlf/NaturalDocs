@@ -242,9 +242,9 @@ Topic: Menu Structure
 
     Everything is enclosed in a <MenuSection> or a <FramedMenuPage>.  All other menu styles are prefixed with an M.
 
-    The title is an <MTitle> and will always be at the beginning of the <Menu> if it exists.  If a subtitle exists as well, it will appear
+    The title is an <MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
     as an <MSubTitle> inside <MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
-     <MEntry>, inside of which there's the type, such as <MFile> and <MGroup>.  Inside of that is the content.  With <MGroup>s,
+     <MEntry>, inside of which there's the type, such as <MFile> and <MGroup>.  Inside of that is the content.  With <MGroups>,
     there's also a section inside called <MGroupContent> which can contain more entries.  Here's the diagram:
 
     >   <Menu>
@@ -302,7 +302,7 @@ List: Menu Styles
 
     MFile - A file entry.
     MGroup - A group entry.
-    MGroupContent - A container for a <MGroup>s content.
+    MGroupContent - A container for a <MGroup's> content.
     MText - A plain text entry.
     MLink - An external link entry.
 
@@ -517,7 +517,7 @@ Topic: Index Structure
     However, if there's more of either, they get broken out into <ISubIndex> entries.  A <IParent> subindex can be broken out
     yet again into an <IFile> subindex.
 
-    It's called <IParent> instead of <IClass> because class entries are <ISymbols>. <IParent>s are only used when the symbol
+    It's called <IParent> instead of <IClass> because class entries are <ISymbols>. <IParents> are only used when the symbol
     has a class.  If the symbol _is_ a class, the symbol is global.
 
 List: Index Styles
