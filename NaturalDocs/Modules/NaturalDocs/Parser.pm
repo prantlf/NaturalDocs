@@ -457,8 +457,8 @@ sub ExtractComments
 #   Function: CleanComment
 #
 #   Removes any extraneous formatting or whitespace from the comment and sends it to <ExtractTopics()>.  Eliminates comment
-#   boxes, horizontal lines, leading and trailing line breaks, leading and trailing whitespace from lines, more than two line
-#   breaks in a row, and expands all tab characters.
+#   boxes, horizontal lines, leading and trailing line breaks, trailing whitespace from lines, more than two line breaks in a row, and
+#   expands all tab characters.  It keeps leading whitespace, though, since it's needed for example code.
 #
 #   Parameters:
 #
@@ -484,7 +484,7 @@ sub CleanComment #(commentLines)
 
     while ($index < scalar @$commentLines)
         {
-        # Expand tabs.  This method is almost six times faster than Text::Tabs' method.
+        # Expand tabs in the original.  This method is almost six times faster than Text::Tabs' method.
 
         my $tabIndex = index($commentLines->[$index], "\t");
 
@@ -495,14 +495,18 @@ sub CleanComment #(commentLines)
             };
 
 
-        # Strip leading and trailing whitespace.  This has to be done after tabs are expanded because stripping indentation could
-        # change how far tabs are expanded.
+        # Strip trailing whitespace from the original.
 
-        $commentLines->[$index] =~ s/^ +//;
         $commentLines->[$index] =~ s/ +$//;
 
+        # Make a working copy and strip leading whitespace as well.  This has to be done after tabs are expanded because
+        # stripping indentation could change how far tabs are expanded.
+
+        my $line = $commentLines->[$index];
+        $line =~ s/^ +//;
+
         # If the line is blank...
-        if (!length($commentLines->[$index]))
+        if (!length $line)
             {
             # If we have a potential vertical line, this only acceptable if it's at the end of the comment.
             if ($leftSide == IS_UNIFORM)
@@ -513,10 +517,10 @@ sub CleanComment #(commentLines)
 
         # If there's at least four symbols in a row, it's a horizontal line.  The second regex supports differing edge characters.  It
         # doesn't matter if any of this matches the left and right side symbols.
-        elsif ($commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
-                $commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/)
+        elsif ($line =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
+                $line =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/)
             {
-            # Convert it to a blank line.
+            # Convert the original to a blank line.
             $commentLines->[$index] = '';
 
             # This has no effect on the vertical line detection.
@@ -540,7 +544,7 @@ sub CleanComment #(commentLines)
 
             if ($leftSide != IS_NOT_UNIFORM)
                 {
-                if ($commentLines->[$index] =~ /^([^a-zA-Z0-9])\1*(?: |$)/)
+                if ($line =~ /^([^a-zA-Z0-9])\1*(?: |$)/)
                     {
                     if ($leftSide == DONT_KNOW)
                         {
@@ -561,7 +565,7 @@ sub CleanComment #(commentLines)
 
             if ($rightSide != IS_NOT_UNIFORM)
                 {
-                if ($commentLines->[$index] =~ / ([^a-zA-Z0-9])\1*$/)
+                if ($line =~ / ([^a-zA-Z0-9])\1*$/)
                     {
                     if ($rightSide == DONT_KNOW)
                         {
@@ -603,12 +607,12 @@ sub CleanComment #(commentLines)
         if ($leftSide == IS_UNIFORM)
             {
             # This works because every line should either start this way or be blank.
-            $commentLines->[$index] =~ s/^([^a-zA-Z0-9])\1* *//;
+            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9 ])\1*//;
             };
 
         if ($rightSide == IS_UNIFORM)
             {
-            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9])\1*$//;
+            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9 ])\1*$//;
             };
 
 
@@ -617,8 +621,8 @@ sub CleanComment #(commentLines)
 
         if ($leftSide == IS_UNIFORM || $rightSide == IS_UNIFORM)
             {
-            $commentLines->[$index] =~ s/^([^a-zA-Z0-9 ])\1{3,}$//;
-            $commentLines->[$index] =~ s/^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$//;
+            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1{3,}$//;
+            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$//;
             };
 
 
@@ -671,6 +675,7 @@ sub ExtractTopics #(commentLines)
     my ($self, $commentLines) = @_;
 
     my $prevLineBlank = 1;
+    my $inCodeSection;
 
     # Class applies to the name, and scope applies to the body.  They may be completely different.  For example, with a class
     # entry, the class itself is global but its body is within its scope so it can reference members locally.  Also, a file is always
@@ -687,10 +692,20 @@ sub ExtractTopics #(commentLines)
 
     while ($index < scalar @$commentLines)
         {
-        # Leading and trailing whitespace was removed by CleanComment().
+        # Everything but leading whitespace was removed by CleanComment().
+
+        # If we're in a code section...
+        if ($inCodeSection)
+            {
+            if ($commentLines->[$index] =~ /^ *\( *(?:end|finish|done)(?: +(?:table|code|example|diagram))? *\)$/i)
+                {  $inCodeSection = undef;  };
+
+            $prevLineBlank = 0;
+            $bodyEnd = $index + 1;
+            }
 
         # If the line is empty...
-        if (!length($commentLines->[$index]))
+        elsif (!length($commentLines->[$index]))
             {
             # CleanComment() made sure there weren't multiple blank lines in a row or at the beginning/end of the comment.
             $prevLineBlank = 1;
@@ -707,7 +722,7 @@ sub ExtractTopics #(commentLines)
 
         # If the line has a recognized header and the previous line is blank...
         elsif ($prevLineBlank &&
-                $commentLines->[$index] =~ /^([^:]+): +([^ ].*)$/ &&
+                $commentLines->[$index] =~ /^ *([^:]+): +([^ ].*)$/ &&
                 defined NaturalDocs::Topics->ConstantOf($1))
             {
             my $newType = NaturalDocs::Topics->ConstantOf($1);
@@ -757,12 +772,14 @@ sub ExtractTopics #(commentLines)
             $prevLineBlank = 0;
             }
 
-
         # Line without recognized header
         else
             {
             $prevLineBlank = 0;
             $bodyEnd = $index + 1;
+
+            if ($commentLines->[$index] =~ /^ *\( *(?:(?:start|begin)? +)?(?:table|code|example|diagram) *\)$/i)
+                {  $inCodeSection = 1;  };
             };
 
 
@@ -821,20 +838,20 @@ sub AddToParsedFile #(name, class, type, body)
 
 
 #
-#   Function: FormatBody
+#    Function: FormatBody
 #
-#   Converts the section body to <NDMarkup>.
+#    Converts the section body to <NDMarkup>.
 #
-#   Parameters:
+#    Parameters:
 #
-#       commentLines - The arrayref of comment lines.
-#       startingIndex  - The starting index of the body to format.
-#       endingIndex   - The ending index of the body to format, *not* inclusive.
-#       type               - The type of the section.
+#        commentLines - The arrayref of comment lines.
+#        startingIndex  - The starting index of the body to format.
+#        endingIndex   - The ending index of the body to format, *not* inclusive.
+#        type               - The type of the section.
 #
-#   Returns:
+#    Returns:
 #
-#       The body formatted in <NDMarkup>.
+#        The body formatted in <NDMarkup>.
 #
 sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     {
@@ -845,14 +862,16 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     use constant TAG_BULLETLIST => 3;
     use constant TAG_DESCRIPTIONLIST => 4;
     use constant TAG_HEADING => 5;
-    use constant TAG_CODE => 6;
+    use constant TAG_PREFIXCODE => 6;
+    use constant TAG_TAGCODE => 7;
 
     my %tagEnders = ( TAG_NONE() => '',
                                  TAG_PARAGRAPH() => '</p>',
                                  TAG_BULLETLIST() => '</li></ul>',
                                  TAG_DESCRIPTIONLIST() => '</dd></dl>',
                                  TAG_HEADING() => '</h>',
-                                 TAG_CODE() => '</code>' );
+                                 TAG_PREFIXCODE() => '</code>',
+                                 TAG_TAGCODE() => '</code>' );
 
     my $topLevelTag = TAG_NONE;
 
@@ -861,7 +880,6 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
     my $prevLineBlank = 1;
 
     my $codeBlock;
-    my $prevCodeLineBlank = 1;
     my $removedCodeSpaces;
 
     my $ignoreListSymbols;
@@ -870,48 +888,33 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
 
     while ($index < $endingIndex)
         {
-        # If the line starts with a code designator...
-        if ($commentLines->[$index] =~ /^[>:|]( *)((?:[^ ].*)?)$/)
+        # If we're in a tagged code section...
+        if ($topLevelTag == TAG_TAGCODE)
             {
-            my $spaces = $1;
-            my $code = $2;
-
-            if ($topLevelTag == TAG_CODE)
+            if ($commentLines->[$index] =~ /^ *\( *(?:end|finish|done)(?: +(?:table|code|example|diagram))? *\)$/i)
                 {
-                if (length $code)
-                    {
-                    # Make sure we have the minimum amount of spaces to the left possible.
-                    if (length($spaces) != $removedCodeSpaces)
-                        {
-                        my $spaceDifference = abs( length($spaces) - $removedCodeSpaces );
-                        my $spacesToAdd = ' ' x $spaceDifference;
-
-                        if (length($spaces) > $removedCodeSpaces)
-                            {
-                            $codeBlock .= $spacesToAdd;
-                            }
-                        else
-                            {
-                            $codeBlock =~ s/^(.)/$spacesToAdd . $1/gme;
-                            $removedCodeSpaces = length($spaces);
-                            };
-                        };
-
-                    $codeBlock .= $code . "\n";
-                    $prevCodeLineBlank = undef;
-                    }
-                else # (!length $code)
-                    {
-                    if (!$prevCodeLineBlank)
-                        {
-                        $codeBlock .= "\n";
-                        $prevCodeLineBlank = 1;
-                        };
-                    };
-
+                $codeBlock =~ s/\n+$//;
+                $output .= NaturalDocs::NDMarkup->ConvertAmpChars($codeBlock) . '</code>';
+                $codeBlock = undef;
+                $topLevelTag = TAG_NONE;
                 $prevLineBlank = undef;
                 }
-            else # $topLevelTag != TAG_CODE
+            else
+                {
+                $self->AddToCodeBlock($commentLines->[$index], \$codeBlock, \$removedCodeSpaces);
+                };
+            }
+
+        # If the line starts with a code designator...
+        elsif ($commentLines->[$index] =~ /^ *[>:|](.*)$/)
+            {
+            my $code = $1;
+
+            if ($topLevelTag == TAG_PREFIXCODE)
+                {
+                $self->AddToCodeBlock($code, \$codeBlock, \$removedCodeSpaces);
+                }
+            else # $topLevelTag != TAG_PREFIXCODE
                 {
                 if (defined $textBlock)
                     {
@@ -919,34 +922,26 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                     $textBlock = undef;
                     };
 
-                if (defined $code)
-                    {
-                    $topLevelTag = TAG_CODE;
-                    $output .= '<code>';
-                    $codeBlock = $code . "\n";
-                    $removedCodeSpaces = length($spaces);
-                    $prevCodeLineBlank = undef;
-                    }
-                else
-                    {
-                    # Ignore leading blank lines and empty code sections.
-                    $topLevelTag = TAG_NONE;
-                    };
-
-                $prevLineBlank = undef;
+                $topLevelTag = TAG_PREFIXCODE;
+                $output .= '<code>';
+                $self->AddToCodeBlock($code, \$codeBlock, \$removedCodeSpaces);
                 };
             }
 
-        # If the line doesn't start with a code designator...
+        # If we're not in either code style...
         else
             {
-            # If we were in a code section...
-            if ($topLevelTag == TAG_CODE)
+            # Strip any leading whitespace.
+            $commentLines->[$index] =~ s/^ +//;
+
+            # If we were in a prefixed code section...
+            if ($topLevelTag == TAG_PREFIXCODE)
                 {
                 $codeBlock =~ s/\n+$//;
                 $output .= NaturalDocs::NDMarkup->ConvertAmpChars($codeBlock) . '</code>';
                 $codeBlock = undef;
                 $topLevelTag = TAG_NONE;
+                $prevLineBlank = undef;
                 };
 
 
@@ -1044,6 +1039,19 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                 $prevLineBlank = undef;
                 }
 
+            # If the line looks like a code tag...
+            elsif ($commentLines->[$index] =~ /^\( *(?:(?:start|begin)? +)?(?:table|code|example|diagram) *\)$/i)
+                {
+                if (defined $textBlock)
+                    {
+                    $output .= $self->RichFormatTextBlock($textBlock);
+                    $textBlock = undef;
+                    };
+
+                $output .= '<code>';
+                $topLevelTag = TAG_TAGCODE;
+                }
+
             # If the line isn't any of those, we consider it normal text.
             else
                 {
@@ -1088,6 +1096,64 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
         };
 
     return $output;
+    };
+
+
+#
+#   Function: AddToCodeBlock
+#
+#   Adds a line of text to a code block, handling all the indentation processing required.
+#
+#   Parameters:
+#
+#       line - The line of text to add.
+#       codeBlockRef - A reference to the code block to add it to.
+#       removedSpacesRef - A reference to a variable to hold the number of spaces removed.  It needs to be stored between calls.
+#                                      It will reset itself automatically when the code block codeBlockRef points to is undef.
+#
+sub AddToCodeBlock #(line, codeBlockRef, removedSpacesRef)
+    {
+    my ($self, $line, $codeBlockRef, $removedSpacesRef) = @_;
+
+    $line =~ /^( *)(.*)$/;
+    my ($spaces, $code) = ($1, $2);
+
+    if (!defined $$codeBlockRef)
+        {
+        if (length($code))
+            {
+            $$codeBlockRef = $code . "\n";
+            $$removedSpacesRef = length($spaces);
+            };
+        # else ignore leading line breaks.
+        }
+
+    elsif (length $code)
+        {
+        # Make sure we have the minimum amount of spaces to the left possible.
+        if (length($spaces) != $$removedSpacesRef)
+            {
+            my $spaceDifference = abs( length($spaces) - $$removedSpacesRef );
+            my $spacesToAdd = ' ' x $spaceDifference;
+
+            if (length($spaces) > $$removedSpacesRef)
+                {
+                $$codeBlockRef .= $spacesToAdd;
+                }
+            else
+                {
+                $$codeBlockRef =~ s/^(.)/$spacesToAdd . $1/gme;
+                $$removedSpacesRef = length($spaces);
+                };
+            };
+
+        $$codeBlockRef .= $code . "\n";
+        }
+
+    else # (!length $code)
+        {
+        $$codeBlockRef .= "\n";
+        };
     };
 
 
