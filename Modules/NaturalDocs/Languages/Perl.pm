@@ -45,6 +45,8 @@ my $inNDPOD;
 #
 my $mustBreakPOD;
 
+
+
 ###############################################################################
 # Group: Interface Functions
 
@@ -128,6 +130,7 @@ sub ParseFile #(sourceFile, topicsList)
 #   Overridden to support "=pod begin nd" and similar.
 #
 #   - "=pod begin [nd|naturaldocs|natural docs]" all translate to "=pod begin nd".
+#   - "=[nd|naturaldocs|natural docs]" also translate to "=pod begin nd".
 #   - "=pod end [nd|naturaldocs|natural docs]" all translate to "=pod end nd".
 #   - "=cut" from a ND block translates into "=pod end nd", but the next line will be altered to begin with "(NDPODBREAK)".  This is
 #     so if there is POD leading into ND which ends with a cut, the parser can still end the original POD because the end ND line
@@ -137,7 +140,7 @@ sub PreprocessLine #(lineRef)
     {
     my ($self, $lineRef) = @_;
 
-    if ($$lineRef =~ /^\=pod[ \t]+begin[ \t]+(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+    if ($$lineRef =~ /^\=(?:pod[ \t]+begin[ \t]+)?(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
         {
         $$lineRef = '=pod begin nd';
         $inNDPOD = 1;
