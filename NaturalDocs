@@ -61,6 +61,7 @@ use integer;
 #   About: Syntax
 #
 #       > NaturalDocs -i [input (source) directory]
+#       >            (-i [input (source) directory] ...)
 #       >             -o [output format] [output directory]
 #       >            (-o [output format] [output directory] ...)
 #       >             -p [project directory]
@@ -81,7 +82,7 @@ use integer;
 #
 #       Options:
 #
-#           -i [dir]            - The input (source) directory.  Required.  Also --input, --source.
+#           -i [dir]            - The input (source) directory.  Required.  Can be specified multiple times.  Also --input, --source.
 #
 #           -o [fmt] [dir]   - The output format and directory.  Required.  See <Supported Output Formats> for a list of
 #                                   options.  This can be specified multiple times, but only once per directory.  Also --output.
