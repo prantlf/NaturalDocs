@@ -152,11 +152,6 @@ sub FileIsComment
     return (!defined $self->LineCommentSymbols() && !defined $self->OpeningCommentSymbols() );
     };
 
-# Function: FileIsEscaped
-# Returns whether the file is escaped, such as PHP.
-sub FileIsEscaped
-    {  return undef;  };
-
 # Function: FunctionEnders
 # Returns an arrayref of the symbols that end a function prototype, or undef if not applicable.
 sub FunctionEnders
@@ -454,51 +449,6 @@ sub FormatPrototype #(type, prototype)
 
         return ( $pre, $open, $params, $close, $post );
         };
-    };
-
-
-#
-#   Function: ResetEscapedLineExtraction
-#
-#   Called whenever a new escaped file starts being parsed, so that any run-time variables can be reset.
-#
-sub ResetEscapedLineExtraction
-    {
-    };
-
-
-#
-#   Function: ExtractEscapedLine
-#
-#   Returns the escaped code from the line, if any.
-#
-#   Parameters:
-#
-#       line  - A reference to a line of the file.
-#       startingIndex  - The starting index to check at.  Zero if this is the first time this line has been checked.
-#
-#   Returns:
-#
-#       The array ( extractedLine, nextStartingIndex ).
-#
-#       extractedLine  - The escaped line of code present in the line, if any.  Undef if none.
-#       nextStartingIndex  - If the escaped code ended on this line, the index to start searching at next time, -1 otherwise.  If you
-#                                     return anything other than -1, the same line will be passed to this function a second time with this
-#                                     number as startingIndex.
-#
-#   Implementation Notes:
-#
-#       This function needs to keep its own state from call to call.  Since <ResetEscapedLineExtraction()> will be called before
-#       every new file, and only one file will be parsed with a given language object at a time, it is safe to use package variables
-#       rather than object variables.
-#
-#       If there are multiple separate escapements on one line, you should *not* concatenate them and return them as one line.
-#       Rather, return the first one and use nextStartingIndex to prepare for the next call.
-#
-sub ExtractEscapedLine #(line, startingIndex)
-    {
-    my ($self, $line, $startingIndex) = @_;
-    return ( $$self, -1 );
     };
 
 
