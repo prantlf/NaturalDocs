@@ -74,7 +74,7 @@ use integer;
 #           > NaturalDocs -i /src/project
 #           >             -o HTML /doc/project
 #           >             -p /etc/naturaldocs/project
-#           >             -s Small -q -m
+#           >             -s Small -t 2 -q
 #
 #       Options:
 #
@@ -89,6 +89,9 @@ use integer;
 #                                             distinguish between them.  If any style is set to "Custom", it will not sync the project's CSS file
 #                                             with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
 #                                             <HTML Styles> for options.
+#
+#           -t, --tablength             - Sets the number of spaces tabs should be expanded to.  This only needs to be set if you use tabs
+#                                              in example code and text diagrams.  The default is 4.
 #
 #           -r, --rebuild                - Rebuilds all output and data files from scratch.  Does not affect the menu file.
 #
