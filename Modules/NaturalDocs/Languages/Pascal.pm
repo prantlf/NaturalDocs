@@ -80,7 +80,7 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
         my $pastPrototype = substr($$stringRef, $endOfPrototype);
 
         use constant NEEDSEMICOLON => 1;
-        use constant NEEDKEYWORD => 2;
+        use constant TRYKEYWORD => 2;
         use constant ACCEPTUNTILSEMICOLON => 3;
         use constant FINISHED => 4;
 
@@ -94,12 +94,12 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
                 if ($1 eq ';')
                     {
                     $endOfDirectives = $-[1];
-                    $state = NEEDKEYWORD;
+                    $state = TRYKEYWORD;
                     }
                 else
                     {  $state = FINISHED;  };
                 }
-            elsif ($state == NEEDKEYWORD)
+            elsif ($state == TRYKEYWORD)
                 {
                 if (exists $prototypeDirectives{lc($1)})
                     {  $state = NEEDSEMICOLON;  }
@@ -113,12 +113,12 @@ sub EndOfPrototype #(type, stringRef, falsePositives)
                 if ($1 eq ';')
                     {
                     $endOfDirectives = $-[1];
-                    $state = NEEDKEYWORD;
+                    $state = TRYKEYWORD;
                     };
                 };
             };
 
-        if ($state == FINISHED)
+        if ($state == FINISHED || $state == TRYKEYWORD)
             {  $endOfPrototype += $endOfDirectives;  }
         else
             {  $endOfPrototype = -1;  };
