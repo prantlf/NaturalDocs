@@ -76,6 +76,13 @@ use constant TOPIC_CONSTANT => 'constant';
 
 
 #
+#   handle: FH_TOPICS
+#
+#   The file handle used when writing to <Topics.txt>.
+#
+
+
+#
 #   hash: types
 #
 #   A hashref that maps <TopicTypes> to <NaturalDocs::Topics::Type>s.
@@ -121,6 +128,15 @@ my %pluralKeywords;
 #   An existence hash of all the indexable <TopicTypes>.
 #
 my %indexable;
+
+
+#
+#   array: requiredTypeNames
+#
+#   An array of the <TopicType> names which are required to be defined in the main file.  Are in the order they should appear
+#   when reformatting.
+#
+my @requiredTypeNames = ('Generic', 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Property', 'Type', 'Constant');
 
 
 #
@@ -261,7 +277,7 @@ sub Load
     # Dependency: All the default topic types must be checked for existence.
 
     # Check to see if the required types are defined.
-    foreach my $name ('Generic', 'Group', 'Class', 'Section', 'File', 'Function', 'Variable', 'Property', 'Type', 'Constant')
+    foreach my $name (@requiredTypeNames)
         {
         if (!exists $names{lc($name)})
             {  NaturalDocs::ConfigFile->AddError('The ' . $name . ' topic type must be defined in the main topics file.');  };
@@ -329,14 +345,14 @@ sub LoadFile #(isMain)
                 {
                 my $topicTypeKeyword = $keyword;
                 my $topicTypeName = $value;
+                my $topicType;
                 my $topicTypeObject;
-
-                my $topicType = $self->MakeTopicType($topicTypeName);
 
                 # Resolve conflicts and create the type if necessary.
 
                 if ($topicTypeKeyword eq 'topic type')
                     {
+                    $topicType = $self->MakeTopicType($topicTypeName);
                     my $lcTopicTypeName = lc($topicTypeName);
 
                     my $lcTopicTypeAName = $lcTopicTypeName;
@@ -368,14 +384,15 @@ sub LoadFile #(isMain)
                     }
                 else # ($topicTypeKeyword eq 'alter topic type')
                     {
-                    if ($topicType eq ::TOPIC_GENERAL())
+                    $topicType = $names{lc($topicTypeName)};
+
+                    if (!defined $topicType)
+                        {  NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' doesn\'t exist.');  }
+                    elsif ($topicType eq ::TOPIC_GENERAL())
                         {  NaturalDocs::ConfigFile->AddError('You cannot alter the General topic type.');  }
                     else
                         {
                         $topicTypeObject = $types{$topicType};
-
-                        if (!defined $topicTypeObject)
-                            {  NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' doesn\'t exist.');  };
                         };
                     };
 
@@ -622,6 +639,321 @@ sub LoadFile #(isMain)
         else
             {  NaturalDocs::Project->ReparseEverything();  };
         };
+    };
+
+
+#
+#   Function: Save
+#
+#   Saves the main and user versions of <Topics.txt>.
+#
+sub Save
+    {
+    my $self = shift;
+
+    $self->SaveFile(1); # Main
+    $self->SaveFile(0); # User
+    };
+
+
+#
+#   Function: SaveFile
+#
+#   Saves a particular version of <Topics.txt>.
+#
+#   Parameters:
+#
+#       isMain - Whether the file is the main file or not.
+#
+sub SaveFile #(isMain)
+    {
+    my ($self, $isMain) = @_;
+
+    my $file;
+
+    if ($isMain)
+        {
+        if (NaturalDocs::Project->MainTopicsFileStatus() == ::FILE_SAME())
+            {  return;  };
+        $file = NaturalDocs::Project->MainTopicsFile();
+        }
+    else
+        {
+        if (NaturalDocs::Project->UserTopicsFileStatus() == ::FILE_SAME())
+            {  return;  };
+        $file = NaturalDocs::Project->UserTopicsFile();
+        };
+
+
+    # Array of topic type names in the order they appear in the file.  If Alter Topic Type is used, the name will end with an asterisk.
+    my @topicTypeOrder;
+
+    # Array of topic type names in the order their keywords appear in the file.
+    my @keywordOrder;
+
+    # Keys are topic type names, values are property hashrefs.  Hashref keys are the property names, values the value.
+    my %properties;
+
+    # Keys are topic type names, values are keyword arrayrefs.  Entries are singular and plural pairs.  If no plural is defined, the
+    # entry will be undef.
+    my %keywords;
+
+    if (NaturalDocs::ConfigFile->Open($file))
+        {
+        # We can assume the file is valid.
+
+        my ($keyword, $value) = NaturalDocs::ConfigFile->GetLine();
+
+        while (defined $value)
+            {
+            if ($keyword eq 'topic type' || $keyword eq 'alter topic type')
+                {
+                my $topicTypeName = $types{ $names{lc($value)} }->Name();
+
+                if ($keyword eq 'alter topic type')
+                    {  $topicTypeName .= '*';  };
+
+                push @topicTypeOrder, $topicTypeName;
+
+                if (!defined $properties{$topicTypeName})
+                    {  $properties{$topicTypeName} = { };  };
+
+                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
+                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
+                    {
+                    if ($keyword eq 'plural')
+                        {
+                        $properties{$topicTypeName}->{$keyword} = $value;
+                        }
+
+                    elsif ($keyword eq 'index' ||
+                            $keyword eq 'scope' ||
+                            $keyword eq 'page title if first' ||
+                            $keyword eq 'break lists' ||
+                            $keyword eq 'auto group')
+                        {
+                        $properties{$topicTypeName}->{$keyword} = lc($value);
+                        };
+                    };
+                }
+
+            elsif ($keyword eq 'keywords')
+                {
+                my $topicTypeName = $types{ $names{lc($value)} }->Name();
+
+                if (!defined $keywords{$topicTypeName})
+                    {  $keywords{$topicTypeName} = [ ];  };
+
+                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
+                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'keywords')
+                    {
+                    if (!defined $keyword)
+                        {
+                        my ($singular, $plural) = split(/, ?/, lc($value));
+                        push @{$keywords{$topicTypeName}}, $singular, $plural;
+                        };
+                    };
+                }
+
+            else
+                {  ($keyword, $value) = NaturalDocs::ConfigFile->GetLine();  };
+            };
+
+        NaturalDocs::ConfigFile->Close();
+        };
+
+
+    open(FH_TOPICS, '>' . $file) or die "Couldn't save " . $file;
+
+    print FH_TOPICS 'Format: ' . NaturalDocs::Settings->TextAppVersion() . "\n\n";
+
+    # Remember the 80 character limit.
+
+    if ($isMain)
+        {
+        print FH_TOPICS
+"# This is the main Natural Docs topics file.  If you change anything here, it
+# will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
+# change something for just one project, edit the Topics.txt in its project
+# directory instead.\n";
+        }
+    else
+        {
+        print FH_TOPICS
+"# This is the Natural Docs topics file for this project.  If you change anything
+# here, it will apply to THIS PROJECT ONLY.  If you'd like to change something
+# for all your projects, edit the Topics.txt in Natural Docs' Config directory
+# instead.\n";
+        };
+
+    print FH_TOPICS # [CFChars]
+    "\n" .
+"# Also, if you add something that you think would be useful to other developers
+# and should be included in Natural Docs by default, please e-mail it to
+# topics [at] naturaldocs [dot] org.
+
+
+###############################################################################
+#
+#   Topic Type Syntax
+#
+#   Each topic type has its own behavior and index.  If you just want to add a
+#   keyword for an existing type, scroll down to the keywords section instead.
+#
+###############################################################################
+#
+#   Topic Type: [name]
+#
+#   Creates a new topic type.  Its name can have letters, numbers, spaces, and
+#   these charaters: - / . '  You cannot use the name General.
+#
+#
+#   Alter Topic Type: [name]
+#
+#   Alters an existing topic type so you can override its settings.
+#
+#
+###############################################################################
+#
+#   Plural: [name]
+#
+#   The plural name of the topic type, if different from the singular.  It can
+#   have letters, numbers, spaces, and these charaters: - / . '
+#
+#
+#   Index: [yes|no]
+#
+#   Whether the topics are indexed.  Defaults to no.
+#
+#
+#   Scope: [normal|start|end|always global]
+#
+#   How the topics affects scope.  Defaults to normal.
+#
+#   normal        - Topics stay within the current scope.
+#   start         - Topics start a new scope for all the topics beneath it,
+#                   like class topics.
+#   end           - Topics reset the scope back to global for all the topics
+#                   beneath it.
+#   always global - Topics are defined as global, but do not change the scope
+#                   for any other topics.
+#
+#
+#   Page Title If First: [yes|no]
+#
+#   Whether the topic's title becomes the page title if it's the first one in
+#   a file.  Defaults to no.
+#
+#
+#   Break Lists: [yes|no]
+#
+#   Whether list topics should be broken into individual topics in the output.
+#   Defaults to no.
+#
+#
+#   Auto Group: [yes|no|full only]
+#
+#   Whether the topics have groups created for them automatically if none are
+#   created manually.  Defaults to no.
+#
+#   no        - The topics will never be auto-grouped.
+#   yes       - The topics will always be auto-grouped.
+#   full only - The topics will be auto-grouped unless using --autogroup basic.
+#
+#
+###############################################################################\n";
+
+    # Existence hash.  We do this because we want the required ones to go first by adding them to @topicTypeOrder, but we don't
+    # want them to appear twice.
+    my %doneTopicTypes;
+
+    if ($isMain)
+        {  unshift @topicTypeOrder, @requiredTypeNames;  };
+
+    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Page Title If First', 'Break Lists', 'Auto Group');
+
+    foreach my $topicType (@topicTypeOrder)
+        {
+        if (!exists $doneTopicTypes{$topicType})
+            {
+            if (substr($topicType, -1) eq '*')
+                {
+                print FH_TOPICS "\n\n"
+                . 'Alter Topic Type: ' . substr($topicType, 0, -1) . "\n\n";
+                }
+            else
+                {
+                print FH_TOPICS "\n\n"
+                . 'Topic Type: ' . $topicType . "\n\n";
+                };
+
+            foreach my $property (@propertyOrder)
+                {
+                if (exists $properties{$topicType}->{lc($property)})
+                    {
+                    print FH_TOPICS
+                    '   ' . $property . ': ' . $properties{$topicType}->{lc($property)} . "\n";
+                    };
+                };
+
+            $doneTopicTypes{$topicType} = 1;
+            };
+        };
+
+    print FH_TOPICS "\n\n\n" .
+"###############################################################################
+#
+#   Keyword Syntax
+#
+#   Each topic type can have multiple keywords.
+#
+###############################################################################
+#
+#   Keywords: [topic type]
+#
+#   Starts a list of keywords for the specified topic type.
+#
+#
+#   [keyword]
+#   [keyword], [plural keyword]
+#
+#   Each line until the next Topic Keyword line is the keyword and optionally
+#   its plural form.  The plural form is needed if you want to document topics
+#   as a list.
+#
+#   Keywords can only have letters and numbers, and are not case-sensitive.
+#   You can include keywords that were previously used by a different type to
+#   redefine them.
+#
+###############################################################################\n";
+
+    if ($isMain)
+        {  unshift @keywordOrder, @requiredTypeNames;  };
+
+    %doneTopicTypes = ( );
+
+    foreach my $topicType (@keywordOrder)
+        {
+        if (!exists $doneTopicTypes{$topicType})
+            {
+            print FH_TOPICS "\n\n"
+            . 'Keywords: ' . $topicType . "\n\n";
+
+            for (my $i = 0; $i < scalar @{$keywords{$topicType}}; $i += 2)
+                {
+                print FH_TOPICS '   ' . $keywords{$topicType}->[$i];
+
+                if (defined $keywords{$topicType}->[$i+1])
+                    {  print FH_TOPICS ', ' . $keywords{$topicType}->[$i+1];  };
+
+                print FH_TOPICS "\n";
+                };
+
+            $doneTopicTypes{$topicType} = 1;
+            };
+        };
+
+    close(FH_TOPICS);
     };
 
 
