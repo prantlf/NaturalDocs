@@ -45,20 +45,12 @@ sub New
 
 
 #
-#   Function: ToNumber
+#   Function: MakeNumber
 #
-#   Returns a data element's number, creating one for it if necessary.  Created numbers will always start at one and increment
-#   upwards.  If you don't want a number to be created, use <FindNumber()> instead.
+#   Assigns and returns a number for the data element.  Created numbers will always start at one and increment
+#   upwards.
 #
-#   Parameters:
-#
-#       data - The data element to find/create a number for.
-#
-#   Returns:
-#
-#       The number for the element.
-#
-sub ToNumber #(data)
+sub MakeNumber #(data)
     {
     my ($self, $data) = @_;
 
@@ -79,15 +71,7 @@ sub ToNumber #(data)
 #
 #   Function: ToData
 #
-#   Returns a number's data, if defined.
-#
-#   Parameters:
-#
-#       number - The number to find the data of.
-#
-#   Returns:
-#
-#       The data of the number, or undef if none.
+#   Returns a number's data, or undef if none.
 #
 sub ToData #(number)
     {
@@ -101,19 +85,11 @@ sub ToData #(number)
 
 
 #
-#   Function: FindNumber
+#   Function: ToNumber
 #
-#   Finds the number of a data element, but does not create one if it does not exist.
+#   Returns a data element's number, or undef if none
 #
-#   Parameters:
-#
-#       data - The data element to find the number of.
-#
-#   Returns:
-#
-#       The data's number, or undef if none.
-#
-sub FindNumber #(data)
+sub ToNumber #(data)
     {
     my ($self, $data) = @_;
 
