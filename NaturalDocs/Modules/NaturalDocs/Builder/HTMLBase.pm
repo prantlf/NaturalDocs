@@ -709,7 +709,7 @@ sub BuildContent #(sourceFile, parsedFile)
 
 
         my $hierarchy;
-        if ($parsedFile->[$i]->Type() eq ::TOPIC_CLASS())
+        if (NaturalDocs::Topics->TypeInfo( $parsedFile->[$i]->Type() )->ClassHierarchy())
             {
             $hierarchy = $self->BuildClassHierarchy($sourceFile, $parsedFile->[$i]->Symbol());
             };
