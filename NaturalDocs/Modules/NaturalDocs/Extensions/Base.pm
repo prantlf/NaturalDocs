@@ -121,7 +121,7 @@ sub ParseCommandLineOptions #(options)
 #
 #   Parameters:
 #
-#       file - The source file.
+#       file - The source <FileName>.
 #       parsedFile - The arrayref of <NaturalDocs::Parser::ParsedTopic> objects.  Directly change this arrayref as necessary.
 #
 sub AfterFileParsed #(file, parsedFile)
@@ -132,8 +132,8 @@ sub AfterFileParsed #(file, parsedFile)
 #
 #   Topic: Need More?
 #
-#   If you need another hook for your extension, contact Natural Docs' <Maintainer>.  Describe what you need and what you
-#   plan to do with it.
+#   If you need another hook for your extension, contact Natural Docs' maintainer at http://www.naturaldocs.org.  Describe what
+#   you need and what you plan to do with it.
 #
 
 

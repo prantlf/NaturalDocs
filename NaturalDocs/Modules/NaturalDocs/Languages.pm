@@ -15,7 +15,6 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
-
 use NaturalDocs::Languages::Base;
 use NaturalDocs::Languages::Simple;
 use NaturalDocs::Languages::Advanced;
@@ -40,7 +39,7 @@ package NaturalDocs::Languages;
 #
 #   array: languages
 #
-#   An array of all the defined languages.  Each entry is a <NaturalDocs::Languages::Language> object.
+#   An array of all the defined languages.  Each entry is a <NaturalDocs::Languages::Base>-derived object.
 #
 my @languages;
 
@@ -81,11 +80,11 @@ my %shebangFiles;
 #
 #   Parameters:
 #
-#       sourceFile - The source file to get the language of.
+#       sourceFile - The source <FileName> to get the language of.
 #
 #   Returns:
 #
-#       A <NaturalDocs::Languages::Language> object for the passed file, or undef if the file is not a recognized language.
+#       A <NaturalDocs::Languages::Base>-derived object for the passed file, or undef if the file is not a recognized language.
 #
 sub LanguageOf #(sourceFile)
     {
@@ -162,7 +161,7 @@ sub LanguageOf #(sourceFile)
 #
 #   Parameters:
 #
-#       file - The file to test.
+#       file - The <FileName> to test.
 #
 #   Returns:
 #
@@ -179,33 +178,6 @@ sub IsSupported #(file)
     };
 
 
-#
-#   Function: SeparateMember
-#
-#   Separates a class from its member.  If there are multiple member separators in the string, it assumes the last one is correct
-#   and all previous ones are part of the class name.  For example, "package::class::function" will be split into "package::class"
-#   and "function".
-#
-#   Parameters:
-#
-#       string - The string of text to separate.
-#
-#   Returns:
-#
-#       An array.  If the string had a member separator in it, the first item will be the class and the second the identifier.  If there
-#       was no member separator, there will only be one item, which will contain the original string.
-#
-sub SeparateMember #(string)
-    {
-    my ($self, $string) = @_;
-
-    if ($string =~ /^(.+)(?:\.|::|->)(.+)$/)
-        {  return ($1, $2);  }
-    else
-        {  return $string;  };
-    };
-
-
 ###############################################################################
 # Group: Interface Functions
 # These functions are not for general use.  They're interfaces between specific packages and should only be used where noted.
@@ -214,7 +186,7 @@ sub SeparateMember #(string)
 #
 #   Function: Add
 #
-#   Adds a <NaturalDocs::Languages::Language> object to the package.
+#   Adds a <NaturalDocs::Languages::Base>-derived object to the package.
 #
 #   Usage:
 #
