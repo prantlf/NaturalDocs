@@ -165,7 +165,7 @@ sub LoadAndDetectChanges
                 $indexedFiles{$file} = 1;
 
                 # If the file changed...
-                if ($supportedFiles{$file}->LastModified() > $modification)
+                if ($supportedFiles{$file}->LastModified() != $modification)
                     {
                     $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
                     $filesToParse{$file} = 1;
