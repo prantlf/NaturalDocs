@@ -127,6 +127,9 @@ my @mainLanguageNames;
 #       have comment symbols.  Shebang scripts have their language determined by the shebang string and automatically
 #       include files with no extension in addition to the extensions defined.
 #
+#       If "Text File" doesn't define ignored prefixes, a package separator, or enum value behavior, those settings will be copied
+#       from the language with the most files in the source tree.
+#
 #
 #       > Alter Language: [name]
 #
@@ -195,6 +198,15 @@ my @mainLanguageNames;
 #       Defines the symbol that allows a prototype to span multiple lines if normally a line break would end it.
 #
 #
+#       > Enum Values: [global|under type|under parent]
+#
+#       Defines how enum values are referenced.  The default is global.
+#
+#       global - Values are always global, referenced as 'value'.
+#       under type - Values are under the enum type, referenced as 'package.enum.value'.
+#       under parent - Values are under the enum's parent, referenced as 'package.value'.
+#
+#
 #       > Perl Package: [perl package]
 #
 #       Specifies the Perl package used to fine-tune the language behavior in ways too complex to do in this file.
@@ -215,6 +227,7 @@ my @mainLanguageNames;
 #       1.32:
 #
 #           - Package Separator is now a basic language support only property.
+#           - Added Enum Values setting.
 #
 #       1.3:
 #
@@ -749,6 +762,33 @@ sub ProcessProperties #(properties, version, tempExtensions, tempShebangStrings)
                 };
             }
 
+        elsif ($keyword eq 'enum values')
+            {
+            if ($fullLanguageSupport)
+                {
+                NaturalDocs::ConfigFile->AddError('You cannot define this property when using full language support.', $lineNumber);
+                }
+            else
+                {
+                $value = lc($value);
+                my $constant;
+
+                if ($value eq 'global')
+                    {  $constant = ::ENUM_GLOBAL();  }
+                elsif ($value eq 'under type')
+                    {  $constant = ::ENUM_UNDER_TYPE();  }
+                elsif ($value eq 'under parent')
+                    {  $constant = ::ENUM_UNDER_PARENT();  };
+
+                if (defined $value)
+                    {  $language->SetEnumValues($constant);  }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Enum Values must be "Global", "Under Type", or "Under Parent".', $lineNumber);
+                    };
+                };
+            }
+
         else
             {
             NaturalDocs::ConfigFile->AddError($keyword . ' is not a valid keyword.', $lineNumber);
@@ -849,7 +889,7 @@ sub SaveFile #(isMain)
                 }
 
             elsif ($keyword eq 'package separator' || $keyword eq 'full language support' || $keyword eq 'perl package' ||
-                    $keyword eq 'line extender')
+                    $keyword eq 'line extender' || $keyword eq 'enum values')
                 {
                 $currentProperties->{$keyword} = $value;
                 }
@@ -1021,8 +1061,9 @@ sub SaveFile #(isMain)
     . "#\n"
     . "#    The language Text File is also special.  It's treated as one big comment\n"
     . "#    so you can put Natural Docs content in them without special symbols.  Also,\n"
-    . "#    if you don't specify a package separator or any ignored prefixes, it will\n"
-    . "#    copy those settings from the language that is used most in the source tree.\n"
+    . "#    if you don't specify a package separator, ignored prefixes, or enum value\n"
+    . "#    behavior, it will copy those settings from the language that is used most\n"
+    . "#    in the source tree.\n"
     . "#\n"
     . "# Extensions: [extension] [extension] ...\n";
 
@@ -1083,6 +1124,14 @@ sub SaveFile #(isMain)
     . "# Line Extender: [symbol]\n"
     . "#    Defines the symbol that allows a prototype to span multiple lines if\n"
     . "#    normally a line break would end it.\n"
+    . "#\n"
+    . "# Enum Values: [global|under type|under parent]\n"
+    . "#    Defines how enum values are referenced.  The default is global.\n"
+    . "#    global       - Values are always global, referenced as 'value'.\n"
+    . "#    under type   - Values are under the enum type, referenced as\n"
+    . "#               'package.enum.value'.\n"
+    . "#    under parent - Values are under the enum's parent, referenced as\n"
+    . "#               'package.value'.\n"
     . "#\n"
     . "# Perl Package: [perl package]\n"
     . "#    Specifies the Perl package used to fine-tune the language behavior in ways\n"
@@ -1234,6 +1283,11 @@ sub SaveFile #(isMain)
                 {  print FH_LANGUAGES '   Package Separator: ' . $properties->{'package separator'} . "\n";  };
             };
 
+        if (exists $properties->{'enum values'})
+            {
+            print FH_LANGUAGES '   Enum Values: ' . ucfirst(lc($properties->{'enum values'})) . "\n";
+            };
+
         if (exists $properties->{'prototype enders'})
             {
             my $topicTypeEnders = $properties->{'prototype enders'};
@@ -1383,27 +1437,24 @@ sub LanguageOf #(sourceFile)
 
 
 #
-#   Function: OnMostUsedLanguageChange
+#   Function: OnMostUsedLanguageKnown
 #
-#   Called if <NaturalDocs::Project->MostUsedLanguage()> changes since the last parse.
+#   Called when the most used language is known.
 #
-sub OnMostUsedLanguageChange
+sub OnMostUsedLanguageKnown
     {
     my $self = shift;
 
-    if (!$languages{'text file'}->HasIgnoredPrefixes() || !$languages{'text file'}->PackageSeparatorWasSet())
+    my $language = $languages{lc( NaturalDocs::Project->MostUsedLanguage() )};
+
+    if ($language)
         {
-        my $language = $languages{lc( NaturalDocs::Project->MostUsedLanguage() )};
-
-        if ($language)
-            {
-            if (!$languages{'text file'}->HasIgnoredPrefixes())
-                {  $languages{'text file'}->CopyIgnoredPrefixesOf($language);  };
-            if (!$languages{'text file'}->PackageSeparatorWasSet())
-                {  $languages{'text file'}->SetPackageSeparator($language->PackageSeparator());  };
-            };
-
-        NaturalDocs::SymbolTable->RebuildAllIndexes();
+        if (!$languages{'text file'}->HasIgnoredPrefixes())
+            {  $languages{'text file'}->CopyIgnoredPrefixesOf($language);  };
+        if (!$languages{'text file'}->PackageSeparatorWasSet())
+            {  $languages{'text file'}->SetPackageSeparator($language->PackageSeparator());  };
+        if (!$languages{'text file'}->EnumValuesWasSet())
+            {  $languages{'text file'}->SetEnumValues($language->EnumValues());  };
         };
     };
 
