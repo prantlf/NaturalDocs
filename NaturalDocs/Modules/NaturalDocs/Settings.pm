@@ -425,6 +425,11 @@ sub ProjectDataDirectory
 sub StyleDirectory
     {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'Styles', 1);  };
 
+# Function: ConfigDirectory
+# Returns the main configuration directory.
+sub ConfigDirectory
+    {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'Config', 1);  };
+
 # Function: DocumentedOnly
 # Returns whether undocumented code aspects should be included in the output.
 sub DocumentedOnly
@@ -481,7 +486,7 @@ sub AppVersion
 #   Returns Natural Docs' version number as plain text.
 #
 sub TextAppVersion
-    {  return '1.22';  };
+    {  return '1.3';  };
 
 #
 #   Function: AppURL
@@ -942,6 +947,7 @@ sub PrintSyntax
     . " -?\n -h\n--help\n"
     . "    Displays this syntax reference.\n";
     };
+
 
 #
 #   Function: PrintOutputFormats
