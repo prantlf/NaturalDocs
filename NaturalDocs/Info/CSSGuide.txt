@@ -125,15 +125,13 @@ Styles: Browser Styles
         If the browser is not one of the versions below, this style will not be present.  The browser type still may be.  Gecko and
         KHTML-based browsers are not broken out into sub-versions.
 
-        IE4 - Internet Explorer 4.0.
-        IE5 - Internet Explorer 5.0.
-        IE55 - Internet Explorer 5.5.
-        IE6 - Internet Explorer 6.0.
+        IE4 - Internet Explorer 4.x.
+        IE5 - Internet Explorer 5.x.
+        IE6 - Internet Explorer 6.x.
 
         Opera5 - Opera 5.x.
         Opera6 - Opera 6.x.
-        Opera7 - Opera 7.x but less than 7.5.
-        Opera75 - Opera 7.5x.
+        Opera7 - Opera 7.x.
 
         Netscape4 - Netscape 4.x.
 

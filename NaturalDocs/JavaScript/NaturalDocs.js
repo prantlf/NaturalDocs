@@ -15,8 +15,6 @@ if (agt.indexOf("opera") != -1)
         {  browserVer = "Opera5";  }
     else if (agt.indexOf("opera 6") != -1 || agt.indexOf("opera/6") != -1)
         {  browserVer = "Opera6";  }
-    else if (agt.indexOf("opera 7.5") != -1 || agt.indexOf("opera/7.5") != -1)
-        {  browserVer = "Opera75";  }
     else if (agt.indexOf("opera 7") != -1 || agt.indexOf("opera/7") != -1)
         {  browserVer = "Opera7";  }
     }
@@ -32,8 +30,6 @@ else if (agt.indexOf("msie") != -1)
 
     if (agt.indexOf("msie 4") != -1)
         {  browserVer = "IE4";  }
-    else if (agt.indexOf("msie 5.5") != -1)
-        {  browserVer = "IE55";  }
     else if (agt.indexOf("msie 5") != -1)
         {  browserVer = "IE5";  }
     else if (agt.indexOf("msie 6") != -1)
