@@ -34,12 +34,10 @@ package NaturalDocs::Settings::BuildTarget;
 #       NAME           - The name of the target.
 #       BUILDER      - The <NaturalDocs::Builder::Base>-derived object for the target's output format.
 #       DIRECTORY - The output directory of the target.
-#       STYLE          - The style of the target.  If the target is HTML-based, it's the CSS style.
 #
 use constant NAME => 0;
 use constant BUILDER => 1;
 use constant DIRECTORY => 2;
-use constant STYLE => 3;
 # New depends on the order of these constants.
 
 
@@ -56,7 +54,6 @@ use constant STYLE => 3;
 #       name - The name of the target.
 #       builder - The <NaturalDocs::Builder::Base>-derived object for the target's output format.
 #       directory - The directory to place the output files in.
-#       style - The style of the target.  If it's HTML-based, it's the CSS style.
 #
 sub New #(name, builder, directory, style)
     {
@@ -89,11 +86,6 @@ sub Builder
 # Returns the directory for the traget's output files.
 sub Directory
     {  return $_[0]->[DIRECTORY];  };
-
-# Function: Style
-# Returns the target's style, CSS if it's HTML based.  Returns undef otherwise.
-sub Style
-    {  return $_[0]->[STYLE];  };
 
 
 1;
