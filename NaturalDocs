@@ -144,17 +144,15 @@ use integer;
 #
 #   Topic: HTML Compatibility
 #
-#       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.4, my browser of choice.  Therefore it should be
-#                                        okay with Netscape 7, etc.
+#       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.4.  1.0.2 has minor formatting issues with
+#                                        prototypes in tooltips, but nothing that hurts usability.
 #       Internet Explorer      - *Works on 4+.*  Tested on 4.0, 5.0 and 6.0.  I don't have a partition for 5.5 so I'm assuming it
 #                                        works.  4.0 can't collapse the menu and makes the tooltips the full page width, although it positions
 #                                        them correctly.  5.0 occasionally slightly misplaces the tooltips, but it's still usable and is usually fine.
 #       Opera                      - *Works on 5+.*  Tested on 5.12, 6.05, and 7.02.  Only 7.02 can collapse the menu.  5.12 can't
-#                                         size or position the tooltips correctly, so they're mostly useless.
-#       Konqueror (KHTML)   - *Probably.*  With the addition of Safari I'd like to be able to test this, but there's nothing for
-#                                        Windows and I haven't gotten around to setting up a Linux partition yet.  It should work as it's not
-#                                        doing anything exceptionally fancy except for the collapsing menu, which is still usable when the
-#                                        browser can't handle it.
+#                                         size or position the tooltips very well, but they're usable most of the time.
+#       Konqueror (KHTML)   - *Works on 3+.*  Tested on Konqueror 3.1.1.  Has some minor margin issues, but it's definitely their
+#                                         renderer that's the problem.  Shows tooltips immediately because it has problems doing it on a timer.
 #       Netscape 4.x            - *Nope.*  Crashes 4.08 and mangled on 4.8.  Why did they ever drop this for Gecko?  I've stopped
 #                                        supporting NS4 in my projects and have found that my quality of life has improved considerably.
 #
