@@ -55,7 +55,7 @@ sub CommandLineOption
 #
 #   Parameters:
 #
-#       sourcefile       - The name of the source file.
+#       sourcefile       - The <FileName> of the source file.
 #       parsedFile      - An arrayref of the source file as <NaturalDocs::Parser::ParsedTopic> objects.
 #
 sub BuildFile #(sourceFile, parsedFile)
@@ -142,7 +142,7 @@ sub BuildFile #(sourceFile, parsedFile)
 #
 #   Parameters:
 #
-#       type  - The type to limit the index to, or undef if none.
+#       type  - The <TopicType> to limit the index to, or undef if none.
 #
 sub BuildIndex #(type)
     {
@@ -212,10 +212,8 @@ sub BuildIndex #(type)
         . '</body></html>';
 
 
-    my $index = NaturalDocs::SymbolTable->Index($type);
-    my $indexContent = $self->BuildIndexContent($index, $indexFile);
-    my $indexPages = $self->BuildIndexFiles($type, $indexContent, $startPage, $endPage);
-    $self->PurgeIndexFiles($type, $indexPages + 1);
+    my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startPage, $endPage);
+    $self->PurgeIndexFiles($type, $pageCount + 1);
     };
 
 
@@ -295,7 +293,7 @@ sub UpdateMenu
 #
 #   Parameters:
 #
-#       sourceFile - The source file.
+#       sourceFile - The source <FileName>.
 #
 sub UpdateFile #(sourceFile)
     {
@@ -333,7 +331,7 @@ sub UpdateFile #(sourceFile)
 #
 #   Parameters:
 #
-#       type - The index type, or undef if note.
+#       type - The index <TopicType>, or undef if none.
 #
 sub UpdateIndex #(type)
     {

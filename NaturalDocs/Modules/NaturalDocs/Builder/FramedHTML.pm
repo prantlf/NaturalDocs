@@ -55,7 +55,7 @@ sub CommandLineOption
 #
 #   Parameters:
 #
-#       sourcefile       - The name of the source file.
+#       sourcefile       - The <FileName> of the source file.
 #       parsedFile      - An arrayref of the source file as <NaturalDocs::Parser::ParsedTopic> objects.
 #
 sub BuildFile #(sourceFile, parsedFile)
@@ -125,7 +125,7 @@ sub BuildFile #(sourceFile, parsedFile)
 #
 #   Parameters:
 #
-#       type  - The type to limit the index to, or undef if none.
+#       type  - The <TopicType> to limit the index to, or undef if none.
 #
 sub BuildIndex #(type)
     {
@@ -173,10 +173,8 @@ sub BuildIndex #(type)
     my $endPage = $self->ClosingBrowserStyles() . '</body></html>';
 
 
-    my $index = NaturalDocs::SymbolTable->Index($type);
-    my $indexContent = $self->BuildIndexContent($index, $indexFile);
-    my $indexPages = $self->BuildIndexFiles($type, $indexContent, $startPage, $endPage);
-    $self->PurgeIndexFiles($type, $indexPages + 1);
+    my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startPage, $endPage);
+    $self->PurgeIndexFiles($type, $pageCount + 1);
     };
 
 
