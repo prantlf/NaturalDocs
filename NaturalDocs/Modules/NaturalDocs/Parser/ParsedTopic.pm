@@ -35,12 +35,13 @@ package NaturalDocs::Parser::ParsedTopic;
 #       BODY          - The body of the topic, formatted in <NDMarkup>.  Some topics may not have bodies, and if not, this
 #                           will be undef.
 #       LINE_NUMBER  - The line number the topic appears at in the file.
+#       IS_LIST - Whether the topic is a list.
 #       EXPORTED  - If set, a second, global topic should also be defined to forward to this one.
 #       EXPORTED_LIST  - If the <TopicType> is a list, a hashref of the symbols in that list that should be exported.  Undef if
 #                                   none or not applicable.
 #
 use NaturalDocs::DefineMembers 'TYPE', 'TITLE', 'PACKAGE', 'USING', 'PROTOTYPE', 'SUMMARY', 'BODY',
-                                                 'LINE_NUMBER', 'EXPORTED', 'EXPORTED_LIST';
+                                                 'LINE_NUMBER', 'IS_LIST', 'EXPORTED', 'EXPORTED_LIST';
 # DEPENDENCY: New() depends on the order of these constants, and that this class is not inheriting any members.
 
 
@@ -62,19 +63,20 @@ use NaturalDocs::DefineMembers 'TYPE', 'TITLE', 'PACKAGE', 'USING', 'PROTOTYPE',
 #       summary   - The summary of the topic, if any.
 #       body          - The body of the topic, formatted in <NDMarkup>.  May be undef, as some topics may not have bodies.
 #       lineNumber - The line number the topic appears at in the file.
+#       isList          - Whether the topic is a list topic or not.
 #
 #   Returns:
 #
 #       The new object.
 #
-sub New #(type, title, package, using, prototype, summary, body, lineNumber)
+sub New #(type, title, package, using, prototype, summary, body, lineNumber, isList)
     {
     # DEPENDENCY: This depends on the order of the parameter list being the same as the constants, and that there are no
     # members inherited from a base class.
 
     my $package = shift;
 
-    my $object = [ @_, undef, undef ];  # for EXPORTED, EXPORTED_LIST
+    my $object = [ @_ ];
     bless $object, $package;
 
     return $object;
@@ -91,6 +93,16 @@ sub Type
 sub SetType #(type)
     {  $_[0]->[TYPE] = $_[1];  };
 
+# Function: IsList
+# Returns whether the topic is a list.
+sub IsList
+    {  return $_[0]->[IS_LIST];  };
+
+# Function: SetIsList
+# Sets whether the topic is a list.
+sub SetIsList
+    {  $_[0]->[IS_LIST] = $_[1];  };
+
 # Function: Title
 # Returns the title of the topic.
 sub Title
@@ -103,7 +115,7 @@ sub Title
 #
 #   Type-Specific Behavior:
 #
-#       - If <NaturalDocs::Topics->IsAlwaysGlobal()> is set for the <TopicType>, the symbol will be generated from the title only.
+#       - If the <TopicType> is always global, the symbol will be generated from the title only.
 #       - Everything else's symbols will be generated from the title and the package passed to <New()>.
 #
 sub Symbol
@@ -112,7 +124,7 @@ sub Symbol
 
     my $titleSymbol = NaturalDocs::SymbolString->FromText($self->[TITLE]);
 
-    if (NaturalDocs::Topics->IsAlwaysGlobal($self->Type()))
+    if (NaturalDocs::Topics->TypeInfo($self->Type())->Scope() == ::SCOPE_ALWAYS_GLOBAL())
         {  return $titleSymbol;  }
     else
         {
@@ -128,17 +140,17 @@ sub Symbol
 #
 #   Type-Specific Behavior:
 #
-#       - If <NaturalDocs::Topics->HasScope()> is set for the <TopicType>, the package will be generated from both the title and
-#         the package passed to <New()>, not just the package.
-#       - If <NaturalDocs::Topics->IsAlwaysGlobal()> is set for the <TopicType>, the package will be the one passed to <New()>,
-#         even though it isn't part of it's <Symbol()>.
+#       - If the <TopicType> has scope, the package will be generated from both the title and the package passed to <New()>, not
+#         just the package.
+#       - If the <TopicType> is always global, the package will be the one passed to <New()>, even though it isn't part of it's
+#         <Symbol()>.
 #       - Everything else's package will be what was passed to <New()>, even if the title has separator symbols in it.
 #
 sub Package
     {
     my ($self) = @_;
 
-    if (NaturalDocs::Topics->HasScope($self->Type()))
+    if (NaturalDocs::Topics->TypeInfo($self->Type())->Scope() == ::SCOPE_START())
         {  return $self->Symbol();  }
     else
         {  return $self->[PACKAGE];  };
