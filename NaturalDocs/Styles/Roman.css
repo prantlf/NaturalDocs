@@ -196,10 +196,14 @@ body.FramedContentPage,
 
     .CFunction .CPrototype {
         background-color: #F4F4F4; border-color: #D0D0D0 }
-    .CVariable .CPrototype {
-        background-color: #FFFFF0; border-color: #E0E0A0 }
     .CProperty .CPrototype {
         background-color: #F4F4FF; border-color: #C0C0E8 }
+    .CVariable .CPrototype {
+        background-color: #FFFFF0; border-color: #E0E0A0 }
+    .CConstant .CPrototype {
+        background-color: #C8C8C8; border-color: #000000 }
+    .CType .CPrototype {
+        background-color: #FFF8F8; border-color: #E8C8C8 }
     .CToolTip .CPrototype {
         margin: 0 0 .5em 0 }
 
