@@ -888,13 +888,6 @@ sub MergeAutoTopics #(topicList)
             $autoTopicIndex++;
             }
 
-        # Skip the topic if it's not the last one appearing before the next auto-topic.
-        elsif ($topicIndex + 1 < scalar @$topics &&
-                $topics->[$topicIndex + 1]->LineNumber() < $autoTopic->LineNumber())
-            {
-            $topicIndex++;
-            }
-
         # Transfer the prototype if we have a match.
         elsif ($topic->Type() == $autoTopic->Type() &&
                 index($topic->Name(), $self->MakeSortableSymbol($autoTopic->Name(), $autoTopic->Type())) != -1)
