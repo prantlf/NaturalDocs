@@ -539,9 +539,48 @@ List: Index Styles
     ISubIndex - Surrounds all <IEntry>'s in a sub-index.
 
 
+Topic: Tool Tip Structure
+
+    Tool tips may appear anywhere in the page, mainly because it's assumed that they will use position: absolute and visibility:
+    hidden.
+
+    The entire tool tip is found in a <CToolTip> style, with a CType style inside it.  CTypes are normally outside their elements, but
+    that would cause it to be partially visible in this case.  We need <CToolTip> to be the outermost style so its visibility and
+    position can be manipulated in JavaScript.
+
+    Inside there's a <CPrototype> and/or the description text.  The description text has no special surrounding tags.
+
+    >   <CToolTip>
+    >
+    >       <CPrototype>
+    >           Prototype
+    >       </CPrototype>
+    >
+    >       Summary text
+    >
+    >   </CToolTip>
+
+List: Tool Tip Styles
+
+    CToolTip - Surrounds the entire tool tip.  This *must* have position: absolute and visibility: hidden for the tool tip mechanism
+                    to work.
+
+    See also <CPrototype>.
+
+
+List: Miscellaneous Styles
+
+    HB   - Hidden Break.  Will surround a single space to try to break a word transparently.  Should be set to as small as possible.
+
+
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
+
+    1.1:
+
+        - Added <Tool Tip Styles>.
+        - Renamed HiddenBreak to <HB>.
 
     1.0:
 
