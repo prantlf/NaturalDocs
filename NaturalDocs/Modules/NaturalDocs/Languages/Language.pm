@@ -371,6 +371,25 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
                 $newStartingIndex = $testIndex + 1;
                 };
             }
+        elsif ($ender =~ /^[a-z]+$/i)
+            {
+            my $newStartingIndex = $startingIndex;
+
+            for (;;)
+                {
+                $testIndex = index($$stringRef, $ender, $newStartingIndex);
+
+                if ($testIndex == -1)
+                    {  last;  };
+
+                # If the ender is a text keyword, the next and previous character can't be alphanumeric.
+                if ( ($testIndex == 0 || substr($$stringRef, $testIndex - 1, 1) !~ /^[a-z0-9_]$/i) &&
+                     substr($$stringRef, $testIndex + length($ender), 1) !~ /^[a-z0-9_]$/i )
+                    {  last;  };
+
+                $newStartingIndex = $testIndex + 1;
+                };
+            }
         else
             {  $testIndex = index($$stringRef, $ender, $startingIndex);  };
 
