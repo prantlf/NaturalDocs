@@ -1144,7 +1144,7 @@ sub SaveMenuFile
             if ($index eq '*')
                 {  print MENUFILEHANDLE 'General';  }
             else
-                {  print MENUFILEHANDLE NaturalDocs::Topics->PluralNameOf($index);  };
+                {  print MENUFILEHANDLE NaturalDocs::Topics->PluralNameOf($index, 1);  };
             };
 
         print MENUFILEHANDLE "\n\n";
@@ -1234,7 +1234,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
             my $type;
             if (defined $entry->Target())
                 {
-                $type = NaturalDocs::Topics->NameOf($entry->Target()) . ' ';
+                $type = NaturalDocs::Topics->NameOf($entry->Target(), 1) . ' ';
                 };
 
             print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
