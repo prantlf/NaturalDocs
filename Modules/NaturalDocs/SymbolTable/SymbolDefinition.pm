@@ -25,7 +25,7 @@ package NaturalDocs::SymbolTable::SymbolDefinition;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#       TYPE  - The symbol type.  Will be one of the <Topic Types>.
+#       TYPE  - The symbol <TopicType>.
 #       PROTOTYPE  - The symbol's prototype, if applicable.  Will be undef otherwise.
 #       SUMMARY - The symbol's summary, if applicable.  Will be undef otherwise.
 #
@@ -36,7 +36,7 @@ use constant SUMMARY => 2;
 
 
 ###############################################################################
-# Group: Modification Functions
+# Group: Functions
 
 #
 #   Function: New
@@ -45,7 +45,7 @@ use constant SUMMARY => 2;
 #
 #   Parameters:
 #
-#       type - The symbol type.  Should be one of the <Topic Types>.
+#       type - The symbol <TopicType>.
 #       prototype  - The symbol prototype, if applicable.  Undef otherwise.
 #       summary - The symbol's summary, if applicable.  Undef otherwise.
 #
@@ -62,59 +62,35 @@ sub New #(type, prototype, summary)
     };
 
 
+#   Function: Type
+#   Returns the definition's <TopicType>.
+sub Type
+    {  return $_[0]->[TYPE];  };
+
 # Function: SetType
-# Changes the type.
+# Changes the <TopicType>.
 sub SetType #(type)
-    {
-    my ($self, $type) = @_;
-    $self->[TYPE] = $type;
-    };
+    {  $_[0]->[TYPE] = $_[1];  };
+
+#   Function: Prototype
+#   Returns the definition's prototype, or undef if it doesn't have one.
+sub Prototype
+    {  return $_[0]->[PROTOTYPE];  };
 
 # Function: SetPrototype
 # Changes the prototype.
 sub SetPrototype #(prototype)
-    {
-    my ($self, $prototype) = @_;
-    $self->[PROTOTYPE] = $prototype;
-    };
+    {  $_[0]->[PROTOTYPE] = $_[1];  };
+
+#   Function: Summary
+#   Returns the definition's summary, or undef if it doesn't have one.
+sub Summary
+    {  return $_[0]->[SUMMARY];  };
 
 # Function: SetSummary
 # Changes the summary.
 sub SetSummary #(summary)
-    {
-    my ($self, $summary) = @_;
-    $self->[SUMMARY] = $summary;
-    };
-
-
-###############################################################################
-# Group: Information Functions
-
-#
-#   Function: Type
-#
-#   Returns the definition's type.  Will be one of the <Topic Types>.
-#
-sub Type
-    {  return $_[0]->[TYPE];  };
-
-
-#
-#   Function: Prototype
-#
-#   Returns the definition's prototype, or undef if it doesn't have one.
-#
-sub Prototype
-    {  return $_[0]->[PROTOTYPE];  };
-
-
-#
-#   Function: Summary
-#
-#   Returns the definition's summary, or undef if it doesn't have one.
-#
-sub Summary
-    {  return $_[0]->[SUMMARY];  };
+    {  $_[0]->[SUMMARY] = $_[1];  };
 
 
 1;
