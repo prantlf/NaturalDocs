@@ -39,8 +39,8 @@ package NaturalDocs::ConfigFile;
 #
 #   > [keyword]: [value]
 #
-#   Keywords can only contain letters, numbers, spaces, apostrophes, and dashes.  Keywords are not case sensitive.  Values can
-#   be anything and run until the end of the line or a comment.
+#   Keywords can only contain <CFChars>.  Keywords are not case sensitive.  Values can be anything and run until the end of
+#   the line or a comment.
 #
 #   > [value]
 #
@@ -50,6 +50,19 @@ package NaturalDocs::ConfigFile;
 #
 #   Files supporting brace groups (specified in <Open()>) may also have braces that can appear anywhere.  It allows more than
 #   one thing to appear per line, which isn't supported otherwise.  Consequently, values may not have braces.
+#
+
+
+#
+#   Topic: CFChars
+#
+#   The characters that can appear in configuration file keywords and user-defined element names: letters, numbers, spaces,
+#   dashes, slashes, apostrophes, and periods.
+#
+#   Although the list above is exhaustive, it should be noted that you especially can *not* use colons (messes up keyword: value
+#   sequences) commas (messes up item, item, item list sequences) and hashes (messes up comment detection.)
+#
+#   You can search the source code for [CFChars] to find all the instances where this definition is used.
 #
 
 
@@ -251,7 +264,7 @@ sub GetLine
         };
 
 
-    if ($line =~ /^([a-z0-9 '-]+?) ?: ?(.*)$/i)
+    if ($line =~ /^([a-z0-9\ \'\/\.\-]+?) ?: ?(.*)$/i) # [CFChars]
         {
         my ($keyword, $value) = ($1, $2);
         return (lc($keyword), $value, $comment);
@@ -386,6 +399,31 @@ sub PrintErrorsAndAnnotateFile
 
 ###############################################################################
 # Group: Misc Functions
+
+
+#
+#   Function: HasOnlyCFChars
+#
+#   Returns whether the passed string contains only <CFChars>.
+#
+sub HasOnlyCFChars #(string)
+    {
+    my ($self, $string) = @_;
+    return ($string =~ /^[a-z0-9\ \.\-\/\']*$/i);  # [CFChars]
+    };
+
+
+#
+#   Function: CFCharNames
+#
+#   Returns a plain-english list of <CFChars> which can be embedded in a sentence.  For example, "You can only use
+#   [CFCharsList()] in the name.
+#
+sub CFCharNames
+    {
+    # [CFChars]
+    return 'letters, numbers, spaces, periods, dashes, slashes, and apostrophes';
+    };
 
 
 #
