@@ -12,7 +12,7 @@
 #
 #       - Prior to initialization, <NaturalDocs::Builder> must have all its output packages registered.
 #
-#       - To initialize, call <ParseCommandLine()>.  All other functions will then be available.
+#       - To initialize, call <Load()>.  All other functions will then be available.
 #
 ###############################################################################
 
@@ -31,6 +31,9 @@ package NaturalDocs::Settings;
 ###############################################################################
 # Group: Variables
 
+# handle: SETTINGSFILEHANDLE
+# The file handle used with <Settings.txt>.
+
 # var: inputDirectory
 # The input directory.
 my $inputDirectory;
@@ -40,7 +43,7 @@ my $inputDirectory;
 my $projectDirectory;
 
 # array: buildTargets
-# An array of <NaturalDocs::Settings::BuildTargets>.
+# An array of <NaturalDocs::Settings::BuildTarget>s.
 my @buildTargets;
 
 # int: tabLength
@@ -69,13 +72,244 @@ my $defaultStyle;
 
 
 ###############################################################################
-# Group: Functions
+# Group: Files
+
+#
+#   File: Settings.txt
+#
+#   The file that stores the Natural Docs build targets.
+#
+#   Format:
+#
+#       The file is plain text.  Blank lines can appear anywhere and are ignored.  Tags and their content must be completely
+#       contained on one line.
+#
+#       > # [comment]
+#
+#       The file supports single-line comments via #.  They can appear alone on a line or after content.
+#
+#       > Format: [version]
+#       > TabLength: [length]
+#       > Style: [style]
+#
+#       The file format version, tab length, and default style are specified as above.  Each can only be specified once, with
+#       subsequent ones being ignored.  Notice that the tags correspond to the long forms of the command line options.
+#
+#       > Source: [directory]
+#       > Input: [directory]
+#
+#       The input directory is specified as above.  As in the command line, either "Source" or "Input" can be used.
+#
+#       > [Extension Option]: [opton]
+#
+#       Options for extensions can be specified as well.  The long form is used as the tag.
+#
+#       > Option: [HeadersOnly], [Quiet], [Extension Option]
+#
+#       Options that don't have parameters can be specified in an Option line.  The commas are not required.
+#
+#       > Output: [name]
+#
+#       Specifies an output target with a user defined name.  The name is what will be referenced from the command line, and the
+#       name "All" is reserved.
+#
+#       *The options below can only be specified after an output tag.*  Everything that follows an output tag is part of that target's
+#       options until the next output tag.
+#
+#       > Format: [format]
+#
+#       The output format of the target.
+#
+#       > Directory: [directory]
+#       > Location: [directory]
+#       > Folder: [directory]
+#
+#       The output directory of the target.  All are synonyms.
+#
+#       > Style: [style]
+#
+#       The style of the output target.  This overrides the default and is optional.
+#
+
+
+###############################################################################
+# Group: Action Functions
+
+#
+#   Function: Load
+#
+#   Loads and parses all settings from the command line and configuration files.  Will exit if the options are invalid or the syntax
+#   reference was requested.
+#
+sub Load
+    {
+    my ($self) = @_;
+
+    $self->ParseCommandLine();
+    };
+
+
+#
+#   Function: Save
+#
+#   Saves all settings in configuration files to disk.
+#
+sub Save
+    {
+    my ($self) = @_;
+
+    $self->SaveSettingsFile();
+    };
+
+
+###############################################################################
+# Group: Information Functions
+
+
+# Function: InputDirectory
+# Returns the input directory.
+sub InputDirectory
+    {  return $inputDirectory;  };
+
+# Function: BuildTargets
+# Returns an arrayref of <NaturalDocs::Settings::BuildTarget>s.
+sub BuildTargets
+    {  return \@buildTargets;  };
+
+#
+#   Function: OutputDirectoryOf
+#
+#   Returns the output directory of a builder object.
+#
+#   Parameters:
+#
+#       object - The builder object.
+#
+#   Returns:
+#
+#       The builder directory, or undef if the object wasn't found..
+#
+sub OutputDirectoryOf #(object)
+    {
+    my ($self, $object) = @_;
+
+    foreach my $buildTarget (@buildTargets)
+        {
+        if ($buildTarget->Builder() == $object)
+            {  return $buildTarget->Directory();  };
+        };
+
+    return undef;
+    };
+
+
+#
+#   Function: OutputStyleOf
+#
+#   Returns the style associated with a builder object.
+#
+#   Parameters:
+#
+#       object - The builder object.
+#
+#   Returns:
+#
+#       The style string, or undef if the object wasn't found.
+#
+sub OutputStyleOf #(object)
+    {
+    my ($self, $object) = @_;
+
+    foreach my $buildTarget (@buildTargets)
+        {
+        if ($buildTarget->Builder() == $object)
+            {  return $buildTarget->Style();  };
+        };
+
+    return undef;
+    };
+
+# Function: ProjectDirectory
+# Returns the project directory.
+sub ProjectDirectory
+    {  return $projectDirectory;  };
+
+# Function: ProjectDataDirectory
+# Returns the project data directory.
+sub ProjectDataDirectory
+    {  return NaturalDocs::File->JoinPath($projectDirectory, 'Data', 1);  };
+
+# Function: StyleDirectory
+# Returns the main style directory.
+sub StyleDirectory
+    {  return NaturalDocs::File->JoinPath($FindBin::Bin, 'Styles', 1);  };
+
+# Function: TabLength
+# Returns the number of spaces tabs should be expanded to.
+sub TabLength
+    {  return $tabLength;  };
+
+# Function: RebuildData
+# Returns whether the script should rebuild all data files from scratch.
+sub RebuildData
+    {  return $rebuildData;  };
+
+# Function: RebuildOutput
+# Returns whether the script should rebuild all output files from scratch.
+sub RebuildOutput
+    {  return $rebuildOutput;  };
+
+# Function: IsQuiet
+# Returns whether the script should be run in quiet mode or not.
+sub IsQuiet
+    {  return $isQuiet;  };
+
+# Function: HeadersOnly
+# Returns whether to only check the header files in C/C++;
+sub HeadersOnly
+    {  return $headersOnly;  };
+
+
+###############################################################################
+# Group: Constant Functions
+
+#
+#   Function: AppVersion
+#
+#   Returns Natural Docs' version number as an integer.  Use <TextAppVersion()> to get a printable version.
+#
+sub AppVersion
+    {
+    my ($self) = @_;
+    return NaturalDocs::Version->FromString($self->TextAppVersion());
+    };
+
+#
+#   Function: TextAppVersion
+#
+#   Returns Natural Docs' version number as plain text.
+#
+sub TextAppVersion
+    {  return '1.13';  };
+
+#
+#   Function: AppURL
+#
+#   Returns a string of the project's current web address.
+#
+sub AppURL
+    {  return 'http://www.naturaldocs.org';  };
+
+
+###############################################################################
+# Group: Support Functions
+
 
 #
 #   Function: ParseCommandLine
 #
 #   Parses and validates the command line.  Will cause the script to exit if the options ask for the syntax reference or
-#   are invalid.  Needs to be run before calling any other functions in this package.
+#   are invalid.
 #
 sub ParseCommandLine
     {
@@ -460,139 +694,400 @@ sub PrintSyntax
     };
 
 
-# Function: InputDirectory
-# Returns the input directory.
-sub InputDirectory
-    {  return $inputDirectory;  };
-
-# Function: BuildTargets
-# Returns an arrayref of <NaturalDocs::Settings::BuildTargets>.
-sub BuildTargets
-    {  return \@buildTargets;  };
-
 #
-#   Function: OutputDirectoryOf
+#   Function: LoadSettingsFile
 #
-#   Returns the output directory of a builder object.
-#
-#   Parameters:
-#
-#       object - The builder object.
+#   Loads and parses <Settings.txt>.
 #
 #   Returns:
 #
-#       The builder directory, or undef if the object wasn't found..
+#       An arrayref of <NaturalDocs::Settings::BuildTarget>s.  If there's nothing in the file, it returns an empty arrayref.
 #
-sub OutputDirectoryOf #(object)
-    {
-    my ($self, $object) = @_;
-
-    foreach my $buildTarget (@buildTargets)
-        {
-        if ($buildTarget->Builder() == $object)
-            {  return $buildTarget->Directory();  };
-        };
-
-    return undef;
-    };
-
-
-#
-#   Function: OutputStyleOf
-#
-#   Returns the style associated with a builder object.
-#
-#   Parameters:
-#
-#       object - The builder object.
-#
-#   Returns:
-#
-#       The style string, or undef if the object wasn't found.
-#
-sub OutputStyleOf #(object)
-    {
-    my ($self, $object) = @_;
-
-    foreach my $buildTarget (@buildTargets)
-        {
-        if ($buildTarget->Builder() == $object)
-            {  return $buildTarget->Style();  };
-        };
-
-    return undef;
-    };
-
-# Function: ProjectDirectory
-# Returns the project directory.
-sub ProjectDirectory
-    {  return $projectDirectory;  };
-
-# Function: ProjectDataDirectory
-# Returns the project data directory.
-sub ProjectDataDirectory
-    {  return NaturalDocs::File->JoinPath($projectDirectory, 'Data', 1);  };
-
-# Function: StyleDirectory
-# Returns the main style directory.
-sub StyleDirectory
-    {  return NaturalDocs::File->JoinPath($FindBin::Bin, 'Styles', 1);  };
-
-# Function: TabLength
-# Returns the number of spaces tabs should be expanded to.
-sub TabLength
-    {  return $tabLength;  };
-
-# Function: RebuildData
-# Returns whether the script should rebuild all data files from scratch.
-sub RebuildData
-    {  return $rebuildData;  };
-
-# Function: RebuildOutput
-# Returns whether the script should rebuild all output files from scratch.
-sub RebuildOutput
-    {  return $rebuildOutput;  };
-
-# Function: IsQuiet
-# Returns whether the script should be run in quiet mode or not.
-sub IsQuiet
-    {  return $isQuiet;  };
-
-# Function: HeadersOnly
-# Returns whether to only check the header files in C/C++;
-sub HeadersOnly
-    {  return $headersOnly;  };
-
-
-###############################################################################
-# Group: Constant Functions
-
-#
-#   Function: AppVersion
-#
-#   Returns Natural Docs' version number as an integer.  Use <TextAppVersion()> to get a printable version.
-#
-sub AppVersion
+sub LoadSettingsFile
     {
     my ($self) = @_;
-    return NaturalDocs::Version->FromString($self->TextAppVersion());
+
+    my $errors = [ ];
+    my $buildTargets = [ ];
+    my $lineNumber = 1;
+
+    if (open(SETTINGSFILEHANDLE, '<' . NaturalDocs::Project->SettingsFile()))
+        {
+        my $settingsFileContent;
+        read(SETTINGSFILEHANDLE, $settingsFileContent, -s SETTINGSFILEHANDLE);
+        close(SETTINGSFILEHANDLE);
+
+        # We don't check if the settings file is from a future version because we can't just throw it out and regenerate it like we can
+        # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
+
+        $settingsFileContent =~ /^[ \t]*format:[ \t]+([0-9\.]+)/mi;
+        my $version = $1;
+
+        # Strip tabs.
+        $settingsFileContent =~ tr/\t/ /;
+
+        my @lines = split(/\n/, $settingsFileContent);
+        my $segment;
+
+        foreach my $line (@lines)
+            {
+            # Strip off comments and edge spaces.
+            $line =~ s/#.*$//;
+            $line =~ s/^ +//;
+            $line =~ s/ +$//;
+
+            # Ignore lines with no content.
+            if (!length $line)
+                {  next;  };
+
+            # If the line is keyword: name...
+             if ($line =~ /^([^:]+): +([^ ].*)$/)
+                {
+                my $keyword = lc($1);
+                my $name = $2;
+
+#                    if (exists $menuSynonyms{$type})
+#                        {
+#                        $type = $menuSynonyms{$type};
+
+#                        # Currently index is the only type allowed modifiers.
+#                        if (defined $modifier && $type != ::MENU_INDEX())
+#                            {
+#                            push @$errors, NaturalDocs::Menu::Error->New($lineNumber,
+#                                                                                                 $modifier . ' ' . $menuSynonyms{$type}
+#                                                                                                 . ' is not a valid keyword.');
+#                            next;
+#                            };
+
+#                        if ($type == ::MENU_GROUP())
+#                            {
+#                            # End a braceless group, if we were in one.
+#                            if ($inBracelessGroup)
+#                                {
+#                                $currentGroup = pop @groupStack;
+#                                $inBracelessGroup = undef;
+#                                };
+
+#                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), $name, undef, undef);
+
+#                            $currentGroup->PushToGroup($entry);
+
+#                            push @groupStack, $currentGroup;
+#                            $currentGroup = $entry;
+
+#                            $afterGroupToken = 1;
+#                            }
+
+#                        elsif ($type == ::MENU_FILE())
+#                            {
+#                            my $flags = 0;
+
+#                            no integer;
+
+#                            if ($version >= 1.0)
+#                                {
+#                                if (lc($extras[0]) eq 'no auto-title')
+#                                    {
+#                                    $flags |= ::MENU_FILE_NOAUTOTITLE();
+#                                    shift @extras;
+#                                    }
+#                                elsif (lc($extras[0]) eq 'auto-title')
+#                                    {
+#                                    # It's already the default, but we want to accept the keyword anyway.
+#                                    shift @extras;
+#                                    };
+#                                }
+#                            else
+#                                {
+#                                # Prior to 1.0, the only extra was "auto-title" and the default was off instead of on.
+#                                if (lc($extras[0]) eq 'auto-title')
+#                                    {  shift @extras;  }
+#                                else
+#                                    {
+#                                    # We deliberately leave it auto-titled, but save the original title.
+#                                    $oldLockedTitles->{$extras[0]} = $name;
+#                                    };
+#                                };
+
+#                            use integer;
+
+#                            if (!scalar @extras)
+#                                {
+#                                push @$errors, NaturalDocs::Menu::Error->New($lineNumber,
+#                                                                                                     'File entries need to be in format '
+#                                                                                                     . '"File: [title] ([location])"');
+#                                next;
+#                                };
+
+#                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $name, $extras[0], $flags);
+
+#                            $currentGroup->PushToGroup($entry);
+
+#                            $filesInMenu->{$extras[0]} = $entry;
+#                            }
+
+#                        # There can only be one title, subtitle, and footer.
+#                        elsif ($type == ::MENU_TITLE())
+#                            {
+#                            if (!defined $title)
+#                                {  $title = $name;  }
+#                            else
+#                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Title can only be defined once.');  };
+#                            }
+#                        elsif ($type == ::MENU_SUBTITLE())
+#                            {
+#                            if (defined $title)
+#                                {
+#                                if (!defined $subTitle)
+#                                    {  $subTitle = $name;  }
+#                                else
+#                                    {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'SubTitle can only be defined once.');  };
+#                                }
+#                            else
+#                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Title must be defined before SubTitle.');  };
+#                            }
+#                        elsif ($type == ::MENU_FOOTER())
+#                            {
+#                            if (!defined $footer)
+#                                {  $footer = $name;  }
+#                            else
+#                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Copyright can only be defined once.');  };
+#                            }
+
+#                        elsif ($type == ::MENU_TEXT())
+#                            {
+#                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_TEXT(), $name, undef, undef) );
+#                            }
+
+#                        elsif ($type == ::MENU_LINK())
+#                            {
+#                            my $target;
+
+#                            if (scalar @extras)
+#                                {
+#                                $target = $extras[0];
+#                                }
+
+#                            # We need to support # appearing in urls.
+#                            elsif (scalar @segments >= 2 && $segments[0] eq '#' && $segments[1] =~ /^[^ ].*\) *$/ &&
+#                                    $name =~ /^.*\( *[^\(\)]*[^\(\)\ ]$/)
+#                                {
+#                                $name =~ /^(.*)\(\s*([^\(\)]*[^\(\)\ ])$/;
+
+#                                $name = $1;
+#                                $target = $2;
+
+#                                $name =~ s/ +$//;
+
+#                                $segments[1] =~ /^([^ ].*)\) *$/;
+
+#                                $target .= '#' . $1;
+
+#                                shift @segments;
+#                                shift @segments;
+#                                }
+
+#                            else
+#                                {
+#                                $target = $name;
+#                                };
+
+#                            $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_LINK(), $name, $target, undef) );
+#                            }
+
+#                        elsif ($type == ::MENU_INDEX())
+#                            {
+#                            if (!defined $modifier || $modifier eq 'general')
+#                                {
+#                                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, undef, undef);
+#                                $currentGroup->PushToGroup($entry);
+
+#                                $indexes{'*'} = 1;
+#                                }
+#                            elsif ($modifier eq 'don\'t')
+#                                {
+#                                # We'll tolerate splits by spaces as well as commas.
+#                                my @splitLine = split(/ +|, */, lc($name));
+
+#                                foreach my $bannedIndex (@splitLine)
+#                                    {
+#                                    if ($bannedIndex eq 'general')
+#                                        {  $bannedIndex = '*';  }
+#                                    else
+#                                        {  $bannedIndex = NaturalDocs::Topics->NonListConstantOf($bannedIndex);  };
+
+#                                    if (defined $bannedIndex)
+#                                        {  $bannedIndexes{$bannedIndex} = 1;  };
+#                                    };
+#                                }
+#                            else
+#                                {
+#                                my $modifierType = NaturalDocs::Topics->NonListConstantOf($modifier);
+
+#                                if (defined $modifierType && NaturalDocs::Topics->IsIndexable($modifierType))
+#                                    {
+#                                    $indexes{$modifierType} = 1;
+#                                    $currentGroup->PushToGroup(
+#                                        NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $name, $modifierType, undef) );
+#                                    }
+#                                else
+#                                    {
+#                                    push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $modifier . ' is not a valid index type.');
+#                                    };
+#                                };
+#                            }
+
+#                        # There's also MENU_FORMAT, but that was already dealt with.  We don't need to parse it, just make sure it
+#                        # doesn't cause an error.
+
+#                        }
+
+#                    # If the keyword doesn't exist...
+#                    else
+#                        {
+#                        push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $1 . ' is not a valid keyword.');
+#                        };
+
+                 }
+
+            # If the text is not keyword: name or whitespace...
+            else
+                {
+                push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Every line must start with a keyword.');
+                };
+
+
+            $lineNumber++;
+            }; # foreach line
+
+
+
+#        # End a braceless group, if we were in one.
+#        if ($inBracelessGroup)
+#            {
+#            $currentGroup = pop @groupStack;
+#            $inBracelessGroup = undef;
+#            };
+
+#        # Close up all open groups.
+#        my $openGroups = 0;
+#        while (scalar @groupStack)
+#            {
+#            $currentGroup = pop @groupStack;
+#            $openGroups++;
+#            };
+
+#        if ($openGroups == 1)
+#            {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'There is an unclosed group.');  }
+#        elsif ($openGroups > 1)
+#            {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
+
+
+#        no integer;
+
+#        if ($version < 1.0)
+#            {
+#            # Prior to 1.0, there was no auto-placement.  New entries were either tacked onto the end of the menu, or if there were
+#            # groups, added to a top-level group named "Other".  Since we have auto-placement now, delete "Other" so that its
+#            # contents get placed.
+
+#            my $index = scalar @{$menu->GroupContent()} - 1;
+#            while ($index >= 0)
+#                {
+#                if ($menu->GroupContent()->[$index]->Type() == ::MENU_GROUP() &&
+#                    lc($menu->GroupContent()->[$index]->Title()) eq 'other')
+#                    {
+#                    splice( @{$menu->GroupContent()}, $index, 1 );
+#                    last;
+#                    };
+
+#                $index--;
+#                };
+
+#            # Also, prior to 1.0 there was no auto-grouping and crappy auto-titling.  We want to apply these the first time a post-1.0
+#            # release is run.
+
+#            my @groupStack = ( $menu );
+#            while (scalar @groupStack)
+#                {
+#                my $groupEntry = pop @groupStack;
+
+#                $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_UPDATETITLES() | ::MENU_GROUP_UPDATEORDER() |
+#                                                   ::MENU_GROUP_UPDATESTRUCTURE() );
+
+#                foreach my $entry (@{$groupEntry->GroupContent()})
+#                    {
+#                    if ($entry->Type() == ::MENU_GROUP())
+#                        {  push @groupStack, $entry;  };
+#                    };
+#                };
+#            };
+
+#        use integer;
+     };
+
+
+#    if (!scalar @$errors)
+#        {  $errors = undef;  };
+#    if (!scalar keys %$oldLockedTitles)
+#        {  $oldLockedTitles = undef;  };
+
+#    return ($errors, $filesInMenu, $oldLockedTitles);
     };
 
-#
-#   Function: TextAppVersion
-#
-#   Returns Natural Docs' version number as plain text.
-#
-sub TextAppVersion
-    {  return '1.13';  };
 
 #
-#   Function: AppURL
+#   Function: SaveSettingsFile
 #
-#   Returns a string of the project's current web address.
+#   Saves <Settings.txt> to disk.
 #
-sub AppURL
-    {  return 'http://www.naturaldocs.org';  };
+sub SaveSettingsFile
+    {
+    my ($self) = @_;
+
+    open(SETTINGSFILEHANDLE, '>' . NaturalDocs::Project->SettingsFile())
+        or die 'Could not save settings file ' . NaturalDocs::Project->SettingsFile();
+
+    # Remember to keep lines under 80 characters.
+    print SETTINGSFILEHANDLE
+
+    "# Do not change or remove this line.\n"
+    . 'Format: ' . $self->TextAppVersion() . "\n"
+    . "\n"
+    . "# ----------------------------------------------------------------------- #\n"
+    . "\n"
+
+    . 'Source: ' . $self->InputDirectory() . "\n"
+    . "\n"
+
+    . 'Style: ' . $defaultStyle . "\n"
+    . 'TabLength: ' . $tabLength . "\n"
+    . "\n"
+    . "# ----------------------------------------------------------------------- #\n"
+    . "\n";
+
+    for (my $i = 0; $i < scalar @buildTargets; $i++)
+        {
+        print SETTINGSFILEHANDLE
+
+        'Output: ' . ($i + 1) . "\n"
+        . "\n"
+
+        . '   Format: ' . $buildTargets[$i]->Builder()->CommandLineOption() . "\n"
+        . '   Directory: ' . $buildTargets[$i]->Directory() . "\n";
+
+        if ($buildTargets[$i]->Style() ne $defaultStyle)
+            {
+            print SETTINGSFILEHANDLE
+            "\n"
+            . '   Style: ' . $buildTargets[$i]->Style();
+            };
+
+        print SETTINGSFILEHANDLE "\n\n";
+        };
+
+    close(SETTINGSFILEHANDLE);
+    };
 
 
 1;
