@@ -245,14 +245,16 @@ sub BuildTitle #(sourceFile)
 #   Parameters:
 #
 #       outputFile - The output file to build the menu for.
+#       isFramed - Whether the menu will appear in a frame.  If so, it assumes the <base> HTML tag is set to make links go to the
+#                       appropriate frame.
 #
 #   Returns:
 #
 #       The side menu in HTML.
 #
-sub BuildMenu #(outputFile)
+sub BuildMenu #(outputFile, isFramed)
     {
-    my ($self, $outputFile) = @_;
+    my ($self, $outputFile, $isFramed) = @_;
 
     $menuGroupNumber = 1;
     @menuSelectionHierarchy = ( );
@@ -289,7 +291,7 @@ sub BuildMenu #(outputFile)
         };
 
 
-    $output .= $self->BuildMenuSegment($outputFile, NaturalDocs::Menu::Content(), undef);
+    $output .= $self->BuildMenuSegment($outputFile, NaturalDocs::Menu::Content(), undef, $isFramed);
 
 
     # If the completely expanded menu is too long, collapse all the groups that aren't in the selection hierarchy.  By doing this
@@ -357,14 +359,16 @@ sub BuildMenu #(outputFile)
 #                               of a group.
 #       hasSelectionRef - A reference to a boolean variable, which will be set to true if this function call had the selection in it.
 #                                 Won't be set if undef.
+#       isFramed - Whether the menu will be in a HTML frame or not.  Assumes that if it is, the <base> HTML tag will be set so that
+#                       links are directed to the proper frame.
 #
 #   Returns:
 #
 #       The menu segment in HTML.
 #
-sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
+sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef, isFramed)
     {
-    my ($self, $outputFile, $menuSegment, $hasSelectionRef) = @_;
+    my ($self, $outputFile, $menuSegment, $hasSelectionRef, $isFramed) = @_;
 
     my $output;
 
@@ -383,12 +387,13 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
             '<div class=MEntry>'
                 . '<div class=MGroup>'
 
-                    . '<a href="javascript:ToggleMenu(\'MGroupContent' . $myGroupNumber . '\')" target="_self">'
+                    . '<a href="javascript:ToggleMenu(\'MGroupContent' . $myGroupNumber . '\')"'
+                         . ($isFramed ? ' target="_self"' : '') . '>'
                         . $self->StringToHTML($entry->Title())
                     . '</a>'
 
                     . '<div class=MGroupContent id=MGroupContent' . $myGroupNumber . '>'
-                        . $self->BuildMenuSegment($outputFile, $entry->GroupContent(), \$hasSelection)
+                        . $self->BuildMenuSegment($outputFile, $entry->GroupContent(), \$hasSelection, $isFramed)
                     . '</div>'
 
                 . '</div>'
@@ -449,7 +454,7 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
             $output .=
             '<div class=MEntry>'
                 . '<div class=MLink>'
-                    . '<a href="' . $entry->Target() . '">'
+                    . '<a href="' . $entry->Target() . '"' . ($isFramed ? ' target="_top"' : '') . '>'
                         . $self->StringToHTML( $entry->Title() )
                     . '</a>'
                 . '</div>'
