@@ -616,7 +616,7 @@ sub LoadMenuFile
         # Strip tabs.
         $menuFileContent =~ tr/\t/ /;
 
-        my @segments = split(/([\n{}\#])/, $menuFileContent);
+        my @segments = split(/(\r\n|[\r\n{}\#])/, $menuFileContent);
         my $segment;
         $menuFileContent = undef;
 
