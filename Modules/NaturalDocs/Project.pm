@@ -312,12 +312,6 @@ sub MenuFile
 sub MenuBackupFile
     {  return NaturalDocs::File::JoinPath( NaturalDocs::Settings::ProjectDirectory(), 'NaturalDocs_MenuBackup.txt' );  };
 
-# Function: MenuFileWithErrors
-# Returns the full path to the project's menu file with errors.  This is saved as a backup if the menu file has errors and the user
-# wants to correct them.
-sub MenuFileWithErrors
-    {  return NaturalDocs::File::JoinPath( NaturalDocs::Settings::ProjectDirectory(), 'NaturalDocs_MenuErrors.txt' );  };
-
 # Function: FilesToParse
 # Returns an existence hashref of the list of files to parse.  This is not a copy of the data, so don't change it.
 sub FilesToParse
@@ -477,16 +471,12 @@ sub GetAllSupportedFiles #(directory)
         {  $directory = NaturalDocs::Settings::InputDirectory();  };
 
 
-    # We need to ignore these two files if we're at the project directory.
+    # We need to ignore the menu file if we're at the project directory.
 
     my $menuFile;
-    my $menuFileWithErrors;
 
     if ($directory eq NaturalDocs::Settings::ProjectDirectory())
-        {
-        $menuFile = MenuFile();
-        $menuFileWithErrors = MenuFileWithErrors();
-        };
+        {  $menuFile = MenuFile();  };
 
 
     my $directoryHandle;
@@ -515,7 +505,7 @@ sub GetAllSupportedFiles #(directory)
             my $relativeName = NaturalDocs::File::MakeRelativePath(NaturalDocs::Settings::InputDirectory(), $fullEntry);
 
             if (NaturalDocs::Languages::IsSupported($relativeName) &&
-                 (!defined $menuFile || ($fullEntry ne $menuFile && $fullEntry ne $menuFileWithErrors)) )
+                 (!defined $menuFile || $fullEntry ne $menuFile) )
                 {
                 $supportedFiles{$relativeName} = NaturalDocs::Project::File::New(undef, (stat($fullEntry))[9], undef, undef);
                 };
