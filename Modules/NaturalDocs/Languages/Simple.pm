@@ -173,12 +173,17 @@ sub ParseFile #(sourceFile, topicsList)
 
     if ($self->Name() eq 'Text File')
         {
-        my $line;
+        my $line = <SOURCEFILEHANDLE>;
 
-        while ($line = <SOURCEFILEHANDLE>)
+        # On the very first line, remove a Unicode BOM if present.  Information on it available at:
+        # http://www.unicode.org/faq/utf_bom.html#BOM
+        $line =~ s/^\xEF\xBB\xBF//;
+
+        while ($line)
             {
             ::XChomp(\$line);
             push @commentLines, $line;
+            $line = <SOURCEFILEHANDLE>;
             };
 
         NaturalDocs::Parser->OnComment(\@commentLines, 1);
@@ -188,6 +193,10 @@ sub ParseFile #(sourceFile, topicsList)
         {
         my $line = <SOURCEFILEHANDLE>;
         my $lineNumber = 1;
+
+        # On the very first line, remove a Unicode BOM if present.  Information on it available at:
+        # http://www.unicode.org/faq/utf_bom.html#BOM
+        $line =~ s/^\xEF\xBB\xBF//;
 
         while (defined $line)
             {
