@@ -85,9 +85,7 @@ use constant LAST_MEMBER => -1;  # No members, so zero is free to use.
 #       Implement <UpdateMenu()> to go through the list of unbuilt files and update their menus.  You can get the list from
 #       <NaturalDocs::Project->UnbuiltFilesWithContent()>.  You need to open their output files, replace the menu, and save it back
 #       to disk.  Yes, it would be simpler from a programmer's point of view to just rebuild the file completely, but that would be
-#       _very_ inefficient since there could potentially be a _lot_ of files in this group.  Plus, <NaturalDocs::SymbolTable> may not
-#       be available to this function, so this is impossible anyway.  (Without changing the main code, that is, and I'm not going to
-#       do that because it's grossly inefficient.  So just suck it up.)
+#       _very_ inefficient since there could potentially be a _lot_ of files in this group.
 #
 #       Also make sure <UpdateMenu()> goes through the unchanged indexes and updates them as well.
 #
@@ -246,8 +244,8 @@ sub New
 #
 #   Parameters:
 #
-#       hasChanged - Whether the project has changed, such as source files or the menu file.  If false, <NaturalDocs::SymbolTable>
-#                            and <NaturalDocs::Menu> won't be available and nothing else is going to be called except <EndBuild()>.
+#       hasChanged - Whether the project has changed, such as source files or the menu file.  If false, nothing else is going to be
+#                            called except <EndBuild()>.
 #
 sub BeginBuild #(hasChanged)
     {
@@ -264,8 +262,8 @@ sub BeginBuild #(hasChanged)
 #
 #   Parameters:
 #
-#       hasChanged - Whether the project has changed, such as source files or the menu file.  If false, <NaturalDocs::SymbolTable>
-#                            and <NaturalDocs::Menu> won't be available and the only other function that was called was <BeginBuild()>.
+#       hasChanged - Whether the project has changed, such as source files or the menu file.  If false, the only other function that
+#                            was called was <BeginBuild()>.
 #
 sub EndBuild #(hasChanged)
     {
