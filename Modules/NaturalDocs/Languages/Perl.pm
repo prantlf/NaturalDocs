@@ -702,7 +702,12 @@ sub TryToGetListOfStrings #(indexRef, lineNumberRef)
 
                 if (lc($tokens->[$symbolIndex]) eq 'qw')
                     {
-                    push @$strings, split(/[ \t]+/, $content);
+                    $content =~ tr/ \t\n/ /s;
+                    $content =~ s/^ //;
+
+                    my @qwStrings = split(/ /, $content);
+
+                    push @$strings, @qwStrings;
                     }
                 else
                     {
