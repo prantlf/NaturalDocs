@@ -111,7 +111,9 @@ sub ToString #(integer)
     my $minor = $integer & 0x00FF;
 
     if ($minor % 10 == 0)
-        {  $minor /= 10;  };
+        {  $minor /= 10;  }
+    elsif ($minor < 10)
+        {  $minor = '0' . $minor;  };
 
     return $major . '.' . $minor;
     };
