@@ -72,19 +72,17 @@ sub BuildFile #(sourceFile, parsedFile)
     {
     my ($self, $sourceFile, $parsedFile) = @_;
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
     my $outputFile = $self->OutputFileOf($sourceFile);
-    my $fullOutputFile = NaturalDocs::File->JoinPath($outputDirectory, $outputFile);
 
 
     # 99.99% of the time the output directory will already exist, so this will actually be more efficient.  It only won't exist
     # if a new file was added in a new subdirectory and this is the first time that file was ever parsed.
-    if (!open(OUTPUTFILEHANDLE, '>' . $fullOutputFile))
+    if (!open(OUTPUTFILEHANDLE, '>' . $outputFile))
         {
-        NaturalDocs::File->CreatePath( NaturalDocs::File->NoFileName($fullOutputFile) );
+        NaturalDocs::File->CreatePath( NaturalDocs::File->NoFileName($outputFile) );
 
-        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile)
-            or die "Couldn't create output file " . $fullOutputFile . "\n";
+        open(OUTPUTFILEHANDLE, '>' . $outputFile)
+            or die "Couldn't create output file " . $outputFile . "\n";
         };
 
     print OUTPUTFILEHANDLE
@@ -99,7 +97,11 @@ sub BuildFile #(sourceFile, parsedFile)
                 . $self->BuildTitle($sourceFile)
             . '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'. $self->MakeRelativeURL($outputFile, 'NaturalDocs.css') . '">'
+            . '<link rel="stylesheet" type="text/css" href="'
+                . $self->MakeRelativeURL($outputFile,
+                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
+                                                                                                'NaturalDocs.css' ) )
+                . '">'
 
             . $self->MenuToggleJavaScript()
             . $self->BrowserStylesJavaScript()
@@ -166,16 +168,20 @@ sub BuildIndex #(type)
 
         . '<html><head>'
 
-            . '<title>';
+            . '<title>'
+                . $indexTitle;
 
-            if (defined NaturalDocs::Menu->Title())
-                {  $startPage .= $self->StringToHTML(NaturalDocs::Menu->Title()) . ' - ';  };
+                if (defined NaturalDocs::Menu->Title())
+                    {  $startPage .= ' - ' . $self->StringToHTML(NaturalDocs::Menu->Title());  };
 
-                $startPage .=
-                $indexTitle
-            . '</title>'
+            $startPage .=
+            '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'. $self->MakeRelativeURL($indexFile, 'NaturalDocs.css') . '">'
+            . '<link rel="stylesheet" type="text/css" href="'
+                . $self->MakeRelativeURL($indexFile,
+                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
+                                                                                                'NaturalDocs.css' ) )
+                . '">'
 
             . $self->MenuToggleJavaScript()
             . $self->BrowserStylesJavaScript()
@@ -262,7 +268,7 @@ sub UpdateMenu
     # Update index.html
 
     my $firstMenuEntry = $self->FindFirstFile();
-    my $indexFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectoryOf($self), 'index.html' );
+    my $indexFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'index.html' );
 
     # We have to check because it's possible that there may be no files with Natural Docs content and thus no files on the menu.
     if (defined $firstMenuEntry)
@@ -273,7 +279,8 @@ sub UpdateMenu
         print INDEXFILEHANDLE
         '<html><head>'
              . '<meta http-equiv="Refresh" CONTENT="0; URL='
-                 . $self->MakeRelativeURL( 'index.html', $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
+                 . $self->MakeRelativeURL( NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'index.html'),
+                                                        $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
         . '</head></html>';
 
         close INDEXFILEHANDLE;
@@ -304,11 +311,9 @@ sub UpdateFile #(sourceFile)
     {
     my ($self, $sourceFile) = @_;
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
     my $outputFile = $self->OutputFileOf($sourceFile);
-    my $fullOutputFile = NaturalDocs::File->JoinPath($outputDirectory, $outputFile);
 
-    if (open(OUTPUTFILEHANDLE, '<' . $fullOutputFile))
+    if (open(OUTPUTFILEHANDLE, '<' . $outputFile))
         {
         my $content;
 
@@ -323,7 +328,7 @@ sub UpdateFile #(sourceFile)
         $content =~ s/<!--START_ND_FOOTER-->.*?<!--END_ND_FOOTER-->/$self->BuildFooter()/e;
 
 
-        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile);
+        open(OUTPUTFILEHANDLE, '>' . $outputFile);
         print OUTPUTFILEHANDLE $content;
         close(OUTPUTFILEHANDLE);
         };
@@ -344,19 +349,17 @@ sub UpdateIndex #(type)
     {
     my ($self, $type) = @_;
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
     my $page = 1;
 
     my $outputFile = $self->IndexFileOf($type, $page);
-    my $fullOutputFile = NaturalDocs::File->JoinPath($outputDirectory, $outputFile);
 
     my $newMenu = $self->BuildMenu($outputFile, undef);
     my $newFooter = $self->BuildFooter();
 
-    while (-e $fullOutputFile)
+    while (-e $outputFile)
         {
-        open(OUTPUTFILEHANDLE, '<' . $fullOutputFile)
-            or die "Couldn't open output file " . $fullOutputFile . ".\n";
+        open(OUTPUTFILEHANDLE, '<' . $outputFile)
+            or die "Couldn't open output file " . $outputFile . ".\n";
 
         my $content;
 
@@ -369,15 +372,14 @@ sub UpdateIndex #(type)
         $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $newFooter . "<\/div>"/e;
 
 
-        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile)
-            or die "Couldn't save output file " . $fullOutputFile . ".\n";
+        open(OUTPUTFILEHANDLE, '>' . $outputFile)
+            or die "Couldn't save output file " . $outputFile . ".\n";
 
         print OUTPUTFILEHANDLE $content;
         close(OUTPUTFILEHANDLE);
 
         $page++;
         $outputFile = $self->IndexFileOf($type, $page);
-        $fullOutputFile = NaturalDocs::File->JoinPath($outputDirectory, $outputFile);
         };
     };
 

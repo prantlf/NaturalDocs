@@ -214,10 +214,8 @@ sub Parse #(file)
     $scope = undef;
     @parsedFile = ( );
 
-    my $fileName = NaturalDocs::File->JoinPath( NaturalDocs::Settings->InputDirectory(), $file );
-
-    open(SOURCEFILEHANDLE, '<' . $fileName)
-        or die "Couldn't open input file " . $fileName . "\n";
+    open(SOURCEFILEHANDLE, '<' . $file)
+        or die "Couldn't open input file " . $file . "\n";
 
     # Parse the content for comments.
     $self->ExtractComments();
@@ -243,7 +241,20 @@ sub Parse #(file)
         else
             {
             # If the title ended up being the file name, add a leading section for it.
-            unshift @parsedFile, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), $file, undef, undef, undef, undef);
+            my $name;
+
+            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($file);
+            my @directories = NaturalDocs::File->SplitDirectories($dirString);
+
+            if (scalar @directories > 2)
+                {
+                $dirString = NaturalDocs::File->JoinDirectories('...', $directories[-2], $directories[-1]);
+                $name = NaturalDocs::File->JoinPath(undef, $dirString, $file);
+                }
+            else
+                {  $name = $file;  };
+
+            unshift @parsedFile, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), $name, undef, undef, undef, undef);
             };
 
         # We only want to call the hook if it has content.

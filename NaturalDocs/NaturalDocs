@@ -367,7 +367,7 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 sub UseDirectory #(directory, directory, directory ...)
     {
     my $extraPath = NaturalDocs::File->JoinDirectories(@_);
-    my $fullPath = NaturalDocs::File->JoinPath($FindBin::RealBin, $extraPath, 1);
+    my $fullPath = NaturalDocs::File->JoinPaths($FindBin::RealBin, $extraPath, 1);
 
     my @directories = ( $fullPath );
 
@@ -383,13 +383,13 @@ sub UseDirectory #(directory, directory, directory ...)
 
         foreach my $entry (@entries)
             {
-            my $fullEntry = NaturalDocs::File->JoinPath($directory, $entry);
+            my $fullEntry = NaturalDocs::File->JoinPaths($directory, $entry);
 
             # If an entry is a directory, recurse.
             if (-d $fullEntry)
                 {
                 # Join again with the noFile flag set in case the platform handles them differently.
-                push @directories, NaturalDocs::File->JoinPath($directory, $entry, 1);
+                push @directories, NaturalDocs::File->JoinPaths($directory, $entry, 1);
                 }
 
             # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
