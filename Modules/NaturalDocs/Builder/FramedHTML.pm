@@ -91,17 +91,9 @@ sub BuildFile #(sourceFile, parsedFile)
                 . $self->BuildTitle($sourceFile)
             . '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'
-                . $self->MakeRelativeURL($outputFile,
-                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                'NaturalDocs.css' ), 1 )
-                . '">'
+            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($outputFile, $self->MainCSSFile(), 1) . '">'
 
-            . '<script language=JavaScript src="'
-                . $self->MakeRelativeURL($outputFile,
-                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                  'NaturalDocs.js' ), 1 )
-                . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
         . '</head><body class=FramedContentPage>'
             . $self->OpeningBrowserStyles()
@@ -152,17 +144,9 @@ sub BuildIndex #(type)
                 $indexTitle
             . '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'
-                . $self->MakeRelativeURL($indexFile,
-                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                'NaturalDocs.css' ), 1)
-                . '">'
+            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($indexFile, $self->MainCSSFile(), 1) . '">'
 
-            . '<script language=JavaScript src="'
-                . $self->MakeRelativeURL($indexFile,
-                                                      NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                  'NaturalDocs.js' ), 1)
-                . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
         . '</head><body class=FramedIndexPage>'
             . $self->OpeningBrowserStyles()
@@ -219,9 +203,9 @@ sub UpdateMenu
 
             . '<base target="Content">'
 
-            . '<link rel="stylesheet" type="text/css" href="NaturalDocs.css">'
+            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($outputFile, $self->MainCSSFile(), 1) . '">'
 
-            . '<script language=JavaScript src="NaturalDocs.js"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
         . '</head><body class=FramedMenuPage>'
             . $self->OpeningBrowserStyles()
