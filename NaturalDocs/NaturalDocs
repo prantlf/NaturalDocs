@@ -23,6 +23,7 @@ use NaturalDocs::SymbolTable;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
 
+
 use strict;
 use integer;
 
@@ -328,6 +329,65 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
     };
 
 
+#
+#   Function: UseDirectory
+#
+#   Does the equivalent of "use [module]" for every .pm file in a directory and all its subdirectories.  You *must* call this function
+#   from within a BEGIN block if you want the INIT functions of the modules to be executed.
+#
+#   Parameters:
+#
+#       directory  - A single subdirectory.  Specify this as many times as necessary to make the path from the Natural Docs
+#                        directory.
+#
+#   Example:
+#
+#       > BEGIN {
+#       >    IncludeDirectory('Modules', 'NaturalDocs', 'Extensions');
+#       > };
+#
+#       This code will include every .pm file in [Natural Docs' directory]/Modules/NaturalDocs/Extensions and all its subdirectories.
+#
+sub UseDirectory #(directory, directory, directory ...)
+    {
+    my $extraPath = NaturalDocs::File::JoinDirectories(@_);
+    my $fullPath = NaturalDocs::File::JoinPath($FindBin::Bin, $extraPath, 1);
+
+    my @directories = ( $fullPath );
+
+    while (scalar @directories)
+        {
+        my $directory = pop @directories;
+
+        opendir DIRECTORYHANDLE, $directory;
+        my @entries = readdir DIRECTORYHANDLE;
+        closedir DIRECTORYHANDLE;
+
+        @entries = NaturalDocs::File::NoUpwards(@entries);
+
+        foreach my $entry (@entries)
+            {
+            my $fullEntry = NaturalDocs::File::JoinPath($directory, $entry);
+
+            # If an entry is a directory, recurse.
+            if (-d $fullEntry)
+                {
+                # Join again with the noFile flag set in case the platform handles them differently.
+                push @directories, NaturalDocs::File::JoinPath($directory, $entry, 1);
+                }
+
+            # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
+            # their syntax is similar to Natural Docs content.
+            elsif ($entry =~ /\.pm$/i)
+                {
+                require $fullEntry;
+                };
+            };
+        };
+    };
+
+
+
 ###############################################################################
 #
 #   Main Code
@@ -338,10 +398,14 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 ###############################################################################
 
 
-# Output packages are added to NaturalDocs::Builder just by including them.
+# The Builder and Extension directories are live.  Any .pm files in them are automatically included.
 
-use NaturalDocs::Builder::HTML;
-use NaturalDocs::Builder::FramedHTML;
+BEGIN {
+
+    UseDirectory( 'Modules', 'NaturalDocs', 'Builder' );
+    UseDirectory( 'Modules', 'NaturalDocs', 'Extensions' );
+
+    };
 
 
 eval {
