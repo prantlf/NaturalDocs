@@ -340,50 +340,58 @@ Topic: Index Structure
     >           A - <a href>B</a href> - C ...
     >       </INavigationBar>
     >
-    >       <IEntry>
-    >           <ISymbol>
-    >               <a href>Symbol</a href>
-    >           </ISymbol>,
-    >           <IParent>
-    >               Class
-    >           </IParent>
-    >       </IEntry>
+    >       <ISection>
     >
-    >       <IEntry>
-    >           <ISymbol>
-    >               Symbol
-    >           </ISymbol>
-    >           <ISubIndex>
-    >               <IEntry>
-    >                   <IParent>
-    >                       <a href>Class</a href>
-    >                   </IParent>
-    >               </IEntry>
-    >               ...
-    >           </ISubIndex>
-    >       </IEntry>
+    >           <IHeading>
+    >               Heading (A, B, etc.)
+    >           </IHeading>
     >
-    >       <IEntry>
-    >           <ISymbol>
-    >               Symbol
-    >           </ISymbol>
-    >           <ISubIndex>
-    >               <IEntry>
-    >                   <IParent>
-    >                       Class
-    >                   </IParent>
-    >                   <ISubIndex>
-    >                       <IEntry>
-    >                           <IFile>
-    >                               <a href>File</a href>
-    >                           </IFile>
-    >                       </IEntry>
-    >                       ...
-    >                   </ISubIndex>
-    >               </IEntry>
-    >               ...
-    >           </ISubIndex>
-    >       </IEntry>
+    >           <IEntry>
+    >               <ISymbol>
+    >                   <a href>Symbol</a href>
+    >               </ISymbol>,
+    >               <IParent>
+    >                   Class
+    >               </IParent>
+    >           </IEntry>
+    >
+    >           <IEntry>
+    >               <ISymbol>
+    >                   Symbol
+    >               </ISymbol>
+    >               <ISubIndex>
+    >                   <IEntry>
+    >                       <IParent>
+    >                           <a href>Class</a href>
+    >                       </IParent>
+    >                   </IEntry>
+    >                   ...
+    >               </ISubIndex>
+    >           </IEntry>
+    >
+    >           <IEntry>
+    >               <ISymbol>
+    >                   Symbol
+    >               </ISymbol>
+    >               <ISubIndex>
+    >                   <IEntry>
+    >                       <IParent>
+    >                           Class
+    >                       </IParent>
+    >                       <ISubIndex>
+    >                           <IEntry>
+    >                               <IFile>
+    >                                   <a href>File</a href>
+    >                               </IFile>
+    >                           </IEntry>
+    >                           ...
+    >                       </ISubIndex>
+    >                   </IEntry>
+    >                   ...
+    >               </ISubIndex>
+    >           </IEntry>
+    >
+    >       </ISection>
     >
     >   </Index>
 
@@ -400,6 +408,9 @@ Styles: Index Styles
 
     IPageTitle - The page title.
     INavigationBar - The navigation bar.
+
+    ISection - A section of entries.
+    IHeading - A heading for a section of entries.
 
     IEntry - An entry in the index.
     ISymbol - The entry symbol.
