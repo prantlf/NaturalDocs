@@ -82,7 +82,11 @@ my %indexSynonyms = (
                                         'package' => ::TOPIC_CLASS(),
                                         'file' => ::TOPIC_FILE(),
                                         'variable' => ::TOPIC_VARIABLE(),
-                                        'var' => ::TOPIC_VARIABLE()
+                                        'var' => ::TOPIC_VARIABLE(),
+                                        'type' => ::TOPIC_TYPE(),
+                                        'typedef' => ::TOPIC_TYPE(),
+                                        'const' => ::TOPIC_CONSTANT(),
+                                        'constant' => ::TOPIC_CONSTANT()
                                     );
 
 #
@@ -94,7 +98,9 @@ my %indexNames = (
                                     ::TOPIC_FUNCTION() => 'Function',
                                     ::TOPIC_CLASS() => 'Class',
                                     ::TOPIC_FILE() => 'File',
-                                    ::TOPIC_VARIABLE() => 'Variable'
+                                    ::TOPIC_VARIABLE() => 'Variable',
+                                    ::TOPIC_TYPE() => 'Type',
+                                    ::TOPIC_CONSTANT() => 'Constant'
                               );
 
 
@@ -119,8 +125,8 @@ my $fileChanged;
 #   stored as the group's content.  This is done because it makes a number of functions simpler to implement, plus it allows group
 #   flags to be set on the top-level.  However, it is exposed externally via <Content()> as an arrayref.
 #
-#   This structure will not contain objects for <MENU_TITLE>, <MENU_SUBTITLE>, or <MENU_FOOTER> entries.  Those will be
-#   stored in the <title>, <subTitle>, and <footer> variables instead.
+#   This structure will only contain objects for <MENU_FILE>, <MENU_GROUP>, <MENU_TEXT>, <MENU_LINK>, and
+#   <MENU_INDEX> entries.  Other types, such as <MENU_TITLE>, are stored in variables such as <title>.
 #
 my $menu;
 
@@ -168,6 +174,14 @@ my %indexes;
 #   index.
 #
 my %previousIndexes;
+
+#
+#   hash: bannedIndexes
+#
+#   An existence hash of all the indexes that the user has manually deleted, and thus should not be added back to the menu
+#   automatically.  Keys are the <Topic Types> or * for the general index.
+#
+my %bannedIndexes;
 
 
 ###############################################################################
@@ -230,16 +244,34 @@ my %previousIndexes;
 #       Indexes are specified with the types above.  Valid modifiers are defined in <indexSynonyms> and include Function and
 #       Class.  If no modifier is specified, the line specifies a general index.
 #
+#       > Don't Index: [type]
+#       > Don't Index: [type], [type], ...
+#
+#       The option above prevents indexes that exist but are not on the menu from being automatically added.  "General" is
+#       used to specify the general index.
+#
 #   Revisions:
 #
-#       Prior to 1.0, there was no Format line.  Use that to detect pre-1.0 files.
-#       Also:
+#       1.1:
 #
-#       - File lines defaulted to auto-title being off.  Specifying "auto-title" turned it on, but there was no "no auto-title" attribute.
-#       - Since there was no auto-organization, all groups were manually added.  The exception is a top-level Other group, where
-#         new files were automatically added if there were groups defined.
+#           - Added the "don't index" line.
 #
-#       Prior to 0.9, there were no Index entries.
+#           This is also the point where indexes were automatically added and removed, so all index entries from prior revisions
+#           were manually added and are not guaranteed to contain anything.
+#
+#       1.0:
+#
+#           - Added the format line.
+#           - Added the "no auto-title" attribute.
+#           - Changed the file entry default to auto-title.
+#
+#           This is also the point where auto-organization and better auto-titles were introduced.  All groups in prior revisions were
+#           manually added, with the exception of a top-level Other group where new files were automatically added if there were
+#           groups defined.
+#
+#       0.9:
+#
+#           - Added index entries.
 #
 
 #
@@ -338,7 +370,15 @@ sub LoadAndUpdate
 
     CheckForTrashedMenu(scalar keys %$filesInMenu, $numberRemoved);
 
-    # We wait until after new files are placed to remove dead groups because a new file may save a group.
+    BanAndUnbanIndexes();
+
+    # Index groups need to be detected before adding new ones.
+
+    DetectIndexGroups();
+
+    AddAndRemoveIndexes();
+
+   # We wait until after new files are placed to remove dead groups because a new file may save a group.
 
     RemoveDeadGroups();
 
@@ -430,8 +470,8 @@ sub HasChanged
 #
 #   Returns the parsed menu as an arrayref of <NaturalDocs::Menu::Entry> objects.  Do not change the arrayref.
 #
-#   The arrayref will not contain <MENU_TITLE> and <MENU_SUBTITLE> entries.  Use the <Title()> and <SubTitle()> functions
-#   instead.
+#   The arrayref will only contain <MENU_FILE>, <MENU_GROUP>, <MENU_INDEX>, <MENU_TEXT>, and <MENU_LINK>
+#   entries.  Entries such as <MENU_TITLE> are parsed out and are only accessible via functions such as <Title()>.
 #
 sub Content
     {  return $menu->GroupContent();  };
@@ -525,7 +565,8 @@ sub OnDefaultTitleChange #(file)
 #
 #   Function: LoadMenuFile
 #
-#   Loads and parses the menu file <NaturalDocs_Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, and <indexes>.
+#   Loads and parses the menu file <NaturalDocs_Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, <indexes>,
+#   and <bannedIndexes>.
 #
 #   Returns:
 #
@@ -533,7 +574,7 @@ sub OnDefaultTitleChange #(file)
 #
 #       errors - An arrayref of errors appearing in the file, each one being an <NaturalDocs::Menu::Error> object.  Undef if none.
 #       filesInMenu - A hashref of all the source files that appear in the menu.  The keys are the file names, and the values are
-#                          references to their entries in <menu>.  This parameter will always exist.
+#                          references to their entries in <menu>.  Will be an empty hashref if none.
 #       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the file names, and the values are
 #                                the old locked titles.  Will be undef if none.  If a file entry from a pre-1.0 file was locked, it's
 #                                entry in <menu> is unlocked and its title is placed here instead, so that it can be compared with the
@@ -834,8 +875,25 @@ sub LoadMenuFile
                             {
                             if (!defined $modifier)
                                 {
+                                my $entry = NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, undef, undef);
+                                $currentGroup->PushToGroup($entry);
+
                                 $indexes{'*'} = 1;
-                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, undef, undef) );
+                                }
+                            elsif ($modifier eq 'don\'t')
+                                {
+                                # We'll tolerate splits by spaces as well as commas.
+                                my @splitLine = split(/ +|, */, lc($name));
+
+                                foreach my $bannedIndex (@splitLine)
+                                    {
+                                    if ($bannedIndex eq 'general')
+                                        {  $bannedIndex = '*';  }
+                                    else
+                                        {  $bannedIndex = $indexSynonyms{$bannedIndex};  };
+
+                                    $bannedIndexes{$bannedIndex} = 1;
+                                    };
                                 }
                             elsif (exists $indexSynonyms{$modifier})
                                 {
@@ -847,7 +905,7 @@ sub LoadMenuFile
                                 {
                                 push @$errors, NaturalDocs::Menu::Error::New($lineNumber, $modifier . ' is not a valid index type.');
                                 };
-                            };
+                            }
 
                         # There's also MENU_FORMAT, but that was already dealt with.  We don't need to parse it, just make sure it
                         # doesn't cause an error.
@@ -1022,10 +1080,6 @@ sub SaveMenuFile
     . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
     . "# \"Link: [name] ([URL])\" lines, respectively.\n"
     . "# \n"
-    . "# You can add indexes to the menu by adding \"Index: [name]\" or\n"
-    . "# \"[type] Index: [name]\" to the menu.  The types are Class, Function, and\n"
-    . "# File.  If you don't add a type, it will be an index of everything.\n"
-    . "# \n"
     . "# The formatting and comments are auto-generated, so don't worry about\n"
     . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
     . "# time it is run.  When working with groups, just deal with the braces and\n"
@@ -1035,6 +1089,33 @@ sub SaveMenuFile
     . "# ------------------------------------------------------------------------ #\n"
 
     . "\n";
+
+    if (scalar keys %bannedIndexes)
+        {
+        print MENUFILEHANDLE
+
+        "# These are indexes you deleted, so Natural Docs will not add them again\n"
+        . "# unless you remove them from this line.\n"
+        . "\n"
+        . "Don't Index: ";
+
+        my $first = 1;
+
+        foreach my $index (keys %bannedIndexes)
+            {
+            if (!$first)
+                {  print MENUFILEHANDLE ', ';  }
+            else
+                {  $first = undef;  };
+
+            if ($index eq '*')
+                {  print MENUFILEHANDLE 'General';  }
+            else
+                {  print MENUFILEHANDLE $indexNames{$index};  };
+            };
+
+        print MENUFILEHANDLE "\n\n\n";
+        };
 
     WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef);
 
@@ -1819,6 +1900,150 @@ sub RemoveDeadFiles
 
 
 #
+#   Function: BanAndUnbanIndexes
+#
+#   Adjusts the indexes that are banned depending on if the user added or deleted any.
+#
+sub BanAndUnbanIndexes
+    {
+    # Unban any indexes that are present, meaning the user added them back manually without deleting the ban.
+    foreach my $index (keys %indexes)
+        {  delete $bannedIndexes{$index};  };
+
+    # Ban any indexes that were in the previous menu but not the current, meaning the user manually deleted them.
+    foreach my $index (keys %previousIndexes)
+        {
+        if (!exists $indexes{$index})
+            {  $bannedIndexes{$index} = 1;  };
+        };
+    };
+
+
+#
+#   Function: AddAndRemoveIndexes
+#
+#   Automatically adds and removes index entries on the menu as necessary.  <DetectIndexGroups()> should be called
+#   beforehand.
+#
+sub AddAndRemoveIndexes
+    {
+    # A quick way to get the possible indexes...
+    my $validIndexes = { %indexNames, '*' => 1 };
+
+    # Strip the banned indexes first so it's potentially less work for SymbolTable.
+    foreach my $index (keys %bannedIndexes)
+        {  delete $validIndexes->{$index};  };
+
+    $validIndexes = NaturalDocs::SymbolTable::HasIndexes($validIndexes);
+
+
+    # Delete dead indexes and find the best index group.
+
+    my @groupStack = ( $menu );
+
+    my $bestIndexGroup;
+    my $bestIndexCount = 0;
+
+    while (scalar @groupStack)
+        {
+        my $currentGroup = pop @groupStack;
+        my $index = 0;
+
+        my $currentIndexCount = 0;
+
+        while ($index < scalar @{$currentGroup->GroupContent()})
+            {
+            my $entry = $currentGroup->GroupContent()->[$index];
+
+            if ($entry->Type() == ::MENU_INDEX())
+                {
+                $currentIndexCount++;
+
+                if ($currentIndexCount > $bestIndexCount)
+                    {
+                    $bestIndexCount = $currentIndexCount;
+                    $bestIndexGroup = $currentGroup;
+                    };
+
+                # Remove it if it's dead.
+
+                if (!exists $validIndexes->{ ($entry->Target() || '*') })
+                    {
+                    $currentGroup->DeleteFromGroup($index);
+                    delete $indexes{ ($entry->Target() || '*') };
+                    $hasChanged = 1;
+                    }
+                else
+                    {  $index++;  };
+                }
+
+            else
+                {
+                if ($entry->Type() == ::MENU_GROUP())
+                    {  push @groupStack, $entry;  };
+
+                $index++;
+                };
+            };
+        };
+
+
+    # Now add the new indexes.
+
+    foreach my $index (keys %indexes)
+        {  delete $validIndexes->{$index};  };
+
+    if (scalar keys %$validIndexes)
+        {
+        # Add a group if there are no indexes at all.
+
+        if ($bestIndexCount == 0)
+            {
+            $menu->MarkEndOfOriginal();
+
+            my $newIndexGroup = NaturalDocs::Menu::Entry::New(::MENU_GROUP(), 'Indexes', undef,
+                                                                                             ::MENU_GROUP_ISINDEXGROUP());
+            $menu->PushToGroup($newIndexGroup);
+
+            $bestIndexGroup = $newIndexGroup;
+            $menu->SetFlags( $menu->Flags() | ::MENU_GROUP_UPDATEORDER() | ::MENU_GROUP_UPDATESTRUCTURE() );
+            };
+
+        # Add the new indexes.
+
+        $bestIndexGroup->MarkEndOfOriginal();
+        my $isIndexGroup = $bestIndexGroup->Flags() & ::MENU_GROUP_ISINDEXGROUP();
+
+        foreach my $index (keys %$validIndexes)
+            {
+            my $title;
+
+            if ($index eq '*')
+                {
+                $title = ( $isIndexGroup ? 'Everything' : 'General Index' );
+                }
+            else
+                {
+                $title = $indexNames{$index};
+
+                if (!$isIndexGroup)
+                    {  $title .= ' Index';  };
+                };
+
+            my $newEntry = NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $title, ($index eq '*' ? undef : $index), undef);
+            $bestIndexGroup->PushToGroup($newEntry);
+
+            $indexes{$index} = 1;
+            };
+
+        $bestIndexGroup->SetFlags( $bestIndexGroup->Flags() |
+                                                   ::MENU_GROUP_UPDATEORDER() | ::MENU_GROUP_UPDATESTRUCTURE() );
+        $hasChanged = 1;
+        };
+    };
+
+
+#
 #   Function: RemoveDeadGroups
 #
 #   Removes groups with less than two entries.  It will always remove empty groups, and it will remove groups with one entry if it
@@ -1919,6 +2144,47 @@ sub RemoveIfDead #(groupEntry, parentGroupEntry, parentGroupIndex)
         }
     else
         {  return undef;  };
+    };
+
+
+#
+#   Function: DetectIndexGroups
+#
+#   Finds groups that are primarily used for indexes and gives them the <MENU_GROUP_ISINDEXGROUP> flag.
+#
+sub DetectIndexGroups
+    {
+    my @groupStack = ( $menu );
+
+    while (scalar @groupStack)
+        {
+        my $groupEntry = pop @groupStack;
+
+        my $isIndexGroup = -1;  # -1: Can't tell yet.  0: Can't be an index group.  1: Is an index group so far.
+
+        foreach my $entry (@{$groupEntry->GroupContent()})
+            {
+            if ($entry->Type() == ::MENU_INDEX())
+                {
+                if ($isIndexGroup == -1)
+                    {  $isIndexGroup = 1;  };
+                }
+
+            # Text is tolerated, but it still needs at least one index entry.
+            elsif ($entry->Type() != ::MENU_TEXT())
+                {
+                $isIndexGroup = 0;
+
+                if ($entry->Type() == ::MENU_GROUP())
+                    {  push @groupStack, $entry;  };
+                };
+            };
+
+        if ($isIndexGroup == 1)
+            {
+            $groupEntry->SetFlags( $groupEntry->Flags() | ::MENU_GROUP_ISINDEXGROUP() );
+            };
+        };
     };
 
 
@@ -2342,8 +2608,11 @@ sub CreatePrefixSubGroups
 #
 #   Detects the order of the entries in all groups that have the <MENU_GROUP_UPDATEORDER> flag set.  Will set one of the
 #   <MENU_GROUP_FILESSORTED>, <MENU_GROUP_FILESANDGROUPSSORTED>, <MENU_GROUP_EVERYTHINGSORTED>, or
-#   <MENU_GROUP_UNSORTED> flags.  It will always go for the most comprehensive sort possible, so if a group only has one entry,
-#   it will be flagged as <MENU_GROUP_EVERYTHINGSORTED>.
+#   <MENU_GROUP_UNSORTED> flags.  It will always go for the most comprehensive sort possible, so if a group only has one
+#   entry, it will be flagged as <MENU_GROUP_EVERYTHINGSORTED>.
+#
+#   <DetectIndexGroups()> should be called beforehand, as the <MENU_GROUP_ISINDEXGROUP> flag affects how the order is
+#   detected.
 #
 #   The sort detection stops if it reaches a <MENU_ENDOFORIGINAL> entry, so new entries can be added to the end while still
 #   allowing the original sort to be detected.
@@ -2360,6 +2629,7 @@ sub DetectOrder #(forceAll)
     while (scalar @groupStack)
         {
         my $groupEntry = pop @groupStack;
+        my $index = 0;
 
 
         # First detect the sort.
@@ -2368,7 +2638,6 @@ sub DetectOrder #(forceAll)
             {
             my $order = ::MENU_GROUP_EVERYTHINGSORTED();
 
-            my $index = 0;
             my $lastFile;
             my $lastFileOrGroup;
 
@@ -2378,19 +2647,51 @@ sub DetectOrder #(forceAll)
                 {
                 my $entry = $groupEntry->GroupContent()->[$index];
 
-                if ($order == ::MENU_GROUP_EVERYTHINGSORTED() && $index > 0 &&
-                    ::StringCompare($entry->Title(), $groupEntry->GroupContent()->[$index - 1]->Title()) < 0)
-                    {  $order = ::MENU_GROUP_FILESANDGROUPSSORTED();  };
 
-                if ($order == ::MENU_GROUP_FILESANDGROUPSSORTED() &&
-                    ($entry->Type() == ::MENU_FILE() || $entry->Type() == ::MENU_GROUP()) &&
-                    defined $lastFileOrGroup && ::StringCompare($entry->Title(), $lastFileOrGroup->Title()) < 0)
-                    {  $order = ::MENU_GROUP_FILESSORTED();  };
+                # Ignore the last entry if it's an index group.  We don't want it to affect the sort.
 
-                if ($order == ::MENU_GROUP_FILESSORTED() &&
-                    $entry->Type() == ::MENU_FILE() && defined $lastFile &&
-                    ::StringCompare($entry->Title(), $lastFile->Title()) < 0)
-                    {  $order = ::MENU_GROUP_UNSORTED();  };
+                if ($index + 1 == scalar @{$groupEntry->GroupContent()} &&
+                    $entry->Type() == ::MENU_GROUP() && ($entry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) )
+                    {
+                    # Ignore.
+
+                    # This is an awkward code construct, basically working towards an else instead of using an if, but the code just gets
+                    # too hard to read otherwise.  The compiled code should work out to roughly the same thing anyway.
+                    }
+
+
+                # Ignore the first entry if it's the general index in an index group.  We don't want it to affect the sort.
+
+                elsif ($index == 0 && ($groupEntry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) &&
+                        $entry->Type() == ::MENU_INDEX() && !defined $entry->Target() )
+                    {
+                    # Ignore.
+                    }
+
+
+                # Degenerate the sort.
+
+                else
+                    {
+
+                    if ($order == ::MENU_GROUP_EVERYTHINGSORTED() && $index > 0 &&
+                        ::StringCompare($entry->Title(), $groupEntry->GroupContent()->[$index - 1]->Title()) < 0)
+                        {  $order = ::MENU_GROUP_FILESANDGROUPSSORTED();  };
+
+                    if ($order == ::MENU_GROUP_FILESANDGROUPSSORTED() &&
+                        ($entry->Type() == ::MENU_FILE() || $entry->Type() == ::MENU_GROUP()) &&
+                        defined $lastFileOrGroup && ::StringCompare($entry->Title(), $lastFileOrGroup->Title()) < 0)
+                        {  $order = ::MENU_GROUP_FILESSORTED();  };
+
+                    if ($order == ::MENU_GROUP_FILESSORTED() &&
+                        $entry->Type() == ::MENU_FILE() && defined $lastFile &&
+                        ::StringCompare($entry->Title(), $lastFile->Title()) < 0)
+                        {  $order = ::MENU_GROUP_UNSORTED();  };
+
+                    };
+
+
+                # Set the lastX parameters for comparison and add sub-groups to the stack.
 
                 if ($entry->Type() == ::MENU_FILE())
                     {
@@ -2400,6 +2701,7 @@ sub DetectOrder #(forceAll)
                 elsif ($entry->Type() == ::MENU_GROUP())
                     {
                     $lastFileOrGroup = $entry;
+                    push @groupStack, $entry;
                     };
 
                 $index++;
@@ -2409,13 +2711,16 @@ sub DetectOrder #(forceAll)
             };
 
 
-        # Now find any subgroups.  We do this separately because we need to find them regardless of whether we needed to detect
-        # the sort for this group, and we can't stop it early due to the sort failing or reaching a MENU_ENDOFORIGINAL.
+        # Find any subgroups in the remaining entries.
 
-        foreach my $entry (@{$groupEntry->GroupContent()})
+        while ($index < scalar @{$groupEntry->GroupContent()})
             {
+            my $entry = $groupEntry->GroupContent()->[$index];
+
             if ($entry->Type() == ::MENU_GROUP())
                 {  push @groupStack, $entry;  };
+
+            $index++;
             };
         };
     };
@@ -2631,6 +2936,69 @@ sub ResortGroups #(forceAll)
                 {  $newEntriesIndex = -1;  };
 
 
+            # Strip the exceptions.
+
+            my $trailingIndexGroup;
+            my $leadingGeneralIndex;
+
+            if ( ($groupEntry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) &&
+                 $groupEntry->GroupContent()->[0]->Type() == ::MENU_INDEX() &&
+                 !defined $groupEntry->GroupContent()->[0]->Target() )
+                {
+                $leadingGeneralIndex = shift @{$groupEntry->GroupContent()};
+                if ($newEntriesIndex != -1)
+                    {  $newEntriesIndex--;  };
+                }
+
+            elsif (scalar @{$groupEntry->GroupContent()} && $newEntriesIndex != 0)
+                {
+                my $lastIndex;
+
+                if ($newEntriesIndex != -1)
+                    {  $lastIndex = $newEntriesIndex - 1;  }
+                else
+                    {  $lastIndex = scalar @{$groupEntry->GroupContent()} - 1;  };
+
+                if ($groupEntry->GroupContent()->[$lastIndex]->Type() == ::MENU_GROUP() &&
+                    ( $groupEntry->GroupContent()->[$lastIndex]->Flags() & ::MENU_GROUP_ISINDEXGROUP() ) )
+                    {
+                    $trailingIndexGroup = $groupEntry->GroupContent()->[$lastIndex];
+                    $groupEntry->DeleteFromGroup($lastIndex);
+
+                    if ($newEntriesIndex != -1)
+                        {  $newEntriesIndex++;  };
+                    };
+                };
+
+
+            # If there weren't already exceptions, strip them from the new entries.
+
+            if ( (!defined $trailingIndexGroup || !defined $leadingGeneralIndex) && $newEntriesIndex != -1)
+                {
+                my $index = $newEntriesIndex;
+
+                while ($index < scalar @{$groupEntry->GroupContent()})
+                    {
+                    my $entry = $groupEntry->GroupContent()->[$index];
+
+                    if (!defined $trailingIndexGroup &&
+                        $entry->Type() == ::MENU_GROUP() && ($entry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) )
+                        {
+                        $trailingIndexGroup = $entry;
+                        $groupEntry->DeleteFromGroup($index);
+                        }
+                    elsif (!defined $leadingGeneralIndex && ($groupEntry->Flags() & ::MENU_GROUP_ISINDEXGROUP()) &&
+                            $entry->Type() == ::MENU_INDEX() && !defined $entry->Target())
+                        {
+                        $leadingGeneralIndex = $entry;
+                        $groupEntry->DeleteFromGroup($index);
+                        }
+                    else
+                        {  $index++;  };
+                    };
+                };
+
+
             # If there's no order, we still want to sort the new additions.
 
             if ($groupEntry->Flags() & ::MENU_GROUP_UNSORTED())
@@ -2826,6 +3194,19 @@ sub ResortGroups #(forceAll)
                     elsif (scalar @newEntries)
                         {  push @$groupContent, @newEntries;  };
                     };
+                };
+
+
+            # Now re-add the exceptions.
+
+            if (defined $leadingGeneralIndex)
+                {
+                unshift @{$groupEntry->GroupContent()}, $leadingGeneralIndex;
+                };
+
+            if (defined $trailingIndexGroup)
+                {
+                $groupEntry->PushToGroup($trailingIndexGroup);
                 };
 
             };
