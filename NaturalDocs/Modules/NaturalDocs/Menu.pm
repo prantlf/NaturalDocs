@@ -41,17 +41,47 @@ package NaturalDocs::Menu;
 #   the <Menu Item Types>.
 #
 my %menuSynonyms = (
-                                'title'        => ::MENU_TITLE(),
-                                'subtitle'   => ::MENU_SUBTITLE(),
-                                'sub-title'  => ::MENU_SUBTITLE(),
-                                'group'     => ::MENU_GROUP(),
-                                'file'         => ::MENU_FILE(),
-                                'text'        => ::MENU_TEXT(),
-                                'link'        => ::MENU_LINK(),
-                                'url'         => ::MENU_LINK(),
-                                'footer'    => ::MENU_FOOTER(),
-                                'copyright' => ::MENU_FOOTER()
-                            );
+                                        'title'        => ::MENU_TITLE(),
+                                        'subtitle'   => ::MENU_SUBTITLE(),
+                                        'sub-title'  => ::MENU_SUBTITLE(),
+                                        'group'     => ::MENU_GROUP(),
+                                        'file'         => ::MENU_FILE(),
+                                        'text'        => ::MENU_TEXT(),
+                                        'link'        => ::MENU_LINK(),
+                                        'url'         => ::MENU_LINK(),
+                                        'footer'    => ::MENU_FOOTER(),
+                                        'copyright' => ::MENU_FOOTER(),
+                                        'index'     => ::MENU_INDEX()
+                                    );
+
+#
+#   hash: indexSynonyms
+#
+#   A hash of the text synonyms for the index modifiers.  The keys are the all lowercase synonyms, and the values are the
+#   associated <Topic Types>.
+#
+my %indexSynonyms = (
+                                        'function' => ::TOPIC_FUNCTION(),
+                                        'func' => ::TOPIC_FUNCTION(),
+                                        'class' => ::TOPIC_CLASS(),
+                                        'package' => ::TOPIC_CLASS(),
+                                        'file' => ::TOPIC_FILE(),
+                                        'variable' => ::TOPIC_VARIABLE(),
+                                        'var' => ::TOPIC_VARIABLE()
+                                    );
+
+#
+#   hash: indexNames
+#
+#   A hash of text equivalents of the possible index types.  The keys are the <Topic Types>, and the values are the strings.
+#
+my %indexNames = (
+                                    ::TOPIC_FUNCTION() => 'Function',
+                                    ::TOPIC_CLASS() => 'Class',
+                                    ::TOPIC_FILE() => 'File',
+                                    ::TOPIC_VARIABLE() => 'Variable'
+                              );
+
 
 #
 #   bool: hasChanged
@@ -100,6 +130,22 @@ my $subTitle;
 #   The footer for the documentation.
 #
 my $footer;
+
+#
+#   hash: indexes
+#
+#   An existence hash of all the defined index types appearing in the menu.  Keys are the <Topic Types> or * for the general
+#   index.
+#
+my %indexes;
+
+#
+#   hash: previousIndexes
+#
+#   An existence hash of all the indexes that appeared in the menu last time.  Keys are the <Topic Types> or * for the general
+#   index.
+#
+my %previousIndexes;
 
 
 ###############################################################################
@@ -153,6 +199,32 @@ my $footer;
 #
 #       External links can be specified as above.  If the titled form is not used, the URL is used as the title.
 #
+#       > Index: [name]
+#       > [modifier] Index: [name]
+#
+#       Indexes are specified with the types above.  Valid modifiers are defined in <indexSynonyms> and include Function and
+#       Class.  If no modifier is specified, the line specifies a general index.
+#
+
+#
+#   File: NaturalDocs.m
+#
+#   The file used to store the previous state of the menu so as to detect changes.  Is named NaturalDocs.m instead of something
+#   like NaturalDocs.menu to avoid confusion with <NaturalDocs_Menu.txt>.  This one is not user-editable so we don't want
+#   people opening it by accident.
+#
+#   > [file version]
+#
+#   The first line is the file version number from <NaturalDocs::Settings::FileVersion()>.
+#
+#   > [index type] tab [index type] tab ...
+#
+#   The next line is a tab-separated list of all the index types present in the menu.  They are the values of the <Topic Types> or
+#   * for the general index.
+#
+#   That's all for now.  In the future this will store the entire previous state so auto-locking can be applied.  The file version will
+#   have to be incremented though.
+#
 
 
 ###############################################################################
@@ -194,6 +266,8 @@ sub LoadAndUpdate
         };
 
 
+    ParsePreviousMenuStateFile();
+
     AddMissingFiles($filesInMenu, $hasGroups);
 
     # Don't need this anymore.
@@ -202,92 +276,52 @@ sub LoadAndUpdate
 
 
 #
+#   Function: LoadUnchanged
+#
+#   Loads the menu, assuming neither the menu file nor any of the source files have changed, and thus it definitely doesn't need
+#   to be updated.
+#
+sub LoadUnchanged
+    {
+    my ($hasGroups, $errors, $filesInMenu, $trashAlert) = ParseMenuFile();
+
+    if (defined $errors)
+        {
+        HandleErrors($errors);
+        # HandleErrors will end execution.
+        };
+
+    if ($trashAlert)
+        {
+        my $backupFile = NaturalDocs::Project::MenuBackupFile();
+
+        NaturalDocs::File::Copy( NaturalDocs::Project::MenuFile(), $backupFile );
+
+        print
+        "\n"
+        . "Trashed menu warning:\n"
+        . "   Natural Docs has detected that none of the file entries in the menu\n"
+        . "   resolved to actual files.  If you have significantly changed your source\n"
+        . "   tree, this is okay.  If not, this means you probably got the directories\n"
+        . "   wrong in the command line.  Since this essentially resets your menu, a\n"
+        . "   backup of your original menu file has been saved as\n"
+        . "   " . $backupFile . "\n"
+        . "\n";
+        };
+
+    %previousIndexes = %indexes;
+    };
+
+
+#
 #   Function: Save
 #
-#   Writes the menu to <NaturalDocs_Menu.txt>.
+#   Writes the changes to the menu files.
 #
 sub Save
     {
-    my $menuFileHandle;
-
-    open($menuFileHandle, '>' . NaturalDocs::Project::MenuFile())
-        or die "Couldn't save menu file " . NaturalDocs::Project::MenuFile() . "\n";
-
-
-    if (defined $title)
-        {
-        print $menuFileHandle 'Title: ' . $title . "\n";
-
-        if (defined $subTitle)
-            {
-            print $menuFileHandle 'SubTitle: ' . $subTitle . "\n";
-            }
-        else
-            {
-            print $menuFileHandle
-            "\n"
-            . "# You can also add a sub-title to your menu by adding a\n"
-            . "# \"SubTitle: [subtitle]\" line.\n";
-            };
-        }
-    else
-        {
-        print $menuFileHandle
-        "# You can add a title and sub-title to your menu.\n"
-        . "# Just add \"Title: [project name]\" and \"SubTitle: [subtitle]\" lines here.\n";
-        };
-
-    print $menuFileHandle "\n";
-
-    if (defined $footer)
-        {
-        print $menuFileHandle 'Footer: ' . $footer . "\n";
-        }
-    else
-        {
-        print $menuFileHandle
-        "# You can add a footer to your documentation.  Just add a\n"
-        . "# \"Footer: [text]\" line here.  If you want to add a copyright notice,\n"
-        . "# this would be the place to do it.\n";
-        };
-
-    print $menuFileHandle
-
-    "\n"
-
-    # Remember to keep lines below eighty characters.
-
-    . "# ------------------------------------------------------------------------ #\n\n"
-
-    . "# Cut and paste the lines below to change the order in which your files\n"
-    . "# appear on the menu.  Don't worry about adding or removing files, Natural\n"
-    . "# Docs will take care of that.\n"
-    . "# \n"
-    . "# If you change the title of a file, make sure you remove \"auto-title,\"\n"
-    . "# from the parenthesis or it won't stick.  Add \"auto-title,\" to the\n"
-    . "# the parenthesis before the file name and Natural Docs will generate the\n"
-    . "# title from the source file and keep it updated automatically.\n"
-    . "# \n"
-    . "# You can further organize the menu by grouping the entries.  Add a\n"
-    . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.  Groups\n"
-    . "# can appear within each other.\n"
-    . "# \n"
-    . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
-    . "# \"Link: [text] ([URL])\" lines, respectively.\n"
-    . "# \n"
-    . "# The formatting and comments are auto-generated, so don't worry about\n"
-    . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
-    . "# time it is run.  When working with groups, just deal with the braces and\n"
-    . "# forget about the indentation and comments.\n"
-
-    . "\n"
-    . "# ------------------------------------------------------------------------ #\n"
-
-    . "\n";
-
-    WriteEntries($menu->GroupContent(), $menuFileHandle, undef);
-
-    close($menuFileHandle);
+    SaveMenuFile();
+    SavePreviousMenuStateFile();
     };
 
 
@@ -337,6 +371,23 @@ sub SubTitle
 sub Footer
     {  return $footer;  };
 
+#
+#   Function: Indexes
+#
+#   Returns an existence hashref of all the indexes appearing in the menu.  The keys are the <Topic Types> or * for the general
+#   index.  Do not change the arrayref.
+#
+sub Indexes
+    {  return \%indexes;  };
+
+#
+#   Function: PreviousIndexes
+#
+#   Returns an existence hashref of all the indexes that previously appeared in the menu.  The keys are the <Topic Types> or *
+#   for the general index.  Do not change the arrayref.
+#
+sub PreviousIndexes
+    {  return \%previousIndexes;  };
 
 
 ###############################################################################
@@ -526,10 +577,24 @@ sub ParseMenuFile
                     {
                     my $type = lc($1);
                     my $name = $2;
+                    my $modifier;
+
+                    if ($type =~ / /)
+                        {
+                        ($modifier, $type) = split(/ +/, $type, 2);
+                        };
 
                     if (exists $menuSynonyms{$type})
                         {
                         $type = $menuSynonyms{$type};
+
+                        # Currently index is the only type allowed modifiers.
+                        if (defined $modifier && $type != ::MENU_INDEX())
+                            {
+                            push @$errors, NaturalDocs::Menu::Error::New($lineNumber,
+                                                                                                 $modifier . ' ' . $menuSynonyms{$type}
+                                                                                                 . ' is not a valid keyword.');
+                            };
 
                         if ($type == ::MENU_GROUP())
                             {
@@ -676,6 +741,24 @@ sub ParseMenuFile
                                 };
 
                             $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_LINK(), $name, $target) );
+                            }
+                        elsif ($type == ::MENU_INDEX())
+                            {
+                            if (!defined $modifier)
+                                {
+                                $indexes{'*'} = 1;
+                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, undef) );
+                                }
+                            elsif (exists $indexSynonyms{$modifier})
+                                {
+                                $modifier = $indexSynonyms{$modifier};
+                                $indexes{$modifier} = 1;
+                                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry::New(::MENU_INDEX(), $name, $modifier) );
+                                }
+                            else
+                                {
+                                push @$errors, NaturalDocs::Menu::Error::New($lineNumber, $modifier . ' is not a valid index type.');
+                                };
                             };
 
                         }
@@ -744,6 +827,155 @@ sub ParseMenuFile
         {  $trashAlert = 1;  };
 
     return ($hasGroups, $errors, $filesInMenu, $trashAlert);
+    };
+
+
+#
+#   Function: SaveMenuFile
+#
+#   Saves the current menu to <NaturalDocs_Menu.txt>.
+#
+sub SaveMenuFile
+    {
+    my $menuFileHandle;
+
+    open($menuFileHandle, '>' . NaturalDocs::Project::MenuFile())
+        or die "Couldn't save menu file " . NaturalDocs::Project::MenuFile() . "\n";
+
+
+    if (defined $title)
+        {
+        print $menuFileHandle 'Title: ' . $title . "\n";
+
+        if (defined $subTitle)
+            {
+            print $menuFileHandle 'SubTitle: ' . $subTitle . "\n";
+            }
+        else
+            {
+            print $menuFileHandle
+            "\n"
+            . "# You can also add a sub-title to your menu by adding a\n"
+            . "# \"SubTitle: [subtitle]\" line.\n";
+            };
+        }
+    else
+        {
+        print $menuFileHandle
+        "# You can add a title and sub-title to your menu.\n"
+        . "# Just add \"Title: [project name]\" and \"SubTitle: [subtitle]\" lines here.\n";
+        };
+
+    print $menuFileHandle "\n";
+
+    if (defined $footer)
+        {
+        print $menuFileHandle 'Footer: ' . $footer . "\n";
+        }
+    else
+        {
+        print $menuFileHandle
+        "# You can add a footer to your documentation.  Just add a\n"
+        . "# \"Footer: [text]\" line here.  If you want to add a copyright notice,\n"
+        . "# this would be the place to do it.\n";
+        };
+
+    print $menuFileHandle
+
+    "\n"
+
+    # Remember to keep lines below eighty characters.
+
+    . "# ------------------------------------------------------------------------ #\n\n"
+
+    . "# Cut and paste the lines below to change the order in which your files\n"
+    . "# appear on the menu.  Don't worry about adding or removing files, Natural\n"
+    . "# Docs will take care of that.\n"
+    . "# \n"
+    . "# If you change the title of a file, make sure you remove \"auto-title,\"\n"
+    . "# from the parenthesis or it won't stick.  Add \"auto-title,\" to the\n"
+    . "# the parenthesis before the file name and Natural Docs will generate the\n"
+    . "# title from the source file and keep it updated automatically.\n"
+    . "# \n"
+    . "# You can further organize the menu by grouping the entries.  Add a\n"
+    . "# \"Group: [name] {\" line to start a group, and add a \"}\" to end it.  Groups\n"
+    . "# can appear within each other.\n"
+    . "# \n"
+    . "# You can add text and web links to the menu by adding \"Text: [text]\" and\n"
+    . "# \"Link: [text] ([URL])\" lines, respectively.\n"
+    . "# \n"
+    . "# You can add indexes to the menu by adding \"Index: [name]\" or\n"
+    . "# \"[type] Index: [name]\" to the menu.  The types are Class, Function, and\n"
+    . "# File.  If you don't add a type, it will be an index of everything.\n"
+    . "# \n"
+    . "# The formatting and comments are auto-generated, so don't worry about\n"
+    . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
+    . "# time it is run.  When working with groups, just deal with the braces and\n"
+    . "# forget about the indentation and comments.\n"
+
+    . "\n"
+    . "# ------------------------------------------------------------------------ #\n"
+
+    . "\n";
+
+    WriteEntries($menu->GroupContent(), $menuFileHandle, undef);
+
+    close($menuFileHandle);
+    };
+
+
+#
+#   Function: ParsePreviousMenuStateFile
+#
+#   Loads and parses the previous menu state file.
+#
+sub ParsePreviousMenuStateFile
+    {
+    my $fileIsOkay;
+    my $fileHandle;
+
+    if (open($fileHandle, '<' . NaturalDocs::Project::PreviousMenuStateFile()))
+        {
+        my $fileVersion = <$fileHandle>;
+        chomp($fileVersion);
+
+        if ($fileVersion == NaturalDocs::Settings::FileVersion())
+            {  $fileIsOkay = 1;  }
+        else
+            {  close ($fileHandle);  };
+        };
+
+    if ($fileIsOkay)
+        {
+        # [index type] tab [index type] tab ...
+
+        my $indexLine = <$fileHandle>;
+        chomp($indexLine);
+
+        my @indexValues = split(/\t/, $indexLine);
+
+        foreach my $indexValue (@indexValues)
+            {  $previousIndexes{$indexValue} = 1;  };
+        };
+    };
+
+
+#
+#   Function: SavePreviousMenuStateFile
+#
+#   Saves changes to <NaturalDocs.m>.
+#
+sub SavePreviousMenuStateFile
+    {
+    my $fileHandle;
+    open ($fileHandle, '>' . NaturalDocs::Project::PreviousMenuStateFile())
+        or die "Couldn't save " . NaturalDocs::Project::PreviousMenuStateFile() . ".\n";
+
+    print $fileHandle
+
+        '' . NaturalDocs::Settings::FileVersion() . "\n"
+
+        . join("\t", keys %indexes) . "\n";
     };
 
 
@@ -940,7 +1172,17 @@ sub WriteEntries #(entries, fileHandle, indentChars)
                 {
                 print $fileHandle $indentChars . 'Link: ' . $entry->Target() . "\n";
                 };
-             };
+             }
+        elsif ($entry->Type() == ::MENU_INDEX())
+            {
+            my $type;
+            if (defined $entry->Target())
+                {
+                $type = $indexNames{$entry->Target()} . ' ';
+                };
+
+            print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
+            };
         };
     };
 
