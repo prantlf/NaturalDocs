@@ -29,6 +29,7 @@ package NaturalDocs::Languages::Base;
 #   The handle of the source file currently being parsed.
 #
 
+
 #
 #   Function: New
 #
@@ -64,6 +65,11 @@ sub New
 sub ShebangStrings
     {  return undef;  };
 
+# Function: PackageSeparator
+# Returns the package separator symbol.  The default is a dot.
+sub PackageSeparator
+    {  return '.';  };
+
 
 
 ###############################################################################
@@ -78,14 +84,14 @@ sub ShebangStrings
 #
 #   Parameters:
 #
-#       sourceFile - The name of the source file to parse.
+#       sourceFile - The <FileName> of the source file to parse.
 #       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
 #
 #   Returns:
 #
 #       The array ( autoTopics, scopeRecord ).
 #
-#       autoTopics - An arrayref of automatically generated topics from the file, or undef if none.
+#       autoTopics - An arrayref of automatically generated <NaturalDocs::Parser::ParsedTopics> from the file, or undef if none.
 #       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>, or undef if none.
 #
 
@@ -215,7 +221,7 @@ sub FormatPrototype #(type, prototype)
 #   Parameters:
 #
 #       name - The name of the symbol.
-#       type  - The symbol's type.  One of the <Topic Types>.
+#       type  - The symbol's <TopicType>.
 #
 #   Returns:
 #
