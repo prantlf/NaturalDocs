@@ -195,7 +195,7 @@ sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($type ne ::TOPIC_FUNCTION() && $type ne ::TOPIC_DELEGATE())
+    if ($prototype !~ /\(.*[,;].*\)/)
         {
         my $object = NaturalDocs::Languages::Prototype->New($prototype);
         return $object;
@@ -204,7 +204,7 @@ sub ParsePrototype #(type, prototype)
 
     # Parse the parameters out of the prototype.
 
-    my @tokens = $prototype =~ /([^\(\)\[\]\{\}\<\>\,\;]+|.)/g;
+    my @tokens = $prototype =~ /([^\(\)\[\]\{\}\<\>\'\"\,\;]+|.)/g;
 
     my $parameter;
     my @parameterLines;
@@ -219,7 +219,18 @@ sub ParsePrototype #(type, prototype)
         if ($finishedParameters)
             {  $afterParameters .= $token;  }
 
-        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+        elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
+            {
+            if ($symbolStack[0] eq '(')
+                {  $parameter .= $token;  }
+            else
+                {  $beforeParameters .= $token;  };
+
+            if ($token eq $symbolStack[-1])
+                {  pop @symbolStack;  };
+            }
+
+        elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
             if ($symbolStack[0] eq '(')
                 {  $parameter .= $token;   }
@@ -322,7 +333,7 @@ sub ParseParameterLine #(line)
     $line =~ s/^ //;
     $line =~ s/ $//;
 
-    my @tokens = $line =~ /([^ \(\)\{\}\[\]\<\>\=]+|.)/g;
+    my @tokens = $line =~ /([^ \(\)\{\}\[\]\<\>\'\"\=]+|.)/g;
     my ($type, $typeSuffix, $name, $defaultValue, $afterDefaultValue);
     my @symbolStack;
 
@@ -331,7 +342,15 @@ sub ParseParameterLine #(line)
         if ($afterDefaultValue)
             {  $defaultValue .= $token;  }
 
-        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+        elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
+            {
+            $name .= $token;
+
+            if ($token eq $symbolStack[-1])
+                {  pop @symbolStack;  };
+            }
+
+        elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
             push @symbolStack, $token;
             $name .= $token;
@@ -405,7 +424,7 @@ sub ParsePascalParameterLine #(line)
     $line =~ s/^ //;
     $line =~ s/ $//;
 
-    my @tokens = $line =~ /([^\(\)\{\}\[\]\<\>\=\:]+|\:\=|.)/g;
+    my @tokens = $line =~ /([^\(\)\{\}\[\]\<\>\'\"\=\:]+|\:\=|.)/g;
     my ($type, $name, $defaultValue, $afterName, $afterDefaultValue);
     my @symbolStack;
 
@@ -414,7 +433,18 @@ sub ParsePascalParameterLine #(line)
         if ($afterDefaultValue)
             {  $defaultValue .= $token;  }
 
-        elsif ($token eq '(' || $token eq '[' || $token eq '{' || $token eq '<')
+        elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
+            {
+            if ($afterName)
+                {  $type .= $token;  }
+            else
+                {  $name .= $token;  };
+
+            if ($token eq $symbolStack[-1])
+                {  pop @symbolStack;  };
+            }
+
+        elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
             push @symbolStack, $token;
 
