@@ -242,7 +242,7 @@ sub ProjectDataDirectory
 # Function: StyleDirectory
 # Returns the main style directory.
 sub StyleDirectory
-    {  return NaturalDocs::File->JoinPath($FindBin::Bin, 'Styles', 1);  };
+    {  return NaturalDocs::File->JoinPath($FindBin::RealBin, 'Styles', 1);  };
 
 # Function: TabLength
 # Returns the number of spaces tabs should be expanded to.
