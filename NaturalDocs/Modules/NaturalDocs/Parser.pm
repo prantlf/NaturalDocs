@@ -448,7 +448,7 @@ sub ExtractComments #(content)
                     while ($prototypeStart < length($content))
                         {
                         my $nextLineBreak = index($content, "\n", $prototypeStart);
-                        if ($nextLineBreak != -1)
+                        if ($nextLineBreak == -1)
                             {  last;  };
 
                         if (substr($content, $prototypeStart, $nextLineBreak - $prototypeStart) =~ /[^ \t\n\r]/)
