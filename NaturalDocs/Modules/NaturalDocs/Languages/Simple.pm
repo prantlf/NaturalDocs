@@ -411,8 +411,17 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
                 $prototype = substr($prototype, 0, $endOfPrototype);
                 $self->RemoveExtenders(\$prototype);
 
-                # Add it to the last topic.
-                $topicList->[-1]->SetPrototype($prototype);
+                # Try to match the title to the prototype.
+
+                my $titleInPrototype = $topicList->[-1]->Name();
+
+                # Strip parenthesis so Function(2) and Function(int, int) will still match Function(anything).
+                $titleInPrototype =~ s/[\t ]*\(.*$//;
+
+                if (index($prototype, $titleInPrototype) != -1)
+                    {
+                    $topicList->[-1]->SetPrototype($prototype);
+                    };
 
                 return;
                 };
