@@ -572,9 +572,18 @@ if ($@)  # Oops.
     die
          "\n"
          . "Natural Docs encountered the following error and was stopped:\n"
-         . "     " . $@
          . "\n"
-         . "Natural Docs Version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
-         . "Perl Version: " .$perlVersion . "\n"
+         . "   " . $@
+         . "\n"
+
+         . "Also include the following information when sending an error report:\n"
+         . "\n"
+         . "   Natural Docs version: " . NaturalDocs::Settings->TextAppVersion() . "\n"
+         . "   Perl version: " .$perlVersion . " on " . $^O . "\n"
+         . "\n"
+
+         . "You can get help at the following web site:\n"
+         . "\n"
+         . "   " . NaturalDocs::Settings->AppURL() . "\n"
          . "\n";
     };
