@@ -995,7 +995,7 @@ sub BuildFooter
 #   Parameters:
 #
 #       index  - An arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
-#       outputFile - The output file the index is going to be stored in.
+#       outputFile - The output file the index is going to be stored in.  Since there may be multiple files, just send the first file.
 #
 #   Returns:
 #
@@ -1254,6 +1254,24 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
     if ($page != -1)
         {
         print INDEXFILEHANDLE $endPage;
+        close(INDEXFILEHANDLE);
+        }
+
+    # Build a dummy page so there's something at least.
+    else
+        {
+        $indexFileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory($self),
+                                                                           $self->IndexFileOf($type, 1));
+
+        open(INDEXFILEHANDLE, '>' . $indexFileName)
+            or die "Couldn't create output file " . $indexFileName . ".\n";
+
+        print INDEXFILEHANDLE
+            $beginPage
+            . $self->BuildIndexNavigationBar($type, 1, \@pageLocation)
+            . 'There are no entries in the ' . lc($topicNames{$type}) . ' index.'
+            . $endPage;
+
         close(INDEXFILEHANDLE);
         };
 
