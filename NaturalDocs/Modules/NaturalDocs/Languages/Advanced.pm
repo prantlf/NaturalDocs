@@ -435,8 +435,9 @@ sub SkipUntilAfter #(indexRef, lineNumberRef, token, token, token ...)
                 $$index += scalar @target;
                 return;
                 };
-            }
-        elsif ($tokens->[$index] eq "\n")
+            };
+
+        if ($tokens->[$index] eq "\n")
             {
             $$lineNumber++;
             $$index++;
@@ -463,9 +464,13 @@ sub IsFirstLineToken #(index)
     my ($self, $index) = @_;
     my $tokens = $self->Tokens();
 
-    do
-        {  $index--;  }
-    while ($index > 0 && $tokens->[$index] =~ /^[ \t]/);
+    if ($index == 0)
+        {  return 1;  };
+
+    $index--;
+
+    if ($tokens->[$index] =~ /^[ \t]/)
+        {  $index--;  };
 
     if ($index <= 0 || $tokens->[$index] eq "\n")
         {  return 1;  }
