@@ -21,31 +21,30 @@ package NaturalDocs::SymbolTable::IndexElement;
 #
 #   Topic: How IndexElements Work
 #
-#   This is a little tricky, so make sure you understand this.  Indexes are sorted by symbol, then class, then file.  If there is only
-#   one class for a symbol, or one file definition for a class/symbol, they are added inline to the entry.  However, if there are
-#   multiple classes or definitions, the function for it returns an arrayref of IndexElements instead.  Which members are defined
-#   and undefined should follow common sense.  For example, if a symbol is defined in multiple classes, the symbol's IndexElement
+#   This is a little tricky, so make sure you understand this.  Indexes are sorted by symbol, then packages, then file.  If there is only
+#   one package for a symbol, or one file definition for a package/symbol, they are added inline to the entry.  However, if there are
+#   multiple packages or files, the function for it returns an arrayref of IndexElements instead.  Which members are defined and
+#   undefined should follow common sense.  For example, if a symbol is defined in multiple packages, the symbol's IndexElement
 #   will not define <File()>, <Type()>, or <Prototype()>; those will be defined in child elements.  Similarly, the child elements will
 #   not define <Symbol()> since it's redundant.
 #
 #   Diagrams may be clearer.  If a member isn't listed for an element, it isn't defined.
 #
-#   A symbol that only has one class and definiton:
-#
+#   A symbol that only has one package and file:
 #   > [Element]
 #   > - Symbol
-#   > - Class
+#   > - Package
 #   > - File
 #   > - Type
 #   > - Prototype
 #   > - Summary
 #
-#   A symbol that is defined by multiple classes, each with only one definition:
+#   A symbol that is defined by multiple packages, each with only one file:
 #   > [Element]
 #   > - Symbol
-#   > - Class
+#   > - Package
 #   >     [Element]
-#   >     - Class
+#   >     - Package
 #   >     - File
 #   >     - Type
 #   >     - Prototype
@@ -53,10 +52,10 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   >     [Element]
 #   >     - ...
 #
-#   A symbol that is defined by one class, but has multiple definitions:
+#   A symbol that is defined by one package, but has multiple files
 #   > [Element]
 #   > - Symbol
-#   > - Class
+#   > - Package
 #   > - File
 #   >    [Element]
 #   >    - File
@@ -66,12 +65,12 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   >    [Element]
 #   >    - ...
 #
-#   A symbol that is defined by multiple classes which have multiple definitions:
+#   A symbol that is defined by multiple packages which have multiple files:
 #   > [Element]
 #   > - Symbol
-#   > - Class
+#   > - Package
 #   >    [Element]
-#   >    - Class
+#   >    - Package
 #   >    - File
 #   >      [Element]
 #   >      - File
@@ -85,10 +84,10 @@ package NaturalDocs::SymbolTable::IndexElement;
 #
 #   Why is it done this way?:
 #
-#   Because it makes it easier to generate nice indexes since all the splitting and combining is done for you.  If a
-#   symbol has only one class, you just want to link to it, you don't want to break out a subindex for just one class.  However, if
-#   it has multiple classes, you do want the subindex and to link to each one individually.  Whether <Class()> or <File()> returns
-#   an array or not determines whether you need to add a subindex for it.
+#   Because it makes it easier to generate nice indexes since all the splitting and combining is done for you.  If a symbol
+#   has only one package, you just want to link to it, you don't want to break out a subindex for just one package.  However, if
+#   it has multiple package, you do want the subindex and to link to each one individually.  Use <HasMultiplePackages()> and
+#   <HasMultipleFiles()> to determine whether you need to add a subindex for it.
 #
 
 
@@ -100,17 +99,17 @@ package NaturalDocs::SymbolTable::IndexElement;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#   SYMBOL  - The name of the symbol.
-#   CLASS  - The class of the symbol.  Will be that class name, undef for global, or an arrayref of
-#                 <NaturalDocs::SymbolTable::IndexElement> objects if multiple classes define the symbol.
-#   FILE  - The file the class/symbol is defined in.  Will be the file name or an arrayref of
-#             <NaturalDocs::SymbolTable::IndexElements> if multiple files define the class/symbol.
-#   TYPE  - The class/symbol/file type.  Will be one of the <Topic Types>.
-#   PROTOTYPE  - The class/symbol/file prototype, or undef if not applicable.
-#   SUMMARY     - The class/symbol/file summary, or undef if not applicable.
+#   SYMBOL  - The <SymbolString> without the package portion.
+#   PACKAGE  - The package <SymbolString>.  Will be a package <SymbolString>, undef for global, or an arrayref of
+#                      <NaturalDocs::SymbolTable::IndexElement> objects if multiple packages define the symbol.
+#   FILE  - The <FileName> the package/symbol is defined in.  Will be the file name or an arrayref of
+#             <NaturalDocs::SymbolTable::IndexElements> if multiple files define the package/symbol.
+#   TYPE  - The package/symbol/file <TopicType>.
+#   PROTOTYPE  - The package/symbol/file prototype, or undef if not applicable.
+#   SUMMARY     - The package/symbol/file summary, or undef if not applicable.
 #
 use constant SYMBOL => 0;
-use constant CLASS => 1;
+use constant PACKAGE => 1;
 use constant FILE => 2;
 use constant TYPE => 3;
 use constant PROTOTYPE => 4;
@@ -126,26 +125,26 @@ use constant SUMMARY => 5;
 #
 #   Returns a new object.
 #
-#   This should only be used for creating an entirely new symbol.  You should *not* pass arrayrefs as class or file parameters
+#   This should only be used for creating an entirely new symbol.  You should *not* pass arrayrefs as package or file parameters
 #   if you are calling this externally.  Use <Merge()> instead.
 #
 #   Parameters:
 #
-#       symbol  - The symbol's name.
-#       class  - The symbol's class, or undef for global.
+#       symbol  - The <SymbolString> without the package portion.
+#       package - The package <SymbolString>, or undef for global.
 #       file  - The symbol's definition file.
-#       type  - The symbol's type.  One of the <Topic Types>.
+#       type  - The symbol's <TopicType>.
 #       prototype  - The symbol's prototype, if applicable.
 #       summary  - The symbol's summary, if applicable.
 #
-sub New #(symbol, class, file, type, prototype, summary)
+sub New #(symbol, package, file, type, prototype, summary)
     {
     # DEPENDENCY: This depends on the parameter list being in the same order as the constants.
 
-    my $package = shift;
+    my $self = shift;
 
     my $object = [ @_ ];
-    bless $object, $package;
+    bless $object, $self;
 
     return $object;
     };
@@ -154,38 +153,39 @@ sub New #(symbol, class, file, type, prototype, summary)
 #
 #   Function: Merge
 #
-#   Adds another definition of the same symbol.  Perhaps it has a different class or defining file.
+#   Adds another definition of the same symbol.  Perhaps it has a different package or defining file.
 #
 #   Parameters:
 #
-#       class - The symbol's class, or undef for global.
+#       package - The package <SymbolString>, or undef for global.
 #       file  - The symbol's definition file.
-#       type  - The symbol's type.  One of the <Topic Types>.
+#       type  - The symbol's <TopicType>.
 #       prototype  - The symbol's protoype if applicable.
 #       summary  - The symbol's summary if applicable.
 #
-sub Merge #(class, file, type, prototype, summary)
+sub Merge #(package, file, type, prototype, summary)
     {
-    my ($self, $class, $file, $type, $prototype, $summary) = @_;
+    my ($self, $package, $file, $type, $prototype, $summary) = @_;
 
-    # If there's only one class...
-    if (!ref $self->Class())
+    # If there's only one package...
+    if (!$self->HasMultiplePackages())
         {
-        # If there's one class and it's the same as the new one...
-        if ($class eq $self->Class())
+        # If there's one package and it's the same as the new one...
+        if ($package eq $self->Package())
             {
             $self->MergeFile($file, $type, $prototype, $summary);
             }
 
-        # If there's one class and the new one is different...
+        # If there's one package and the new one is different...
         else
             {
-            my $selfDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $self->Class(), $self->File(),
-                                                                                                                $self->Type(), $self->Prototype(),
-                                                                                                                $self->Summary());
-            my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $class, $file, $type, $prototype, $summary);
+            my $selfDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $self->Package(), $self->File(),
+                                                                                                                 $self->Type(), $self->Prototype(),
+                                                                                                                 $self->Summary());
+            my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $package, $file, $type, $prototype,
+                                                                                                                  $summary);
 
-            $self->[CLASS] = [ $selfDefinition, $newDefinition ];
+            $self->[PACKAGE] = [ $selfDefinition, $newDefinition ];
             $self->[FILE] = undef;
             $self->[TYPE] = undef;
             $self->[PROTOTYPE] = undef;
@@ -193,33 +193,24 @@ sub Merge #(class, file, type, prototype, summary)
             };
         }
 
-    # If there's more than one class...
+    # If there's more than one package...
     else
         {
-        # See if the new class is one of them.
-        my $classElement;
+        # See if the new package is one of them.
+        my $selfPackages = $self->Package();
+        my $matchingPackage;
 
-        foreach my $testElement (@{$self->Class()})
+        foreach my $testPackage (@$selfPackages)
             {
-            if ($testElement->Class() eq $class)
+            if ($package eq $testPackage->Package())
                 {
-                $classElement = $testElement;
-                last;
+                $testPackage->MergeFile($file, $type, $prototype, $summary);;
+                return;
                 };
             };
 
-        # If there's more than one class and the new class is one of them...
-        if (defined $classElement)
-            {
-            $classElement->MergeFile($file, $type, $prototype, $summary);
-            }
-
-        # If there's more than one class and the new class is not one of them...
-        else
-            {
-            push @{$self->Class()},
-                    NaturalDocs::SymbolTable::IndexElement->New(undef, $class, $file, $type, $prototype, $summary);
-            };
+        push @{$self->[PACKAGE]},
+                NaturalDocs::SymbolTable::IndexElement->New(undef, $package, $file, $type, $prototype, $summary);
         };
     };
 
@@ -227,28 +218,25 @@ sub Merge #(class, file, type, prototype, summary)
 #
 #   Function: Sort
 #
-#   Sorts the class and file lists of the symbol.
+#   Sorts the package and file lists of the symbol.
 #
 sub Sort
     {
     my $self = shift;
 
-    if (ref $self->File())
+    if ($self->HasMultipleFiles())
         {
-        @{$self->[FILE]} = sort { ::StringCompare($a->File(), $b->File()) } @{$self->[FILE]};
-        };
+        @{$self->[FILE]} = sort { ::StringCompare($a->File(), $b->File()) } @{$self->File()};
+        }
 
-    if (ref $self->Class())
+    elsif ($self->HasMultiplePackages())
         {
-        @{$self->[CLASS]} = sort { ::StringCompare($a->Class(), $b->Class()) } @{$self->[CLASS]};
+        @{$self->[PACKAGE]} = sort { ::StringCompare( $a->Package(), $b->Package()) } @{$self->[PACKAGE]};
 
-        foreach my $classElement ( @{$self->Class()} )
+        foreach my $packageElement ( @{$self->[PACKAGE]} )
             {
-            if (ref $classElement->File())
-                {
-                @{$classElement->[FILE]} =
-                    sort { ::StringCompare($a->File(), $b->File()) } @{$classElement->[FILE]};
-                };
+            if ($packageElement->HasMultipleFiles())
+                {  $packageElement->Sort();  };
             };
         };
     };
@@ -259,34 +247,46 @@ sub Sort
 
 
 #   Function: Symbol
-#   Returns the symbol name if applicable.
+#   Returns the <SymbolString> without the package portion.
 sub Symbol
     {  return $_[0]->[SYMBOL];  };
 
-#   Function: Class
-#   Returns the class of the symbol, if applicable.  Will be undef for global, the name if there's one definiton, or an arrayref of
-#   <NaturalDocs::SymbolTable::IndexElement> objects if there are multiple classes that define the symbol.
-sub Class
-    {  return $_[0]->[CLASS];  };
+#
+#   Function: Package
+#   If <HasMultiplePackages()> is true, returns an arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.  Otherwise
+#   returns the package <SymbolString>, or undef if global.
+#
+sub Package
+    {  return $_[0]->[PACKAGE];  };
+
+#   Function: HasMultiplePackages
+#   Returns whether <Packages()> is broken out into more elements.
+sub HasMultiplePackages
+    {  return ref($_[0]->[PACKAGE]);  };
 
 #   Function: File
-#   Returns the file the class/symbol is defined in, if applicable.  Will be the name if there's one definition, or an arrayref of
-#   <NaturalDocs::SymbolTable::IndexElement> objects if there are multiple files that define the class/symbol.
+#   If <HasMultipleFiles()> is true, returns an arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.  Otherwise returns
+#   the name of the definition file.
 sub File
     {  return $_[0]->[FILE];  };
 
+#   Function: HasMultipleFiles
+#   Returns whether <File()> is broken out into more elements.
+sub HasMultipleFiles
+    {  return ref($_[0]->[FILE]);  };
+
 #   Function: Type
-#   Returns the type of the class/symbol/file, if applicable.  Will be one of the <Topic Types>.
+#   Returns the <TopicType> of the package/symbol/file, if applicable.
 sub Type
     {  return $_[0]->[TYPE];  };
 
 #   Function: Prototype
-#   Returns the prototype of the class/symbol/file, if applicable.
+#   Returns the prototype of the package/symbol/file, if applicable.
 sub Prototype
     {  return $_[0]->[PROTOTYPE];  };
 
 #   Function: Summary
-#   Returns the summary of the class/symbol/file, if applicable.
+#   Returns the summary of the package/symbol/file, if applicable.
 sub Summary
     {  return $_[0]->[SUMMARY];  };
 
@@ -297,21 +297,21 @@ sub Summary
 #
 #   Function: MergeFile
 #
-#   Adds another definition of the same class/symbol.  Perhaps the file is different.
+#   Adds another definition of the same package/symbol.  Perhaps the file is different.
 #
 #   Parameters:
 #
-#       file  - The class/symbol's definition file.
-#       type  - The class/symbol's type.  One of the <Topic Types>.
-#       prototype  - The class/symbol's protoype if applicable.
-#       summary  - The class/symbol's summary if applicable.
+#       file  - The package/symbol's definition file.
+#       type  - The package/symbol's <TopicType>.
+#       prototype  - The package/symbol's protoype if applicable.
+#       summary  - The package/symbol's summary if applicable.
 #
 sub MergeFile #(file, type, prototype, summary)
     {
     my ($self, $file, $type, $prototype, $summary) = @_;
 
     # If there's only one file...
-    if (!ref $self->File())
+    if (!$self->HasMultipleFiles())
         {
         # If there's one file and it's the different from the new one...
         if ($file ne $self->File())
@@ -333,7 +333,9 @@ sub MergeFile #(file, type, prototype, summary)
     else
         {
         # See if the new file is one of them.
-        foreach my $testElement (@{$self->File()})
+        my $files = $self->File();
+
+        foreach my $testElement (@$files)
             {
             if ($testElement->File() eq $file)
                 {
@@ -342,7 +344,7 @@ sub MergeFile #(file, type, prototype, summary)
                 };
             };
 
-        push @{$self->File()}, NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype, $summary);
+        push @{$self->[FILE]}, NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype, $summary);
         };
     };
 
