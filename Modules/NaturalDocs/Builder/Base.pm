@@ -101,7 +101,7 @@ package NaturalDocs::Builder::Base;
 #   Single Output File using Intermediate Files:
 #
 #       This example is for when you want to build one output file, such as a PDF file, but use intermediate files to handle differential
-#       building.  This would be much like how a compiler compiles each source file into a object file, and then a linker stiches them
+#       building.  This would be much like how a compiler compiles each source file into a object file, and then a linker stitches them
 #       all together into the final executable file.
 #
 #       <BeginBuild()> isn't important.  You don't need to implement it.
@@ -116,7 +116,7 @@ package NaturalDocs::Builder::Base;
 #
 #       Implement <UpdateMenu()> to generate the intermediate file for the menu.
 #
-#       Implement <EndBuild()> so that if the project changed, it stiches the intermediate files together into the final
+#       Implement <EndBuild()> so that if the project changed, it stitches the intermediate files together into the final
 #       output file.  Make sure you check the parameter because the function will be called when nothing changes too.
 #
 #
@@ -267,7 +267,7 @@ sub EndBuild #(hasChanged)
 #
 #   Parameters:
 #
-#       topic  - The <TopicType> to limit the index by, or undef if none.
+#       topic  - The <TopicType> to limit the index by.
 #
 sub BuildIndex #(topic)
     {
@@ -296,8 +296,7 @@ sub PurgeFiles #(files)
 #
 #   Parameters:
 #
-#       indexes  - An existence hashref of the indexes to purge.  Each entry will be either a <TopicType> or * for the
-#                      general index.
+#       indexes  - An existence hashref of the <TopicTypes> of the indexes to purge.
 #
 sub PurgeIndexes #(indexes)
     {
