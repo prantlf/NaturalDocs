@@ -1565,8 +1565,8 @@ sub TagType #(textBlocks, index)
 
             # After it must be whitespace, the end of the text, or )}].,!?"';:-/.
             ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/]/ ||
-              # Links also get plurals, like <link>s, <linx>es, and <link>'s.
-              ( $textBlocks->[$index] eq '>' && $textBlocks->[$index+1] =~ /^(?:es|s|\'s)/ ) ) &&
+              # Links also get plurals, like <link>s, <linx>es, <link>'s, and <links>'.
+              ( $textBlocks->[$index] eq '>' && $textBlocks->[$index+1] =~ /^(?:es|s|\')/ ) ) &&
 
             # Before it must be non-whitespace.
             ( $index != 0 && $textBlocks->[$index-1] !~ /[ \t\n]$/ ) &&
