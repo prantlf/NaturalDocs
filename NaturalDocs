@@ -147,8 +147,10 @@ use integer;
 #       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.4, my browser of choice.  Therefore it should be
 #                                        okay with Netscape 7, etc.
 #       Internet Explorer      - *Works on 4+.*  Tested on 4.0, 5.0 and 6.0.  I don't have a partition for 5.5 so I'm assuming it
-#                                        works.  4 can't collapse the menu and has minor layout issues.
-#       Opera                      - *Works on 5+.*  Tested on 5.12, 6.05, and 7.02.  Only 7.02 can collapse the menu.
+#                                        works.  4.0 can't collapse the menu and makes the tooltips the full page width, although it positions
+#                                        them correctly.  5.0 occasionally slightly misplaces the tooltips, but it's still usable and is usually fine.
+#       Opera                      - *Works on 5+.*  Tested on 5.12, 6.05, and 7.02.  Only 7.02 can collapse the menu.  5.12 can't
+#                                         size or position the tooltips correctly, so they're mostly useless.
 #       Konqueror (KHTML)   - *Probably.*  With the addition of Safari I'd like to be able to test this, but there's nothing for
 #                                        Windows and I haven't gotten around to setting up a Linux partition yet.  It should work as it's not
 #                                        doing anything exceptionally fancy except for the collapsing menu, which is still usable when the

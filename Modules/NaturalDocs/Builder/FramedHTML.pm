@@ -106,6 +106,7 @@ sub BuildFile #(sourceFile, parsedFile)
             . '<link rel="stylesheet" type="text/css" href="'. $self->MakeRelativeURL($outputFile, 'NaturalDocs.css') . '">'
 
             . $self->BrowserStylesJavaScript()
+            . $self->ToolTipsJavaScript()
 
         . '</head><body class=FramedContentPage>'
             . $self->OpeningBrowserStyles() . "\n\n"
@@ -114,6 +115,8 @@ sub BuildFile #(sourceFile, parsedFile)
             . '<!--  ' . NaturalDocs::Settings::AppURL() . '  -->' . "\n\n"
 
             . $self->BuildContent($sourceFile, $parsedFile)
+
+            . $self->BuildToolTips()
 
             . $self->ClosingBrowserStyles()
         . '</body></html>';
@@ -158,6 +161,7 @@ sub BuildIndex #(type)
             . '<link rel="stylesheet" type="text/css" href="'. $self->MakeRelativeURL($indexFile, 'NaturalDocs.css') . '">'
 
             . $self->BrowserStylesJavaScript()
+            . $self->ToolTipsJavaScript()
 
         . '</head><body class=FramedIndexPage>'
             . $self->OpeningBrowserStyles() . "\n\n"
