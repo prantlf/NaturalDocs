@@ -66,7 +66,8 @@ my %menuSynonyms = (
                                         'footer'    => ::MENU_FOOTER(),
                                         'copyright' => ::MENU_FOOTER(),
                                         'index'     => ::MENU_INDEX(),
-                                        'format'   => ::MENU_FORMAT()
+                                        'format'   => ::MENU_FORMAT(),
+                                        'data'      => ::MENU_DATA()
                                     );
 
 #
@@ -206,8 +207,8 @@ my %bannedIndexes;
 #       > Index: [name]
 #       > [modifier] Index: [name]
 #
-#       Indexes are specified with the types above.  Valid modifiers are defined in <indexSynonyms> and include Function and
-#       Class.  If no modifier is specified, the line specifies a general index.
+#       Indexes are specified with the types above.  Valid modifiers are topic keywords, either singular or plural.  If the modifier is
+#       "General" or not specified, the line specifies a general index.
 #
 #       > Don't Index: [type]
 #       > Don't Index: [type], [type], ...
@@ -215,12 +216,21 @@ my %bannedIndexes;
 #       The option above prevents indexes that exist but are not on the menu from being automatically added.  "General" is
 #       used to specify the general index.  Commas aren't required.
 #
+#       > Data: 1([obscured: [directory name]///[input directory]])
+#
+#       Used to store non-user editable data.  The leading 1 specifies it as storage for the input directories used in the last run and
+#       their names.  This allows menu files to be shared across machines, since the names will be consistent and the directories
+#       can be used to convert filenames to the local machine's paths.  We don't want this user-editable because they may think
+#       changing it changes the input directories, when it doesn't.  Also, changing it without changing all the paths screws up
+#       resolving.
+#
 #   Revisions:
 #
 #       1.16:
 #
 #           - File names are now absolute instead of relative.  Prior to 1.16 only one input directory was allowed, so they could be
 #             relative.
+#           - Data keywords introduced to store input directories and their names.
 #
 #       1.14:
 #
@@ -318,9 +328,7 @@ sub LoadAndUpdate
     {
     my ($self) = @_;
 
-    NaturalDocs::Settings->GenerateDirectoryNames(); # XXX - temporary
-
-    my ($filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
+    my ($inputDirectoryNames, $oldLockedTitles, $relativeFiles) = $self->LoadMenuFile();
 
     my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
     if ($errorCount)
@@ -332,6 +340,15 @@ sub LoadAndUpdate
         else
             {  die "There are " . $errorCount . " errors in the menu file.\n";  };
         };
+
+    if ($relativeFiles)
+        {  $self->ResolveRelativeInputDirectories();  }
+    else
+        {  $self->ResolveInputDirectories($inputDirectoryNames);  };
+
+    NaturalDocs::Settings->GenerateDirectoryNames($inputDirectoryNames);
+
+    my $filesInMenu = $self->FilesInMenu();
 
     my ($previousMenu, $previousIndexes, $previousFiles) = $self->LoadPreviousMenuStateFile();
 
@@ -417,39 +434,6 @@ sub LoadAndUpdate
     };
 
 
-
-#
-#   Function: LoadUnchanged
-#
-#   Loads the menu, assuming neither the menu file nor any of the source files have changed, and thus it definitely doesn't need
-#   to be updated.
-#
-sub LoadUnchanged
-    {
-    my ($self) = @_;
-
-    NaturalDocs::Settings->GenerateDirectoryNames(); # XXX - temporary
-
-    my ($filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
-
-    my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
-    if ($errorCount)
-        {
-        NaturalDocs::ConfigFile->HandleErrors();
-
-        if ($errorCount == 1)
-            {  die "There is an error in the menu file.\n";  }
-        else
-            {  die "There are " . $errorCount . " errors in the menu file.\n";  };
-        };
-
-    my ($previousMenu, $previousIndexes, $previousFiles) = $self->LoadPreviousMenuStateFile();
-
-    if (defined $previousIndexes)
-        {  %previousIndexes = %$previousIndexes;  };
-    };
-
-
 #
 #   Function: Save
 #
@@ -532,6 +516,37 @@ sub PreviousIndexes
     {  return \%previousIndexes;  };
 
 
+#
+#   Function: FilesInMenu
+#
+#   Returns a hashref of all the files present in the menu.  The keys are the file names, and the values are references to their
+#   <NaturalDocs::Menu::Entry> objects.
+#
+sub FilesInMenu
+    {
+    my ($self) = @_;
+
+    my @groupStack = ( $menu );
+    my $filesInMenu = { };
+
+    while (scalar @groupStack)
+        {
+        my $currentGroup = pop @groupStack;
+        my $currentGroupContent = $currentGroup->GroupContent();
+
+        foreach my $entry (@$currentGroupContent)
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @groupStack, $entry;  }
+            elsif ($entry->Type() == ::MENU_FILE())
+                {  $filesInMenu->{ $entry->Target() } = $entry;  };
+            };
+        };
+
+    return $filesInMenu;
+    };
+
+
 ###############################################################################
 # Group: Event Handlers
 #
@@ -585,21 +600,23 @@ sub OnDefaultTitleChange #(file)
 #
 #   Returns:
 #
-#       The array ( filesInMenu, oldLockedTitles ).
+#       The array ( inputDirectories, oldLockedTitles, relativeFiles ).
 #
-#       filesInMenu - A hashref of all the source files that appear in the menu.  The keys are the file names, and the values are
-#                          references to their entries in <menu>.  Will be an empty hashref if none.
+#       inputDirectories - A hashref of all the input directories and their names stored in the menu file.  The keys are the directories,
+#                                 and the values are their names.  Undef if none.
 #       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the file names, and the values are
 #                                the old locked titles.  Will be undef if none.  If a file entry from a pre-1.0 file was locked, it's
 #                                entry in <menu> is unlocked and its title is placed here instead, so that it can be compared with the
 #                                generated title and only locked again if absolutely necessary.
+#       relativeFiles - Whether the menu is in a pre-1.16 format that uses relative file names.
 #
 sub LoadMenuFile
     {
     my ($self) = @_;
 
-    my $filesInMenu = { };
     my $oldLockedTitles = { };
+    my $inputDirectories = { };
+    my $relativeFiles;
 
     # A stack of Menu::Entry object references as we move through the groups.
     my @groupStack;
@@ -635,6 +652,9 @@ sub LoadMenuFile
             # If there's no format tag, the menu version is 0.95 or earlier.
             $version = NaturalDocs::Version->FromString('0.95');
             };
+
+        if ($version < NaturalDocs::Version->FromString('1.16'))
+            {  $relativeFiles = 1;  };
 
         # Strip tabs.
         $menuFileContent =~ tr/\t/ /;
@@ -774,8 +794,6 @@ sub LoadMenuFile
                             {
                             my $flags = 0;
 
-                            no integer;
-
                             if ($version >= NaturalDocs::Version->FromString('1.0'))
                                 {
                                 if (lc($extras[0]) eq 'no auto-title')
@@ -801,8 +819,6 @@ sub LoadMenuFile
                                     };
                                 };
 
-                            use integer;
-
                             if (!scalar @extras)
                                 {
                                 NaturalDocs::ConfigFile->AddError($lineNumber,
@@ -813,8 +829,6 @@ sub LoadMenuFile
                             my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $name, $extras[0], $flags);
 
                             $currentGroup->PushToGroup($entry);
-
-                            $filesInMenu->{$extras[0]} = $entry;
                             }
 
                         # There can only be one title, subtitle, and footer.
@@ -928,6 +942,20 @@ sub LoadMenuFile
                                 };
                             }
 
+                        elsif ($type == ::MENU_DATA())
+                            {
+                            $name =~ /^(\d)\((.*)\)$/;
+                            my ($number, $data) = ($1, $2);
+
+                            $data = NaturalDocs::ConfigFile->Unobscure($data);
+
+                            if ($number == 1)
+                                {
+                                my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
+                                $inputDirectories->{$inputDir} = $dirName;
+                                };
+                            };
+
                         # There's also MENU_FORMAT, but that was already dealt with.  We don't need to parse it, just make sure it
                         # doesn't cause an error.
 
@@ -975,8 +1003,6 @@ sub LoadMenuFile
             {  NaturalDocs::ConfigFile->AddError($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
 
 
-        no integer;
-
         if ($version < NaturalDocs::Version->FromString('1.0'))
             {
             # Prior to 1.0, there was no auto-placement.  New entries were either tacked onto the end of the menu, or if there were
@@ -1014,15 +1040,15 @@ sub LoadMenuFile
                     };
                 };
             };
-
-        use integer;
         };
 
 
     if (!scalar keys %$oldLockedTitles)
         {  $oldLockedTitles = undef;  };
+    if (!scalar keys %$inputDirectories)
+        {  $inputDirectories = undef;  };
 
-    return ($filesInMenu, $oldLockedTitles);
+    return ($inputDirectories, $oldLockedTitles, $relativeFiles);
     };
 
 
@@ -1041,8 +1067,19 @@ sub SaveMenuFile
 
     print MENUFILEHANDLE
 
-    "# Do not change or remove this line.\n"
-    . "Format: " . NaturalDocs::Settings->TextAppVersion() . "\n\n";
+    "##### Do not change or remove these lines. #####\n"
+    . "Format: " . NaturalDocs::Settings->TextAppVersion() . "\n";
+
+    my $inputDirs = NaturalDocs::Settings->InputDirectories();
+    foreach my $inputDir (@$inputDirs)
+        {
+        print MENUFILEHANDLE
+        'Data: 1(' . NaturalDocs::ConfigFile->Obscure( NaturalDocs::Settings->InputDirectoryNameOf($inputDir)
+                                                                          . '///' . $inputDir ) . ")\n";
+        };
+
+    print MENUFILEHANDLE
+    "##### You can edit below this point. #####\n\n\n";
 
 
     if (defined $title)
@@ -1088,8 +1125,8 @@ sub SaveMenuFile
 
     # Remember to keep lines below eighty characters.
 
-    . "# ------------------------------------------------------------------------ #\n\n"
-
+    . "# --------------------------------------------------------------------------\n"
+    . "# \n"
     . "# Cut and paste the lines below to change the order in which your files\n"
     . "# appear on the menu.  Don't worry about adding or removing files, Natural\n"
     . "# Docs will take care of that.\n"
@@ -1105,9 +1142,12 @@ sub SaveMenuFile
     . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
     . "# time it is run.  When working with groups, just deal with the braces and\n"
     . "# forget about the indentation and comments.\n"
-
-    . "\n"
-    . "# ------------------------------------------------------------------------ #\n"
+    . "# \n"
+    . "# You can use this file on other computers even if they use different\n"
+    . "# directories.  As long as the command line points to the same source files,\n"
+    . "# Natural Docs will be able to correct the locations automatically.\n"
+    . "# \n"
+    . "# --------------------------------------------------------------------------\n"
 
     . "\n";
 
@@ -1530,6 +1570,278 @@ sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
 ###############################################################################
 # Group: Auto-Adjustment Functions
 
+
+#
+#   Function: ResolveInputDirectories
+#
+#   Detects if the input directories in the menu file match those in the command line, and if not, tries to resolve them.  This allows
+#   menu files to work across machines, since the absolute paths won't be the same but the relative ones should be.
+#
+#   Parameters:
+#
+#       inputDirectoryNames - A hashref of the input directories appearing in the menu file, or undef if none.  The keys are the
+#                                        directories, and the values are their names.  May be undef.
+#
+sub ResolveInputDirectories #(inputDirectoryNames)
+    {
+    my ($self, $menuDirectoryNames) = @_;
+
+
+    # Determine which directories don't match the command line, if any.
+
+    my $inputDirectories = NaturalDocs::Settings->InputDirectories();
+    my @unresolvedMenuDirectories;
+
+    foreach my $menuDirectory (keys %$menuDirectoryNames)
+        {
+        my $found;
+
+        foreach my $inputDirectory (@$inputDirectories)
+            {
+            if ($menuDirectory eq $inputDirectory)
+                {
+                $found = 1;
+                last;
+                };
+            };
+
+        if (!$found)
+            {  push @unresolvedMenuDirectories, $menuDirectory;  };
+        };
+
+    # Quit if everything matches up, which should be the most common case.
+    if (!scalar @unresolvedMenuDirectories)
+        {  return;  };
+
+    # Poop.  See which input directories are still available.
+
+    my @unresolvedInputDirectories;
+
+    foreach my $inputDirectory (@$inputDirectories)
+        {
+        if (!exists $menuDirectoryNames->{$inputDirectory})
+            {  push @unresolvedInputDirectories, $inputDirectory;  };
+        };
+
+    # Quit if there are none.  This means an input directory is in the menu that isn't in the command line.  Natural Docs should
+    # proceed normally and let the files be deleted.
+    if (!scalar @unresolvedInputDirectories)
+        {  return;  };
+
+    # The index into menuDirectoryScores is the same as in unresolvedMenuDirectories.  The index into each arrayref within it is
+    # the same as in unresolvedInputDirectories.
+    my @menuDirectoryScores;
+    for (my $i = 0; $i < scalar @unresolvedMenuDirectories; $i++)
+        {  push @menuDirectoryScores, [ ];  };
+
+
+    # Now plow through the menu, looking for files that have an unresolved base.
+
+    my @menuGroups = ( $menu );
+
+    while (scalar @menuGroups)
+        {
+        my $currentGroup = pop @menuGroups;
+        my $currentGroupContent = $currentGroup->GroupContent();
+
+        foreach my $entry (@$currentGroupContent)
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {
+                push @menuGroups, $entry;
+                }
+            elsif ($entry->Type() == ::MENU_FILE())
+                {
+                # Check if it uses an unresolved base.
+                for (my $i = 0; $i < scalar @unresolvedMenuDirectories; $i++)
+                    {
+                    if (NaturalDocs::File->IsSubPathOf($unresolvedMenuDirectories[$i], $entry->Target()))
+                        {
+                        my $relativePath = NaturalDocs::File->MakeRelativePath($unresolvedMenuDirectories[$i], $entry->Target());
+                        $self->ResolveFile($relativePath, \@unresolvedInputDirectories, $menuDirectoryScores[$i]);
+                        last;
+                        };
+                    };
+                };
+            };
+        };
+
+
+    # Now, create an array of score objects.  Each score object is the three value arrayref [ from, to, score ].  From and To are the
+    # conversion options and are the indexes into unresolvedInput/MenuDirectories.  We'll sort this array by score to get the best
+    # possible conversions.  Yes, really.
+    my @scores;
+
+    for (my $menuIndex = 0; $menuIndex < scalar @unresolvedMenuDirectories; $menuIndex++)
+        {
+        for (my $inputIndex = 0; $inputIndex < scalar @unresolvedInputDirectories; $inputIndex++)
+            {
+            if ($menuDirectoryScores[$menuIndex]->[$inputIndex])
+                {
+                push @scores, [ $menuIndex, $inputIndex, $menuDirectoryScores[$menuIndex]->[$inputIndex] ];
+                };
+            };
+        };
+
+    @scores = sort { $b->[2] <=> $a->[2] } @scores;
+
+
+    # Now we determine what goes where.
+    my @menuDirectoryConversions;
+
+    foreach my $scoreObject (@scores)
+        {
+        if (!defined $menuDirectoryConversions[ $scoreObject->[0] ])
+            {
+            $menuDirectoryConversions[ $scoreObject->[0] ] = $unresolvedInputDirectories[ $scoreObject->[1] ];
+            };
+        };
+
+
+    # Now, FINALLY, we do the conversion.  Note that not every menu directory may have a conversion defined.
+
+    @menuGroups = ( $menu );
+
+    while (scalar @menuGroups)
+        {
+        my $currentGroup = pop @menuGroups;
+        my $currentGroupContent = $currentGroup->GroupContent();
+
+        foreach my $entry (@$currentGroupContent)
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {
+                push @menuGroups, $entry;
+                }
+            elsif ($entry->Type() == ::MENU_FILE())
+                {
+                # Check if it uses an unresolved base.
+                for (my $i = 0; $i < scalar @unresolvedMenuDirectories; $i++)
+                    {
+                    if (NaturalDocs::File->IsSubPathOf($unresolvedMenuDirectories[$i], $entry->Target()) &&
+                        defined $menuDirectoryConversions[$i])
+                        {
+                        my $relativePath = NaturalDocs::File->MakeRelativePath($unresolvedMenuDirectories[$i], $entry->Target());
+                        $entry->SetTarget( NaturalDocs::File->JoinPaths($menuDirectoryConversions[$i], $relativePath) );
+                        last;
+                        };
+                    };
+                };
+            };
+        };
+
+
+    # Whew.
+
+    $hasChanged = 1;
+    $fileChanged = 1;
+    };
+
+
+#
+#   Function: ResolveRelativeInputDirectories
+#
+#   Resolves pre-1.16 relative input directories to the input directories available.
+#
+sub ResolveRelativeInputDirectories
+    {
+    my ($self) = @_;
+
+    my $inputDirectories = NaturalDocs::Settings->InputDirectories();
+    my $resolvedInputDirectory;
+
+    if (scalar @$inputDirectories == 1)
+        {  $resolvedInputDirectory = $inputDirectories->[0];  }
+    else
+        {
+        my @score;
+
+        # Plow through the menu, looking for files and scoring them.
+
+        my @menuGroups = ( $menu );
+
+        while (scalar @menuGroups)
+            {
+            my $currentGroup = pop @menuGroups;
+            my $currentGroupContent = $currentGroup->GroupContent();
+
+            foreach my $entry (@$currentGroupContent)
+                {
+                if ($entry->Type() == ::MENU_GROUP())
+                    {
+                    push @menuGroups, $entry;
+                    }
+                elsif ($entry->Type() == ::MENU_FILE())
+                    {
+                    $self->ResolveFile($entry->Target(), $inputDirectories, \@score);
+                    };
+                };
+            };
+
+        # Determine the best match.
+
+        my $bestScore = 0;
+        my $bestIndex = 0;
+
+        for (my $i = 0; $i < scalar @$inputDirectories; $i++)
+            {
+            if ($score[$i] > $bestScore)
+                {
+                $bestScore = $score[$i];
+                $bestIndex = $i;
+                };
+            };
+
+        $resolvedInputDirectory = $inputDirectories->[$bestIndex];
+        };
+
+
+    # Okay, now that we have our resolved directory, update everything.
+
+    my @menuGroups = ( $menu );
+
+    while (scalar @menuGroups)
+        {
+        my $currentGroup = pop @menuGroups;
+        my $currentGroupContent = $currentGroup->GroupContent();
+
+        foreach my $entry (@$currentGroupContent)
+            {
+            if ($entry->Type() == ::MENU_GROUP())
+                {  push @menuGroups, $entry;  }
+            elsif ($entry->Type() == ::MENU_FILE())
+                {
+                $entry->SetTarget( NaturalDocs::File->JoinPaths($resolvedInputDirectory, $entry->Target()) );
+                };
+            };
+        };
+
+    $fileChanged = 1;
+    $hasChanged = 1;
+    };
+
+
+#
+#   Function: ResolveFile
+#
+#   Tests a relative path against a list of directories.  Adds one to the score of each base where there is a match.
+#
+#   Parameters:
+#
+#       relativePath - The relative file name to test.
+#       possibleBases - An arrayref of bases to test it against.
+#       possibleBaseScores - An arrayref of scores to adjust.  The score indexes should correspond to the base indexes.
+#
+sub ResolveFile #(relativePath, possibleBases, possibleBaseScores)
+    {
+    my ($self, $relativePath, $possibleBases, $possibleBaseScores) = @_;
+
+    for (my $i = 0; $i < scalar @$possibleBases; $i++)
+        {
+        if (-e NaturalDocs::File->JoinPaths($possibleBases->[$i], $relativePath))
+            {  $possibleBaseScores->[$i]++;  };
+        };
+    };
 
 #
 #   Function: LockUserTitleChanges
