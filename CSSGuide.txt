@@ -72,8 +72,8 @@ Topic: Structure
     >
     >   </Content>
 
-    Take advantange of the CSS inheritance model.  For example, you can style all titles via .Content .CTitle, and you can style
-    specific titles with .Content .CType .CTitle.
+    Take advantange of the CSS inheritance model.  For example, you can style all titles via .CTitle, and you can style
+    specific titles with .CType .CTitle.
 
 
 Styles: Styles
@@ -251,8 +251,8 @@ Topic: Structure
     line up on the right throughout the entire summary.
 
     Use the power of CSS's inheritance rules to specify styles.  For example, to set the style of a group entry, apply it to
-    .Summary .SGroup .SEntry.  However, you could also apply a style to both the group's entry and description by applying the
-    style to .Summary .SGroup.  Or, you could apply a style to all the entries by applying it to .Summary .SEntry.  And so on.
+    .SGroup .SEntry.  However, you could also apply a style to both the group's entry and description by applying the
+    style to .SGroup.  Or, you could apply a style to all the entries by applying it to .SEntry.  And so on.
 
 
 Styles: Styles
