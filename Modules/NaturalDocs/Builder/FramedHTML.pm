@@ -95,7 +95,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=FramedContentPage>'
+        . '</head><body class=FramedContentPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
@@ -148,7 +148,7 @@ sub BuildIndex #(type)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=FramedIndexPage>'
+        . '</head><body class=FramedIndexPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
@@ -207,7 +207,7 @@ sub UpdateMenu
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=FramedMenuPage>'
+        . '</head><body class=FramedMenuPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()

@@ -91,7 +91,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=UnframedPage>'
+        . '</head><body class=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
@@ -163,7 +163,7 @@ sub BuildIndex #(type)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=UnframedPage>'
+        . '</head><body class=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
