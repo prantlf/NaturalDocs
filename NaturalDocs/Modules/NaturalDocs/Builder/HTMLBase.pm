@@ -52,6 +52,14 @@ my @indexHeadings = ( '$#!', '0-9', 'A' .. 'Z' );
 #
 my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
 
+#
+#   bool: saidUpdatingCSSFile
+#
+#   Whether the status message "Updating CSS file..." has been displayed.  We only want to print it once, no matter how many
+#   HTML-based targets we are building.
+#
+my $saidUpdatingCSSFile;
+
 
 ###############################################################################
 # Group: ToolTip Package Variables
@@ -232,8 +240,11 @@ sub EndBuild #(hasChanged)
             (stat($masterCSSFile))[9] != (stat($outputCSSFile))[9] ||
              -s $masterCSSFile != -s $outputCSSFile)
             {
-            if (!NaturalDocs::Settings->IsQuiet())
-                {  print "Updating CSS file...\n";  };
+            if (!NaturalDocs::Settings->IsQuiet() && !$saidUpdatingCSSFile)
+                {
+                print "Updating CSS file...\n";
+                $saidUpdatingCSSFile = 1;
+                };
 
             NaturalDocs::File->Copy($masterCSSFile, $outputCSSFile);
             };
