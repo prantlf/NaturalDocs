@@ -767,8 +767,12 @@ sub AnalyzeChanges
             if (!$watchedFile->DefinesReference($reference))
                 {  $self->DeleteReference($reference, $watchedFileName);  };
             };
+        };
 
-
+    # We have to check if the watched file exists again because DeleteReference() could have removed it.  I'm still not sure how a
+    # file could have references without symbols, but apparently it's happened in the real world because it's crashed on people.
+    if (exists $files{$watchedFileName})
+        {
         # Go through the symbols.
 
         my $rebuildFile;
