@@ -629,7 +629,7 @@ sub LoadMenuFile
                 {  next;  };
 
             # Ignore line breaks.
-            if ($segment eq "\n")
+            if ($segment =~ /[\r\n]/)
                 {
                 $lineNumber++;
                 next;
@@ -638,7 +638,7 @@ sub LoadMenuFile
             # Ignore comments.
             if ($segment eq '#')
                 {
-                while (scalar @segments && $segments[0] ne "\n")
+                while (scalar @segments && $segments[0] !~ /[\r\n]/)
                     {  shift @segments;  };
 
                 next;
