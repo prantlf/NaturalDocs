@@ -58,7 +58,14 @@ Group: Packages  {
 Group: Output Formats  {
 
    File: Base  (Modules\NaturalDocs\Builder\Base.pm)
-   File: HTML  (Modules\NaturalDocs\Builder\HTML.pm)
+
+   Group: HTML  {
+
+      File: HTML  (Modules\NaturalDocs\Builder\HTML.pm)
+      File: FramedHTML  (Modules\NaturalDocs\Builder\FramedHTML.pm)
+      File: HTMLBase  (Modules\NaturalDocs\Builder\HTMLBase.pm)
+      }  # Group: HTML
+
    }  # Group: Output Formats
 
 
