@@ -457,9 +457,9 @@ Topic: Prototype Structure
                 "int"
             </td PLeftType>
 
-            <td PTypeSuffix>
+            <td PLeftSuffix>
                 "*"
-            </td PTypeSuffix>
+            </td PLeftSuffix>
 
             <td PRightParameter>
                 "a", "b"
@@ -498,6 +498,10 @@ Topic: Prototype Structure
                 "a,", "b:", "c:"
             </td PLeftParameter>
 
+            <td PLeftSuffix>
+                (not applicable in this example)
+            </td PLeftSuffix>
+
             <td PRightType>
                 "int"
             </td PRightType>
@@ -516,7 +520,7 @@ Topic: Prototype Structure
 
         (end diagram)
 
-        Note that there is no separate <PTypeSuffix>.  It is attached to <PRightType> instead.
+        Note that <PLeftSuffix> can apply to either a type or a parameter.
 
 
 Styles: Prototype Styles
@@ -532,8 +536,7 @@ Styles: Prototype Styles
     PLeftParameter - The parameter name when it appears before the type.
     PRightParameter - The parameter name when it appears after the type.
 
-    PTypeSuffix - Some suffix symbols split off from <PLeftType> so that they align in their own cell.  Will not be present for
-                        <PRightType>.
+    PLeftSuffix - Some suffix symbols split off from <PLeftType> or <PLeftParameter> so that they align in their own cell.
 
     PDefaultValue - The default value expression for a parameter.
 
