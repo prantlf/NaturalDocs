@@ -397,22 +397,19 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
         while ($index < scalar @$codeLines)
             {
             # We need to add a line break because that may be a prototype ender.
-            my $line = $codeLines->[$index] . "\n";
+            $prototype .= $codeLines->[$index] . "\n";
 
-            my $endOfPrototype = $self->EndOfPrototype($topicList->[-1]->Type(), \$line, undef);
+            my $endOfPrototype = $self->EndOfPrototype($topicList->[-1]->Type(), \$prototype, undef);
 
             if ($endOfPrototype == -1)
                 {
-                $prototype .= $line;
                 $index++;
                 }
             else
                 {
                 # We found it!
-                $line = substr($line, 0, $endOfPrototype);
-                $prototype .= $line;
-
-                $self->RemoveExtenders(\$line);
+                $prototype = substr($prototype, 0, $endOfPrototype);
+                $self->RemoveExtenders(\$prototype);
 
                 # Add it to the last topic.
                 $topicList->[-1]->SetPrototype($prototype);
