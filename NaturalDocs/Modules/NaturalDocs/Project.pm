@@ -118,6 +118,11 @@ my $reparseEverything;
 # Whether all the source files need to be rebuilt.
 my $rebuildEverything;
 
+# hash: mostUsedLanguage
+# The name of the most used language.  Doesn't include text files.
+my $mostUsedLanguage;
+
+
 
 ###############################################################################
 # Group: Files
@@ -136,6 +141,10 @@ my $rebuildEverything;
 #
 #       The beginning of the file is the <VersionInt> it was generated with.
 #
+#       > [most used language name]
+#
+#       Next is the name of the most used language in the source tree.  Does not include text files.
+#
 #       Each following line is
 #
 #       > [file name] tab [last modification time] tab [has ND content (0 or 1)] tab [default menu title] \n
@@ -144,7 +153,8 @@ my $rebuildEverything;
 #
 #       1.3:
 #
-#           - Removed the line following the <VersionInt>, which was the last modification time of <Menu.txt>.
+#           - The line following the <VersionInt>, which was previously the last modification time of <Menu.txt>, was changed to
+#             the name of the most used language.
 #
 #       1.16:
 #
@@ -202,6 +212,8 @@ my $rebuildEverything;
 #   <FileInfo.nd>.  New and changed files will be added to <FilesToParse()>, and if they have content,
 #   <FilesToBuild()>.
 #
+#   Will call <NaturalDocs::Languages->OnMostUsedLanguageChange()> if <MostUsedLanguage()> changes.
+#
 #   Returns:
 #
 #       Returns whether the project was changed in any way.
@@ -251,14 +263,23 @@ sub LoadSourceFileInfo
 
     if ($fileIsOkay)
         {
-        my $line;
         my %indexedFiles;
 
 
-        # Skip the Menu.txt line.
+        my $line = <FH_FILEINFO>;
+        ::XChomp(\$line);
 
-        if ($version < NaturalDocs::Version->FromString('1.3'))
-            {  $line = <FH_FILEINFO>;  };
+        if ($version >= NaturalDocs::Version->FromString('1.3'))
+            {
+            # The most used language name.
+            if (lc($mostUsedLanguage) ne lc($line))
+                {  NaturalDocs::Languages->OnMostUsedLanguageChange();  };
+            }
+        else
+            {
+            # The last modification time of Menu.txt
+            NaturalDocs::Languages->OnMostUsedLanguageChange();
+            };
 
 
         # Parse the rest of the file.
@@ -386,6 +407,8 @@ sub SaveSourceFileInfo
         or die "Couldn't save project file " . $self->FileInfoFile() . "\n";
 
     NaturalDocs::Version->ToTextFile(\*FH_FILEINFO, NaturalDocs::Settings->AppVersion());
+
+    print FH_FILEINFO $mostUsedLanguage . "\n";
 
     while (my ($fileName, $file) = each %supportedFiles)
         {
@@ -563,7 +586,7 @@ sub SymbolTableFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'SymbolTable.nd' );  };
 
 # Function: ClassHierarchyFile
-# Returns thhe full path to the class hierarchy's data file.
+# Returns the full path to the class hierarchy's data file.
 sub ClassHierarchyFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'ClassHierarchy.nd' );  };
 
@@ -837,6 +860,15 @@ sub SetDefaultMenuTitle #(file, menuTitle)
     };
 
 
+#
+#   Function: MostUsedLanguage
+#
+#   Returns the name of the most used language in the source trees.  Does not include text files.
+#
+sub MostUsedLanguage
+    {  return $mostUsedLanguage;  };
+
+
 
 ###############################################################################
 # Group: Support Functions
@@ -845,13 +877,16 @@ sub SetDefaultMenuTitle #(file, menuTitle)
 #   Function: GetAllSupportedFiles
 #
 #   Gets all the supported files in the passed directory and its subdirectories and puts them into <supportedFiles>.  The only
-#   attribute that will be set is <NaturalDocs::Project::File->LastModified()>.
+#   attribute that will be set is <NaturalDocs::Project::File->LastModified()>.  Also sets <mostUsedLanguage>.
 #
 sub GetAllSupportedFiles
     {
     my ($self) = @_;
 
     my @directories = @{NaturalDocs::Settings->InputDirectories()};
+
+    # Keys are language names, values are counts.
+    my %languageCounts;
 
 
     # Make an existence hash of excluded directories.
@@ -903,11 +938,24 @@ sub GetAllSupportedFiles
             # Otherwise add it if it's a supported extension.
             else
                 {
-                if (NaturalDocs::Languages->IsSupported($fullEntry))
+                if (my $language = NaturalDocs::Languages->LanguageOf($fullEntry))
                     {
                     $supportedFiles{$fullEntry} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
+                    $languageCounts{$language->Name()}++;
                     };
                 };
+            };
+        };
+
+
+    my $topCount = 0;
+
+    while (my ($language, $count) = each %languageCounts)
+        {
+        if ($count > $topCount && $language ne 'Text File')
+            {
+            $topCount = $count;
+            $mostUsedLanguage = $language;
             };
         };
     };
