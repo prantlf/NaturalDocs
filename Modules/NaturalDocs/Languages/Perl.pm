@@ -33,6 +33,17 @@ package NaturalDocs::Languages::Perl;
 use base 'NaturalDocs::Languages::Advanced';
 
 
+#
+#   bool: inNDPOD
+#   Set whenever we're in ND POD in <PreprocessLine()>.
+#
+my $inNDPOD;
+
+#
+#   bool: mustBreakPOD
+#   Set whenever the next line needs to be prefixed with "(NDPODBREAK)" in <PreprocessLine()>.
+#
+my $mustBreakPOD;
 
 ###############################################################################
 # Group: Interface Functions
@@ -59,7 +70,7 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef);
+    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], [ '=pod begin nd', '=pod end nd' ]);
 
     my $tokens = $self->Tokens();
     my $index = 0;
@@ -110,6 +121,49 @@ sub ParseFile #(sourceFile, topicsList)
     return ( $self->AutoTopics(), $self->ScopeRecord() );
     };
 
+
+#
+#   Function: PreprocessLine
+#
+#   Overridden to support "=pod begin nd" and similar.
+#
+#   - "=pod begin [nd|naturaldocs|natural docs]" all translate to "=pod begin nd".
+#   - "=pod end [nd|naturaldocs|natural docs]" all translate to "=pod end nd".
+#   - "=cut" from a ND block translates into "=pod end nd", but the next line will be altered to begin with "(NDPODBREAK)".  This is
+#     so if there is POD leading into ND which ends with a cut, the parser can still end the original POD because the end ND line
+#     would have been removed.
+#
+sub PreprocessLine #(lineRef)
+    {
+    my ($self, $lineRef) = @_;
+
+    if ($$lineRef =~ /^\=pod[ \t]+begin[ \t]+(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+        {
+        $$lineRef = '=pod begin nd';
+        $inNDPOD = 1;
+        $mustBreakPOD = 0;
+        }
+    elsif ($$lineRef =~ /^\=pod[ \t]+end[ \t]+(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+        {
+        $$lineRef = '=pod end nd';
+        $inNDPOD = 0;
+        $mustBreakPOD = 0;
+        }
+    elsif ($$lineRef =~ /^\=cut[ \t]*$/i)
+        {
+        if ($inNDPOD)
+            {
+            $$lineRef = '=pod end nd';
+            $inNDPOD = 0;
+            $mustBreakPOD = 1;
+            };
+        }
+    elsif ($mustBreakPOD)
+        {
+        $$lineRef = '(NDPODBREAK)' . $$lineRef;
+        $mustBreakPOD = 0;
+        };
+    };
 
 
 
@@ -894,6 +948,12 @@ sub TryToSkipPODComment #(indexRef, lineNumberRef)
             if ($tokens->[$$indexRef] eq '=' && lc( $tokens->[$$indexRef + 1] ) eq 'cut')
                 {
                 $self->SkipRestOfLine($indexRef, $lineNumberRef);
+                last;
+                }
+            elsif ($tokens->[$$indexRef] eq '(' && $$indexRef + 2 < scalar @$tokens &&
+                    $tokens->[$$indexRef+1] eq 'NDPODBREAK' && $tokens->[$$indexRef+2] eq ')')
+                {
+                $$indexRef += 3;
                 last;
                 }
             else
