@@ -701,10 +701,18 @@ Styles: Miscellaneous Styles
 
     HB   - Hidden Break.  Will surround a single space to try to break a word transparently.  Should be set to as small as possible.
 
+    blockquote - This HTML element should surround anything that needs to be scrolled if it's too wide, like prototypes and text
+                       diagrams.  It's not a style because this makes it much easier to do the JavaScript necessary to get this working
+                       in IE.
+
 
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
+
+    1.32:
+
+        - <blockquotes> now surround elements that should scroll if they're too wide for the page.
 
     1.3:
 
