@@ -894,59 +894,111 @@ sub BuildPrototype #(prototype)
     {
     my ($self, $prototype) = @_;
 
-    my $output;
+    $prototype =~ s/\t/ /g;
+    $prototype =~ s/ {2,}/ /g;
+
     $prototype = $self->ConvertAmpChars($prototype);
 
-    if ($prototype =~ /^  ([^\(]+?)  ( [\ \t]?  \(   [\ \t]? )  (.+?)  ( [\ \t]?  \)  [\ \t]? )  ([^\)]*)  $/x)
+    # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look
+    # at this VB function declaration:
+    #
+    # <WebMethod()> Public Function RetrieveTable(ByRef Msg As Integer, ByVal Key As String) As String()
+
+    my @segments = split(/([\(\)])/, $prototype);
+    my ($pre, $paramString, $post);
+    my $nest = 0;
+
+    while (scalar @segments)
         {
-        my ($pre, $openParen, $paramString, $closeParen, $post) = ($1, $2, $3, $4, $5);
+        my $segment = shift @segments;
 
-        if (index($paramString, ',') != -1)
+        if ($nest == 0)
+            {  $pre .= $segment;  }
+
+        elsif ($nest == 1 && $segment eq ')')
             {
-           $openParen =~ s/[ \t]/&nbsp;/g;
-           $closeParen =~ s/[ \t]/&nbsp;/g;
+            if ($paramString =~ /,/)
+                {
+                $post = join('', $segment, @segments);
+                last;
+                }
+            else
+                {
+                $pre .= $paramString . $segment;
+                $paramString = undef;
+                };
+            }
 
-           my @params = split(/\, */, $paramString);
+        else
+            {  $paramString .= $segment;  };
 
-           my $firstParam = shift @params;
-           my $lastParam = pop @params;
-
-           $output =
-           # Crappy hacky extra div and table because browsers interpret padding on tables differently.
-           '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
-           . '<table border=0 cellspacing=0 cellpadding=0><tr>'
-
-               . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
-               . '<td style="vertical-align: bottom">' . $openParen . '</td>'
-               . '<td style="vertical-align: bottom">' . $firstParam . (defined $lastParam ? ',' : '') . '</td>';
-
-               if (scalar @params)
-                   {
-                   $output .=
-                       '<td colspan=2></td>'
-                   . '</tr><tr>'
-                       . '<td colspan=2></td>'
-                       . '<td>' . join(',<br>', @params) . ',</td>';
-                   };
-
-               if (defined $lastParam)
-                   {
-                   $output .=
-                       '<td colspan=2></td>'
-                   . '</tr><tr>'
-                       . '<td colspan=2></td>'
-                       . '<td style="vertical-align: top">' . $lastParam . '</td>';
-                   };
-
-               $output .=
-               '<td style="vertical-align: top">' . $closeParen . '</td>'
-               . '<td style="vertical-align: top">' . $post . '</td>'
-           . '</tr></table>'
-           . '</div></td></tr></table>';
-           };
+        if ($segment eq '(')
+            {  $nest++;  }
+        elsif ($segment eq ')' && $nest > 0)
+            {  $nest--;  };
         };
 
-    if (!defined $output)
+    if ($paramString && !$post)
+        {
+        $pre .= $paramString;
+        $paramString = undef;
+        };
+
+
+    my $output;
+
+    if ($paramString)
+        {
+       $pre =~ /( ?\()$/;
+       my $openParen = $1;
+       $openParen =~ s/ /&nbsp;/;
+       $pre =~ s/ ?\($//;
+
+       $post=~ /^(\) ?)/;
+       my $closeParen = $1;
+       $closeParen =~  s/ /&nbsp;/;
+       $post =~ s/^\) ?//;
+
+       my @params = split(/\, ?/, $paramString);
+
+       my $firstParam = shift @params;
+       my $lastParam = pop @params;
+
+       $output =
+       # Crappy hacky extra div and table because browsers interpret padding on tables differently.
+       '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
+       . '<table border=0 cellspacing=0 cellpadding=0><tr>'
+
+           . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
+           . '<td style="vertical-align: bottom">' . $openParen . '</td>'
+           . '<td style="vertical-align: bottom" nowrap>' . $firstParam . (defined $lastParam ? ',' : '') . '</td>';
+
+           if (scalar @params)
+               {
+               $output .=
+                   '<td colspan=2></td>'
+               . '</tr><tr>'
+                   . '<td colspan=2></td>'
+                   . '<td nowrap>' . join(',<br>', @params) . ',</td>';
+               };
+
+           if (defined $lastParam)
+               {
+               $output .=
+                   '<td colspan=2></td>'
+               . '</tr><tr>'
+                   . '<td colspan=2></td>'
+                   . '<td style="vertical-align: top" nowrap>' . $lastParam . '</td>';
+               };
+
+           $output .=
+           '<td style="vertical-align: top">' . $closeParen . '</td>'
+           . '<td style="vertical-align: top">' . $post . '</td>'
+       . '</tr></table>'
+       . '</div></td></tr></table>';
+        }
+
+    else # (!$paramString)
         {
         $output =
         # A surrounding table as a hack to make the div form-fit.
