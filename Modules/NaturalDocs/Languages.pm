@@ -15,7 +15,10 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
-use NaturalDocs::Languages::Language;
+use NaturalDocs::Languages::Base;
+use NaturalDocs::Languages::Simple;
+#use NaturalDocs::Languages::Advanced;
+
 use NaturalDocs::Languages::Perl;
 use NaturalDocs::Languages::PHP;
 use NaturalDocs::Languages::PLSQL;
@@ -185,41 +188,42 @@ sub SeparateMember #(string)
 #
 #   Usage:
 #
-#       This function is *only* to be called by <NaturalDocs::Languages::Language->New()>.  Languages self-add when
+#       This function is *only* to be called by <NaturalDocs::Languages::Base->New()>.  Languages self-add when
 #       created, so there is no need to call anywhere else.
 #
 #   Parameters:
 #
-#       languageObject  - A reference to the <NaturalDocs::Languages::Language> object.
-#       extensions         - An arrayref of the extensions of the language's files.
-#       shebangStrings  - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
-#                                 has a .cgi extension or no extension at all.  Undef if not applicable.
+#       languageObject  - A reference to the <NaturalDocs::Languages::Base>-derived object.
 #
-sub Add #(languageObject, extensions, shebangStrings)
+sub Add #(languageObject)
     {
-    my ($self, $languageObject, $extensions, $shebangStrings) = @_;
+    my ($self, $languageObject) = @_;
 
     # Prior to 1.13, Add() was called from the main script to add languages.  Since people may be cutting and pasting old code,
     # they may not be aware that the method changed.  We want to throw a specific error message for this situation so it's clear.
     # We can detect an old Add() call because it had many more parameters.
-    if (scalar @_ > 4)
+    if (scalar @_ != 2)
         {
-        die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Languages->New().\n";
+        die "Natural Docs doesn't use NaturalDocs::Languages::Add() anymore.  Use NaturalDocs::Language::Simple->New().\n";
         };
 
     my $languageIndex = scalar @languages;
     push @languages, $languageObject;
 
+    my $extensions = $languageObject->Extensions();
+
     foreach my $extension (@$extensions)
         {
-        $extensions{ lc($extension) } = $languageIndex;
+        $extensions{$extension} = $languageIndex;
         };
+
+    my $shebangStrings = $languageObject->ShebangStrings();
 
     if (defined $shebangStrings)
         {
         foreach my $shebangString (@$shebangStrings)
             {
-            $shebangs{ lc($shebangString) } = $languageIndex;
+            $shebangs{$shebangString} = $languageIndex;
             };
         };
     };
