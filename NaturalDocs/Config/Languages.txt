@@ -1,4 +1,4 @@
-Format: 1.32
+Format: 1.33
 
 
 
@@ -516,13 +516,7 @@ Language: ActionScript
 
    Extension: as
 
-   Line Comment: //
-
-   Block Comment: /* */
-
-   Function Prototype Ender: {
-
-   Variable Prototype Enders: ; =
+   Full Language Support: NaturalDocs::Languages::ActionScript
 
 
 
