@@ -38,9 +38,16 @@ package NaturalDocs::Parser;
 #
 #   var: sourceFile
 #
-#   The name of the source file currently being parsed.
+#   The source <FileName> currently being parsed.
 #
 my $sourceFile;
+
+#
+#   var: language
+#
+#   The language object for the file, derived from <NaturalDocs::Languages::Base>.
+#
+my $language;
 
 #
 #   Array: parsedFile
@@ -69,7 +76,7 @@ my $parsingForInformation;
 #
 #   Parameters:
 #
-#       file - The name of the file to parse.
+#       file - The <FileName> to parse.
 #
 sub ParseForInformation #(file)
     {
@@ -88,8 +95,8 @@ sub ParseForInformation #(file)
         {
         # Add a symbol for the topic.
 
-        NaturalDocs::SymbolTable->AddSymbol($topic->Class(), $topic->Name(), $sourceFile, $topic->Type(),
-                                                                  $topic->Prototype(), $topic->Summary());
+        NaturalDocs::SymbolTable->AddSymbol($topic->Symbol(), $sourceFile, $topic->Type(),
+                                                                   $topic->Prototype(), $topic->Summary());
 
 
         # You can't put the function call directly in a while with a regex.  It has to sit in a variable to work.
@@ -104,13 +111,17 @@ sub ParseForInformation #(file)
 
             while ($body =~ /<ds>([^<]+)<\/ds><dd>(.*?)<\/dd>/g)
                 {
-                my ($listSymbol, $listSummary) = ($1, $2);
+                my ($listTextSymbol, $listSummary) = ($1, $2);
+
+                $listTextSymbol = NaturalDocs::NDMarkup->RestoreAmpChars($listTextSymbol);
 
                 $listSummary =~ /^(.*?)($|[\.\!\?](?:[\)\}\'\ ]|&quot;|&gt;))/;
                 $listSummary = $1 . $2;
 
-                NaturalDocs::SymbolTable->AddSymbol($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($listSymbol),
-                                                                          $sourceFile, $listType, undef, $listSummary);
+                my $listSymbol = NaturalDocs::SymbolString->FromText($listTextSymbol);
+                $listSymbol = NaturalDocs::SymbolString->Join($topic->Package(), $listSymbol);
+
+                NaturalDocs::SymbolTable->AddSymbol($listSymbol, $sourceFile, $listType, undef, $listSummary);
                 };
             };
 
@@ -119,8 +130,11 @@ sub ParseForInformation #(file)
 
         while ($body =~ /<link>([^<]+)<\/link>/g)
             {
-            NaturalDocs::SymbolTable->AddReference($topic->Scope(), NaturalDocs::NDMarkup->RestoreAmpChars($1),
-                                                                           $sourceFile);
+            my $linkText = NaturalDocs::NDMarkup->RestoreAmpChars($1);
+            my $linkSymbol = NaturalDocs::SymbolString->FromText($linkText);
+
+            NaturalDocs::SymbolTable->AddReference(::REFERENCE_TEXT(), $linkSymbol,
+                                                                           $topic->Package(), $topic->Using(), $sourceFile);
             };
         };
 
@@ -151,7 +165,7 @@ sub ParseForInformation #(file)
 #
 #   Parameters:
 #
-#       file - The name of the file to parse for building.
+#       file - The <FileName> to parse for building.
 #
 #   Returns:
 #
@@ -184,7 +198,7 @@ sub ParseForBuild #(file)
 #   Parameters:
 #
 #       commentLines - An arrayref of the comment's lines.  The language's comment symbols should be converted to spaces,
-#                               and there should be no line break characters at the end of each line.  *The original memory may be
+#                               and there should be no line break characters at the end of each line.  *The original memory will be
 #                               changed.*
 #       lineNumber - The line number of the first of the comment lines.
 #
@@ -209,7 +223,7 @@ sub OnComment #(commentLines, lineNumber)
 #
 #   Parameters:
 #
-#       class - The class encountered.
+#       class - The <SymbolString> of the class encountered.
 #
 sub OnClass #(class)
     {
@@ -228,16 +242,22 @@ sub OnClass #(class)
 #
 #   Parameters:
 #
-#       class - The class we're in.
-#       parent - The class it inherits.
-#       protection - Public/private/protected, if applicable.  Undef otherwise.
+#       class - The <SymbolString> of the class we're in.
+#       parent - The <SymbolString> of the class it inherits.
+#       scope - The package <SymbolString> that the reference appeared in.
+#       using - An arrayref of package <SymbolStrings> that the reference has access to via "using" statements.
+#       resolvingFlags - Any <Resolving Flags> to be used when resolving the reference.  <RESOLVE_NOPLURAL> is added
+#                              automatically since that would never apply to source code.
 #
-sub OnClassParent #(class, parent, protection)
+sub OnClassParent #(class, parent, scope, using, resolvingFlags)
     {
-    my ($self, $class, $parent, $protection) = @_;
+    my ($self, $class, $parent, $scope, $using, $resolvingFlags) = @_;
 
     if ($parsingForInformation)
-        {  NaturalDocs::ClassHierarchy->AddParent($sourceFile, $class, $parent);  };
+        {
+        NaturalDocs::ClassHierarchy->AddParentReference($sourceFile, $class, $parent, $scope, $using,
+                                                                                   $resolvingFlags | ::RESOLVE_NOPLURAL());
+        };
     };
 
 
@@ -255,13 +275,13 @@ sub OnClassParent #(class, parent, protection)
 #
 #   Returns:
 #
-#       The default menu title of the file.  Will be the file name if nothing better is found.
+#       The default menu title of the file.  Will be the <FileName> if nothing better is found.
 #
 sub Parse
     {
     my ($self) = @_;
 
-    my $language = NaturalDocs::Languages->LanguageOf($sourceFile);
+    $language = NaturalDocs::Languages->LanguageOf($sourceFile);
     NaturalDocs::Parser::Native->Start();
     @parsedFile = ( );
 
@@ -281,14 +301,16 @@ sub Parse
         if (scalar @parsedFile == 1 ||
             $firstType == ::TOPIC_SECTION() || $firstType == ::TOPIC_FILE() || $firstType == ::TOPIC_CLASS())
             {
-            $defaultMenuTitle = $parsedFile[0]->Name();
+            $defaultMenuTitle = $parsedFile[0]->Title();
             }
         else
             {
             # If the title ended up being the file name, add a leading section for it.
             my $name;
 
-            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($sourceFile);
+            my ($inputDirectory, $relativePath) = NaturalDocs::Settings->SplitFromInputDirectory($sourceFile);
+
+            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($relativePath);
             my @directories = NaturalDocs::File->SplitDirectories($dirString);
 
             if (scalar @directories > 2)
@@ -297,10 +319,12 @@ sub Parse
                 $name = NaturalDocs::File->JoinPath(undef, $dirString, $file);
                 }
             else
-                {  $name = $file;  };
+                {
+                $name = $relativePath;
+                }
 
             unshift @parsedFile,
-                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), $name, undef, undef, undef, undef, undef);
+                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), $name, undef, undef, undef, undef, undef, 1);
             };
 
         # We only want to call the hook if it has content.
@@ -312,16 +336,16 @@ sub Parse
     if (defined $autoTopics)
         {
         if (defined $scopeRecord)
-            {  $self->RepairScope($autoTopics, $scopeRecord);  };
+            {  $self->RepairPackages($autoTopics, $scopeRecord);  };
 
         $self->MergeAutoTopics($language, $autoTopics);
         };
 
     $self->MakeAutoGroups($autoTopics);
 
-    # We don't need to do this if there aren't any auto-topics because the only scope changes would be implied by the comments.
+    # We don't need to do this if there aren't any auto-topics because the only package changes would be implied by the comments.
     if (defined $autoTopics)
-        {  $self->AddScopeDelineators();  };
+        {  $self->AddPackageDelineators();  };
 
     return $defaultMenuTitle;
     };
@@ -512,112 +536,17 @@ sub CleanComment #(commentLines)
 
 
 #
-#   Function: MakeAutoGroups
+#   Function: RepairPackage
 #
-#   Creates group topics for files that do not have them.
-#
-sub MakeAutoGroups
-    {
-    my ($self) = @_;
-
-    # No groups if less than four topics.
-    if (scalar @parsedFile < 4)
-        {  return;  };
-
-    my $index = 0;
-    my $currentScope;
-    my $currentScopeIndex = 0;
-
-    while ($index < scalar @parsedFile)
-        {
-        if ($parsedFile[$index]->Scope() ne $currentScope)
-            {
-            $index += $self->MakeAutoGroupsFor($currentScopeIndex, $index);
-            $currentScope = $parsedFile[$index]->Scope();
-            $currentScopeIndex = $index;
-            };
-
-        $index++;
-        };
-
-    $self->MakeAutoGroupsFor($currentScopeIndex, $index);
-    };
-
-
-#
-#   Function: MakeAutoGroupsFor
-#
-#   Creates group topics for sections of files that do not have them.  A support function for <MakeAutoGroups()>.
-#
-#   Parameters:
-#
-#       startIndex - The index to start at.
-#       endIndex - The index to end at.  Not inclusive.
-#
-#   Returns:
-#
-#       The number of group topics added.
-#
-sub MakeAutoGroupsFor #(startIndex, endIndex)
-    {
-    my ($self, $startIndex, $endIndex) = @_;
-
-    # No groups if any are defined already.
-    for (my $i = $startIndex; $i < $endIndex; $i++)
-        {
-        if ($parsedFile[$i]->Type() == ::TOPIC_GROUP())
-            {  return 0;  };
-        };
-
-    my $currentType;
-    my $groupCount = 0;
-
-    while ($startIndex < $endIndex)
-        {
-        my $topic = $parsedFile[$startIndex];
-        my $type = $topic->Type();
-
-        if (NaturalDocs::Topics->IsList($type))
-            {  $type = NaturalDocs::Topics->IsListOf($type);  };
-
-        if ($type != $currentType && NaturalDocs::Topics->IsAutoGroupable($type))
-            {
-            splice(@parsedFile, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
-                                                                                                                          NaturalDocs::Topics->PluralNameOf($type),
-                                                                                                                          $topic->Scope(), $topic->Scope(),
-                                                                                                                          undef, undef, undef,
-                                                                                                                          $topic->LineNumber()) );
-
-            $currentType = $type;
-            $startIndex++;
-            $endIndex++;
-            $groupCount++;
-            }
-
-        elsif ($topic->Type() == ::TOPIC_CLASS())
-            {
-            $currentType = undef;
-            };
-
-        $startIndex++;
-        };
-
-    return $groupCount;
-    };
-
-
-#
-#   Function: RepairScope
-#
-#   Recalculates the scope for all comment topics using the auto-topics and the scope record.  Call this *before* calling
+#   Recalculates the packages for all comment topics using the auto-topics and the scope record.  Call this *before* calling
 #   <MergeAutoTopics()>.
 #
 #   Parameters:
 #
-#       autoTopics - A reference to the list of automatically generated topics.
+#       autoTopics - A reference to the list of automatically generated <NaturalDocs::Parser::ParsedTopics>.
 #       scopeRecord - A reference to an array of <NaturalDocs::Languages::Advanced::ScopeChanges>.
 #
-sub RepairScope #(autoTopics, scopeRecord)
+sub RepairPackages #(autoTopics, scopeRecord)
     {
     my ($self, $autoTopics, $scopeRecord) = @_;
 
@@ -629,8 +558,8 @@ sub RepairScope #(autoTopics, scopeRecord)
     my $autoTopic = $autoTopics->[0];
     my $scopeChange = $scopeRecord->[0];
 
-    my $currentScope;
-    my $inFakeScope;
+    my $currentPackage;
+    my $inFakePackage;
 
     while (defined $topic)
         {
@@ -639,20 +568,20 @@ sub RepairScope #(autoTopics, scopeRecord)
             $scopeChange->LineNumber() <= $topic->LineNumber() &&
             (!defined $autoTopic || $scopeChange->LineNumber() <= $autoTopic->LineNumber()) )
             {
-            $currentScope = $scopeChange->Scope();
+            $currentPackage = $scopeChange->Scope();
             $scopeIndex++;
             $scopeChange = $scopeRecord->[$scopeIndex];  # Will be undef when past end.
-            $inFakeScope = undef;
+            $inFakePackage = undef;
             }
 
         # Next try to end a fake scope with an auto topic if its defined and has the lowest line number.
         elsif (defined $autoTopic &&
                 $autoTopic->LineNumber() <= $topic->LineNumber())
             {
-            if ($inFakeScope)
+            if ($inFakePackage)
                 {
-                $currentScope = $autoTopic->Scope();
-                $inFakeScope = undef;
+                $currentPackage = $autoTopic->Package();
+                $inFakePackage = undef;
                 };
 
             $autoTopicIndex++;
@@ -666,24 +595,18 @@ sub RepairScope #(autoTopics, scopeRecord)
             if ($topic->Type() == ::TOPIC_CLASS() || $topic->Type() == ::TOPIC_SECTION())
                 {
                 # They should already have the correct class and scope.
-                $currentScope = $topic->Scope();
-                $inFakeScope = 1;
-                }
-            elsif ($topic->Type() == ::TOPIC_FILE() || $topic->Type() == ::TOPIC_FILE_LIST())
-                {
-                # Fix the file's scope.  The class should be correct.
-                $topic->SetScope($currentScope);
+                $currentPackage = $topic->Package();
+                $inFakePackage = 1;
                 }
            else
                 {
-                # Fix the class and scope of everything not handled above, which includes functions, variables, and types.
+                # Fix the package of everything else.
 
-                # Note that the first function or variable topic to appear in a fake scope will assume that scope even if it turns out
+                # Note that the first function or variable topic to appear in a fake package will assume that package even if it turns out
                 # to be incorrect in the actual code, since the topic will come before the auto-topic.  This will be corrected in
                 # MergeAutoTopics().
 
-                $topic->SetClass($currentScope);
-                $topic->SetScope($currentScope);
+                $topic->SetPackage($currentPackage);
                 };
 
             $topicIndex++;
@@ -695,30 +618,10 @@ sub RepairScope #(autoTopics, scopeRecord)
 
 
 #
-#   Function: AddToClassHierarchy
-#
-#   Adds any class topics to the class hierarchy, since they may not have been called with <OnClass()> if they didn't match up to
-#   an auto-topic.
-#
-sub AddToClassHierarchy
-    {
-    my ($self) = @_;
-
-    foreach my $topic (@parsedFile)
-        {
-        if ($topic->Type() == ::TOPIC_CLASS())
-            {
-            $self->OnClass($topic->Name());
-            };
-        };
-    };
-
-
-#
 #   Function: MergeAutoTopics
 #
-#   Merges the automatically generated topics into the file.  If an auto-topic matches an existing topic, it will be deleted and,
-#   if appropriate, have it's prototype, class, and scope transferred.  If it doesn't, the auto-topic will be inserted into the list unless
+#   Merges the automatically generated topics into the file.  If an auto-topic matches an existing topic, it will have it's prototype
+#   and package transferred.  If it doesn't, the auto-topic will be inserted into the list unless
 #   <NaturalDocs::Settings->DocumentedOnly()> is set.
 #
 #   Parameters:
@@ -746,20 +649,20 @@ sub MergeAutoTopics #(language, autoTopics)
         if ($autoTopic->LineNumber < $topic->LineNumber())
             {
             if ($autoTopic->Type() == ::TOPIC_FUNCTION() &&
-                exists $functionsInLists{$autoTopic->Name()})
+                exists $functionsInLists{$autoTopic->Title()})
                 {
-                delete $functionsInLists{$autoTopic->Name()};
+                delete $functionsInLists{$autoTopic->Title()};
                 }
             elsif ($autoTopic->Type() == ::TOPIC_VARIABLE() &&
-                    exists $variablesInLists{$autoTopic->Name()})
+                    exists $variablesInLists{$autoTopic->Title()})
                 {
-                delete $variablesInLists{$autoTopic->Name()};
+                delete $variablesInLists{$autoTopic->Title()};
                 }
             # We want to accept variables documented as properties.
             elsif ( ($autoTopic->Type() == ::TOPIC_PROPERTY() || $autoTopic->Type() == ::TOPIC_VARIABLE()) &&
-                    exists $propertiesInLists{$autoTopic->Name()})
+                    exists $propertiesInLists{$autoTopic->Title()})
                 {
-                delete $propertiesInLists{$autoTopic->Name()};
+                delete $propertiesInLists{$autoTopic->Title()};
                 }
             elsif (!NaturalDocs::Settings->DocumentedOnly())
                 {
@@ -773,12 +676,13 @@ sub MergeAutoTopics #(language, autoTopics)
         # Transfer information if we have a match.  We want to accept variables documented as properties.
         elsif ( ($topic->Type() == $autoTopic->Type() ||
                    ($topic->Type() == ::TOPIC_PROPERTY() && $autoTopic->Type() == ::TOPIC_VARIABLE()) ) &&
-                index($topic->Name(), $language->MakeSortableSymbol($autoTopic->Name(), $autoTopic->Type())) != -1)
+                index($topic->Title(), $language->MakeSortableSymbol($autoTopic->Title(), $autoTopic->Type())) != -1)
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
-            $topic->SetClass($autoTopic->Class());
-            $topic->SetScope($autoTopic->Scope());
+
+            if ($topic->Type() != ::TOPIC_CLASS())
+                {  $topic->SetPackage($autoTopic->Package());  };
 
             $topicIndex++;
             $autoTopicIndex++;
@@ -825,38 +729,169 @@ sub MergeAutoTopics #(language, autoTopics)
         {
         push @parsedFile, @$autoTopics[$autoTopicIndex..scalar @$autoTopics-1];
         };
+   };
+
+
+#
+#   Function: MakeAutoGroups
+#
+#   Creates group topics for files that do not have them.
+#
+sub MakeAutoGroups
+    {
+    my ($self) = @_;
+
+    # No groups only one topic.
+    if (scalar @parsedFile < 2)
+        {  return;  };
+
+    my $index = 0;
+    my $currentPackage;
+    my $currentPackageIndex = 0;
+
+    while ($index < scalar @parsedFile)
+        {
+        if ($parsedFile[$index]->Package() ne $currentPackage)
+            {
+            $index += $self->MakeAutoGroupsFor($currentPackageIndex, $index);
+            $currentPackage = $parsedFile[$index]->Package();
+            $currentPackageIndex = $index;
+            };
+
+        $index++;
+        };
+
+    $self->MakeAutoGroupsFor($currentPackageIndex, $index);
     };
 
 
 #
-#   Function: AddScopeDelineators
+#   Function: MakeAutoGroupsFor
 #
-#   Adds section and class topics to make sure the scope is correctly represented in the documentation.  Should be called last in
+#   Creates group topics for sections of files that do not have them.  A support function for <MakeAutoGroups()>.
+#
+#   Parameters:
+#
+#       startIndex - The index to start at.
+#       endIndex - The index to end at.  Not inclusive.
+#
+#   Returns:
+#
+#       The number of group topics added.
+#
+sub MakeAutoGroupsFor #(startIndex, endIndex)
+    {
+    my ($self, $startIndex, $endIndex) = @_;
+
+    # Skip the first entry if its a file.  We don't want to group it, since it should be the title of the file rather than an entry in it.
+    if ($startIndex == 0 && $parsedFile[0]->Type() == ::TOPIC_FILE())
+        {  $startIndex++;  };
+
+    if ($startIndex >= $endIndex)
+        {  return 0;  };
+
+    # No groups if any are defined already.
+    for (my $i = $startIndex; $i < $endIndex; $i++)
+        {
+        if ($parsedFile[$i]->Type() == ::TOPIC_GROUP())
+            {  return 0;  };
+        };
+
+    my $currentType;
+    my $groupCount = 0;
+
+    while ($startIndex < $endIndex)
+        {
+        my $topic = $parsedFile[$startIndex];
+        my $type = $topic->Type();
+
+        if (NaturalDocs::Topics->IsList($type))
+            {  $type = NaturalDocs::Topics->IsListOf($type);  };
+
+        if ($type != $currentType && NaturalDocs::Topics->IsAutoGroupable($type))
+            {
+            splice(@parsedFile, $startIndex, 0, NaturalDocs::Parser::ParsedTopic->New(::TOPIC_GROUP(),
+                                                                                                                          NaturalDocs::Topics->PluralNameOf($type),
+                                                                                                                          $topic->Package(), $topic->Using(),
+                                                                                                                          undef, undef, undef,
+                                                                                                                          $topic->LineNumber()) );
+
+            $currentType = $type;
+            $startIndex++;
+            $endIndex++;
+            $groupCount++;
+            }
+
+        elsif ($type == ::TOPIC_CLASS() || $type == ::TOPIC_SECTION())
+            {
+            $currentType = undef;
+            };
+
+        $startIndex++;
+        };
+
+    return $groupCount;
+    };
+
+
+#
+#   Function: AddToClassHierarchy
+#
+#   Adds any class topics to the class hierarchy, since they may not have been called with <OnClass()> if they didn't match up to
+#   an auto-topic.
+#
+sub AddToClassHierarchy
+    {
+    my ($self) = @_;
+
+    foreach my $topic (@parsedFile)
+        {
+        if ($topic->Type() == ::TOPIC_CLASS())
+            {
+            $self->OnClass($topic->Package());
+            }
+        elsif ($topic->Type() == ::TOPIC_CLASS_LIST())
+            {
+            my $body = $topic->Body();
+
+            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+                {
+                $self->OnClass( NaturalDocs::SymbolString->FromText($1) );
+                };
+            };
+        };
+    };
+
+
+#
+#   Function: AddPackageDelineators
+#
+#   Adds section and class topics to make sure the package is correctly represented in the documentation.  Should be called last in
 #   this process.
 #
-sub AddScopeDelineators
+sub AddPackageDelineators
     {
     my ($self) = @_;
 
     my $index = 0;
-    my $currentScope;
+    my $currentPackage;
 
-    my %usedScopes;
+    my %usedPackages;
 
     while ($index < scalar @parsedFile)
         {
         my $topic = $parsedFile[$index];
 
-        if ($topic->Scope() ne $currentScope)
+        if ($topic->Package() ne $currentPackage)
             {
-            $currentScope = $topic->Scope();
+            $currentPackage = $topic->Package();
 
             if ($topic->Type() != ::TOPIC_CLASS() && $topic->Type() != ::TOPIC_CLASS_LIST() &&
                 $topic->Type() != ::TOPIC_SECTION())
                 {
                 my $newTopic;
 
-                if (!defined $currentScope)
+                if (!defined $currentPackage)
                     {
                     $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_SECTION(), 'Global',
                                                                                                    undef, undef,
@@ -865,13 +900,19 @@ sub AddScopeDelineators
                     }
                 else
                     {
-                    my $name = $currentScope;
-                    if (exists $usedScopes{$currentScope})
-                        {  $name .= ' (continued)';  };
+                    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($currentPackage);
+                    my $title = join($language->PackageSeparator(), @identifiers);
 
-                    $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $name,
-                                                                                                   undef, $currentScope,
-                                                                                                   undef, undef, undef,
+                    my ($body, $summary);
+                    if (exists $usedPackages{$currentPackage})
+                        {
+                        $body = '<p>(continued)</p>';
+                        $summary = '(continued)';
+                        };
+
+                    $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $title,
+                                                                                                   undef, undef,
+                                                                                                   undef, $summary, $body,
                                                                                                    $topic->LineNumber());
                     }
 
@@ -879,8 +920,8 @@ sub AddScopeDelineators
                 $index++;
                 };
 
-            if (defined $currentScope)
-                {  $usedScopes{$currentScope} = 1;  };
+            if (defined $currentPackage)
+                {  $usedPackages{$currentPackage} = 1;  };
             };
 
         $index++;
