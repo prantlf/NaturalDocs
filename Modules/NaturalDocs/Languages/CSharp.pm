@@ -149,11 +149,10 @@ sub Extensions
 #
 #   Returns:
 #
-#       The array ( autoTopics, scopeRecord, exportedSymbols ).
+#       The array ( autoTopics, scopeRecord ).
 #
 #       autoTopics - An arrayref of automatically generated topics from the file, or undef if none.
 #       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>, or undef if none.
-#       exportedSymbols - C# doesn't support exporting, so this will always be undef.
 #
 sub ParseFile #(sourceFile, topicsList)
     {
@@ -208,7 +207,7 @@ sub ParseFile #(sourceFile, topicsList)
     if (defined $scopeRecord && !scalar @$scopeRecord)
         {  $scopeRecord = undef;  };
 
-    return ( $autoTopics, $scopeRecord, undef );
+    return ( $autoTopics, $scopeRecord );
     };
 
 

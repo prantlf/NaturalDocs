@@ -15,12 +15,10 @@
 #       - Inheritance via "use base" and "@ISA =".
 #       - Functions
 #       - Variables
-#       - Exporting via @EXPORT
 #
 #       Not supported yet:
 #
 #       - Constants
-#       - Exporting via @EXPORT_OK
 #
 ###############################################################################
 
@@ -33,18 +31,6 @@ use integer;
 package NaturalDocs::Languages::Perl;
 
 use base 'NaturalDocs::Languages::Advanced';
-
-
-###############################################################################
-# Group: Variables
-
-
-#
-#   hash: exported
-#
-#   An existence hash of all the symbols that are exported in the current file via @EXPORT.  Will be reset on every new file.
-#
-my %exported;
 
 
 
@@ -90,18 +76,16 @@ sub PackageSeparator
 #
 #   Returns:
 #
-#       The array ( autoTopics, scopeRecord, exportedSymbols ).
+#       The array ( autoTopics, scopeRecord ).
 #
 #       autoTopics - An arrayref of automatically generated topics from the file, or undef if none.
 #       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>, or undef if none.
-#       exportedSymbols - An existence hashref of all the exported symbols.
 #
 sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
     $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef, undef);
-    %exported = ( );
 
     my $tokens = $self->Tokens();
     my $index = 0;
@@ -113,8 +97,7 @@ sub ParseFile #(sourceFile, topicsList)
             $self->TryToGetPackage(\$index, \$lineNumber) ||
             $self->TryToGetBase(\$index, \$lineNumber) ||
             $self->TryToGetFunction(\$index, \$lineNumber) ||
-            $self->TryToGetVariable(\$index, \$lineNumber) ||
-            $self->TryToGetExported(\$index, \$lineNumber) )
+            $self->TryToGetVariable(\$index, \$lineNumber) )
             {
             # The functions above will handle everything.
             }
@@ -150,7 +133,7 @@ sub ParseFile #(sourceFile, topicsList)
     # Don't need to keep these around.
     $self->ClearTokens();
 
-    return ( $self->AutoTopics(), $self->ScopeRecord(), (scalar keys %exported ? \%exported : undef) );
+    return ( $self->AutoTopics(), $self->ScopeRecord() );
     };
 
 
@@ -592,67 +575,6 @@ sub TryToGetVariableName #(indexRef, lineNumberRef)
         };
 
     return $name;
-    };
-
-
-#
-#   Function: TryToGetExported
-#
-#   Determines whether the position is at a package base declaration statement, and if so, calls
-#   <NaturalDocs::Parser->OnClassParent()>.
-#
-#   Supported Syntaxes:
-#
-#   > @EXPORT = [list of strings]
-#   > our @EXPORT = [list of strings]
-#
-sub TryToGetExported #(indexRef, lineNumberRef)
-    {
-    my ($self, $indexRef, $lineNumberRef) = @_;
-    my $tokens = $self->Tokens();
-
-    my $index = $$indexRef;
-    my $lineNumber = $$lineNumberRef;
-
-    if (lc($tokens->[$index]) eq 'our')
-        {
-        $index++;
-        $self->TryToSkipWhitespace(\$index, \$lineNumber);
-        };
-
-    if ($tokens->[$index] ne '@')
-        {  return undef;  };
-
-    $index++;
-
-    if ($tokens->[$index] ne 'EXPORT')
-        {  return undef;  };
-
-    $index++;
-    $self->TryToSkipWhitespace(\$index, \$lineNumber);
-
-    if ($tokens->[$index] ne '=')
-        {  return undef;  };
-
-    $index++;
-    $self->TryToSkipWhitespace(\$index, \$lineNumber);
-
-    my $symbols = $self->TryToGetListOfStrings(\$index, \$lineNumber);
-
-    if (!defined $symbols)
-        {  return undef;  };
-
-    foreach my $symbol (@$symbols)
-        {
-        $symbol =~ s/^&//;  # Remove leading & from functions.
-        $exported{$symbol} = 1;
-        };
-
-    $$indexRef = $index;
-    $$lineNumberRef = $lineNumber;
-    $self->SkipRestOfStatement($indexRef, $lineNumberRef);
-
-    return 1;
     };
 
 

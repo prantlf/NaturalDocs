@@ -243,8 +243,7 @@ sub LineExtender
 #
 #   Returns:
 #
-#       Since this class cannot automatically document the code, generate a scope record, or detect exported symbols, it always
-#       returns ( undef, undef, undef ).
+#       Since this class cannot automatically document the code or generate a scope record, it always returns ( undef, undef ).
 #
 sub ParseFile #(sourceFile, topicsList)
     {
@@ -384,7 +383,7 @@ sub ParseFile #(sourceFile, topicsList)
 
     close(SOURCEFILEHANDLE);
 
-    return ( undef, undef, undef );
+    return ( undef, undef );
     };
 
 
