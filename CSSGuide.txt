@@ -223,7 +223,9 @@ List: Content Styles
     CDLEntry - A description list entry, which is the left side.
     CDLDescription - A description list description, which is the right side.
 
-    CMain - The main topic.
+    #MainTopic - The ID given to the main topic, which is the first in the file.  It is applied to the topic type tag, such as <CClass>
+                        and <CFunction>.
+
     CClass - A class topic.
     CSection - A section topic.
     CFile - A file topic.
@@ -580,6 +582,10 @@ List: Miscellaneous Styles
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
+
+    1.16:
+
+        - Changed the first topic from having a CMain type to having a normal type with a <#MainTopic> ID.
 
     1.1:
 
