@@ -13,7 +13,7 @@ body {
     margin: 0px; padding: 0px }
 
 body.UnframedPage {
-     background-color: #E8E8E8 }
+    background-color: #E8E8E8 }
 
 
 a:link,
@@ -124,18 +124,18 @@ body.FramedContentPage,
 
     .CTopic {
         font-size: 8pt;
-        margin: 0 15px 3em 15px }
+        margin-bottom: 3em }
 
     .CTitle {
         font-size: 11pt; font-weight: bold;
         border-width: 0 0 1px 0; border-style: solid; border-color: #A0A0A0;
-        margin: 0 0 .5em 0 }
+        margin: 0 15px .5em 15px }
 
     .CGroup .CTitle {
         font-size: 16pt; font-variant: small-caps;
         padding-left: 15px; padding-right: 15px;
         border-width: 0 0 2px 0; border-color: #000000;
-        margin-left: -15px; margin-right: -15px }
+        margin-left: 0; margin-right: 0 }
 
     .CClass .CTitle,
     .CSection .CTitle {
@@ -143,14 +143,17 @@ body.FramedContentPage,
         color: #FFFFFF; background-color: #A0A0A0;
         padding: 10px 15px 10px 15px;
         border-width: 2px 0; border-color: #000000;
-        margin-left: -15px; margin-right: -15px }
+        margin-left: 0; margin-right: 0 }
 
     .CMain .CTitle {
         font-size: 20pt;
         color: #FFFFFF; background-color: #7070C0;
         padding: 10px 15px 10px 15px;
         border-width: 0 0 3px 0; border-color: #000000;
-        margin-left: -15px; margin-right: -15px }
+        margin-left: 0; margin-right: 0 }
+
+    .CBody {
+        margin-left: 15px; margin-right: 15px }
 
 
     .CPrototype {
@@ -169,11 +172,11 @@ body.FramedContentPage,
         margin-top: 1.5em; margin-bottom: .5em }
 
     .CCode {
-        font: 8pt "Courier New", Courier, monospace };
+        font: 8pt "Courier New", Courier, monospace }
 
     .CBulletList {
-        /*  I don't know why CTopic's margin doesn't apply, but it's consistent across browsers so whatever.
-             Reapply it here as padding..  */
+        /*  I don't know why CBody's margin doesn't apply, but it's consistent across browsers so whatever.
+             Reapply it here as padding.  */
         padding-left: 15px; padding-right: 15px;
         margin: .5em 5ex .5em 5ex;
         }
@@ -215,7 +218,7 @@ body.FramedContentPage,
         IE 4 always makes them too long, there's no way around it.  */
     .IE4 .SBorder {
         width: 85% }
-    /*  IE 5 will make them too long unless you set the width to 100%.  Isn't this implied for a div?  */
+    /* IE 5 will make them too long unless you set the width to 100%.  Isn't this implied for a div?  */
     .IE5 .SBorder {
         width: 100% }
     /* IE 6 behaves like 5 when it's in a frame, but without frames it will be correct without a width or slightly too long
@@ -253,12 +256,11 @@ body.FramedContentPage,
     .SDescription a:active { color: #A00000 }
 
 
+    .SGroup {
+        margin-top: .5em; margin-bottom: .25em }
 
     .SGroup .SEntry {
         font-weight: bold; font-variant: small-caps }
-
-    .SGroup {
-        margin-top: .5em; margin-bottom: .25em }
 
     .SGroup .SEntry a { color: #800000 }
     .SGroup .SEntry a:active { color: #F00000 }
@@ -328,7 +330,6 @@ body.FramedIndexPage,
          index if everything's the same color.  */
     .ISymbol {
         font-weight: bold; color: #900000 }
-
 
 
 

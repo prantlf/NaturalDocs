@@ -29,10 +29,10 @@ td {
 p {
     text-indent: 5ex; margin: 0 }
 
+
 /*  Can't use something like display: none or it won't break.  */
 .HiddenBreak {
     font-size: 1px }
-
 
 
 
@@ -44,7 +44,8 @@ body.FramedMenuPage,
     padding: 10px 0 0 0 }
 
 .MenuSection {
-   width: 27ex }
+    width: 27ex }
+
 
     .MTitle {
         font-size: 16pt; font-weight: bold; font-variant: small-caps;
@@ -123,19 +124,18 @@ body.FramedContentPage,
 
     .CTopic {
         font-size: 10pt;
-        margin: 0 15px 3em 15px }
-
+        margin-bottom: 3em }
 
     .CTitle {
         font-size: 12pt; font-weight: bold;
         border-width: 0 0 1px 0; border-style: solid; border-color: #A0A0A0;
-        margin: 0 0 .5em 0 }
+        margin: 0 15px .5em 15px }
 
     .CGroup .CTitle {
         font-size: 16pt; font-variant: small-caps;
         padding-left: 15px; padding-right: 15px;
         border-width: 0 0 2px 0; border-color: #000000;
-        margin-left: -15px; margin-right: -15px }
+        margin-left: 0; margin-right: 0 }
 
     .CClass .CTitle,
     .CSection .CTitle {
@@ -143,14 +143,17 @@ body.FramedContentPage,
         color: #FFFFFF; background-color: #A0A0A0;
         padding: 10px 15px 10px 15px;
         border-width: 2px 0; border-color: #000000;
-        margin-left: -15px; margin-right: -15px }
+        margin-left: 0; margin-right: 0 }
 
     .CMain .CTitle {
         font-size: 20pt;
         color: #FFFFFF; background-color: #7070C0;
         padding: 10px 15px 10px 15px;
         border-width: 0 0 3px 0; border-color: #000000;
-        margin-left: -15px; margin-right: -15px }
+        margin-left: 0; margin-right: 0 }
+
+    .CBody {
+        margin-left: 15px; margin-right: 15px }
 
 
     .CPrototype {
@@ -169,10 +172,10 @@ body.FramedContentPage,
         margin-top: 1.5em; margin-bottom: .5em }
 
     .CCode {
-        font: 10pt "Courier New", Courier, monospace };
+        font: 10pt "Courier New", Courier, monospace }
 
     .CBulletList {
-        /*  I don't know why CTopic's margin doesn't apply, but it's consistent across browsers so whatever.
+        /*  I don't know why CBody's margin doesn't apply, but it's consistent across browsers so whatever.
              Reapply it here as padding.  */
         padding-left: 15px; padding-right: 15px;
         margin: .5em 5ex .5em 5ex;
@@ -227,6 +230,7 @@ body.FramedContentPage,
     .Gecko .SBorder {
         -moz-border-radius: 20px }
 
+
     .STable {
         font-size: 9pt; width: 100% }
 
@@ -256,7 +260,7 @@ body.FramedContentPage,
         margin-top: .5em; margin-bottom: .25em }
 
     .SGroup .SEntry {
-        font-weight: bold; font-variant: small-caps; }
+        font-weight: bold; font-variant: small-caps }
 
     .SGroup .SEntry a { color: #800000 }
     .SGroup .SEntry a:active { color: #F00000 }
@@ -268,7 +272,7 @@ body.FramedContentPage,
         font-weight: bold; font-size: 10pt;
         margin-bottom: .25em }
 
-    .SClass
+    .SClass,
     .SSection {
         margin-top: 1em }
 
@@ -325,9 +329,7 @@ body.FramedIndexPage,
     /*  While it may cause some entries to look like links when they aren't, I found it's much easier to read the
          index if everything's the same color.  */
     .ISymbol {
-        font-weight: bold; color: #900000;
-        }
-
+        font-weight: bold; color: #900000  }
 
 
 
