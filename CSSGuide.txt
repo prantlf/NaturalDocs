@@ -1,5 +1,5 @@
 
-Title: CSS Guide
+    Title: CSS Guide
 _______________________________________________________________________________
 
 It's important to understand the internal HTML file structure and styles in order to design your own CSS style for Natural Docs.  If
@@ -23,7 +23,7 @@ Topic: Page Structure
     Unframed Page:
 
     >   <body UnframedPage>
-    >   <browser styles>
+    >   [browser styles]
     >
     >       <table><tr>
     >
@@ -41,13 +41,13 @@ Topic: Page Structure
     >           Footer
     >       </Footer>
     >
-    >   </browser styles>
+    >   [/browser styles]
     >   </body UnframedPage>
 
     Framed Menu Page:
 
     >   <body FramedMenuPage>
-    >   <browser styles>
+    >   [browser styles]
     >
     >       Menu
     >
@@ -55,17 +55,17 @@ Topic: Page Structure
     >           Footer
     >       </Footer>
     >
-    >   </browser styles>
+    >   [/browser styles]
     >   </body FramedMenuPage>
 
     Framed Content/Index Page:
 
     >   <body FramedContentPage/FramedIndexPage>
-    >   <browser styles>
+    >   [browser styles]
     >
     >       Content or Index
     >
-    >   </browser styles>
+    >   [/browser styles]
     >   </body FramedContentPage/FramedIndexPage>
 
 
@@ -116,7 +116,7 @@ List: Browser Styles
 
         IE - Internet Explorer
         Gecko - The Gecko rendering engine, which includes Mozilla, Netscape 6+, etc.
-        Opea - Opera
+        Opera - Opera
         KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
         Netscape - The pre-Gecko Netscape rendering engine, which is 4.x and earlier.
 
@@ -126,7 +126,7 @@ List: Browser Styles
         KHTML-based browsers are not broken out into sub-versions.
 
         IE4 - Internet Explorer 4.x
-        IE5 - Internet Explorer 5.x.  Yes, 5.0 and 5.5 are grouped together.
+        IE5 - Internet Explorer 5.x.  Yes, 5.0 and 5.5 are grouped together, as are Mac and Windows versions.
         IE6 - Internet Explorer 6.x.
 
         Opera5 - Opera 5.x.
@@ -142,59 +142,64 @@ Topic: Content Structure
     All the content of a given file is either contained in a <ContentSection> or a <FramedContentPage>.  All other content styles are
     prefixed with a C.
 
-    Each piece of content is a <CTopic>, and inside each of those is the type.  For example, <CFunction> for a function.  Inside
-    that are analogues to all the top-level <NDMarkup> tags: <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so
-    that you only style explicit <NDMarkup> paragraphs, and not any p that is a descendant of <Content>.
+    Each piece of content is a <CTopic> surrounded by its type; for example, <CFunction> for a function.  Inside
+    that are the <CTitle> and if necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags:
+    <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so
+    that you only style explicit <NDMarkup> paragraphs, not any p that appears.
 
     In addition to the top-level <NDMarkup> tags, you also have <CPrototype>, <CTitle>, and <Summaries>.  <Summaries> are
     described in their own section.
 
     >   <Content>
     >
-    >       <CTopic>
-    >           <CType (CFunction, CItem, etc.)>
+    >       <CType (CFunction, CItem, etc.)>
+    >           <CTopic>
     >
     >               <CTitle>
     >                   Topic title
     >               </CTitle>
     >
-    >               <CPrototype>
-    >                   Prototype
-    >               </CPrototype>
+    >               <CBody>
     >
-    >               <p CParagraph>
-    >                   Paragraph
-    >               </p CParagraph>
+    >                   <CPrototype>
+    >                       Prototype
+    >                   </CPrototype>
     >
-    >               <CHeading>
-    >                   Heading
-    >               </CHeading>
+    >                   <p CParagraph>
+    >                        Paragraph
+    >                   </p CParagraph>
     >
-    >               <pre CCode>
+    >                   <CHeading>
+    >                       Heading
+    >                   </CHeading>
+    >
+    >                   <pre CCode>
     >                   Code
-    >               </pre CCode>
+    >                   </pre CCode>
     >
-    >               <ul CBulletList>
-    >                   <li>
+    >                   <ul CBulletList>
+    >                       <li>
     >                       Bullet item
-    >                   </li>
-    >               </ul CBulletList>
+    >                       </li>
+    >                   </ul CBulletList>
     >
-    >               <table CDescriptionList>
-    >                   <tr>
-    >                       <td CDLEntry>
+    >                   <table CDescriptionList>
+    >                       <tr>
+    >                           <td CDLEntry>
     >                           Entry
-    >                       </td CDLEntry>
-    >                       <td CDLDescription>
+    >                           </td CDLEntry>
+    >                           <td CDLDescription>
     >                           Description
-    >                       </td CDLDescription>
-    >                   </tr>
-    >               </table CDescriptionList>
+    >                           </td CDLDescription>
+    >                       </tr>
+    >                   </table CDescriptionList>
     >
-    >               <Summary> (See it's section)
+    >                   <Summary> (See it's section)
     >
-    >           </CType (CFunction, CItem, etc.)>
-    >       </CTopic>
+    >              </CBody>
+    >
+    >          </CTopic>
+    >       </CType (CFunction, CItem, etc.)>
     >
     >   </Content>
 
@@ -207,6 +212,7 @@ Styles: Content Styles
     CTopic - An individual topic.
 
     CTitle - The title of a topic.
+    CBody - The body of a topic.  May not exist.
     CPrototype - A prototype.
     CParagraph - A paragraph.  Is implemented with a p.
     CHeading - A heading.
@@ -331,8 +337,8 @@ Topic: Summary Structure
     works and is compatible everywhere.  We apply the type, whether it's an entry or a description, and if it's in a group or class as
     shown below:
 
-    >   <tr>
-    >       <td SMarked?>
+    >   <tr SMarked?>
+    >       <td SEntrySize?>
     >
     >           <SType (SFunction, SClass, etc.)>
     >               <SEntry>
@@ -344,8 +350,8 @@ Topic: Summary Structure
     >               </SEntry>
     >           </SType>
     >
-    >       </td SMarked?>
-    >       <td SMarked?>
+    >       </td SEntrySize?>
+    >       <td SDescriptionSize?>
     >
     >           <SType (SFunction, SClass, etc.)>
     >               <SDescription>
@@ -357,8 +363,8 @@ Topic: Summary Structure
     >               </SDescription>
     >           </SType>
     >
-    >       </td SMarked?>
-    >   </tr>
+    >       </td SDescriptionSize?>
+    >   </tr SMarked?>
 
     <SInGroup>, <SInClass>, and <SInSection> exist to allow indenting.  They're there in their current arrangement (all three
     "there"s in one sentence :) because implementing it as nested tables, while structurally cleaner, won't allow the desciptions to
@@ -378,7 +384,10 @@ Styles: Summary Styles
     SBorder - Surrounds <STable>, since some browsers can't do table padding right.  A hack, I know.
     STable - The actual summary table.  This class separates it from other layout tables that may appear.
 
-    SMarked - A class applied to cells that should have a slightly different color than the rest of the cells to make it easier to read.
+    SMarked - A class applied to rows that should have a slightly different color than the rest of the rows to make them easier to
+                    read.
+    SEntrySize - A class applied to one entry cell to specify the column width.
+    SDescriptionSize - A class applied to one description cell to specify the column width.
 
     SEntry - The entry (left) side of the table.
     SDescription - The description (right) side of the table.
@@ -528,3 +537,29 @@ Styles: Index Styles
     IFile - The file the entry is defined in.
 
     ISubIndex - Surrounds all <IEntry>'s in a sub-index.
+
+
+Topic: Revisions
+
+    How the page structure has changed throughout the various releases.
+
+    1.0:
+
+        - The type tags now appear arround the <CTopic> tags instead of vice versa.
+        - Added a <CBody> tag to surround non-<CTitle> elements.
+        - <SMarked> now appears in tr's instead of td's, where it belonged in the first place.
+
+    0.95:
+
+        - Added <Browser Styles>.
+        - Redid <Page Structure>, replacing generic styles like Menu with page type styles like <UnframedPage>/<MenuSection>
+          and <FramedMenuPage>.
+
+    0.91:
+
+        - Added <LURL> and <LEMail> link styles, since 0.91 added URL and e-mail links.
+        - Added <ISection> style, which is better than <IHeading> floating on its own.
+
+    0.9:
+
+        - Added <Index Styles>, since 0.9 added indexes.
