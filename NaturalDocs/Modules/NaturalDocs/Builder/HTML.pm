@@ -6,6 +6,8 @@
 #
 #   A package that generates output in HTML.
 #
+#   All functions are called with Package::Function() notation.
+#
 #   Usage and Dependencies:
 #
 #       - Everything is handled by <NaturalDocs::Builder>.
@@ -166,7 +168,7 @@ sub PurgeFiles
     my $outputPath = NaturalDocs::Settings::OutputDirectory($self);
 
     foreach my $file (keys %$filesToPurge)
-        {  unlink( NaturalDocs::File::JoinPath($outputPath, OutputFileOf($file)) );  };
+        {  unlink( NaturalDocs::File::JoinPath($outputPath, $self->OutputFileOf($file)) );  };
     };
 
 
@@ -187,7 +189,7 @@ sub PurgeIndexes #(indexes)
 
     foreach my $index (keys %$indexes)
         {
-        PurgeIndexFiles(($index eq '*' ? undef : $index), undef);
+        $self->PurgeIndexFiles(($index eq '*' ? undef : $index), undef);
         };
     };
 
@@ -207,7 +209,7 @@ sub BuildFile #(sourceFile, parsedFile)
     my ($self, $sourceFile, $parsedFile) = @_;
 
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory($self);
-    my $outputFile = OutputFileOf($sourceFile);
+    my $outputFile = $self->OutputFileOf($sourceFile);
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
 
 
@@ -232,12 +234,12 @@ sub BuildFile #(sourceFile, parsedFile)
         . '<html><head>'
 
             . '<title>'
-                . BuildTitle($sourceFile)
+                . $self->BuildTitle($sourceFile)
             . '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'. MakeRelativeURL($outputFile, 'NaturalDocs.css') . '">'
+            . '<link rel="stylesheet" type="text/css" href="'. $self->MakeRelativeURL($outputFile, 'NaturalDocs.css') . '">'
 
-            . BuildMenuJavaScript()
+            . $self->BuildMenuJavaScript()
 
         . '</head><body>' . "\n\n"
 
@@ -250,18 +252,18 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<td class=Menu valign=top>'
 
-                . BuildMenu($outputFile)
+                . $self->BuildMenu($outputFile)
 
             . '</td>' . "\n\n"
 
             . '<td class=Content valign=top>'
-                . BuildContent($sourceFile, $parsedFile)
+                . $self->BuildContent($sourceFile, $parsedFile)
             . '</td>' . "\n\n"
 
         . '</tr></table>'
 
         . '<div class=Footer>'
-            . BuildFooter()
+            . $self->BuildFooter()
         . '</div>'
 
         . '</body></html>';
@@ -285,7 +287,7 @@ sub BuildIndex #(type)
     my ($self, $type) = @_;
 
     my $indexTitle = (defined $type ? $topicNames{$type} . ' ' : '') . 'Index';
-    my $indexFile = IndexFileOf($type);
+    my $indexFile = $self->IndexFileOf($type);
 
     my $startPage =
 
@@ -297,15 +299,15 @@ sub BuildIndex #(type)
             . '<title>';
 
             if (defined NaturalDocs::Menu::Title())
-                {  $startPage .= StringToHTML(NaturalDocs::Menu::Title()) . ' - ';  };
+                {  $startPage .= $self->StringToHTML(NaturalDocs::Menu::Title()) . ' - ';  };
 
                 $startPage .=
                 $indexTitle
             . '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="'. MakeRelativeURL($indexFile, 'NaturalDocs.css') . '">'
+            . '<link rel="stylesheet" type="text/css" href="'. $self->MakeRelativeURL($indexFile, 'NaturalDocs.css') . '">'
 
-            . BuildMenuJavaScript()
+            . $self->BuildMenuJavaScript()
 
         . '</head><body>' . "\n\n"
 
@@ -318,7 +320,7 @@ sub BuildIndex #(type)
 
             . '<td class=Menu valign=top>'
 
-                . BuildMenu($indexFile)
+                . $self->BuildMenu($indexFile)
 
             . '</td>'
 
@@ -334,16 +336,16 @@ sub BuildIndex #(type)
         . '</tr></table>'
 
         . '<div class=Footer>'
-            . BuildFooter()
+            . $self->BuildFooter()
         . '</div>'
 
         . '</body></html>';
 
 
     my $index = NaturalDocs::SymbolTable::Index($type);
-    my $indexContent = BuildIndexContent($index, $indexFile);
-    my $indexPages = BuildIndexFiles($type, $indexContent, $startPage, $endPage);
-    PurgeIndexFiles($type, $indexPages + 1);
+    my $indexContent = $self->BuildIndexContent($index, $indexFile);
+    my $indexPages = $self->BuildIndexFiles($type, $indexContent, $startPage, $endPage);
+    $self->PurgeIndexFiles($type, $indexPages + 1);
     };
 
 #
@@ -362,7 +364,7 @@ sub UpdateMenu
 
     foreach my $sourceFile (keys %$filesToUpdate)
         {
-        UpdateFile($sourceFile);
+        $self->UpdateFile($sourceFile);
         };
 
 
@@ -377,14 +379,14 @@ sub UpdateMenu
 
         if (!NaturalDocs::SymbolTable::IndexChanged($index))
             {
-            UpdateIndex($index);
+            $self->UpdateIndex($index);
             };
         };
 
 
     # Update index.html
 
-    my $firstMenuEntry = FindFirstFile(NaturalDocs::Menu::Content());
+    my $firstMenuEntry = $self->FindFirstFile(NaturalDocs::Menu::Content());
 
     my $indexFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'index.html' );
     my $indexFileHandle;
@@ -395,7 +397,7 @@ sub UpdateMenu
     print $indexFileHandle
     '<html><head>'
          . '<meta http-equiv="Refresh" CONTENT="0; URL='
-             . MakeRelativeURL( 'index.html', OutputFileOf($firstMenuEntry->Target()) ) . '">'
+             . $self->MakeRelativeURL( 'index.html', $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
     . '</head></html>';
 
     close $indexFileHandle;
@@ -452,7 +454,7 @@ sub EndBuild #(hasChanged)
 #
 sub BuildTitle #(sourceFile)
     {
-    my $sourceFile = shift;
+    my ($self, $sourceFile) = @_;
 
     # If we have a menu title, the page title is [menu title] - [file title].  Otherwise it is just [file title].
 
@@ -462,7 +464,7 @@ sub BuildTitle #(sourceFile)
     if (defined $menuTitle && $menuTitle ne $title)
         {  $title = $menuTitle . ' - ' . $title;  };
 
-    $title = StringToHTML($title);
+    $title = $self->StringToHTML($title);
 
     return $title;
     };
@@ -482,7 +484,7 @@ sub BuildTitle #(sourceFile)
 #
 sub BuildMenu #(outputFile)
     {
-    my $outputFile = shift;
+    my ($self, $outputFile) = @_;
 
     $menuGroupNumber = 1;
     @menuSelectionHierarchy = ( );
@@ -501,7 +503,7 @@ sub BuildMenu #(outputFile)
 
         $output .=
         '<div class=MTitle>'
-            . StringToHTML($menuTitle);
+            . $self->StringToHTML($menuTitle);
 
         my $menuSubTitle = NaturalDocs::Menu::SubTitle();
         if (defined $menuSubTitle)
@@ -510,7 +512,7 @@ sub BuildMenu #(outputFile)
 
             $output .=
             '<div class=MSubTitle>'
-                . StringToHTML($menuSubTitle)
+                . $self->StringToHTML($menuSubTitle)
             . '</div>';
             };
 
@@ -519,7 +521,7 @@ sub BuildMenu #(outputFile)
         };
 
 
-    $output .= BuildMenuSegment($outputFile, NaturalDocs::Menu::Content(), undef);
+    $output .= $self->BuildMenuSegment($outputFile, NaturalDocs::Menu::Content(), undef);
 
 
     # If the completely expanded menu is too long, collapse all the groups that aren't in the selection hierarchy.  By doing this
@@ -594,7 +596,7 @@ sub BuildMenu #(outputFile)
 #
 sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
     {
-    my ($outputFile, $menuSegment, $hasSelectionRef) = @_;
+    my ($self, $outputFile, $menuSegment, $hasSelectionRef) = @_;
 
     my $output;
 
@@ -614,11 +616,11 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
                 . '<div class=MGroup>'
 
                     . '<a href="javascript:ToggleMenu(\'MGroupContent' . $myGroupNumber . '\')">'
-                        . StringToHTML($entry->Title())
+                        . $self->StringToHTML($entry->Title())
                     . '</a>'
 
                     . '<div class=MGroupContent id=MGroupContent' . $myGroupNumber . '>'
-                        . BuildMenuSegment($outputFile, $entry->GroupContent(), \$hasSelection)
+                        . $self->BuildMenuSegment($outputFile, $entry->GroupContent(), \$hasSelection)
                     . '</div>'
 
                 . '</div>'
@@ -637,14 +639,14 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
             {
             $menuLength += MENU_FILELENGTH;
 
-            my $targetOutputFile = OutputFileOf($entry->Target());
+            my $targetOutputFile = $self->OutputFileOf($entry->Target());
 
             if ($outputFile eq $targetOutputFile)
                 {
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MFile id=MSelected>'
-                        . AddHiddenBreaks( StringToHTML($entry->Title() ))
+                        . $self->AddHiddenBreaks( $self->StringToHTML($entry->Title() ))
                     . '</div>'
                 . '</div>';
 
@@ -656,8 +658,8 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MFile>'
-                        . '<a href="' . MakeRelativeURL($outputFile, $targetOutputFile) . '">'
-                            . AddHiddenBreaks( StringToHTML( $entry->Title() ))
+                        . '<a href="' . $self->MakeRelativeURL($outputFile, $targetOutputFile) . '">'
+                            . $self->AddHiddenBreaks( $self->StringToHTML( $entry->Title() ))
                         . '</a>'
                     . '</div>'
                 . '</div>';
@@ -669,7 +671,7 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
             $output .=
             '<div class=MEntry>'
                 . '<div class=MText>'
-                    . StringToHTML( $entry->Title() )
+                    . $self->StringToHTML( $entry->Title() )
                 . '</div>'
             . '</div>';
             }
@@ -680,7 +682,7 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
             '<div class=MEntry>'
                 . '<div class=MLink>'
                     . '<a href="' . $entry->Target() . '">'
-                        . StringToHTML( $entry->Title() )
+                        . $self->StringToHTML( $entry->Title() )
                     . '</a>'
                 . '</div>'
             . '</div>';
@@ -688,14 +690,14 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
 
         elsif ($entry->Type() == ::MENU_INDEX())
             {
-            my $indexFile = IndexFileOf($entry->Target);
+            my $indexFile = $self->IndexFileOf($entry->Target);
 
             if ($outputFile eq $indexFile)
                 {
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MIndex id=MSelected>'
-                        . StringToHTML( $entry->Title() )
+                        . $self->StringToHTML( $entry->Title() )
                     . '</div>'
                 . '</div>';
                 }
@@ -704,8 +706,8 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
                 $output .=
                 '<div class=MEntry>'
                     . '<div class=MIndex>'
-                        . '<a href="' . MakeRelativeURL( $outputFile, IndexFileOf($entry->Target()) ) . '">'
-                            . StringToHTML( $entry->Title() )
+                        . '<a href="' . $self->MakeRelativeURL( $outputFile, $self->IndexFileOf($entry->Target()) ) . '">'
+                            . $self->StringToHTML( $entry->Title() )
                         . '</a>'
                     . '</div>'
                 . '</div>';
@@ -733,7 +735,7 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
 #
 sub BuildContent #(sourceFile, parsedFile)
     {
-    my ($sourceFile, $parsedFile) = @_;
+    my ($self, $sourceFile, $parsedFile) = @_;
 
     my $output;
     my $i = 0;
@@ -742,7 +744,7 @@ sub BuildContent #(sourceFile, parsedFile)
         {
         $output .= '<div class=CTopic>';
 
-        my $anchor = SymbolToHTMLSymbol( $parsedFile->[$i]->Class(), $parsedFile->[$i]->Name() );
+        my $anchor = $self->SymbolToHTMLSymbol( $parsedFile->[$i]->Class(), $parsedFile->[$i]->Name() );
 
 
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
@@ -756,7 +758,7 @@ sub BuildContent #(sourceFile, parsedFile)
 
                 . '<h1 class=CTitle>'
                     . '<a name="' . $anchor . '"></a>'
-                    . AddHiddenBreaks( StringToHTML( $parsedFile->[$i]->Name() ) )
+                    . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ) )
                 . '</h1>';
             }
         elsif ($parsedFile->[$i]->Type() == ::TOPIC_SECTION() || $parsedFile->[$i]->Type() == ::TOPIC_CLASS())
@@ -767,7 +769,7 @@ sub BuildContent #(sourceFile, parsedFile)
 
                 . '<h2 class=CTitle>'
                     . '<a name="' . $anchor . '"></a>'
-                    . AddHiddenBreaks( StringToHTML( $parsedFile->[$i]->Name() ))
+                    . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ))
                 . '</h2>';
             }
         else
@@ -778,7 +780,7 @@ sub BuildContent #(sourceFile, parsedFile)
 
                 . '<h3 class=CTitle>'
                     . '<a name="' . $anchor . '"></a>'
-                    . AddHiddenBreaks( StringToHTML( $parsedFile->[$i]->Name() ))
+                    . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ))
                 . '</h3>';
             };
 
@@ -789,7 +791,7 @@ sub BuildContent #(sourceFile, parsedFile)
             # A surrounding table as a hack to make the div form-fit.
             '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
                 . '<div class=CPrototype>'
-                    . StringToHTML( $parsedFile->[$i]->Prototype() )
+                    . $self->StringToHTML( $parsedFile->[$i]->Prototype() )
                 . '</div>'
             . '</tr></td></table>';
             };
@@ -797,14 +799,14 @@ sub BuildContent #(sourceFile, parsedFile)
 
         if (defined $parsedFile->[$i]->Body())
             {
-            $output .= NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Scope() );
+            $output .= $self->NDMarkupToHTML( $sourceFile, $parsedFile->[$i]->Body(), $parsedFile->[$i]->Scope() );
             };
 
 
         if ($i == 0 ||
             $parsedFile->[$i]->Type() == ::TOPIC_CLASS() || $parsedFile->[$i]->Type() == ::TOPIC_SECTION())
             {
-            $output .= BuildSummary($sourceFile, $parsedFile, $i);
+            $output .= $self->BuildSummary($sourceFile, $parsedFile, $i);
             };
 
 
@@ -839,7 +841,7 @@ sub BuildContent #(sourceFile, parsedFile)
 #
 sub BuildSummary #(sourceFile, parsedFile, index)
     {
-    my ($sourceFile, $parsedFile, $index) = @_;
+    my ($self, $sourceFile, $parsedFile, $index) = @_;
     my $completeSummary;
 
     if (!defined $index || $index == 0)
@@ -915,7 +917,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
             # Add the entry itself.
 
             $output .=
-            '<a href="#' . SymbolToHTMLSymbol( $parsedFile->[$index]->Class(), $parsedFile->[$index]->Name() ) . '"';
+            '<a href="#' . $self->SymbolToHTMLSymbol( $parsedFile->[$index]->Class(), $parsedFile->[$index]->Name() ) . '"';
 
             if (defined $parsedFile->[$index]->Prototype())
                 {
@@ -924,11 +926,11 @@ sub BuildSummary #(sourceFile, parsedFile, index)
                 # IE will actually show a trailing line break in the tooltip, so we need to strip it.
                 $prototype =~ s/\n$//;
 
-                $output .= ' title="' . ConvertAmpChars($prototype) . '"';
+                $output .= ' title="' . $self->ConvertAmpChars($prototype) . '"';
                 };
 
             $output .= '>'
-                . AddHiddenBreaks( StringToHTML( $parsedFile->[$index]->Name() ))
+                . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$index]->Name() ))
             . '</a>';
 
 
@@ -966,7 +968,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
                     if ($2 ne '</p>')
                         {  $summary .= $2;  };
 
-                    $output .= NDMarkupToHTML($sourceFile, $summary, $parsedFile->[$index]->Scope());
+                    $output .= $self->NDMarkupToHTML($sourceFile, $summary, $parsedFile->[$index]->Scope());
                     };
                 };
 
@@ -1031,6 +1033,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 #
 sub BuildFooter
     {
+    my $self = shift;
     my $footer = NaturalDocs::Menu::Footer();
 
     if (defined $footer)
@@ -1061,10 +1064,10 @@ sub BuildFooter
 #
 sub UpdateFile #(sourceFile)
     {
-    my $sourceFile = shift;
+    my ($self, $sourceFile) = @_;
 
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory(__PACKAGE__);
-    my $outputFile = OutputFileOf($sourceFile);
+    my $outputFile = $self->OutputFileOf($sourceFile);
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
     my $outputFileHandle;
 
@@ -1076,11 +1079,11 @@ sub UpdateFile #(sourceFile)
         close($outputFileHandle);
 
 
-        $content =~ s{<title>[^<]*<\/title>}{'<title>' . BuildTitle($sourceFile) . '</title>'}e;
+        $content =~ s{<title>[^<]*<\/title>}{'<title>' . $self->BuildTitle($sourceFile) . '</title>'}e;
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/BuildMenu($outputFile)/es;
+        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($outputFile)/es;
 
-        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . BuildFooter() . "<\/div>"/e;
+        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $self->BuildFooter() . "<\/div>"/e;
 
 
         open($outputFileHandle, '>' . $fullOutputFile);
@@ -1102,16 +1105,16 @@ sub UpdateFile #(sourceFile)
 #
 sub UpdateIndex #(type)
     {
-    my $type = shift;
+    my ($self, $type) = @_;
 
     my $outputDirectory = NaturalDocs::Settings::OutputDirectory(__PACKAGE__);
     my $page = 1;
 
-    my $outputFile = IndexFileOf($type, $page);
+    my $outputFile = $self->IndexFileOf($type, $page);
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
 
-    my $newMenu = BuildMenu($outputFile);
-    my $newFooter = BuildFooter();
+    my $newMenu = $self->BuildMenu($outputFile);
+    my $newFooter = $self->BuildFooter();
 
     while (-e $fullOutputFile)
         {
@@ -1138,7 +1141,7 @@ sub UpdateIndex #(type)
         close($outputFileHandle);
 
         $page++;
-        $outputFile = IndexFileOf($type, $page);
+        $outputFile = $self->IndexFileOf($type, $page);
         $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
         };
     };
@@ -1161,7 +1164,7 @@ sub UpdateIndex #(type)
 #
 sub BuildIndexContent #(index, outputFile)
     {
-    my ($index, $outputFile) = @_;
+    my ($self, $index, $outputFile) = @_;
 
     my $content = [ ];
     my $contentIndex;
@@ -1184,8 +1187,9 @@ sub BuildIndexContent #(index, outputFile)
 
         if (!ref $entry->Class() && !ref $entry->File())
             {
-            $content->[$contentIndex] .= BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
-                                                                              $entry->File(), $entry->Type(), $entry->Prototype(), $outputFile);
+            $content->[$contentIndex] .=
+                $self->BuildIndexLink($entry->Symbol(), 'ISymbol', $entry->Class(), 1, $entry->Symbol(),
+                                                $entry->File(), $entry->Type(), $entry->Prototype(), $outputFile);
             }
 
 
@@ -1195,7 +1199,7 @@ sub BuildIndexContent #(index, outputFile)
             {
             $content->[$contentIndex] .=
             '<div class=IEntry>'
-                . '<span class=ISymbol>' . StringToHTML($entry->Symbol()) . '</span>';
+                . '<span class=ISymbol>' . $self->StringToHTML($entry->Symbol()) . '</span>';
 
                 if (defined $entry->Class() && !ref $entry->Class())
                     {  $content->[$contentIndex] .= ' <span class=IParent>(' . $entry->Class() . ')</span>';  };
@@ -1214,7 +1218,7 @@ sub BuildIndexContent #(index, outputFile)
                         $content->[$contentIndex] .= '<div class=IEntry><span class=IParent>';
 
                         if (defined $classEntry->Class())
-                            {  $content->[$contentIndex] .= AddHiddenBreaks(StringToHTML($classEntry->Class()));  }
+                            {  $content->[$contentIndex] .= $self->AddHiddenBreaks($self->StringToHTML($classEntry->Class()));  }
                         else
                             {  $content->[$contentIndex] .= 'Global';  };
 
@@ -1224,8 +1228,8 @@ sub BuildIndexContent #(index, outputFile)
                         foreach my $fileEntry (@$fileEntries)
                             {
                             $content->[$contentIndex] .=
-                                BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
-                                                      $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                                $self->BuildIndexLink($fileEntry->File(), 'IFile', $classEntry->Class(), 0, $entry->Symbol(),
+                                                                 $fileEntry->File(), $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
                             };
 
                         $content->[$contentIndex] .= '</div></div>';
@@ -1234,8 +1238,8 @@ sub BuildIndexContent #(index, outputFile)
                     else #(!ref $classEntry->File())
                         {
                         $content->[$contentIndex] .=
-                            BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
-                                                   $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(), $outputFile);
+                            $self->BuildIndexLink( ($classEntry->Class() || 'Global'), 'IParent', $classEntry->Class(), 0, $entry->Symbol(),
+                                                              $classEntry->File(), $classEntry->Type(), $classEntry->Prototype(), $outputFile);
                         };
                     };
                 }
@@ -1247,8 +1251,9 @@ sub BuildIndexContent #(index, outputFile)
                 my $fileEntries = $entry->File();
                 foreach my $fileEntry (@$fileEntries)
                     {
-                    $content->[$contentIndex] .= BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
-                                                          $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
+                    $content->[$contentIndex] .=
+                        $self->BuildIndexLink($fileEntry->File(), 'IFile', $entry->Class(), 0, $entry->Symbol(), $fileEntry->File(),
+                                                         $fileEntry->Type(), $fileEntry->Prototype(), $outputFile);
                     };
                 };
 
@@ -1284,18 +1289,18 @@ sub BuildIndexContent #(index, outputFile)
 #
 sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype, outputFile)
     {
-    my ($name, $tag, $class, $showClass, $symbol, $file, $type, $prototype, $outputFile) = @_;
+    my ($self, $name, $tag, $class, $showClass, $symbol, $file, $type, $prototype, $outputFile) = @_;
 
     my $output =
     '<div class=IEntry>'
-        . '<a href="' . MakeRelativeURL( $outputFile, OutputFileOf($file) )
-            . '#' . SymbolToHTMLSymbol($class, $symbol) . '" '
+        . '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file) )
+            . '#' . $self->SymbolToHTMLSymbol($class, $symbol) . '" '
             . 'class=' . $tag;
 
     if (defined $prototype)
-        {  $output .= ' title="' . ConvertAmpChars($prototype) . '"';  };
+        {  $output .= ' title="' . $self->ConvertAmpChars($prototype) . '"';  };
 
-    $output .= '>' . AddHiddenBreaks(StringToHTML($name)) . '</a>';
+    $output .= '>' . $self->AddHiddenBreaks($self->StringToHTML($name)) . '</a>';
 
     if ($showClass && defined $class)
         {  $output .= ', <span class=IParent>' . $class . '</span>';  };
@@ -1325,7 +1330,7 @@ sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype,
 #
 sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
     {
-    my ($type, $indexContent, $beginPage, $endPage) = @_;
+    my ($self, $type, $indexContent, $beginPage, $endPage) = @_;
 
     my $page = 1;
     my $pageSize = 0;
@@ -1378,14 +1383,14 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
                 };
 
             $fileName = NaturalDocs::File::JoinPath(NaturalDocs::Settings::OutputDirectory(__PACKAGE__),
-                                                                      IndexFileOf($type, $page));
+                                                                      $self->IndexFileOf($type, $page));
 
             open($fileHandle, '>' . $fileName)
                 or die "Couldn't create output file " . $fileName . ".\n";
 
             print $fileHandle $beginPage;
 
-            print $fileHandle '' . BuildIndexNavigationBar($type, $page, \@pageLocation);
+            print $fileHandle '' . $self->BuildIndexNavigationBar($type, $page, \@pageLocation);
 
             $oldPage = $page;
             };
@@ -1428,7 +1433,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
 #
 sub BuildIndexNavigationBar #(type, page, locations)
     {
-    my ($type, $page, $locations) = @_;
+    my ($self, $type, $page, $locations) = @_;
 
     my $output = '<div class=INavigationBar>';
 
@@ -1442,7 +1447,7 @@ sub BuildIndexNavigationBar #(type, page, locations)
             $output .= '<a href="';
 
             if ($locations->[$i] != $page)
-                {  $output .= IndexFileOf($type, $locations->[$i]);  };
+                {  $output .= $self->IndexFileOf($type, $locations->[$i]);  };
 
             $output .= '#' . $indexAnchors[$i] . '">' . $indexHeadings[$i] . '</a>';
             }
@@ -1465,6 +1470,8 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #
 sub BuildMenuJavaScript
     {
+    my $self = shift;
+
     return
 
     '<script language=JavaScript><!-- ' . "\n"
@@ -1502,7 +1509,7 @@ sub BuildMenuJavaScript
 #
 sub PurgeIndexFiles #(type, startingPage)
     {
-    my ($type, $page) = @_;
+    my ($self, $type, $page) = @_;
 
     if (!defined $page)
         {  $page = 1;  };
@@ -1511,7 +1518,7 @@ sub PurgeIndexFiles #(type, startingPage)
 
     for (;;)
         {
-        my $file = NaturalDocs::File::JoinPath($outputDirectory, IndexFileOf($type, $page));
+        my $file = NaturalDocs::File::JoinPath($outputDirectory, $self->IndexFileOf($type, $page));
 
         if (-e $file)
             {
@@ -1532,7 +1539,7 @@ sub PurgeIndexFiles #(type, startingPage)
 #
 sub OutputFileOf #(sourceFile)
     {
-    my $sourceFile = shift;
+    my ($self, $sourceFile) = @_;
 
     # We need to change any extensions to dashes because Apache will think file.pl.html is a script.
     $sourceFile =~ s/\./-/g;
@@ -1553,7 +1560,7 @@ sub OutputFileOf #(sourceFile)
 #
 sub IndexFileOf #(type, page)
     {
-    my ($type, $page) = @_;
+    my ($self, $type, $page) = @_;
 
     return (defined $type ? $topicNames{$type} : 'General') . 'Index' . (defined $page && $page != 1 ? $page : '') . '.html';
     };
@@ -1574,12 +1581,12 @@ sub IndexFileOf #(type, page)
 #
 sub MakeRelativeURL #(baseFile, targetFile)
     {
-    my ($baseFile, $targetFile) = @_;
+    my ($self, $baseFile, $targetFile) = @_;
 
     my $baseDir = NaturalDocs::File::NoFileName($baseFile);
     my $relativePath = NaturalDocs::File::MakeRelativePath($baseDir, $targetFile);
 
-    return ConvertAmpChars( NaturalDocs::File::ConvertToURL($relativePath) );
+    return $self->ConvertAmpChars( NaturalDocs::File::ConvertToURL($relativePath) );
     };
 
 #
@@ -1597,7 +1604,7 @@ sub MakeRelativeURL #(baseFile, targetFile)
 #
 sub StringToHTML #(string)
     {
-    my $string = shift;
+    my ($self, $string) = @_;
 
     $string =~ s/&/&amp;/g;
     $string =~ s/</&lt;/g;
@@ -1615,7 +1622,7 @@ sub StringToHTML #(string)
 
     # Me likey the double spaces too.  As you can probably tell, I like print-formatting better than web-formatting.  The indented
     # paragraphs without blank lines in between them do become readable when you have fancy quotes and double spaces too.
-    return AddDoubleSpaces($string);
+    return $self->AddDoubleSpaces($string);
     };
 
 
@@ -1636,7 +1643,7 @@ sub StringToHTML #(string)
 #
 sub SymbolToHTMLSymbol #(class, symbol)
     {
-    my ($class, $symbol) = @_;
+    my ($self, $class, $symbol) = @_;
 
     ($class, $symbol) = NaturalDocs::SymbolTable::Defines($class, $symbol);
 
@@ -1671,7 +1678,7 @@ sub SymbolToHTMLSymbol #(class, symbol)
 #
 sub NDMarkupToHTML #(sourceFile, text, scope)
     {
-    my ($sourceFile, $text, $scope) = @_;
+    my ($self, $sourceFile, $text, $scope) = @_;
     my $output;
     my $inCode;
 
@@ -1709,12 +1716,12 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
             $text =~ s/&quot;/&rdquo;/g;
 
             # Resolve and convert links.
-            $text =~ s/<link>([^<]+)<\/link>/MakeLink($scope, $1, $sourceFile)/ge;
+            $text =~ s/<link>([^<]+)<\/link>/$self->MakeLink($scope, $1, $sourceFile)/ge;
             $text =~ s/<url>([^<]+)<\/url>/<a href=\"$1\" class=LURL>$1<\/a>/g;
-            $text =~ s/<email>([^<]+)<\/email>/MakeEMailLink($1)/eg;
+            $text =~ s/<email>([^<]+)<\/email>/$self->MakeEMailLink($1)/eg;
 
             # Add double spaces too.
-            $text = AddDoubleSpaces($text);
+            $text = $self->AddDoubleSpaces($text);
 
             # Paragraphs
             $text =~ s/<p>/<p class=CParagraph>/g;
@@ -1732,18 +1739,17 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
 
             $text =~ s/<de>/<tr><td class=CDLEntry>/g;
             $text =~ s/<\/de>/<\/td>/g;
-            $text =~ s/<ds>([^<]+)<\/ds>/MakeDescriptionListSymbol($scope, $1)/ge;
+            $text =~ s/<ds>([^<]+)<\/ds>/$self->MakeDescriptionListSymbol($scope, $1)/ge;
 
             sub MakeDescriptionListSymbol #(scope, text)
                 {
-                my $scope = shift;
-                my $text = shift;
+                my ($self, $scope, $text) = @_;
 
                 return
                 '<tr>'
                     . '<td class=CDLEntry>'
                         # The anchors are closed, but not around the text, to prevent the :hover CSS style from kicking in.
-                        . '<a name="' . SymbolToHTMLSymbol($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text)) . '"></a>'
+                        . '<a name="' . $self->SymbolToHTMLSymbol($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text)) . '"></a>'
                         . $text
                     . '</td>';
                 };
@@ -1776,7 +1782,7 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
 #
 sub MakeLink #(scope, text, sourceFile)
     {
-    my ($scope, $text, $sourceFile) = @_;
+    my ($self, $scope, $text, $sourceFile) = @_;
 
     my $target = NaturalDocs::SymbolTable::References($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text),
                                                                                   $sourceFile);
@@ -1786,15 +1792,15 @@ sub MakeLink #(scope, text, sourceFile)
         my $targetFile;
 
         if ($target->File() ne $sourceFile)
-            {  $targetFile = MakeRelativeURL(OutputFileOf($sourceFile), OutputFileOf($target->File()));  };
+            {  $targetFile = $self->MakeRelativeURL($self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()));  };
         # else leave it undef
 
         my $prototypeAttr;
 
         if (defined $target->Prototype())
-            {  $prototypeAttr = ' title="' . ConvertAmpChars($target->Prototype()) . '"';  };
+            {  $prototypeAttr = ' title="' . $self->ConvertAmpChars($target->Prototype()) . '"';  };
 
-        return '<a href="' . $targetFile . '#' . SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '"'
+        return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '"'
                 . $prototypeAttr . ' class=L' . $topicNames{$target->Type()} . '>' . $text . '</a>';
         }
     else
@@ -1819,7 +1825,7 @@ sub MakeLink #(scope, text, sourceFile)
 #
 sub MakeEMailLink #(address)
     {
-    my $address = shift;
+    my ($self, $address) = @_;
     my @splitAddress;
 
 
@@ -1865,7 +1871,7 @@ sub MakeEMailLink #(address)
 #
 sub AddDoubleSpaces #(text)
     {
-    my $text = shift;
+    my ($self, $text) = @_;
 
     # Question marks and exclamation points get double spaces unless followed by a lowercase letter.
     $text =~ s/([\!\?])(&quot;|&[lr][sd]quo;|[\'\"\]\}\)]?) (?![a-z])/$1$2&nbsp; /g;
@@ -1903,7 +1909,7 @@ sub AddDoubleSpaces #(text)
 #
 sub ConvertAmpChars #(text)
     {
-    my $text = shift;
+    my ($self, $text) = @_;
 
     $text =~ s/&/&amp;/g;
     $text =~ s/\"/&quot;/g;
@@ -1921,6 +1927,7 @@ sub ConvertAmpChars #(text)
 #
 sub HiddenBreak
     {
+    my $self = shift;
     return '<span class=HiddenBreak> </span>';
     };
 
@@ -1940,9 +1947,9 @@ sub HiddenBreak
 #
 sub AddHiddenBreaks #(string)
     {
-    my $string = shift;
+    my ($self, $string) = @_;
 
-    $string =~ s/(\w(?:\.|::|\\|\/))(\w)/$1 . HiddenBreak() . $2/ge;
+    $string =~ s/(\w(?:\.|::|\\|\/))(\w)/$1 . $self->HiddenBreak() . $2/ge;
 
     return $string;
     };
@@ -1958,7 +1965,7 @@ sub AddHiddenBreaks #(string)
 #
 sub FindFirstFile #(arrayref)
     {
-    my $arrayref = shift;
+    my ($self, $arrayref) = @_;
 
     my $i = 0;
     while ($i < scalar @$arrayref)
@@ -1969,7 +1976,7 @@ sub FindFirstFile #(arrayref)
             }
         elsif ($arrayref->[$i]->Type() == ::MENU_GROUP())
             {
-            my $result = FindFirstFile($arrayref->[$i]->GroupContent());
+            my $result = $self->FindFirstFile($arrayref->[$i]->GroupContent());
             if (defined $result)
                 {  return $result;  };
             };
