@@ -2107,7 +2107,7 @@ sub NDMarkupToHTML #(sourceFile, text, package, using)
 
             # Resolve and convert links.
             $text =~ s/<link>([^<]+)<\/link>/$self->BuildTextLink($1, $package, $using, $sourceFile)/ge;
-            $text =~ s/<url>([^<]+)<\/url>/<a href=\"$1\" class=LURL>$1<\/a>/g;
+            $text =~ s/<url>([^<]+)<\/url>/$self->BuildURLLink($1)/ge;
             $text =~ s/<email>([^<]+)<\/email>/$self->BuildEMailLink($1)/eg;
 
             # Add double spaces too.
@@ -2208,6 +2208,61 @@ sub BuildTextLink #(text, package, using, sourceFile)
         {
         return '&lt;' . $text . '&gt;';
         };
+    };
+
+
+#
+#   Function: BuildURLLink
+#
+#   Creates a HTML link to an external URL.  Long URLs will have hidden breaks to allow them to wrap.
+#
+#   Parameters:
+#
+#       url - The URL to link to.
+#
+#   Returns:
+#
+#       The HTML link, complete with tags.
+#
+sub BuildURLLink #(url)
+    {
+    my ($self, $url) = @_;
+
+    if (length $url < 50)
+        {  return '<a href="' . $url . '" class=LURL>' . $self->ConvertAmpChars($url) . '</a>';  };
+
+    my @segments = split(/([\,\&\/])/, $url);
+
+    my $output = '<a href="' . $url . '" class=LURL>';
+
+    # Get past the first batch of slashes, since we don't want to break on things like http://.
+
+    my $i = 0;
+    while ($i < scalar @segments && $segments[$i] ne '/')
+        {
+        $output .= $self->ConvertAmpChars($segments[$i]);
+        $i++;
+        };
+
+    while ($i < scalar @segments && $segments[$i] eq '/')
+        {
+        $output .= $segments[$i];
+        $i++;
+        };
+
+    # Now break on each one of those symbols.
+
+    while ($i < scalar @segments)
+        {
+        if ($segments[$i] eq ',' || $segments[$i] eq '/' || $segments[$i] eq '&')
+            {  $output .= '<span class=HB> </span>';  };
+
+        $output .= $self->ConvertAmpChars($segments[$i]);
+        $i++;
+        };
+
+    $output .= '</a>';
+    return $output;
     };
 
 
