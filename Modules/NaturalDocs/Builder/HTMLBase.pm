@@ -1010,14 +1010,14 @@ sub BuildPrototype #(type, prototype, file)
             $output .=
             '</td>';
 
-            my ($hasType, $hasTypeSuffix, $hasDefaultValue);
+            my ($hasType, $hasSuffix, $hasDefaultValue);
 
             foreach my $param (@$params)
                 {
                 if ($param->Type())
                     {  $hasType = 1;  };
-                if ($param->TypeSuffix())
-                    {  $hasTypeSuffix = 1;  };
+                if ($param->Suffix())
+                    {  $hasSuffix = 1;  };
                 if ($param->DefaultValue())
                     {  $hasDefaultValue = 1;  };
                 };
@@ -1037,15 +1037,15 @@ sub BuildPrototype #(type, prototype, file)
                         $output .=
                         '<td class=PLeftType>'
                             . $self->ConvertAmpChars($params->[$i]->Type())
-                            . ($hasTypeSuffix ? '' : '&nbsp;')
+                            . (!$hasSuffix ? '&nbsp;' : '')
                         . '</td>';
                         };
 
-                    if ($hasTypeSuffix)
+                    if ($hasSuffix)
                         {
                         $output .=
-                        '<td class=PLeftTypeSuffix>'
-                            . $self->ConvertAmpChars($params->[$i]->TypeSuffix()) . '&nbsp;'
+                        '<td class=PLeftSuffix>'
+                            . $self->ConvertAmpChars($params->[$i]->Suffix()) . '&nbsp;'
                         . '</td>';
                         };
                     };
@@ -1057,13 +1057,19 @@ sub BuildPrototype #(type, prototype, file)
 
                 if (!$language->TypeBeforeParameter())
                     {
-                    my $string = $params->[$i]->Type() . $params->[$i]->TypeSuffix();
+                    if ($hasSuffix)
+                        {
+                        $output .=
+                        '<td class=PLeftSuffix>'
+                            . $self->ConvertAmpChars($params->[$i]->Suffix())
+                        . '</td>';
+                        };
 
-                    if ($hasType || $hasTypeSuffix)
+                    if ($hasType)
                         {
                         $output .=
                         '<td class=PRightType>'
-                            . '&nbsp;' . $self->ConvertAmpChars($string)
+                            . '&nbsp;' . $self->ConvertAmpChars($params->[$i]->Type())
                         . '</td>'
                         };
                     };
