@@ -226,7 +226,7 @@ sub PurgeIndexes #(indexes)
 
     foreach my $index (keys %$indexes)
         {
-        $self->PurgeIndexFiles(($index eq '*' ? undef : $index), undef);
+        $self->PurgeIndexFiles($index, undef);
         };
     };
 
@@ -606,6 +606,8 @@ sub BuildContent #(sourceFile, parsedFile)
         {
         my $anchor = $self->SymbolToHTMLSymbol($parsedFile->[$i]->Symbol());
 
+        my $scope = NaturalDocs::Topics->TypeInfo($parsedFile->[$i]->Type());
+
 
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
 
@@ -613,15 +615,14 @@ sub BuildContent #(sourceFile, parsedFile)
 
         if ($i == 0)
             {  $headerType = 'h1';  }
-        elsif (NaturalDocs::Topics->HasScope($parsedFile->[$i]->Type()) ||
-                NaturalDocs::Topics->EndsScope($parsedFile->[$i]->Type()))
+        elsif ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
             {  $headerType = 'h2';  }
         else
             {  $headerType = 'h3';  };
 
         $output .=
 
-        '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type(), 1 )
+        '<div class=C' . NaturalDocs::Topics->NameOfType($parsedFile->[$i]->Type(), 0, 1)
             . ($i == 0 ? ' id=MainTopic' : '') . '>'
 
             . '<div class=CTopic>'
@@ -633,15 +634,13 @@ sub BuildContent #(sourceFile, parsedFile)
 
 
         my $hierarchy;
-        if ($parsedFile->[$i]->Type() == ::TOPIC_CLASS())
+        if ($parsedFile->[$i]->Type() eq ::TOPIC_CLASS())
             {
             $hierarchy = $self->BuildClassHierarchy($sourceFile, $parsedFile->[$i]->Symbol());
             };
 
         my $summary;
-        if ($i == 0 ||
-            NaturalDocs::Topics->HasScope($parsedFile->[$i]->Type()) ||
-            NaturalDocs::Topics->EndsScope($parsedFile->[$i]->Type()))
+        if ($i == 0 || $scope == ::SCOPE_START() || $scope == ::SCOPE_END())
             {
             $summary .= $self->BuildSummary($sourceFile, $parsedFile, $i);
             };
@@ -696,7 +695,7 @@ sub BuildContent #(sourceFile, parsedFile)
 #       parsedFile - A reference to the parsed source file.
 #
 #       index   - The index into the parsed file to start at.  If undef or zero, it builds a summary for the entire file.  If it's the
-#                    index of a class or section entry, it builds a summary for that class or section.
+#                    index of a <TopicType> that starts or ends a scope, it builds a summary for that scope
 #
 #   Returns:
 #
@@ -714,26 +713,28 @@ sub BuildSummary #(sourceFile, parsedFile, index)
         }
     else
         {
-        # Skip the class/section entry.
+        # Skip the scope entry.
         $index++;
         };
 
 
+    my $scope = NaturalDocs::Topics->TypeInfo($parsedFile->[$index]->Type())->Scope();
+
     # Return nothing if there's only one entry.
     if ($index + 1 >= scalar @$parsedFile ||
         ( !$completeSummary &&
-          ( NaturalDocs::Topics->HasScope($parsedFile->[$index]->Type()) ||
-            NaturalDocs::Topics->EndsScope($parsedFile->[$index]->Type()) )
+          ( $scope == ::SCOPE_START() || $scope == ::SCOPE_END() )
         ))
         {
         return undef;
         };
 
 
+    my $indent = 0;
+    my $inGroup;
+
     # In a nice efficiency twist, these buggers will hold the opening div tags if true, undef if false.  Not that this script is known
     # for its efficiency.  Not that Perl is known for its efficiency.  Anyway...
-    my $inSectionOrClassTag;
-    my $inGroupTag;
     my $isMarkedAttr;
     my $entrySizeAttr = ' class=SEntrySize';
     my $descriptionSizeAttr = ' class=SDescriptionSize';
@@ -745,40 +746,44 @@ sub BuildSummary #(sourceFile, parsedFile, index)
         . '<div class=SBorder>'
         . '<table border=0 cellspacing=0 cellpadding=0 class=STable>';
 
-        while ($index < scalar @$parsedFile &&
-                    ($completeSummary ||
-                        ( !NaturalDocs::Topics->HasScope($parsedFile->[$index]->Type()) &&
-                          !NaturalDocs::Topics->EndsScope($parsedFile->[$index]->Type()) )
-                 )  )
+        while ($index < scalar @$parsedFile)
             {
             my $topic = $parsedFile->[$index];
+            my $scope = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();
+
+            if (!$completeSummary && ($scope == ::SCOPE_START() || $scope == ::SCOPE_END()) )
+                {  last;  };
 
 
             # Remove modifiers as appropriate for the current entry.
 
-            if (NaturalDocs::Topics->HasScope($topic->Type()) || NaturalDocs::Topics->EndsScope($topic->Type()))
+            if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
                 {
-                $inSectionOrClassTag = undef;
-                $inGroupTag = undef;
+                $indent = 0;
+                $inGroup = 0;
                 $isMarkedAttr = undef;
                 }
-            elsif ($topic->Type() == ::TOPIC_GROUP())
+            elsif ($topic->Type() eq ::TOPIC_GROUP())
                 {
-                $inGroupTag = undef;
+                if ($inGroup)
+                    {  $indent--;  };
+
+                $inGroup = 0;
                 $isMarkedAttr = undef;
                 };
 
 
             $output .=
              '<tr' . $isMarkedAttr . '><td' . $entrySizeAttr . '>'
-                . '<div class=S' . ($index == 0 ? 'Main' : NaturalDocs::Topics->NameOf($topic->Type(), 1)) . '>'
+                . '<div class=S' . ($index == 0 ? 'Main' : NaturalDocs::Topics->NameOfType($topic->Type(), 0, 1)) . '>'
                     . '<div class=SEntry>';
 
 
             # Add any remaining modifiers to the HTML in the form of div tags.  This modifier approach isn't the most elegant
             # thing, but there's not a lot of options.  It works.
 
-            $output .= $inSectionOrClassTag . $inGroupTag;
+            if ($indent)
+                {  $output .= '<div class=SIndent' . $indent . '>';  };
 
 
             # Add the entry itself.
@@ -802,9 +807,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             # Close the modifiers.
 
-            if (defined $inGroupTag)
-                {  $output .= '</div>';  };
-            if (defined $inSectionOrClassTag)
+            if ($indent)
                 {  $output .= '</div>';  };
 
             $output .=
@@ -813,13 +816,14 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             . '</td><td' . $descriptionSizeAttr . '>'
 
-                . '<div class=S' . ($index == 0 ? 'Main' : NaturalDocs::Topics->NameOf($topic->Type(), 1)) . '>'
+                . '<div class=S' . ($index == 0 ? 'Main' : NaturalDocs::Topics->NameOfType($topic->Type(), 0, 1)) . '>'
                     . '<div class=SDescription>';
 
 
             # Add the modifiers to the HTML yet again.
 
-            $output .= $inSectionOrClassTag . $inGroupTag;
+            if ($indent)
+                {  $output .= '<div class=SIndent' . $indent . '>';  };
 
 
             if (defined $parsedFile->[$index]->Body())
@@ -831,9 +835,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             # Close the modifiers again.
 
-            if (defined $inGroupTag)
-                {  $output .= '</div>';  };
-            if (defined $inSectionOrClassTag)
+            if ($indent)
                 {  $output .= '</div>';  };
 
 
@@ -846,19 +848,18 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             # Prepare the modifiers for the next entry.
 
-            if (NaturalDocs::Topics->HasScope($topic->Type()))
+            if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
                 {
-                $inSectionOrClassTag = '<div class=SInClass>';
-                $inGroupTag = undef;
+                $indent = 1;
+                $inGroup = 0;
                 }
-            elsif (NaturalDocs::Topics->EndsScope($topic->Type()))
+            elsif ($topic->Type() eq ::TOPIC_GROUP())
                 {
-                $inSectionOrClassTag = '<div class=SInSection>';
-                $inGroupTag = undef;
-                }
-            elsif ($topic->Type() == ::TOPIC_GROUP())
-                {
-                $inGroupTag = '<div class=SInGroup>';
+                if (!$inGroup)
+                    {
+                    $indent++;
+                    $inGroup = 1;
+                    };
                 };
 
             if (!defined $isMarkedAttr)
@@ -1045,7 +1046,7 @@ sub BuildToolTip #(symbol, file, type, prototype, summary)
 
             $tooltipHTML .=
             '<div class=CToolTip id="tt' . $number . '">'
-                . '<div class=C' . NaturalDocs::Topics->NameOf($type, 1) . '>';
+                . '<div class=C' . NaturalDocs::Topics->NameOfType($type, 0, 1) . '>';
 
             if (defined $prototype)
                 {
@@ -1208,7 +1209,8 @@ sub BuildClassHierarchyEntry #(file, symbol, style, link)
             my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
             $output .= '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol($symbol) . '" '
-                            . 'class=L' . NaturalDocs::Topics->NameOf($target->Type(), 1) . ' ' . $toolTipProperties . '>' . $name . '</a>';
+                            . 'class=L' . NaturalDocs::Topics->NameOfType($target->Type(), 0, 1) . ' ' . $toolTipProperties . '>'
+                            . $name . '</a>';
             }
         else
             {  $output .= $name;  };
@@ -1623,7 +1625,7 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
         print INDEXFILEHANDLE
             $beginPage
             . $self->BuildIndexNavigationBar($type, 1, \@pageLocations)
-            . 'There are no entries in the ' . lc( NaturalDocs::Topics->NameOf($type) ) . ' index.'
+            . 'There are no entries in the ' . lc( NaturalDocs::Topics->NameOfType($type) ) . ' index.'
             . $endPage;
 
         close(INDEXFILEHANDLE);
@@ -1886,7 +1888,7 @@ sub IndexSymbolToHTML #(symbol, element)
 
         my $separator;
 
-        if ($element->Type() == ::TOPIC_FILE())
+        if ($element->Type() eq ::TOPIC_FILE())
             {  $separator = '.';  }
         else
             {  $separator = NaturalDocs::Languages->LanguageOf($element->File())->PackageSeparator();  };
@@ -1958,7 +1960,7 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #
 #   Parameters:
 #
-#       type  - The index <TopicType>, or undef for general.
+#       type  - The index <TopicType>.
 #       startingPage - If defined, only pages starting with this number will be removed.  Otherwise all pages will be removed.
 #
 sub PurgeIndexFiles #(type, startingPage)
@@ -2032,7 +2034,7 @@ sub OutputFileOf #(sourceFile)
 #
 #   Parameters:
 #
-#       type  - The <TopicType> of the index, or undef if general.
+#       type  - The <TopicType> of the index.
 #       page  - The page number.  Undef is the same as one.
 #
 sub IndexFileOf #(type, page)
@@ -2050,14 +2052,14 @@ sub IndexFileOf #(type, page)
 #
 #   Parameters:
 #
-#       type  - The <TopicType> of the index, or undef if general.
+#       type  - The <TopicType> of the index.
 #       page  - The page number.  Undef is the same as one.
 #
 sub RelativeIndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
 
-    return (defined $type ? NaturalDocs::Topics->NameOf($type, 1) : 'General') . 'Index'
+    return NaturalDocs::Topics->NameOfType($type, 0, 1) . 'Index'
             . (defined $page && $page != 1 ? $page : '') . '.html';
     };
 
@@ -2068,13 +2070,13 @@ sub RelativeIndexFileOf #(type, page)
 #
 #   Parameters:
 #
-#       type  - The type of index, or undef if general.
+#       type  - The type of index.
 #
 sub IndexTitleOf #(type)
     {
     my ($self, $type) = @_;
 
-    return (defined $type ? NaturalDocs::Topics->NameOf($type) . ' ' : '') . 'Index';
+    return ($type eq ::TOPIC_GENERAL() ? '' : NaturalDocs::Topics->NameOfType($type) . ' ') . 'Index';
     };
 
 #
@@ -2320,7 +2322,7 @@ sub BuildTextLink #(text, package, using, sourceFile)
         my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
         return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol($target->Symbol()) . '" '
-                    . 'class=L' . NaturalDocs::Topics->NameOf($target->Type(), 1) . ' ' . $toolTipProperties . '>' . $text . '</a>';
+                    . 'class=L' . NaturalDocs::Topics->NameOfType($target->Type(), 0, 1) . ' ' . $toolTipProperties . '>' . $text . '</a>';
         }
     else
         {
