@@ -41,6 +41,10 @@ my $projectDirectory;
 # corresponding directories.
 my %outputFormats;
 
+# int: tabLength
+# The number of spaces in tabs.
+my $tabLength;
+
 # bool: rebuildData
 # Whether the script should rebuild all data files from scratch.
 my $rebuildData;
@@ -84,6 +88,7 @@ sub ParseCommandLine
                                   '--style'    => '-s',
                                   '--rebuild' => '-r',
                                   '--rebuildoutput' => '-ro',
+                                  '--tablength' => '-t',
                                   '--quiet'    => '-q',
                                   '--headersonly' => '-ho',
                                   '--help'     => '-h' );
@@ -137,6 +142,10 @@ sub ParseCommandLine
                     {  $styleString .= ' ';  };
 
                 $valueRef = \$styleString;
+                }
+            elsif ($option eq '-t')
+                {
+                $valueRef = \$tabLength;
                 }
             else
                 {
@@ -272,6 +281,19 @@ sub ParseCommandLine
         };
 
 
+    # Determine the tab length, and default to four if not specified.
+
+    if (defined $tabLength)
+        {
+        if ($tabLength =~ /^ *([0-9]+) *$/)
+            {  $tabLength = $1;  }
+        else
+            {  push @errorMessages, 'The tab length must be a number.';  };
+        }
+    else
+        {  $tabLength = 4;  };
+
+
     # Exit with the error message if there was one.
 
     if (scalar @errorMessages)
@@ -341,6 +363,10 @@ sub PrintSyntax
     . "     (\"HTML=Small\") separated by spaces to distinguish between them.  If set\n"
     . "     to \"Custom\", Natural Docs will not sync the output's CSS file with one\n"
     . "     from its style directory.\n"
+    . "\n"
+    . "-t, --tablength\n"
+    . "   Specifies the number of spaces tabs should be expanded to.  This only needs\n"
+    . "   to be set if you use tabs in example code and text diagrams.  Defaults to 4.\n"
     . "\n"
     . "-r, --rebuild\n"
     . "     Rebuilds all output and data files from scratch.\n"
@@ -421,6 +447,11 @@ sub ProjectDirectory
 # Returns the main style directory.
 sub StyleDirectory
     {  return NaturalDocs::File::JoinPath($FindBin::Bin, 'Styles', 1);  };
+
+# Function: TabLength
+# Returns the number of spaces tabs should be expanded to.
+sub TabLength
+    {  return $tabLength;  };
 
 # Function: RebuildData
 # Returns whether the script should rebuild all data files from scratch.
