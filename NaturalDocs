@@ -29,7 +29,7 @@ use integer;
 #
 #   Script: Natural Docs
 #
-#       Version 0.91
+#       Version 0.95
 #
 #       Copyright © 2003 Greg Valure
 #
@@ -90,8 +90,9 @@ use integer;
 #                                             with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
 #                                             <HTML Styles> for options.
 #
-#           -r, --rebuild                - Rebuilds all output and data files from scratch.  Use whenever you add or change the output
-#                                              formats.  Does not affect the menu file.
+#           -r, --rebuild                - Rebuilds all output and data files from scratch.  Does not affect the menu file.
+#
+#           -ro, --rebuildoutput     - Rebuilds all output files from scratch.  Use this whenever you add or change output formats.
 #
 #           -q, --quiet                  - Suppresses all non-error output.
 #
@@ -114,6 +115,10 @@ use integer;
 #       HTML    - Creates HTML output.  A directory tree will be created to mirror the source tree, and each source file will have a
 #                     corresponding HTML file of the same name, only with .html appended.  The files are self-contained and don't rely
 #                     on frames.  index.html forwards to the first file on the menu.
+#
+#       FramedHTML - Creates framed HTML output.  A directory tree will be created to mirror the source tree, and each source file
+#                             will have a corresponding HTML file of the same name, only with .html appended.  The menu has its own
+#                             file, so changes to it will be done much quicker.
 #
 #
 #   About: HTML Styles
@@ -153,6 +158,9 @@ use integer;
 #
 #       Note that a browser not being able to collapse the menu isn't a compatibility concern.  The menu defaults to completely open
 #       if the browser can't handle collapsing it, so it's always usable.  It's just better on browsers that support it.
+#
+#       Also note that if a browser doesn't support frames, the user will automatically be forwarded to the menu file when using
+#       framed HTML output so it will still be usable.
 #
 #
 #   About: Contributors
