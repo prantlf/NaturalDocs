@@ -125,6 +125,7 @@ my %synonyms = (
                             'str'           => ::TOPIC_VARIABLE(),
                             'property'  => ::TOPIC_VARIABLE(),
                             'prop'        => ::TOPIC_VARIABLE(),
+                            'handle'     => ::TOPIC_VARIABLE(),
 
                             'variables'   => ::TOPIC_VARIABLE_LIST(),
                             'vars'          => ::TOPIC_VARIABLE_LIST(),
@@ -156,6 +157,7 @@ my %synonyms = (
                             'strs'          => ::TOPIC_VARIABLE_LIST(),
                             'properties' => ::TOPIC_VARIABLE_LIST(),
                             'props'       => ::TOPIC_VARIABLE_LIST(),
+                            'handles'    => ::TOPIC_VARIABLE_LIST(),
 
                             'topic'        => ::TOPIC_GENERIC(),
                             'about'       => ::TOPIC_GENERIC(),
