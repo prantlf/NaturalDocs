@@ -442,15 +442,5 @@ sub AppVersion
 sub AppURL
     {  return 'http://www.naturaldocs.org';  };
 
-#
-#   Function: FileVersion
-#
-#   Returns a string of the current file version number of Natural Docs.  This may be different from <AppVersion>.  If ever a data
-#   file is loaded that doesn't match this version, the file should be regenerated.  This prevents upgrades/downgrades to versions
-#   that have different file formats from causing errors.
-#
-sub FileVersion
-    {  return 1;  };
-
 
 1;

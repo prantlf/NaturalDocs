@@ -82,7 +82,7 @@ my %unbuiltFilesWithContent;
 #
 #   Format:
 #
-#       The first line is <NaturalDocs::Settings::FileVersion()>.
+#       The first line is <NaturalDocs::Settings::AppVersion()>.
 #
 #       The second line is the last modification time of <NaturalDocs_Menu.txt>.
 #
@@ -117,7 +117,10 @@ sub LoadAndDetectChanges
         my $version = <$indexFile>;
         chomp($version);
 
-        if ($version == NaturalDocs::Settings::FileVersion())
+        # Currently, the file format hasn't changed in public releases, so anything <= the current version is fine.
+        # If the version is "1" with no ".x", that means 0.91 and prior because we were using a separate FileVersion() function then.
+
+        if ($version <= NaturalDocs::Settings::AppVersion() || $version eq '1')
             {  $fileIsOkay = 1;  }
         else
             {  close($indexFile);  };
@@ -240,7 +243,7 @@ sub Save
     open($indexFile, '>' . ProjectFile())
         or die "Couldn't save project file " . ProjectFile() . "\n";
 
-    print $indexFile '' . NaturalDocs::Settings::FileVersion() . "\n"
+    print $indexFile '' . NaturalDocs::Settings::AppVersion() . "\n"
                              . (stat(MenuFile()))[9] . "\n";
 
     while (my ($fileName, $file) = each %supportedFiles)

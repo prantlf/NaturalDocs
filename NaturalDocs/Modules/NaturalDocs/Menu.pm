@@ -213,9 +213,9 @@ my %previousIndexes;
 #   like NaturalDocs.menu to avoid confusion with <NaturalDocs_Menu.txt>.  This one is not user-editable so we don't want
 #   people opening it by accident.
 #
-#   > [file version]
+#   > [app version]
 #
-#   The first line is the file version number from <NaturalDocs::Settings::FileVersion()>.
+#   The first line is the file version number from <NaturalDocs::Settings::AppVersion()>.
 #
 #   > [index type] tab [index type] tab ...
 #
@@ -939,7 +939,10 @@ sub ParsePreviousMenuStateFile
         my $fileVersion = <$fileHandle>;
         chomp($fileVersion);
 
-        if ($fileVersion == NaturalDocs::Settings::FileVersion())
+        # Currently, the file format hasn't changed since it's been released publicly, so anything <= the current version is fine.
+        # If the version is "1" with no ".x", that means 0.91 and prior because we were using a separate FileVersion() function then.
+
+        if ($fileVersion <= NaturalDocs::Settings::AppVersion() || $fileVersion eq '1')
             {  $fileIsOkay = 1;  }
         else
             {  close ($fileHandle);  };
@@ -973,7 +976,7 @@ sub SavePreviousMenuStateFile
 
     print $fileHandle
 
-        '' . NaturalDocs::Settings::FileVersion() . "\n"
+        '' . NaturalDocs::Settings::AppVersion() . "\n"
 
         . join("\t", keys %indexes) . "\n";
     };
