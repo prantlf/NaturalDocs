@@ -222,19 +222,19 @@ sub Sort
 
     if (ref $self->File())
         {
-        @{$self->[FILE]} = sort { NaturalDocs::StringSort::Compare($a->File(), $b->File()) } @{$self->[FILE]};
+        @{$self->[FILE]} = sort { ::StringCompare($a->File(), $b->File()) } @{$self->[FILE]};
         };
 
     if (ref $self->Class())
         {
-        @{$self->[CLASS]} = sort { NaturalDocs::StringSort::Compare($a->Class(), $b->Class()) } @{$self->[CLASS]};
+        @{$self->[CLASS]} = sort { ::StringCompare($a->Class(), $b->Class()) } @{$self->[CLASS]};
 
         foreach my $classElement ( @{$self->Class()} )
             {
             if (ref $classElement->File())
                 {
                 @{$classElement->[FILE]} =
-                    sort { NaturalDocs::StringSort::Compare($a->File(), $b->File()) } @{$classElement->[FILE]};
+                    sort { ::StringCompare($a->File(), $b->File()) } @{$classElement->[FILE]};
                 };
             };
         };

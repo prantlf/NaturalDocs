@@ -1307,7 +1307,7 @@ sub MakeIndex #(type)
 
     my $indexArray = [ keys %indexHash ];
 
-    @$indexArray = sort { NaturalDocs::StringSort::Compare($a, $b) } @$indexArray;
+    @$indexArray = sort { ::StringCompare($a, $b) } @$indexArray;
 
     for (my $i = 0; $i < scalar @$indexArray; $i++)
         {
