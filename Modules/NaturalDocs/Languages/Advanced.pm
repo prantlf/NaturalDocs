@@ -101,7 +101,7 @@ sub ClearAutoTopics
 
 # Function: ScopeRecord
 # Returns an arrayref of <NaturalDocs::Languages::Advanced::ScopeChange> objects describing how and when the scope
-# changed thoughout the file.
+# changed thoughout the file.  There will always be at least one entry, which will be for line 1 and undef as the scope.
 sub ScopeRecord
     {  return $_[0]->[SCOPE_RECORD];  };
 
@@ -132,7 +132,7 @@ sub ScopeRecord
 #
 #   Parameters:
 #
-#       sourceFile - The source file to load and parse.
+#       sourceFile - The source <FileName> to load and parse.
 #       lineCommentSymbols - An arrayref of symbols that designate line comments, or undef if none.
 #       openingCommentSymbols - An arrayref of symbols that designate the start of multiline comments, or undef if none.
 #       closingCommentSymbols - An arrayref of symbols that designate the end of multiline comments, or undef if none.
@@ -561,14 +561,10 @@ sub IsBackslashed #(index)
 #   These functions provide a nice scope stack implementation for language-specific parsers to use.  The default implementation
 #   makes the following assumptions.
 #
-#   - Namespaces and packages completely replace one another, rather than concatenating.  If you call <SetPackage()>,
-#     it completely replaces the previous package for the current scope.  You need to concatenate manually if that's the behavior.
+#   - Packages completely replace one another, rather than concatenating.  You need to concatenate manually if that's the
+#     behavior.
 #
-#   - Namespaces and packages inherit.  So if a scope level doesn't set its own, the namespace and package are the
-#     same as the parent scope's.
-#
-#   - Protection applies to the current level only and does not inherit.  So if one is not set for the current scope level,
-#     <CurrentProtection()> will return undef rather than the parent scope's value.
+#   - Packages inherit, so if a scope level doesn't set its own, the package is the same as the parent scope's.
 #
 
 
@@ -580,9 +576,10 @@ sub IsBackslashed #(index)
 sub ClearScopeStack
     {
     my ($self) = @_;
-    $self->[SCOPE_STACK] = [ NaturalDocs::Languages::Advanced::Scope->New(undef, undef, undef, undef) ];
+    $self->[SCOPE_STACK] = [ NaturalDocs::Languages::Advanced::Scope->New(undef, undef) ];
     $self->[SCOPE_RECORD] = [ NaturalDocs::Languages::Advanced::ScopeChange->New(undef, 1) ];
     };
+
 
 #
 #   Function: StartScope
@@ -591,18 +588,16 @@ sub ClearScopeStack
 #
 #   Parameters:
 #
-#       symbol - The closing symbol of the scope.
+#       closingSymbol - The closing symbol of the scope.
 #       lineNumber - The line number where the scope begins.
-#       namespace - The namespace of the scope.  Undef means no change.
-#       package - The package or class of the scope.  Undef means no change.
-#       protection - The protection of the scope, such as public/private/protected.  Undef means no change.
+#       package - The package <SymbolString> of the scope.  Undef means no change.
 #
-sub StartScope #(symbol, lineNumber, namespace, package, protection)
+sub StartScope #(closingSymbol, lineNumber, package)
     {
-    my ($self, $symbol, $lineNumber, $namespace, $package, $protection) = @_;
+    my ($self, $closingSymbol, $lineNumber, $package) = @_;
 
     push @{$self->[SCOPE_STACK]},
-            NaturalDocs::Languages::Advanced::Scope->New($symbol, $namespace, $package, $protection);
+            NaturalDocs::Languages::Advanced::Scope->New($closingSymbol, $package);
 
     $self->AddToScopeRecord($self->CurrentScope(), $lineNumber);
     };
@@ -611,8 +606,8 @@ sub StartScope #(symbol, lineNumber, namespace, package, protection)
 #
 #   Function: EndScope
 #
-#   Records the end of the current scope level.  Note that this is blind; you need to manually check <ScopeSymbol()> if you need
-#   to determine if it is correct to do so.
+#   Records the end of the current scope level.  Note that this is blind; you need to manually check <ClosingScopeSymbol()> if
+#   you need to determine if it is correct to do so.
 #
 #   Parameters:
 #
@@ -630,46 +625,27 @@ sub EndScope #(lineNumber)
 
 
 #
-#   Function: ScopeSymbol
+#   Function: ClosingScopeSymbol
 #
 #   Returns the symbol that ends the current scope level, or undef if we are at the top level.
 #
-sub ScopeSymbol
+sub ClosingScopeSymbol
     {
     my ($self) = @_;
-    return $self->[SCOPE_STACK]->[-1]->Symbol();
+    return $self->[SCOPE_STACK]->[-1]->ClosingSymbol();
     };
 
 
 #
 #   Function: CurrentScope
 #
-#   Returns the current calculated scope, or undef if global.  The default implementation just returns <CurrentPackage()>.  If
-#   your language supports namespaces, override this function to join <CurrentNamespace()> and <CurrentPackage()>.
+#   Returns the current calculated scope, or undef if global.  The default implementation just returns <CurrentPackage()>.  This
+#   is a separate function because C++ may need to track namespaces and classes separately, and so the current scope would
+#   be a concatenation of them.
 #
 sub CurrentScope
     {
     return $_[0]->CurrentPackage();
-    };
-
-
-#
-#   Function: CurrentNamespace
-#
-#   Returns the current calculated namespace, or undef if none.
-#
-sub CurrentNamespace
-    {
-    my ($self) = @_;
-
-    my $namespace;
-
-    for (my $index = scalar @{$self->[SCOPE_STACK]} - 1; $index >= 0 && !defined $namespace; $index--)
-        {
-        $namespace = $self->[SCOPE_STACK]->[$index]->Namespace();
-        };
-
-    return $namespace;
     };
 
 
@@ -694,44 +670,13 @@ sub CurrentPackage
 
 
 #
-#   Function: CurrentProtection
-#
-#   Returns the current protection, or undef if none.  Assumes protection doesn't inherit like package and namespace do.
-#
-sub CurrentProtection
-    {
-    my ($self) = @_;
-    return $self->[SCOPE_STACK]->[-1]->Protection();
-    };
-
-
-#
-#   Function: SetNamespace
-#
-#   Sets the namespace for the current scope level.
-#
-#   Parameters:
-#
-#       namespace - The new namespace.
-#       lineNumber - The line number the new namespace starts on.
-#
-sub SetNamespace #(namespace, lineNumber)
-    {
-    my ($self, $namespace, $lineNumber) = @_;
-    $self->[SCOPE_STACK]->[-1]->SetNamespace($namespace);
-
-    $self->AddToScopeRecord($self->CurrentScope(), $lineNumber);
-    };
-
-
-#
 #   Function: SetPackage
 #
-#   Sets the package or class for the current scope level.
+#   Sets the package for the current scope level.
 #
 #   Parameters:
 #
-#       package - The new package.
+#       package - The new package <SymbolString>.
 #       lineNumber - The line number the new package starts on.
 #
 sub SetPackage #(package, lineNumber)
@@ -740,23 +685,6 @@ sub SetPackage #(package, lineNumber)
     $self->[SCOPE_STACK]->[-1]->SetPackage($package);
 
     $self->AddToScopeRecord($self->CurrentScope(), $lineNumber);
-    };
-
-
-#
-#   Function: SetProtection
-#
-#   Sets the protection for the current scope level.
-#
-#   Parameters:
-#
-#       protection - The new protection level.
-#       lineNumber - The line number the new protection starts on.
-#
-sub SetProtection #(protection, lineNumber)
-    {
-    my ($self, $protection, $lineNumber) = @_;
-    $self->[SCOPE_STACK]->[-1]->SetProtection($protection);
     };
 
 
@@ -772,7 +700,7 @@ sub SetProtection #(protection, lineNumber)
 #
 #   Parameters:
 #
-#       newScope - What the scope changed to.
+#       newScope - What the scope <SymbolString> changed to.
 #       lineNumber - Where the scope changed.
 #
 sub AddToScopeRecord #(newScope, lineNumber)
