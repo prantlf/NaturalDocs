@@ -19,10 +19,6 @@ Footer: Copyright (c) 2003 Greg Valure
 # You can add text and web links to the menu by adding "Text: [text]" and
 # "Link: [name] ([URL])" lines, respectively.
 # 
-# You can add indexes to the menu by adding "Index: [name]" or
-# "[type] Index: [name]" to the menu.  The types are Class, Function, and
-# File.  If you don't add a type, it will be an index of everything.
-# 
 # The formatting and comments are auto-generated, so don't worry about
 # neatness when editing the file.  Natural Docs will clean it up the next
 # time it is run.  When working with groups, just deal with the braces and
@@ -97,10 +93,12 @@ Group: Documentation  {
 
 Group: Indexes  {
 
-   Function Index: Functions
-   Class Index: Packages and Classes
-   File Index: Files
    Index: Everything
+   File Index: File
+   Class Index: Class
+   Variable Index: Variable
+   Function Index: Function
+   Constant Index: Constant
    }  # Group: Indexes
 
 Link: Web Site  (http://www.naturaldocs.org/)
