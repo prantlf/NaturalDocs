@@ -1,12 +1,15 @@
 /*
-   IMPORTANT: If you're editing this file in the output directory of one of your projects, you must use the "-s Custom" option when
-   you run Natural Docs on this project.  Otherwise the changes will be overwritten by the master CSS file (the one in the
-   Natural Docs styles directory) the next time it is run.
+   IMPORTANT: If you're editing this file in the output directory of one of
+   your projects, you must use the "-s Custom" option when you run Natural 
+   Docs on this project.  Otherwise the changes will be overwritten by the 
+   master CSS file (the one in the Natural Docs styles directory) the next 
+   time it is run.
 
-   On the other hand, if you're editing this file in the Natural Docs styles directory, the changes will automatically be applied to all
-   your projects that use this style the next time Natural Docs is run on them.
+   On the other hand, if you're editing this file in the Natural Docs styles 
+   directory, the changes will automatically be applied to all your projects 
+   that use this style the next time Natural Docs is run on them.
 
-   This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
+   This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
    Natural Docs is licensed under the GPL
 */
 
@@ -27,8 +30,11 @@ a:active { color: #FF0000; text-decoration: underline }
 td {
     vertical-align: top }
 
-/*  Comment out this line to use web-style paragraphs (blank line between paragraphs, no indent) instead of print-style
-     paragraphs (no blank line, indented.)  */
+/*  
+    Comment out this line to use web-style paragraphs (blank line between 
+    paragraphs, no indent) instead of print-style paragraphs (no blank line, 
+    indented.)  
+*/
 p {
     text-indent: 5ex; margin: 0 }
 
