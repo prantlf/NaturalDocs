@@ -22,10 +22,12 @@ require Exporter;
 @ISA = qw(Exporter);
 
 @EXPORT = ('TOPIC_CLASS', 'TOPIC_SECTION', 'TOPIC_FILE', 'TOPIC_GROUP', 'TOPIC_FUNCTION', 'TOPIC_VARIABLE',
-                   'TOPIC_GENERIC', 'TOPIC_TYPE', 'TOPIC_CONSTANT', 'TOPIC_PROPERTY',
+                   'TOPIC_GENERIC', 'TOPIC_TYPE', 'TOPIC_CONSTANT', 'TOPIC_PROPERTY', 'TOPIC_DATABASE',
+                   'TOPIC_DATABASE_TABLE', 'TOPIC_COOKIE',
 
                    'TOPIC_CLASS_LIST', 'TOPIC_FILE_LIST', 'TOPIC_FUNCTION_LIST', 'TOPIC_VARIABLE_LIST',
-                   'TOPIC_GENERIC_LIST', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT_LIST', 'TOPIC_PROPERTY_LIST');
+                   'TOPIC_GENERIC_LIST', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT_LIST', 'TOPIC_PROPERTY_LIST',
+                   'TOPIC_DATABASE_LIST', 'TOPIC_DATABASE_TABLE_LIST', 'TOPIC_COOKIE_LIST');
 
 
 
@@ -59,6 +61,11 @@ require Exporter;
 #       TOPIC_CONSTANT - A constant.  Same as generic, but distinguished for indexing.
 #       TOPIC_TYPE          - A type.  Same as generic, but distinguished for indexing.
 #
+#       TOPIC_DATABASE - A database.  Has scope.
+#       TOPIC_DATABASE_TABLE - A database table.  Has scope.
+#
+#       TOPIC_COOKIE - A cookie.  Always global.
+#
 #       TOPIC_CLASS_LIST        - A list of classes.  Will not have scope.
 #       TOPIC_FILE_LIST            - A list of files.
 #       TOPIC_FUNCTION_LIST  - A list of functions.  Will not have prototypes.
@@ -68,6 +75,11 @@ require Exporter;
 #
 #       TOPIC_CONSTANT_LIST - A list of constants.
 #       TOPIC_TYPE_LIST - A list of types.
+#
+#       TOPIC_DATABASE_LIST - A list of databases.
+#       TOPIC_DATABASE_TABLE_LIST - A list of database tables.
+#
+#       TOPIC_COOKIE_LIST - A list of cookies.
 #
 #   Dependencies:
 #
@@ -84,6 +96,9 @@ use constant TOPIC_GENERIC => 7;
 use constant TOPIC_TYPE => 8;
 use constant TOPIC_CONSTANT => 9;
 use constant TOPIC_PROPERTY => 10;
+use constant TOPIC_DATABASE => 11;
+use constant TOPIC_DATABASE_TABLE => 12;
+use constant TOPIC_COOKIE => 13;
 
 use constant TOPIC_LIST_BASE => 100;  # To accomodate for future expansion without changing the actual values.
 
@@ -95,6 +110,9 @@ use constant TOPIC_GENERIC_LIST => (TOPIC_GENERIC + TOPIC_LIST_BASE);
 use constant TOPIC_TYPE_LIST => (TOPIC_TYPE + TOPIC_LIST_BASE);
 use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
 use constant TOPIC_PROPERTY_LIST => (TOPIC_PROPERTY + TOPIC_LIST_BASE);
+use constant TOPIC_DATABASE_LIST => (TOPIC_DATABASE + TOPIC_LIST_BASE);
+use constant TOPIC_DATABASE_TABLE_LIST => (TOPIC_DATABASE_TABLE + TOPIC_LIST_BASE);
+use constant TOPIC_COOKIE_LIST => (TOPIC_COOKIE + TOPIC_LIST_BASE);
 
 
 ###############################################################################
@@ -105,7 +123,10 @@ use constant TOPIC_PROPERTY_LIST => (TOPIC_PROPERTY + TOPIC_LIST_BASE);
 #
 #   An array of the topic names.  Use the <TopicTypes> as indexes, except for list types.
 #
-my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant', 'Property' );
+#   *Important:* The name with any spaces removed must map back to the <TopicType> via <constants>.
+#
+my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant', 'Property',
+                        'Database', 'Database Table', 'Cookie' );
 # The string order must match the constant values.
 
 #
@@ -113,15 +134,17 @@ my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable'
 #
 #   An array of the topic names, but plural.  Use the <TopicTypes> as indexes, except for list types.
 #
+#   *Important:* The name with any spaces removed must map back to the list <TopicType> via <constants>.
+#
 my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions', 'Variables', 'Generics', 'Types', 'Constants',
-                                'Properties' );
+                                'Properties', 'Databases', 'Database Tables', 'Cookies' );
 # The string order must match the constant values.  "Generics" is wierd, I know.
 
 #
 #   hash: constants
 #
 #   A hash where the keys are the names in all lowercase, and the values are the <TopicTypes>.  Note that this contains
-#   every synonym used in the parser.  If the name is plural, it will be a list type.
+#   every synonym used in the parser.  If the name is plural, it will be a list type.  Spaces are not allowed.
 #
 my %constants = (
 
@@ -311,7 +334,23 @@ my %constants = (
                             'typedef'  => TOPIC_TYPE,
 
                             'types'  => TOPIC_TYPE_LIST,
-                            'typedefs'  => TOPIC_TYPE_LIST
+                            'typedefs'  => TOPIC_TYPE_LIST,
+
+                            'database'  => TOPIC_DATABASE,
+                            'db'  => TOPIC_DATABASE,
+
+                            'databases'  => TOPIC_DATABASE_LIST,
+                            'dbs'  => TOPIC_DATABASE_LIST,
+
+                            'databasetable'  => TOPIC_DATABASE_TABLE,
+                            'dbtable'  => TOPIC_DATABASE_TABLE,
+
+                            'databasetables'  => TOPIC_DATABASE_TABLE_LIST,
+                            'dbtables'  => TOPIC_DATABASE_TABLE_LIST,
+
+                            'cookie'  => TOPIC_COOKIE,
+
+                            'cookies'  => TOPIC_COOKIE_LIST
 
              );
 
@@ -326,7 +365,10 @@ my %indexable = ( TOPIC_FUNCTION() => 1,
                              TOPIC_VARIABLE() => 1,
                              TOPIC_PROPERTY() => 1,
                              TOPIC_TYPE() => 1,
-                             TOPIC_CONSTANT() => 1 );
+                             TOPIC_CONSTANT() => 1,
+                             TOPIC_DATABASE() => 1,
+                             TOPIC_DATABASE_TABLE() => 1,
+                             TOPIC_COOKIE() => 1 );
 
 #
 #   hash: basicAutoGroupable
@@ -345,7 +387,8 @@ my %basicAutoGroupable = ( TOPIC_FUNCTION() => 1,
 #
 my %fullAutoGroupable = ( TOPIC_FILE() => 1,
                                         TOPIC_TYPE() => 1,
-                                        TOPIC_CONSTANT() => 1 );
+                                        TOPIC_CONSTANT() => 1,
+                                        TOPIC_COOKIE() => 1 );
 
 
 #
@@ -353,7 +396,10 @@ my %fullAutoGroupable = ( TOPIC_FILE() => 1,
 #
 #   An existence hash of the <TopicTypes> that are always global, even when they appear in a class.
 #
-my %isAlwaysGlobal = ( TOPIC_FILE() => 1 );
+my %isAlwaysGlobal = ( TOPIC_FILE() => 1,
+                                    TOPIC_FILE_LIST() => 1,
+                                    TOPIC_COOKIE() => 1,
+                                    TOPIC_COOKIE_LIST() => 1 );
 
 
 #
@@ -361,7 +407,9 @@ my %isAlwaysGlobal = ( TOPIC_FILE() => 1 );
 #
 #   An existence hash of the <TopicTypes> that create a scope after them, like classes do.
 #
-my %hasScope = ( TOPIC_CLASS() => 1 );
+my %hasScope = ( TOPIC_CLASS() => 1,
+                             TOPIC_DATABASE() => 1,
+                             TOPIC_DATABASE_TABLE() => 1 );
 
 
 #
@@ -380,7 +428,9 @@ my %endsScope = ( TOPIC_SECTION() => 1,
 #
 my %canBePageTitle = ( TOPIC_CLASS() => 1,
                                      TOPIC_FILE() => 1,
-                                     TOPIC_SECTION() => 1 );
+                                     TOPIC_SECTION() => 1,
+                                     TOPIC_DATABASE() => 1,
+                                     TOPIC_DATABASE_TABLE() => 1 );
 
 
 ###############################################################################
@@ -463,15 +513,28 @@ sub AllIndexable
 #
 #   Returns the name string of the passed <TopicType>.
 #
-sub NameOf #(topic)
+#   Parameters:
+#
+#       topic - The <TopicType> to get the name of.
+#       spaceless - Whether to remove all spaces from the name.
+#
+sub NameOf #(topic, spaceless)
     {
-    my ($self, $topic) = @_;
+    my ($self, $topic, $spaceless) = @_;
+
+    my $name;
 
     if ($self->IsList($topic))
-        {  return $names[ $self->IsListOf($topic) ] . 'List';  }
+        {  $name = $names[ $self->IsListOf($topic) ] . 'List';  }
     else
-        {  return $names[ $topic ];  };
+        {  $name = $names[ $topic ];  };
+
+    if ($spaceless)
+        {  $name =~ tr/ //d;  };
+
+    return $name;
     };
+
 
 #
 #   Function: PluralNameOf
@@ -479,14 +542,26 @@ sub NameOf #(topic)
 #   Returns the plural name string of the passed <TopicType>.  Note that if you pass the plural name back to <ConstantOf()>,
 #   you will get a list <TopicType> instead of the original one.
 #
-sub PluralNameOf #(topic)
+#   Parameters:
+#
+#       topic - The <TopicType> to get the plural name of.
+#       spaceless - Whether to remove all spaces from the name.
+#
+sub PluralNameOf #(topic, spaceless)
     {
-    my ($self, $topic) = @_;
+    my ($self, $topic, $spaceless) = @_;
+
+    my $name;
 
     if ($self->IsList($topic))
-        {  return $names[ $self->IsListOf($topic) ] . 'Lists';  }
+        {  $name = $names[ $self->IsListOf($topic) ] . 'Lists';  }
     else
-        {  return $pluralNames[ $topic ];  };
+        {  $name = $pluralNames[ $topic ];  };
+
+    if ($spaceless)
+        {  $name =~ tr/ //d;  };
+
+    return $name;
     };
 
 #
@@ -562,5 +637,6 @@ sub CanBePageTitle #(topic)
     my ($self, $topic) = @_;
     return exists $canBePageTitle{$topic};
     };
+
 
 1;
