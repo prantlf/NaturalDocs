@@ -432,7 +432,7 @@ sub StyleDirectory
     {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'Styles', 1);  };
 
 # Function: JavaScriptDirectory
-# Returns the main JavaScript directory.
+# Returns the main JavaScript directory. 
 sub JavaScriptDirectory
     {  return NaturalDocs::File->JoinPaths($FindBin::RealBin, 'JavaScript', 1);  };
 
