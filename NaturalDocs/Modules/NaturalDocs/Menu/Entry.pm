@@ -80,6 +80,11 @@ sub New #(type, title, target, flags)
 sub SetTitle #(title)
     {  $_[0]->[TITLE] = $_[1];  };
 
+# Function: SetTarget
+# Replaces the entry's target.
+sub SetTarget #(target)
+    {  $_[0]->[TARGET] = $_[1];  };
+
 # Function: SetFlags
 # Replaces the <Menu Entry Flags>.
 sub SetFlags #(flags)
