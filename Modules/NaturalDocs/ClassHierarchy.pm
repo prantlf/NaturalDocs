@@ -49,18 +49,27 @@ package NaturalDocs::ClassHierarchy;
 #
 #   hash: classes
 #
-#   A hash of all the classes.  The keys are the class names, and the values are <NaturalDocs::ClassHierarchy::Classes>.
+#   A hash of all the classes.  The keys are the class <SymbolStrings> and the values are <NaturalDocs::ClassHierarchy::Classes>.
 #
 my %classes;
 
 #
 #   hash: files
 #
-#   A hash of the hierarchy information referenced by file.  The keys are the file names, and the values are
-#   <NaturalDocs::ClassHierarchy::Files>.
+#   A hash of the hierarchy information referenced by file.  The keys are the <FileNames>, and the values are
+#   <NaturalDocs::ClassHierarchy::File>s.
 #
 my %files;
 
+#
+#   hash: parentReferences
+#
+#   A hash of all the parent reference strings and what they resolve to.  The keys are the <ReferenceStrings> and the values are
+#   the class <SymbolStrings> that they resolve to.
+#
+my %parentReferences;
+
+#
 #   object: watchedFile
 #
 #   A <NaturalDocs::ClassHierarchy::File> object of the file being watched for changes.  This is compared to the version in <files>
@@ -71,9 +80,16 @@ my $watchedFile;
 #
 #   string: watchedFileName
 #
-#   The file name of the watched file, if any.  If there is no watched file, this will be undef.
+#   The <FileName> of the watched file, if any.  If there is no watched file, this will be undef.
 #
 my $watchedFileName;
+
+#
+#   bool: dontRebuildFiles
+#
+#   A bool to set if you don't want changes in the hierarchy to cause files to be rebuilt.
+#
+my $dontRebuildFiles;
 
 
 
@@ -96,9 +112,10 @@ my $watchedFileName;
 #
 #       Next is the binary application version it was generated with.  Manage with <NaturalDocs::Version>.
 #
-#       > [AString16: class]
+#       > [SymbolString: class or undef to end]
 #
-#       Next we begin a class segment.  These continue until the end of the file.  The class segment starts of with the class' name.
+#       Next we begin a class segment.  These continue until the end of the file.  Only defined classes are included.  The class
+#       segment starts of with the class' <SymbolString>.
 #
 #       > [UInt32: number of files]
 #       > [AString16: file] ...
@@ -108,20 +125,25 @@ my $watchedFileName;
 #       possible.
 #
 #       Following the number is that many file names.  You must remember the index of each file, as they will be important later.
-#       Indexes start at one.
+#       Indexes start at one because zero has a special meaning.
 #
 #       > [UInt8: number of parents]
-#       > ( [AString16: parent] [UInt32: file index] ... [UInt32: 0] ) ...
+#       > ( [ReferenceString (no type): parent] [UInt32: file index] ... [UInt32: 0] ) ...
 #
 #       Next there is the number of parents defined for this class.  For each one, we define a parent segment, which consists of
-#       its name, and then a zero-terminated string of indexes of the files that define that parent as part of that class.  The indexes
-#       start at one, and are into the list of files we saw previously.
+#       its <ReferenceString>, and then a zero-terminated string of indexes of the files that define that parent as part of that class.
+#       The indexes start at one, and are into the list of files we saw previously.
 #
 #       Note that we do store class segments for classes without parents, but not for undefined classes.
 #
-#       This concludes a class segment.  These segments continue until the end of the file.
+#       This concludes a class segment.  These segments continue until an undef <SymbolString>.
 #
 #   Revisions:
+#
+#       1.22:
+#
+#           - Classes and parents switched from AString16s to <SymbolStrings> and <ReferenceStrings>.
+#           - A ending undef <SymbolString> was added to the end.  Previously it stopped when the file ran out.
 #
 #       1.2:
 #
@@ -141,6 +163,8 @@ my $watchedFileName;
 sub Load
     {
     my ($self) = @_;
+
+    $dontRebuildFiles = 1;
 
     my $fileIsOkay = 1;
     my $fileName = NaturalDocs::Project->ClassHierarchyFile();
@@ -183,14 +207,14 @@ sub Load
         {
         my $raw;
 
-        # [AString16: class]
-
-        while (read(CLASS_HIERARCHY_FILEHANDLE, $raw, 2))
+        for (;;)
             {
-            my $classLength = unpack('n', $raw);
+            # [SymbolString: class or undef to end]
 
-            my $class;
-            read(CLASS_HIERARCHY_FILEHANDLE, $class, $classLength);
+            my $class = NaturalDocs::SymbolString->FromBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE);
+
+            if (!defined $class)
+                {  last;  };
 
             # [UInt32: number of files]
 
@@ -222,13 +246,11 @@ sub Load
 
             while ($numberOfParents)
                 {
-                # [AString16: parent]
+                # [ReferenceString (no type): parent]
 
-                read(CLASS_HIERARCHY_FILEHANDLE, $raw, 2);
-                my $parentLength = unpack('n', $raw);
-
-                my $parent;
-                read(CLASS_HIERARCHY_FILEHANDLE, $parent, $parentLength);
+                my $parent = NaturalDocs::ReferenceString->FromBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE,
+                                                                                                         ::BINARYREF_NOTYPE(),
+                                                                                                         ::REFERENCE_CH_PARENT());
 
                 for (;;)
                     {
@@ -240,7 +262,7 @@ sub Load
                     if ($fileIndex == 0)
                         {  last;  }
 
-                    $self->AddParent( $files[$fileIndex - 1], $class, $parent, 1 );
+                    $self->AddParentReference( $files[$fileIndex - 1], $class, $parent );
                     };
 
                 $numberOfParents--;
@@ -249,6 +271,8 @@ sub Load
 
         close(CLASS_HIERARCHY_FILEHANDLE);
         };
+
+    $dontRebuildFiles = undef;
     };
 
 
@@ -273,13 +297,16 @@ sub Save
         {
         if ($classObject->IsDefined())
             {
-            # [AString16: class]
+            # [SymbolString: class or undef to end]
+
+            NaturalDocs::SymbolString->ToBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE, $class);
+
             # [UInt32: number of files]
 
             my @definitions = $classObject->Definitions();
             my %definitionIndexes;
 
-            print CLASS_HIERARCHY_FILEHANDLE pack('nA*N', length($class), $class, scalar @definitions);
+            print CLASS_HIERARCHY_FILEHANDLE pack('N', scalar @definitions);
 
             for (my $i = 0; $i < scalar @definitions; $i++)
                 {
@@ -290,17 +317,18 @@ sub Save
 
             # [UInt8: number of parents]
 
-            my @parents = $classObject->Parents();
+            my @parents = $classObject->ParentReferences();
             print CLASS_HIERARCHY_FILEHANDLE pack('C', scalar @parents);
 
             foreach my $parent (@parents)
                 {
-                # [AString16: parent]
-                print CLASS_HIERARCHY_FILEHANDLE pack('nA*', length($parent), $parent);
+                # [ReferenceString (no type): parent]
+
+                NaturalDocs::ReferenceString->ToBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE, $parent, ::BINARYREF_NOTYPE());
 
                 # [UInt32: file index]
 
-                my @parentDefinitions = $classObject->ParentDefinitions($parent);
+                my @parentDefinitions = $classObject->ParentReferenceDefinitions($parent);
 
                 foreach my $parentDefinition (@parentDefinitions)
                     {
@@ -312,6 +340,10 @@ sub Save
                 };
             };
         };
+
+    # [SymbolString: class or undef to end]
+
+    NaturalDocs::SymbolString->ToBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE, undef);
 
     close(CLASS_HIERARCHY_FILEHANDLE);
     };
@@ -335,6 +367,95 @@ sub Purge
     };
 
 
+
+###############################################################################
+# Group: Interface Functions
+
+
+#
+#   Function: OnInterpretationChange
+#
+#   Called by <NaturalDocs::SymbolTable> whenever a class hierarchy reference's intepretation changes, meaning it switched
+#   from one symbol to another.
+#
+sub OnInterpretationChange #(reference)
+    {
+    my ($self, $reference) = @_;
+
+    if (NaturalDocs::ReferenceString->TypeOf($reference) == ::REFERENCE_CH_PARENT())
+        {
+        # The approach here is simply to completely delete the reference and readd it.  This is less than optimal efficiency, since it's
+        # being removed and added from %files too, even though that isn't required.  However, the simpler code is worth it
+        # considering this will only happen when a parent reference becomes defined or undefined, or on the rare languages (like C#)
+        # that allow relative parent references.
+
+        my $oldTargetSymbol = $parentReferences{$reference};
+        my $oldTargetObject = $classes{$oldTargetSymbol};
+
+        my @classesWithReferenceParent = $oldTargetObject->Children();
+
+        # Each entry is an arrayref of file names.  Indexes are the same as classesWithReferenceParent's.
+        my @filesDefiningReferenceParent;
+
+        foreach my $classWithReferenceParent (@classesWithReferenceParent)
+            {
+            my $fileList = [ $classes{$classWithReferenceParent}->ParentReferenceDefinitions($reference) ];
+            push @filesDefiningReferenceParent, $fileList;
+
+            foreach my $fileDefiningReferenceParent (@$fileList)
+                {
+                $self->DeleteParentReference($fileDefiningReferenceParent, $classWithReferenceParent, $reference);
+                };
+            };
+
+
+        # This will force the reference to be reinterpreted on the next add.
+
+        delete $parentReferences{$reference};
+
+
+        # Now we can just readd it.
+
+        for (my $i = 0; $i < scalar @classesWithReferenceParent; $i++)
+            {
+            foreach my $file (@{$filesDefiningReferenceParent[$i]})
+                {
+                $self->AddParentReference($file, $classesWithReferenceParent[$i], $reference);
+                };
+            };
+        };
+
+    # The only way for a REFERENCE_CH_CLASS reference to change is if the symbol is deleted.  That will be handled by
+    # <AnalyzeChanges()>, so we don't need to do anything here.
+    };
+
+
+#
+#   Function: OnTargetInformationChange
+#
+#   Called by <NaturalDocs::SymbolTable> whenever a class hierarchy reference's target symbol's information changes, such as
+#   its prototype or summary.  The reference still resolves to the same symbol.
+#
+sub OnTargetInformationChange #(reference)
+    {
+    my ($self, $reference) = @_;
+
+    my $type = NaturalDocs::ReferenceString->TypeOf($reference);
+    my $class;
+
+    if ($type == ::REFERENCE_CH_PARENT())
+        {  $class = $parentReferences{$reference};  }
+    else # ($type == ::REFERENCE_CH_CLASS())
+        {
+        # Class references are global absolute, so we can just yank the symbol.
+        (undef, $class, undef, undef, undef) = NaturalDocs::ReferenceString->InformationOf($reference);
+        };
+
+    $self->RebuildFilesFor($class, 1, 0, 1);
+    };
+
+
+
 ###############################################################################
 # Group: Modification Functions
 
@@ -346,107 +467,117 @@ sub Purge
 #
 #   Parameters:
 #
-#       file - The file the class was defined in.
-#       class - The class name.
+#       file - The <FileName> the class was defined in.
+#       class - The class <SymbolString>.
+#
+#   Note:
+#
+#       The file parameter must be defined when using this function externally.  It may be undef for internal use only.
 #
 sub AddClass #(file, class)
     {
     my ($self, $file, $class) = @_;
 
-    if (!exists $files{$file})
-        {  $files{$file} = NaturalDocs::ClassHierarchy::File->New();  };
-
-    $files{$file}->AddClass($class);
-
     if (!exists $classes{$class})
-        {  $classes{$class} = NaturalDocs::ClassHierarchy::Class->New();  };
+        {
+        $classes{$class} = NaturalDocs::ClassHierarchy::Class->New();
+        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class))
+        };
 
-    $classes{$class}->AddDefinition($file);
+    if (defined $file)
+        {
+        # If this was the first definition for this class...
+        if ($classes{$class}->AddDefinition($file))
+            {  $self->RebuildFilesFor($class, 1, 1, 1);  };
 
-    # Note that we don't need to rebuild the file if this is the first definition of a class that was already someone's parent.  The
-    # SymbolTable reference will be fulfilled instead, which will do everything for us.
+        if (!defined $files{$file})
+            {  $files{$file} = NaturalDocs::ClassHierarchy::File->New();  };
+
+        $files{$file}->AddClass($class);
+
+        if (defined $watchedFileName)
+            {  $watchedFile->AddClass($class);  };
+        };
     };
 
 
 #
-#   Function: AddParent
+#   Function: AddParentReference
 #
-#   Adds a class-parent relationship to the hierarchy.  Unless dontRebuild is set, this will put any files whose hierarchy output will
-#   change on the build list.  This also adds a reference in <NaturalDocs::SymbolTable> between the files so that if the summary
-#   or definition of one class changes, both files will be affected.
+#   Adds a class-parent relationship to the hierarchy.  The classes will be created if they don't already exist.
 #
 #   Parameters:
 #
-#       file - The file the class was defined in.
-#       class - The class name.
-#       parent - The parent class name.
-#       dontRebuild - If this flag is set, files will not be rebuilt when changes occur.  This is mainly for use by <Load()>, you
-#                           probably should never set it externally.
+#       file - The <FileName> the reference was defined in.
+#       class - The class <SymbolString>.
+#       symbol - The parent class <SymbolString>.
+#       scope - The package <SymbolString> that the reference appeared in.
+#       using - An arrayref of package <SymbolStrings> that the reference has access to via "using" statements.
+#       resolvingFlags - Any <Resolving Flags> to be used when resolving the reference.
 #
-sub AddParent #(file, class, parent, dontRebuild)
+#   Alternate Parameters:
+#
+#       file - The <FileName> the reference was defined in.
+#       class - The class <SymbolString>.
+#       reference - The parent <ReferenceString>.
+#
+sub AddParentReference #(file, class, symbol, scope, using, resolvingFlags) or (file, class, reference)
     {
-    my ($self, $file, $class, $parent, $dontRebuild) = @_;
+    my ($self, $file, $class, $symbol, $parentReference);
 
-    if (!exists $files{$file})
-        {  $files{$file} = NaturalDocs::ClassHierarchy::File->New();  };
+    if (scalar @_ == 7)
+        {
+        my ($scope, $using, $resolvingFlags);
+        ($self, $file, $class, $symbol, $scope, $using, $resolvingFlags) = @_;
 
-    $files{$file}->AddClass($class);
-    $files{$file}->AddParent($class, $parent);
+        $parentReference = NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_PARENT(),
+                                                                                                    $symbol, $scope, $using, $resolvingFlags);
+        }
+    else
+        {
+        ($self, $file, $class, $parentReference) = @_;
+        $symbol = (NaturalDocs::ReferenceString->InformationOf($parentReference))[1];
+        };
 
 
-    if (!exists $classes{$class})
-        {  $classes{$class} = NaturalDocs::ClassHierarchy::Class->New();  };
-    if (!exists $classes{$parent})
-        {  $classes{$parent} = NaturalDocs::ClassHierarchy::Class->New();  };
+    # In case it doesn't already exist.
+    $self->AddClass($file, $class);
 
-    $classes{$class}->AddDefinition($file);
+    my $parent;
+    if (exists $parentReferences{$parentReference})
+        {
+        $parent = $parentReferences{$parentReference};
+        }
+    else
+        {
+        NaturalDocs::SymbolTable->AddReference($parentReference);
+        my $parentTarget = NaturalDocs::SymbolTable->References($parentReference);
 
-    # If this is the first time this parent was defined for this class...
-    if ($classes{$class}->AddParent($file, $parent))
+        if (defined $parentTarget)
+            {  $parent = $parentTarget->Symbol();  }
+        else
+            {  $parent = $symbol;  };
+
+        # In case it doesn't already exist.
+        $self->AddClass(undef, $parent);
+
+        $parentReferences{$parentReference} = $parent;
+        };
+
+
+    # If this defined a new parent...
+    if ($classes{$class}->AddParentReference($parentReference, $file, \%parentReferences))
         {
         $classes{$parent}->AddChild($class);
 
-        # Update all files that define this class.
-        my @classFiles = $classes{$class}->Definitions();
-
-        foreach my $classFile (@classFiles)
-            {
-            NaturalDocs::SymbolTable->AddReference(undef, $parent, $classFile);
-
-            if (!$dontRebuild)
-                {  NaturalDocs::Project->RebuildFile($classFile);  };
-            };
-
-        # Update all files that define the parent.
-        my @parentFiles = $classes{$parent}->Definitions();
-
-        foreach my $parentFile (@parentFiles)
-            {
-            NaturalDocs::SymbolTable->AddReference(undef, $class, $parentFile);
-
-            if (!$dontRebuild)
-                {  NaturalDocs::Project->RebuildFile($parentFile);  };
-            };
-        }
-
-    # If this parent was defined before...
-    else
-        {
-        # Just add a link between this file and the parent.
-        NaturalDocs::SymbolTable->AddReference(undef, $parent, $file);
-
-        if (!$dontRebuild)
-            {  NaturalDocs::Project->RebuildFile($file);  };
+        $self->RebuildFilesFor($class, 0, 1, 0);
+        $self->RebuildFilesFor($parent, 0, 1, 0);
         };
 
-
-    # Watched file.
+    $files{$file}->AddParentReference($class, $parentReference);
 
     if (defined $watchedFileName)
-        {
-        $watchedFile->AddClass($class);
-        $watchedFile->AddParent($class, $parent);
-        };
+        {  $watchedFile->AddParentReference($class, $parentReference);  };
     };
 
 
@@ -459,7 +590,7 @@ sub AddParent #(file, class, parent, dontRebuild)
 #
 #   Parameters:
 #
-#       file - The file name to watch.
+#       file - The <FileName> to watch.
 #
 sub WatchFileForChanges #(file)
     {
@@ -493,13 +624,13 @@ sub AnalyzeChanges
 
             else
                 {
-                my @originalParents = $files{$watchedFileName}->ParentsOf($originalClass);
+                my @originalParents = $files{$watchedFileName}->ParentReferencesOf($originalClass);
 
                 foreach my $originalParent (@originalParents)
                     {
-                    # If the parent wasn't there the second time around...
-                    if (!$watchedFile->HasParent($originalClass, $originalParent))
-                        {  $self->DeleteParent($watchedFileName, $originalClass, $originalParent);  };
+                    # If the parent reference wasn't there the second time around...
+                    if (!$watchedFile->HasParentReference($originalClass, $originalParent))
+                        {  $self->DeleteParentReference($watchedFileName, $originalClass, $originalParent);  };
                     };
                 };
             };
@@ -518,7 +649,8 @@ sub AnalyzeChanges
 
 #
 #   Function: ParentsOf
-#   Returns an array of the passed class' parents, or an empty array if none.
+#   Returns a <SymbolString> array of the passed class' parents, or an empty array if none.  Note that not all of them may be
+#   defined.
 #
 sub ParentsOf #(class)
     {
@@ -532,7 +664,8 @@ sub ParentsOf #(class)
 
 #
 #   Function: ChildrenOf
-#   Returns an array of the passed class' children, or an empty array if none.
+#   Returns a <SymbolString> array of the passed class' children, or an empty array if none.  Note that not all of them may be
+#   defined.
 #
 sub ChildrenOf #(class)
     {
@@ -557,7 +690,7 @@ sub ChildrenOf #(class)
 #
 #   Parameters:
 #
-#       file - The file name.
+#       file - The <FileName>.
 #
 sub DeleteFile #(file)
     {
@@ -578,70 +711,141 @@ sub DeleteFile #(file)
 #
 #   Function: DeleteClass
 #
-#   Deletes a class definition from a file.  Will also delete any parent definitions from this class and file.
+#   Deletes a class definition from a file.  Will also delete any parent references from this class and file.  Will rebuild any file
+#   affected unless <dontRebuildFiles> is set.
 #
 #   Parameters:
 #
-#       file - The name of the file that defines the class.
-#       class - The class name.
+#       file - The <FileName> that defines the class.
+#       class - The class <SymbolString>.
 #
 sub DeleteClass #(file, class)
     {
     my ($self, $file, $class) = @_;
 
-    my @parents = $files{$file}->ParentsOf($class);
+    my @parents = $files{$file}->ParentsReferencesOf($class);
     foreach my $parent (@parents)
         {
-        $self->DeleteParent($file, $class, $parent);
+        $self->DeleteParentReference($file, $class, $parent);
         };
 
     $files{$file}->DeleteClass($class);
 
     # If we're deleting the last definition of this class.
-    if ($classes{$class}->DeleteDefinition($file) && !$classes{$class}->HasChildren())
+    if ($classes{$class}->DeleteDefinition($file))
         {
-        delete $classes{$class};
+        if (!$classes{$class}->HasChildren())
+            {
+            delete $classes{$class};
+
+            if (!$dontRebuildFiles)
+                {  NaturalDocs::Project->RebuildFile($file);  };
+            }
+        else
+            {  $self->RebuildFilesFor($class, 0, 1, 1);  };
+
         };
     };
 
 
 #
-#   Function: DeleteParent
+#   Function: DeleteParentReference
 #
-#   Deletes a class' parent definiton.
+#   Deletes a class' parent reference and returns whether it resulted in the loss of a parent class.  Will rebuild any file affected
+#   unless <dontRebuildFiles> is set.
 #
 #   Parameters:
 #
-#       file - The name of the file that defines the class.
-#       class - The name of the class.
-#       parent - The name of the parent.
+#       file - The <FileName> that defines the reference.
+#       class - The class <SymbolString>.
+#       reference - The parent <ReferenceString>.
 #
-sub DeleteParent #(file, class, parent)
+#   Returns:
+#
+#       If the class lost a parent as a result of this, it will return its <SymbolString>.  It will return undef otherwise.
+#
+sub DeleteParentReference #(file, class, reference)
     {
-    my ($self, $file, $class, $parent) = @_;
+    my ($self, $file, $class, $reference) = @_;
 
-    $files{$file}->DeleteParent($class, $parent);
+    if (!exists $classes{$class})
+        {  return;  };
 
-    # If we're deleting the last definition of this parent for the class.
-    if ($classes{$class}->DeleteParent($file, $parent))
+    $files{$file}->DeleteParentReference($class, $reference);
+
+    my $deletedParent = $classes{$class}->DeleteParentReference($reference, $file, \%parentReferences);
+
+    if (defined $deletedParent)
         {
-        $classes{$parent}->DeleteChild($class);
+        my $deletedParentObject = $classes{$deletedParent};
 
-        # Rebuild all files that define the class.
-        my @classFiles = $classes{$class}->Definitions();
+        $deletedParentObject->DeleteChild($class);
 
-        foreach my $classFile (@classFiles)
-            {  NaturalDocs::Project->RebuildFile($classFile);  };
+        $self->RebuildFilesFor($deletedParent, 0, 1, 0);
+        $self->RebuildFilesFor($class, 0, 1, 0);
 
-        # Rebuild all files that define the parent.
-        my @parentFiles = $classes{$parent}->Definitions();
+        if (!$deletedParentObject->HasChildren() && !$deletedParentObject->IsDefined())
+            {
+            delete $classes{$deletedParent};
+            NaturalDocs::SymbolTable->DeleteReference( $self->ClassReferenceOf($class) );
+            };
 
-        foreach my $parentFile (@parentFiles)
-            {  NaturalDocs::Project->RebuildFile($parentFile);  };
+        return $deletedParent;
+        };
 
-        # Clean up any unnecessary objects.
-        if (!$classes{$parent}->HasChildren() && !$classes{$parent}->IsDefined())
-            {  delete $classes{$parent};  };
+    return undef;
+    };
+
+
+#
+#   Function: ClassReferenceOf
+#
+#   Returns the <REFERENCE_CH_CLASS> <ReferenceString> of the passed class <SymbolString>.
+#
+sub ClassReferenceOf #(class)
+    {
+    my ($self, $class) = @_;
+
+    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class, undef, undef, undef,
+                                                                            ::RESOLVE_ABSOLUTE() | ::RESOLVE_NOPLURAL());
+    };
+
+
+#
+#   Function: RebuildFilesFor
+#
+#   Calls <NaturalDocs::Project->RebuildFile()> for every file defining the passed class, its parents, and/or its children.
+#   Returns without doing anything if <dontRebuildFiles> is set.
+#
+#   Parameters:
+#
+#       class - The class <SymbolString>.
+#       rebuildParents - Whether to rebuild the class' parents.
+#       rebuildSelf - Whether to rebuild the class.
+#       rebuildChildren - Whether to rebuild the class' children.
+#
+sub RebuildFilesFor #(class, rebuildParents, rebuildSelf, rebuildChildren)
+    {
+    my ($self, $class, $rebuildParents, $rebuildSelf, $rebuildChildren) = @_;
+
+    if ($dontRebuildFiles)
+        {  return;  };
+
+    my @classesToBuild;
+
+    if ($rebuildParents)
+        {  @classesToBuild = $classes{$class}->Parents();  };
+    if ($rebuildSelf)
+        {  push @classesToBuild, $class;  };
+    if ($rebuildChildren)
+        {  push @classesToBuild, $classes{$class}->Children();  };
+
+    foreach my $classToBuild (@classesToBuild)
+        {
+        my @definitions = $classes{$classToBuild}->Definitions();
+
+        foreach my $definition (@definitions)
+            {  NaturalDocs::Project->RebuildFile($definition);  };
         };
     };
 
