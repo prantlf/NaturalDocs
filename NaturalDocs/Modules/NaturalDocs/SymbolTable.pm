@@ -175,9 +175,9 @@ sub LoadAndPurge
 
         my $version = NaturalDocs::Version::FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
-        # There was a bug in prototype detection until 1.12.  Need to regenerate the symbol table.
+        # There were bugs in prototype detection until 1.13.  Need to regenerate the symbol table.
 
-        if ($version >= NaturalDocs::Version::FromString('1.12') && $version <= NaturalDocs::Settings::AppVersion())
+        if ($version >= NaturalDocs::Version::FromString('1.13') && $version <= NaturalDocs::Settings::AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close(SYMBOLTABLEFILEHANDLE);  };
