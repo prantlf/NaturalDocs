@@ -221,64 +221,6 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 
 
 #
-#   Function: UseDirectory
-#
-#   Does the equivalent of "use [module]" for every .pm file in a directory and all its subdirectories.  You *must* call this function
-#   from within a BEGIN block if you want the INIT functions of the modules to be executed.
-#
-#   Parameters:
-#
-#       directory  - A single subdirectory.  Specify this as many times as necessary to make the path from the Natural Docs
-#                        directory.
-#
-#   Example:
-#
-#       > BEGIN {
-#       >    IncludeDirectory('Modules', 'NaturalDocs', 'Extensions');
-#       > };
-#
-#       This code will include every .pm file in [Natural Docs' directory]/Modules/NaturalDocs/Extensions and all its subdirectories.
-#
-sub UseDirectory #(directory, directory, directory ...)
-    {
-    my $extraPath = NaturalDocs::File->JoinDirectories(@_);
-    my $fullPath = NaturalDocs::File->JoinPaths($FindBin::RealBin, $extraPath, 1);
-
-    my @directories = ( $fullPath );
-
-    while (scalar @directories)
-        {
-        my $directory = pop @directories;
-
-        opendir DIRECTORYHANDLE, $directory;
-        my @entries = readdir DIRECTORYHANDLE;
-        closedir DIRECTORYHANDLE;
-
-        @entries = NaturalDocs::File->NoUpwards(@entries);
-
-        foreach my $entry (@entries)
-            {
-            my $fullEntry = NaturalDocs::File->JoinPaths($directory, $entry);
-
-            # If an entry is a directory, recurse.
-            if (-d $fullEntry)
-                {
-                # Join again with the noFile flag set in case the platform handles them differently.
-                push @directories, NaturalDocs::File->JoinPaths($directory, $entry, 1);
-                }
-
-            # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
-            # their syntax is similar to Natural Docs content.
-            elsif ($entry =~ /\.pm$/i)
-                {
-                require $fullEntry;
-                };
-            };
-        };
-    };
-
-
-#
 #   Function: XChomp
 #
 #   A cross-platform chomp function.  Regular chomp fails when parsing Windows-format line breaks on a Unix platform.  It
@@ -338,7 +280,6 @@ sub FindFirstSymbol #(string, symbols, index)
     };
 
 
-#
 
 
 ###############################################################################
@@ -348,16 +289,6 @@ sub FindFirstSymbol #(string, symbols, index)
 #   The order in which functions are called here is critically important.  Read the "Usage and Dependencies" sections of all the
 #   packages before even thinking about rearranging these.
 #
-
-
-# The Builder and Extension directories are live.  Any .pm files in them are automatically included.
-
-BEGIN {
-
-    UseDirectory( 'Modules', 'NaturalDocs', 'Builder' );
-    UseDirectory( 'Modules', 'NaturalDocs', 'Extensions' );
-
-    };
 
 
 eval {
