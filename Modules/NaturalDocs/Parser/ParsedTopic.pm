@@ -76,6 +76,9 @@ sub New #(type, title, package, using, prototype, summary, body, lineNumber, isL
     my $object = [ @_ ];
     bless $object, $package;
 
+    if (defined $object->[USING])
+        {  $object->[USING] = [ @{$object->[USING]} ];  };
+
     return $object;
     };
 
