@@ -52,7 +52,7 @@ use constant LINE_EXTENDER => 6;
 #
 #   Function: New
 #
-#   Returns a new language object.
+#   Returns a new language object and registers it with <NaturalDocs::Languages>.
 #
 #   Parameters:
 #
@@ -332,6 +332,112 @@ sub RemoveExtenders #(stringRef)
             };
 
         $$stringRef = join(' ', @lines);
+        };
+    };
+
+
+#
+#   Function: FormatPrototype
+#
+#   Parses a prototype so that it can be formatted nicely in the output.  By default, this function assumes the parameter list is
+#   enclosed in parenthesis and parameters are separated by commas and semicolons.
+#
+#   Parameters:
+#
+#       prototype - The text prototype.
+#
+#   Returns:
+#
+#       The array ( preParam, opening, params, closing, postParam ).
+#
+#       pre - The part of the prototype prior to the parameter list.
+#       open - The opening symbol to the parameter list, such as parenthesis.  If there is none, it will be a space.
+#       params - An arrayref of parameters, one per entry.  Will be undef if none.
+#       close - The closing symbol to the parameter list, such as parenthesis.  If there is none, it will be space.
+#       post - The part of the prototype after the parameter list, or undef if none.
+#
+sub FormatPrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+
+    $prototype =~ tr/\t\n /   /s;
+    $prototype =~ s/^ //;
+    $prototype =~ s/ $//;
+
+    # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look
+    # at this VB function declaration:
+    #
+    # <WebMethod()> Public Function RetrieveTable(ByRef Msg As Integer, ByVal Key As String) As String()
+
+    my @segments = split(/([\(\)])/, $prototype);
+    my ($pre, $open, $paramString, $params, $close, $post);
+    my $nest = 0;
+
+    while (scalar @segments)
+        {
+        my $segment = shift @segments;
+
+        if ($nest == 0)
+            {  $pre .= $segment;  }
+
+        elsif ($nest == 1 && $segment eq ')')
+            {
+            if ($paramString =~ /[,;]/)
+                {
+                $post = join('', $segment, @segments);
+                last;
+                }
+            else
+                {
+                $pre .= $paramString . $segment;
+                $paramString = undef;
+                };
+            }
+
+        else
+            {  $paramString .= $segment;  };
+
+        if ($segment eq '(')
+            {  $nest++;  }
+        elsif ($segment eq ')' && $nest > 0)
+            {  $nest--;  };
+        };
+
+    # If there wasn't closing parenthesis...
+    if ($paramString && !defined $post)
+        {
+        $pre .= $paramString;
+        $paramString = undef;
+        };
+
+
+    if (!defined $paramString)
+        {
+        return ( $pre, undef, undef, undef, undef );
+        }
+    else
+        {
+        if ($pre =~ /( ?\()$/)
+            {
+            $open = $1;
+            $pre =~ s/ ?\($//;
+            };
+
+        if ($post=~ /^(\) ?)/)
+            {
+            $close = $1;
+            $post =~ s/^\) ?//;
+
+            if (!length $post)
+                {  $post = undef;  };
+            };
+
+        my $params = [ ];
+
+        while ($paramString =~ /([^,;]+[,;]?) ?/g)
+            {  push @$params, $1;  };
+
+        return ( $pre, $open, $params, $close, $post );
         };
     };
 
