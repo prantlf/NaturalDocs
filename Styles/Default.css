@@ -198,6 +198,8 @@ body.FramedContentPage,
         background-color: #F4F4F4; border-color: #D0D0D0 }
     .CVariable .CPrototype {
         background-color: #FFFFF0; border-color: #E0E0A0 }
+    .CProperty .CPrototype {
+        background-color: #F4F4FF; border-color: #C0C0E8 }
     .CToolTip .CPrototype {
         margin: 0 0 .5em 0 }
 

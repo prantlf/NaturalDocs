@@ -238,6 +238,7 @@ List: Content Styles
     CGroup - A group topic.
     CFunction - A function topic.
     CVariable - A variable topic.
+    CProperty - A property topic.
     CConstant - A constant topic.
     CType - A type topic.
     CGeneric - A generic topic.
@@ -245,6 +246,7 @@ List: Content Styles
     CFileList - A file list topic.
     CFunctionList - A function list topic.
     CVariableList - A variable list topic.
+    CPropertyList - A property list topic.
     CConstantList - A constant list topic.
     CTypeList - A type list topic.
     CGenericList - A generic list topic.
@@ -627,6 +629,10 @@ List: Miscellaneous Styles
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
+
+    1.21:
+
+        - Added <CProperty> and <CPropertyList> styles.
 
     1.2:
 
