@@ -1226,7 +1226,10 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
         else
             {
             $index++;
-            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+            # Believe it or not, s#...# is allowed.  We can't pass over number signs here.
+            if ($tokens->[$index] ne '#')
+                {  $self->TryToSkipWhitespace(\$index, \$lineNumber);  };
             };
 
         if ($tokens->[$index] =~ /^\w/)
