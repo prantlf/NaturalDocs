@@ -54,6 +54,9 @@ use integer;
 #       or write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330,
 #       Boston, MA  02111-1307  USA.
 #
+#       Note that there are modules bundled with Natural Docs that are not part of Natural Docs itself, and thus may not be
+#       subject to this license.  However, all have OSI-certified open source licenses.  See <Bundled Modules> for details.
+#
 #
 #   About: Syntax
 #
@@ -168,6 +171,20 @@ use integer;
 #   About: Contributors
 #
 #       - Greg Valure (gregvalure@naturaldocs.org)
+#
+#
+#   About: Bundled Modules
+#
+#       These modules are bundled with Natural Docs because they are needed internally but are not commonly part of Perl
+#       distributions.  To keep installation simple, Natural Docs keeps a private copy rather than requiring you to install them
+#       on your distribution.
+#
+#       These modules are *not* part of Natural Docs and thus have their own authors and license agreements.  They are *not*
+#       subject to the GPL unless noted below.  However, all have OSI-certified open source licenses.
+#
+#       Set::IntSpan - Version 1.07.  Copyright (C) 1996-1998 Steven McDougall (swmcd@world.std.com).
+#                             Licensed "under the same terms as Perl itself," which implies the Perl Artistic License.
+#                             http://search.cpan.org/author/SWMCD/Set-IntSpan-1.07/IntSpan.pm
 #
 
 ###############################################################################
