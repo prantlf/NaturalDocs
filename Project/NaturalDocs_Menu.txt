@@ -85,6 +85,7 @@ Group: Objects  {
       }  # Group: SymbolTable
 
    File: Parser::ParsedTopic  (Modules\NaturalDocs\Parser\ParsedTopic.pm)
+   File: Support::Enumerator  (Modules\NaturalDocs\Support\Enumerator.pm)
    }  # Group: Objects
 
 
