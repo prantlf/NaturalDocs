@@ -30,7 +30,7 @@ package NaturalDocs::File;
 
 
 ###############################################################################
-# Group: Functions
+# Group: Path String Functions
 
 
 #
@@ -94,11 +94,86 @@ sub JoinPath #(basePath, extraPath, noFileInExtra)
     my @baseDirectories = SplitDirectories($baseDirString);
     my @extraDirectories = SplitDirectories($extraDirString);
 
-    my $fullDirString = File::Spec->catdir(@baseDirectories, @extraDirectories);
+    my $fullDirString = JoinDirectories(@baseDirectories, @extraDirectories);
 
     my $fullPath = File::Spec->catpath($baseVolume, $fullDirString, $extraFile);
 
     return CanonizePath($fullPath);
+    };
+
+
+#
+#   Function: SplitPath
+#
+#   Takes a path and returns its elements.
+#
+#   Parameters:
+#
+#       path - The path to split.
+#       noFile - Set to true if the path doesn't have a file at the end.
+#
+#   Returns:
+#
+#       The array ( volume, directoryString, file ).  If any don't apply, they will be undef.  Use <SplitDirectories()> to split the
+#       directory string if desired.
+#
+#   Why oh Why?:
+#
+#       Because File::Spec->splitpath may leave a trailing slash/backslash/whatever on the directory string, which makes
+#       it a bit hard to match it with results from File::Spec->catdir.
+#
+sub SplitPath #(path, noFile)
+    {
+    my ($path, $noFile) = @_;
+
+    my @segments = File::Spec->splitpath($path, $noFile);
+
+    if (!length $segments[0])
+        {  $segments[0] = undef;  };
+    if (!length $segments[2])
+        {  $segments[2] = undef;  };
+
+    $segments[1] = File::Spec->catdir( File::Spec->splitdir($segments[1]) );
+
+    return @segments;
+    };
+
+
+#
+#   Function: JoinDirectories
+#
+#   Creates a directory string from an array of directory names.
+#
+#   Parameters:
+#
+#       directory - A directory name.  There may be as many of these as desired.
+#
+sub JoinDirectories #(directory, directory, ...)
+    {
+    return File::Spec->catdir(@_);
+    };
+
+
+#
+#   Function: SplitDirectories
+#
+#   Takes a string of directories and returns an array of its elements.
+#
+#   Why oh why?:
+#
+#       Because File::Spec->splitdir might leave an empty element at the end of the array, which screws up both joining in
+#       <ConvertToURL> and navigation in <MakeRelativePath>.  Morons.
+#
+sub SplitDirectories #(directoryString)
+    {
+    my $directoryString = shift;
+
+    my @directories = File::Spec->splitdir($directoryString);
+
+    if (!length $directories[-1])
+        {  pop @directories;  };
+
+    return @directories;
     };
 
 
@@ -138,8 +213,8 @@ sub MakeRelativePath #(basePath, targetPath)
     {
     my ($basePath, $targetPath) = @_;
 
-    my ($baseVolume, $baseDirString, $baseFile) = File::Spec->splitpath($basePath, 1);
-    my ($targetVolume, $targetDirString, $targetFile) = File::Spec->splitpath($targetPath);
+    my ($baseVolume, $baseDirString, $baseFile) = SplitPath($basePath, 1);
+    my ($targetVolume, $targetDirString, $targetFile) = SplitPath($targetPath);
 
     # If the volumes are different, there is no possible relative path.
     if ($targetVolume ne $baseVolume)
@@ -161,7 +236,7 @@ sub MakeRelativePath #(basePath, targetPath)
         unshift @targetDirectories, File::Spec->updir();
         };
 
-    $targetDirString = File::Spec->catdir(@targetDirectories);
+    $targetDirString = JoinDirectories(@targetDirectories);
 
     return File::Spec->catpath(undef, $targetDirString, $targetFile);
     };
@@ -177,7 +252,7 @@ sub ConvertToURL #(path)
     {
     my $path = shift;
 
-    my ($pathVolume, $pathDirString, $pathFile) = File::Spec->splitpath($path);
+    my ($pathVolume, $pathDirString, $pathFile) = SplitPath($path);
     my @pathDirectories = SplitDirectories($pathDirString);
 
     my $i = 0;
@@ -217,6 +292,10 @@ sub NoFileName #(path)
     };
 
 
+###############################################################################
+# Group: Disk Functions
+
+
 #
 #   Function: CreatePath
 #
@@ -242,32 +321,6 @@ sub CreatePath #(path)
 sub Copy #(source, destination)
     {
     File::Copy::copy(@_);
-    };
-
-
-###############################################################################
-# Group: Support Functions
-
-#
-#   Function: SplitDirectories
-#
-#   Takes a string of directories and returns an array of its elements.
-#
-#   Why oh why?:
-#
-#       Because File::Spec->splitdir might leave an empty element at the end of the array, which screws up both joining in
-#       <ConvertToURL> and navigation in <MakeRelativePath>.  Morons.
-#
-sub SplitDirectories #(directoryString)
-    {
-    my $directoryString = shift;
-
-    my @directories = File::Spec->splitdir($directoryString);
-
-    if (!length $directories[-1])
-        {  pop @directories;  };
-
-    return @directories;
     };
 
 
