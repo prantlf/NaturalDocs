@@ -388,6 +388,8 @@ eval {
     NaturalDocs::SymbolTable->Save();
     NaturalDocs::ClassHierarchy->Save();
     NaturalDocs::Settings->Save();
+    NaturalDocs::Topics->Save();
+    NaturalDocs::Languages->Save();
 
     # Must be done last.
     NaturalDocs::Project->SaveConfigFileInfo();
