@@ -194,7 +194,13 @@ sub PurgeFiles
     my $filesToPurge = NaturalDocs::Project->FilesToPurge();
 
     foreach my $file (keys %$filesToPurge)
-        {  unlink( $self->OutputFileOf($file) );  };
+        {
+        # It's possible that there may be files there that aren't in a valid input directory anymore.  They won't generate an output
+        # file name so we need to check for undef.
+        my $outputFile = $self->OutputFileOf($file);
+        if (defined $outputFile)
+            {  unlink($outputFile);  };
+        };
     };
 
 
@@ -1761,13 +1767,16 @@ sub PurgeIndexFiles #(type, startingPage)
 #
 #   function: OutputFileOf
 #
-#   Returns the output file name of the source file.
+#   Returns the output file name of the source file.  Will be undef if it is not a file from a valid input directory.
 #
 sub OutputFileOf #(sourceFile)
     {
     my ($self, $sourceFile) = @_;
 
     my ($inputDirectory, $relativeSourceFile) = NaturalDocs::Settings->SplitFromInputDirectory($sourceFile);
+    if (!defined $inputDirectory)
+        {  return undef;  };
+
     my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
 
     # We need to keep output files from multiple input directories from overwriting each other.  To do that, we use the input
