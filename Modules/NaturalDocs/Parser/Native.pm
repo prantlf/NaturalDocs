@@ -96,6 +96,8 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     my $inCodeSection;
 
     my $type;
+    my $typeInfo;
+    my $isPlural;
     my $title;
     my $symbol;
     #my $package;  # package variable.
@@ -128,29 +130,27 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 
         # If the line has a recognized header and the previous line is blank...
         elsif ($prevLineBlank &&
-                $commentLines->[$index] =~ /^ *([^:]+): +([^ ].*)$/ &&
-                defined NaturalDocs::Topics->ConstantOf($1))
+                $commentLines->[$index] =~ /^ *([a-z0-9]+): +(.*)$/i &&
+                (my ($newType, $newTypeInfo, $newIsPlural) = NaturalDocs::Topics->KeywordInfo($1)) )
             {
-            my $newType = NaturalDocs::Topics->ConstantOf($1);
             my $newTitle = $2;
 
             # Process the previous one, if any.
 
             if (defined $type)
                 {
-                if (NaturalDocs::Topics->HasScope($type) || NaturalDocs::Topics->EndsScope($type))
+                if ($typeInfo->Scope() == ::SCOPE_START() || $typeInfo->Scope() == ::SCOPE_END())
                     {  $package = undef;  };
 
-                my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-                my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1);
+                my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type, $isPlural);
+                my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1, $isPlural);
                 push @$parsedTopics, $newTopic;
                 $topicCount++;
 
                 $package = $newTopic->Package();
                 };
 
-            $type = $newType;
-            $title = $newTitle;
+            ($type, $typeInfo, $isPlural, $title) = ($newType, $newTypeInfo, $newIsPlural, $newTitle);
 
             $bodyStart = $index + 1;
             $bodyEnd = $index + 1;
@@ -176,11 +176,11 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     # Last one, if any.  This is the only one that gets the prototypes.
     if (defined $type)
         {
-        if (NaturalDocs::Topics->HasScope($type) || NaturalDocs::Topics->EndsScope($type))
+        if ($typeInfo->Scope() == ::SCOPE_START() || $typeInfo->Scope() == ::SCOPE_END())
             {  $package = undef;  };
 
-        my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type);
-        my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1);
+        my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type, $isPlural);
+        my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1, $isPlural);
         push @$parsedTopics, $newTopic;
         $topicCount++;
 
@@ -209,14 +209,15 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 #       package    - The package <SymbolString> the topic appears in.
 #       body        - The topic's body in <NDMarkup>.
 #       lineNumber - The topic's line number.
+#       isList         - Whether the topic is a list.
 #
 #   Returns:
 #
 #       The <NaturalDocs::Parser::ParsedTopic> object.
 #
-sub MakeParsedTopic #(type, title, package, body, lineNumber)
+sub MakeParsedTopic #(type, title, package, body, lineNumber, isList)
     {
-    my ($self, $type, $title, $package, $body, $lineNumber) = @_;
+    my ($self, $type, $title, $package, $body, $lineNumber, $isList) = @_;
 
     my $summary;
 
@@ -234,7 +235,7 @@ sub MakeParsedTopic #(type, title, package, body, lineNumber)
 
 
     return NaturalDocs::Parser::ParsedTopic->New($type, $title, $package, undef, undef, $summary,
-                                                                         $body, $lineNumber);
+                                                                         $body, $lineNumber, $isList);
     };
 
 
@@ -245,18 +246,19 @@ sub MakeParsedTopic #(type, title, package, body, lineNumber)
 #
 #    Parameters:
 #
-#        commentLines - The arrayref of comment lines.
-#        startingIndex  - The starting index of the body to format.
-#        endingIndex   - The ending index of the body to format, *not* inclusive.
-#        type               - The type of the section.
+#       commentLines - The arrayref of comment lines.
+#       startingIndex  - The starting index of the body to format.
+#       endingIndex   - The ending index of the body to format, *not* inclusive.
+#       type               - The type of the section.
+#       isList              - Whether it's a list topic.
 #
 #    Returns:
 #
 #        The body formatted in <NDMarkup>.
 #
-sub FormatBody #(commentLines, startingIndex, endingIndex, type)
+sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
     {
-    my ($self, $commentLines, $startingIndex, $endingIndex, $type) = @_;
+    my ($self, $commentLines, $startingIndex, $endingIndex, $type, $isList) = @_;
 
     use constant TAG_NONE => 1;
     use constant TAG_PARAGRAPH => 2;
@@ -402,7 +404,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
                     $topLevelTag = TAG_DESCRIPTIONLIST;
                     };
 
-                if (NaturalDocs::Topics->IsList($type) && !$ignoreListSymbols)
+                if ($isList && !$ignoreListSymbols)
                     {
                     $output .= '<ds>' . NaturalDocs::NDMarkup->ConvertAmpChars($entry) . '</ds><dd>';
                     }
@@ -432,7 +434,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type)
 
                 $output .= '<h>' . $self->RichFormatTextBlock($headerText) . '</h>';
 
-                if ($type == ::TOPIC_FUNCTION_LIST())
+                if ($type eq ::TOPIC_FUNCTION() && $isList)
                     {
                     $ignoreListSymbols = exists $functionListIgnoredHeadings{lc($headerText)};
                     };
