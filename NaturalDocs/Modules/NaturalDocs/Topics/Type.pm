@@ -20,7 +20,8 @@ use NaturalDocs::DefineMembers 'NAME',                         'Name()',
                                                  'AUTO_GROUP',             'AutoGroup()',        'SetAutoGroup()',
                                                  'SCOPE',                       'Scope()',              'SetScope()',
                                                  'PAGE_TITLE_IF_FIRST', 'PageTitleIfFirst()', 'SetPageTitleIfFirst()',
-                                                 'BREAK_LISTS',             'BreakLists()',        'SetBreakLists()';
+                                                 'BREAK_LISTS',             'BreakLists()',        'SetBreakLists()',
+                                                 'CLASS_HIERARCHY', 'ClassHierarchy()', 'SetClassHierarchy()';
 
 # Dependency: New() depends on the order of these and that there are no parent classes.
 
@@ -40,6 +41,7 @@ our @EXPORT = ('AUTO_GROUP_YES', 'AUTO_GROUP_NO', 'AUTO_GROUP_FULL_ONLY',
 #   SCOPE - The topic's <ScopeType>.
 #   PAGE_TITLE_IF_FIRST - Whether the topic becomes the page title if it's first in a file.
 #   BREAK_LISTS - Whether list topics should be broken into individual topics in the output.
+#   CLASS_HIERARCHY - Whether the topic is part of the class hierarchy.
 #
 
 
@@ -126,6 +128,8 @@ sub New #(name, pluralName, index, autoGroup, scope, pageTitleIfFirst, breakList
 #   SetPageTitleIfFirst - Sets whether the topic becomes the page title if it's first in the file.
 #   BreakLists - Returns whether list topics should be broken into individual topics in the output.
 #   SetBreakLists - Sets whether list topics should be broken into individual topics in the output.
+#   ClassHierarchy - Returns whether the topic is part of the class hierarchy.
+#   SetClassHierarchy - Sets whether the topic is part of the class hierarchy.
 #
 
 
