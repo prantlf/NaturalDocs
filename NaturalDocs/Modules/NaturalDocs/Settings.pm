@@ -83,6 +83,19 @@ sub ParseCommandLine
     {
     my ($self) = @_;
 
+    # The values are the package names or 'Natural Docs' for the buit in ones.
+    my %options = ( '-i' => 'Natural Docs',
+                             '-o' => 'Natural Docs',
+                             '-p' => 'Natural Docs',
+                             '-s' => 'Natural Docs',
+                             '-r' => 'Natural Docs',
+                             '-ro' => 'Natural Docs',
+                             '-t' => 'Natural Docs',
+                             '-q' => 'Natural Docs',
+                             '-ho' => 'Natural Docs',
+                             '-h' => 'Natural Docs',
+                             '-?' => 'Natural Docs' );
+
     my %synonyms = ( '--input'    => '-i',
                                   '--source' => '-i',
                                   '--output'  => '-o',
@@ -96,11 +109,50 @@ sub ParseCommandLine
                                   '--help'     => '-h' );
 
 
+    # Get all the extension options and check for conflicts.
+
     my @errorMessages;
+
+    my $allExtensionOptions = NaturalDocs::Extensions->CommandLineOptions();
+
+    if (defined $allExtensionOptions)
+        {
+        while (my ($extension, $extensionOptions) = each %$allExtensionOptions)
+            {
+            while (my ($shortOption, $longOption) = each %$extensionOptions)
+                {
+                my $optionIsBad;
+
+                if (exists $options{$shortOption})
+                    {
+                    push @errorMessages,
+                            $extension . ' defines option ' . $shortOption . ' which is already defined by ' . $options{$shortOption} . '.';
+                    $optionIsBad = 1;
+                    };
+
+                if (exists $synonyms{$longOption})
+                    {
+                    push @errorMessages,
+                            $extension . ' defines option ' . $longOption . ' which is already defined by '
+                            . $options{ $synonyms{$longOption} } . '.';
+                    $optionIsBad = 1;
+                    };
+
+                if (!defined $optionIsBad)
+                    {
+                    $options{$shortOption} = $extension;
+                    $synonyms{$longOption} = $shortOption;
+                    };
+                };
+            };
+        };
+
+
     my $valueRef;
     my $option;
 
     my $styleString;
+    my %extensionOptions;
 
     # Sometimes $valueRef is set to $ignored instead of undef because we don't want certain errors to cause other,
     # unnecessary errors.  For example, if they set the input directory twice, we want to show that error and swallow the
@@ -176,14 +228,20 @@ sub ParseCommandLine
                     {  $isQuiet = 1;  }
                 elsif ($option eq '-ho')
                     {  $headersOnly = 1;  }
-                elsif ($option eq '-h')
+                elsif ($option eq '-h' || $option eq '-?')
                     {
                     $self->PrintSyntax();
                     exit;
                     }
                 elsif ($option ne '-o')
                     {
-                    push @errorMessages, 'Unrecognized option ' . $option;
+                    if (exists $options{$option})
+                        {
+                        $extensionOptions{$option} = undef;
+                        $valueRef = \$extensionOptions{$option};
+                        }
+                    else
+                        {  push @errorMessages, 'Unrecognized option ' . $option;  };
                     };
                 };
 
@@ -310,6 +368,17 @@ sub ParseCommandLine
         {  $tabLength = 4;  };
 
 
+    # Send the extensions their options.
+
+    if (scalar keys %extensionOptions)
+        {
+        my $extensionErrors = NaturalDocs::Extensions->ParseCommandLineOptions(\%extensionOptions);
+
+        if (defined $extensionErrors)
+            {  push @errorMessages, @$extensionErrors;  };
+        };
+
+
     # Exit with the error message if there was one.
 
     if (scalar @errorMessages)
@@ -400,7 +469,7 @@ sub PrintSyntax
     . " -ho\n--headersonly\n"
     . "     For C/C++, only check the headers and not the source files.\n"
     . "\n"
-    . " -h\n--help\n"
+    . " -?\n -h\n--help\n"
     . "     Displays this syntax reference.\n";
 
     print $output;
