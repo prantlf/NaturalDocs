@@ -6,6 +6,11 @@
 #
 #   A class that stores information about a build target.
 #
+#   Notes:
+#
+#       <Name()> is not used yet.  It's present because targets can be named in the settings file ("api", "apipdf", etc.) but the
+#       settings file isn't implemented yet, so just set it to undef.
+#
 ###############################################################################
 
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
