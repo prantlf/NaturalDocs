@@ -38,6 +38,11 @@ sub Extensions
 sub ShebangStrings
     {  return [ 'perl' ];  };
 
+# Function: PackageSeparator
+# Returns the package separator symbol.
+sub PackageSeparator
+    {  return '::';  };
+
 
 
 ###############################################################################
@@ -84,13 +89,13 @@ sub ParseFile #(sourceFile, topicsList)
 
         elsif ($tokens->[$index] eq '{')
             {
-            $self->StartScope('}', $lineNumber, undef, undef, undef);
+            $self->StartScope('}', $lineNumber, undef);
             $index++;
             }
 
         elsif ($tokens->[$index] eq '}')
             {
-            if ($self->ScopeSymbol() eq '}')
+            if ($self->ClosingScopeSymbol() eq '}')
                 {  $self->EndScope($lineNumber);  };
 
             $index++;
@@ -114,13 +119,7 @@ sub ParseFile #(sourceFile, topicsList)
     $self->ClearTokens();
 
 
-    my $autoTopics = $self->AutoTopics();
-
-    my $scopeRecord = $self->ScopeRecord();
-    if (defined $scopeRecord && !scalar @$scopeRecord)
-        {  $scopeRecord = undef;  };
-
-    return ( $autoTopics, $scopeRecord );
+    return ( $self->AutoTopics(), $self->ScopeRecord() );
     };
 
 
@@ -182,13 +181,15 @@ sub TryToGetPackage #(indexRef, lineNumberRef)
         if (!defined $name)
             {  return undef;  };
 
-        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $name,
-                                                                                                   undef, $name,
-                                                                                                   undef,
-                                                                                                   undef, undef, $$lineNumberRef));
-        NaturalDocs::Parser->OnClass($name);
+        my $autoTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $name,
+                                                                                             undef, undef,
+                                                                                             undef,
+                                                                                             undef, undef, $$lineNumberRef);
+        $self->AddAutoTopic($autoTopic);
 
-        $self->SetPackage($name, $$lineNumberRef);
+        NaturalDocs::Parser->OnClass($autoTopic->Symbol());
+
+        $self->SetPackage($autoTopic->Symbol(), $$lineNumberRef);
 
         $$indexRef = $index;
         $$lineNumberRef = $lineNumber;
@@ -205,7 +206,7 @@ sub TryToGetPackage #(indexRef, lineNumberRef)
 #   Function: TryToGetBase
 #
 #   Determines whether the position is at a package base declaration statement, and if so, calls
-#   <NaturalDocs::Parser->OnParent()>.
+#   <NaturalDocs::Parser->OnClassParent()>.
 #
 #   Supported Syntaxes:
 #
@@ -284,12 +285,21 @@ sub TryToGetBase #(indexRef, lineNumberRef)
     if (defined $parents)
         {
         if (defined $class)
-            {  $class =~ s/::$//;  }
+            {
+            $class =~ s/::$//;
+            my @classIdentifiers = split(/::/, $class);
+            $class = NaturalDocs::SymbolString->Join(@classIdentifiers);
+            }
         else
             {  $class = $self->CurrentScope();  };
 
         foreach my $parent (@$parents)
-            {  NaturalDocs::Parser->OnClassParent($class, $parent, undef);  };
+            {
+            my @parentIdentifiers = split(/::/, $parent);
+            my $parentSymbol = NaturalDocs::SymbolString->Join(@parentIdentifiers);
+
+            NaturalDocs::Parser->OnClassParent($class, $parentSymbol, undef, undef, ::RESOLVE_ABSOLUTE());
+            };
 
         $$indexRef = $index;
         $$lineNumberRef = $lineNumber;
@@ -343,7 +353,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
                 # Found it!
 
                 $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FUNCTION(), $name,
-                                                                                                          $self->CurrentScope(), $self->CurrentScope(),
+                                                                                                          $self->CurrentScope(), undef,
                                                                                                           $self->CreateString($prototypeStart, $prototypeEnd),
                                                                                                           undef, undef, $prototypeStartLine));
 
@@ -472,7 +482,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
             foreach $name (@names)
                 {
                 $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $name,
-                                                                                                           $self->CurrentScope(), $self->CurrentScope(),
+                                                                                                           $self->CurrentScope(), undef,
                                                                                                            $prototypePrefix . $name . $prototypeSuffix,
                                                                                                            undef, undef, $prototypeStartLine));
                 };
@@ -497,7 +507,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
                 };
 
             $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $name,
-                                                                                                       $self->CurrentScope(), $self->CurrentScope(),
+                                                                                                       $self->CurrentScope(), undef,
                                                                                                        $self->CreateString($prototypeStart, $prototypeEnd),
                                                                                                        undef, undef, $prototypeStartLine));
 
@@ -1084,11 +1094,19 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
                 };
             };
 
+        # We want to skip any letters after the regexp.  Otherwise something like tr/a/b/s; could have the trailing s; interpreted
+        # as another regexp.  Whitespace is not allowed between the closing symbol and the letters.
+
+        if ($tokens->[$$indexRef] =~ /^[a-z]/i)
+            {  $$indexRef++;  };
+
         return 1;
         };
 
     return undef;
     };
+
+
 
 ###############################################################################
 # Group: Support Functions
