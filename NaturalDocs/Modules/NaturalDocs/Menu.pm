@@ -378,9 +378,8 @@ sub LoadAndUpdate
     my $updateAllTitles;
 
     # If the menu file changed, we can't be sure which groups changed and which didn't without a comparison, which really isn't
-    # worth the trouble.  So we regenerate all the titles instead.  Also, since LoadPreviousMenuStateFile() isn't affected by
-    # NaturalDocs::Settings->RebuildData(), we'll pick up some of the slack here.  We'll regenerate all the titles in this case too.
-    if (NaturalDocs::Settings->RebuildData() || NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
+    # worth the trouble.  So we regenerate all the titles instead.
+    if (NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
         {  $updateAllTitles = 1;  }
     else
         {  $self->FlagAutoTitleChanges();  };
@@ -1094,9 +1093,6 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
 #
 #   Loads and parses the previous menu state file.
 #
-#   Note that this is not affected by <NaturalDocs::Settings->RebuildData()>.  Since this is used to detect user changes, the
-#   information here can't be ditched on a whim.
-#
 #   Returns:
 #
 #       The array ( previousMenu, previousIndexes, previousFiles ) or an empty array if there was a problem with the file.
@@ -1115,7 +1111,6 @@ sub LoadPreviousMenuStateFile
     my $version;
     my $previousStateFileName = NaturalDocs::Project->PreviousMenuStateFile();
 
-    # We ignore NaturalDocs::Settings->RebuildData() because otherwise user changes can be lost.
     if (open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName))
         {
         # See if it's binary.
