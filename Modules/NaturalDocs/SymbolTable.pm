@@ -1424,12 +1424,26 @@ sub GenerateInterpretations #(referenceString)
         };
 
 
-    # Finally, if neither RESOLVE_ABSOLUTE nor RESOLVE_NOUSING is set, go through the using scopes.
-    if (!($resolvingFlags & ::RESOLVE_ABSOLUTE()) && !($resolvingFlags & ::RESOLVE_NOUSING()) && defined $using)
+    # Finally, if RESOLVE_NOUSING isn't set, go through the using scopes.
+    if (!($resolvingFlags & ::RESOLVE_NOUSING()) && defined $using)
         {
         foreach my $usingScope (@$using)
             {
-            $score = $self->GenerateRelativeInterpretations($referenceString, $symbol, \@singulars, $usingScope, $score);
+            if ($resolvingFlags & ::RESOLVE_ABSOLUTE())
+                {
+                $self->AddInterpretation($referenceString, NaturalDocs::SymbolString->Join($usingScope, $symbol), $score);
+                $score--;
+
+                foreach my $singular (@singulars)
+                    {
+                    $self->AddInterpretation($referenceString, NaturalDocs::SymbolString->Join($usingScope, $singular), $score);
+                    $score--;
+                    };
+                }
+            else
+                {
+                $score = $self->GenerateRelativeInterpretations($referenceString, $symbol, \@singulars, $usingScope, $score);
+                };
             };
         };
     };
