@@ -4,12 +4,12 @@
 #
 ###############################################################################
 #
-#   An object that stores information about what hierarchy information is present in a file.  It does not store its name; it assumes
-#   that it will be stored in a hashref where the key is the name.
+#   An object that stores information about what hierarchy information is present in a file.  It does not store its <FileName>; it
+#   assumes that it will be stored in a hashref where the key is the <FileName>.
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright © 2004 Greg Valure
+# This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
 use strict;
@@ -22,7 +22,8 @@ package NaturalDocs::ClassHierarchy::File;
 #   Topic: Implementation
 #
 #   Since there's only one member in the class, and it's a hashref, the class is simply the hashref itself blessed as a class.
-#   The keys are the classes that are defined in the file, and the values are existence hashrefs of each class' parents.
+#   The keys are the class <SymbolStrings> that are defined in the file, and the values are existence hashrefs of each class'
+#   parent <ReferenceStrings>, or undef if none.
 #
 
 
@@ -47,7 +48,7 @@ sub New
 
 #
 #   Function: AddClass
-#   Adds a rew class to the file.
+#   Adds a rew class <SymbolString> to the file.
 #
 sub AddClass #(class)
     {
@@ -59,7 +60,7 @@ sub AddClass #(class)
 
 #
 #   Function: DeleteClass
-#   Deletes a class from the file.
+#   Deletes a class <SymbolString> from the file.
 #
 sub DeleteClass #(class)
     {
@@ -68,10 +69,10 @@ sub DeleteClass #(class)
     };
 
 #
-#   Function: AddParent
-#   Adds a parent to a class.
+#   Function: AddParentReference
+#   Adds a parent <ReferenceString> to a class <SymbolString>.
 #
-sub AddParent #(class, parent)
+sub AddParentReference #(class, parentReference)
     {
     my ($self, $class, $parent) = @_;
 
@@ -82,10 +83,10 @@ sub AddParent #(class, parent)
     };
 
 #
-#   Function: DeleteParent
-#   Deletes a parent from a class.
+#   Function: DeleteParentReference
+#   Deletes a parent <ReferenceString> from a class <SymbolString>.
 #
-sub DeleteParent #(class, parent)
+sub DeleteParentReference #(class, parent)
     {
     my ($self, $class, $parent) = @_;
 
@@ -106,7 +107,7 @@ sub DeleteParent #(class, parent)
 
 #
 #   Function: Classes
-#   Returns an array of the classes that are defined by this file, or an empty array if none.
+#   Returns an array of the class <SymbolStrings> that are defined by this file, or an empty array if none.
 #
 sub Classes
     {
@@ -116,7 +117,7 @@ sub Classes
 
 #
 #   Function: HasClass
-#   Returns whether the file defines the passed class.
+#   Returns whether the file defines the passed class <SymbolString>.
 #
 sub HasClass #(class)
     {
@@ -125,10 +126,10 @@ sub HasClass #(class)
     };
 
 #
-#   Function: ParentsOf
-#   Returns an array of the parents that are defined by the class, or an empty array if none.
+#   Function: ParentReferencesOf
+#   Returns an array of the parent <ReferenceStrings> that are defined by the class, or an empty array if none.
 #
-sub ParentsOf #(class)
+sub ParentReferencesOf #(class)
     {
     my ($self, $class) = @_;
 
@@ -139,10 +140,10 @@ sub ParentsOf #(class)
     };
 
 #
-#   Function: HasParent
-#   Returns whether the file defines the passed class and parent.
+#   Function: HasParentReference
+#   Returns whether the file defines the passed class <SymbolString> and parent <ReferenceString>.
 #
-sub HasParent #(class, parent)
+sub HasParentReference #(class, parent)
     {
     my ($self, $class, $parent) = @_;
 
