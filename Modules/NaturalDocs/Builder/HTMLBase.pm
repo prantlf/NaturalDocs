@@ -1211,6 +1211,7 @@ sub BuildPrototype #(type, prototype, file)
     return $output;
     };
 
+
 #
 #   Function: BuildFooter
 #
@@ -1780,8 +1781,15 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
 
     elsif (defined $symbol)
         {
-        my $text = NaturalDocs::SymbolString->ToText($element->Package(), $element->PackageSeparator());
-        $text = $self->StringToHTML($text, ADD_HIDDEN_BREAKS);
+        my $text;
+
+        if ($element->Package())
+            {
+            $text = NaturalDocs::SymbolString->ToText($element->Package(), $element->PackageSeparator());
+            $text = $self->StringToHTML($text, ADD_HIDDEN_BREAKS);
+            }
+        else
+            {  $text = 'Global';  };
 
         if (!$element->HasMultipleFiles())
             {
