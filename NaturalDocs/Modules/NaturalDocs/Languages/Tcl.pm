@@ -160,7 +160,7 @@ sub ParsePrototype #(type, prototype)
             {
             if ($braceLevel == 1)
                 {
-                if ($parameter && $parameter ne ' ')
+                if ($parameter)
                     {  push @parameterLines, $parameter;  };
 
                 $parameter = undef;
@@ -212,11 +212,7 @@ sub ParsePrototype #(type, prototype)
 sub ParseParameterLine #(line)
     {
     my ($self, $line) = @_;
-
-    $line =~ s/^ //;
-    $line =~ s/ $//;
-
-    return NaturalDocs::Languages::Prototype::Parameter->New(undef, undef, $line, undef, undef);
+    return NaturalDocs::Languages::Prototype::Parameter->New(undef, undef, $line, undef, undef, undef);
     };
 
 
