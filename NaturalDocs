@@ -295,6 +295,52 @@ sub XChomp #(lineRef)
     };
 
 
+#
+#   Function: FindFirstSymbol
+#
+#   Searches a string for a number of symbols to see which appears first.
+#
+#   Parameters:
+#
+#       string - The string to search.
+#       symbols - An arrayref of symbols to look for.
+#       index - The index to start at, if any.
+#
+#   Returns:
+#
+#       The array ( index, symbol ).
+#
+#       index - The index the first symbol appears at, or -1 if none appear.
+#       symbol - The symbol that appeared, or undef if none.
+#
+sub FindFirstSymbol #(string, symbols, index)
+    {
+    my ($string, $symbols, $index) = @_;
+
+    if (!defined $index)
+        {  $index = 0;  };
+
+    my $lowestIndex = -1;
+    my $lowestSymbol;
+
+    foreach my $symbol (@$symbols)
+        {
+        my $testIndex = index($string, $symbol, $index);
+
+        if ($testIndex != -1 && ($lowestIndex == -1 || $testIndex < $lowestIndex))
+            {
+            $lowestIndex = $testIndex;
+            $lowestSymbol = $symbol;
+            };
+        };
+
+    return ($lowestIndex, $lowestSymbol);
+    };
+
+
+#
+
+
 ###############################################################################
 #
 #   Main Code
