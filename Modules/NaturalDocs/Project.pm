@@ -794,8 +794,21 @@ sub GetAllSupportedFiles
     my ($self) = @_;
 
     my @directories = @{NaturalDocs::Settings->InputDirectories()};
-    my $menuFile = $self->MenuFile();
-    my $menuBackup = $self->MenuBackupFile();
+
+
+    # Make an existence hash of excluded directories.
+
+    my %excludedDirectories;
+    my $excludedDirectoryArrayRef = NaturalDocs::Settings->ExcludedInputDirectories();
+
+    foreach my $excludedDirectory (@$excludedDirectoryArrayRef)
+        {
+        if (NaturalDocs::File->IsCaseSensitive())
+            {  $excludedDirectories{$excludedDirectory} = 1;  }
+        else
+            {  $excludedDirectories{lc($excludedDirectory)} = 1;  };
+        };
+
 
     while (scalar @directories)
         {
@@ -815,14 +828,24 @@ sub GetAllSupportedFiles
             if (-d $fullEntry)
                 {
                 # Join again with the noFile flag set in case the platform handles them differently.
-                push @directories, NaturalDocs::File->JoinPaths($directory, $entry, 1);
+                $fullEntry = NaturalDocs::File->JoinPaths($directory, $entry, 1);
+
+                if (NaturalDocs::File->IsCaseSensitive())
+                    {
+                    if (!exists $excludedDirectories{$fullEntry})
+                        {  push @directories, $fullEntry;  };
+                    }
+                else
+                    {
+                    if (!exists $excludedDirectories{lc($fullEntry)})
+                        {  push @directories, $fullEntry;  };
+                    };
                 }
 
-            # Otherwise add it if it's a supported extension.  We need to explicitly ignore the menu files because they're text files and
-            # their syntax is similar to Natural Docs content.
+            # Otherwise add it if it's a supported extension.
             else
                 {
-                if (NaturalDocs::Languages->IsSupported($fullEntry) && $fullEntry ne $menuFile && $fullEntry ne $menuBackup)
+                if (NaturalDocs::Languages->IsSupported($fullEntry))
                     {
                     $supportedFiles{$fullEntry} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
                     };
