@@ -232,15 +232,14 @@ body.FramedContentPage,
 
     .Prototype td {
         font-size: 10pt;
-        vertical-align: bottom;
         }
 
-    .PLeftType,
-    .PLeftParameter {
-        text-align: right;
-        }
-    .PDefaultValue {
+    .PDefaultValue,
+    .PTypePrefix {
         color: #8F8F8F;
+        }
+    .PTypePrefix {
+        text-align: right;
         }
 
     .IE .Prototype table {
