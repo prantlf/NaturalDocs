@@ -151,7 +151,8 @@ my %bannedIndexes;
 #       > File: [title] (auto-title, [file name])
 #       > File: [title] (no auto-title, [file name])
 #
-#       Files are specified as above.  If "no auto-title" is specified, the title on the line is used.  If not, the title is ignored and the
+#       Files are specified as above.  If there is only one input directory, file names are relative.  Otherwise they are absolute.
+#       If "no auto-title" is specified, the title on the line is used.  If not, the title is ignored and the
 #       default file title is used instead.  Auto-title defaults to on, so specifying "auto-title" is for compatibility only.
 #
 #       > Group: [title]
@@ -185,20 +186,28 @@ my %bannedIndexes;
 #
 #       The option above prevents indexes that exist but are not on the menu from being automatically added.
 #
+#       > Data: [number]([obscured data])
+#
+#       Used to store non-user editable data.
+#
 #       > Data: 1([obscured: [directory name]///[input directory]])
 #
-#       Used to store non-user editable data.  The leading 1 specifies it as storage for the input directories used in the last run and
-#       their names.  This allows menu files to be shared across machines, since the names will be consistent and the directories
-#       can be used to convert filenames to the local machine's paths.  We don't want this user-editable because they may think
-#       changing it changes the input directories, when it doesn't.  Also, changing it without changing all the paths screws up
-#       resolving.
+#       When there is more than one directory, these lines store the input directories used in the last run and their names.  This
+#       allows menu files to be shared across machines since the names will be consistent and the directories can be used to convert
+#       filenames to the local machine's paths.  We don't want this user-editable because they may think changing it changes the
+#       input directories, when it doesn't.  Also, changing it without changing all the paths screws up resolving.
+#
+#       > Data: 2([obscured: [directory name])
+#
+#       When there is only one directory and its name is not "default", this stores the name.
+#
 #
 #   Revisions:
 #
 #       1.3:
 #
-#           The file spec is still the same, but the parser is now more strict about it.
-#
+#           - File names are now relative again if there is only one input directory.
+#           - Data: 2(...) added.
 #           - Can't use synonyms like "copyright" for "footer" or "sub-title" for "subtitle".
 #           - "Don't Index" line now requires commas to separate them, whereas it tolerated just spaces before.
 #
@@ -325,7 +334,7 @@ sub LoadAndUpdate
     {
     my ($self) = @_;
 
-    my ($inputDirectoryNames, $relativeFiles) = $self->LoadMenuFile();
+    my ($inputDirectoryNames, $relativeFiles, $onlyDirectoryName) = $self->LoadMenuFile();
 
     my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
     if ($errorCount)
@@ -339,7 +348,12 @@ sub LoadAndUpdate
         };
 
     if ($relativeFiles)
-        {  $self->ResolveRelativeInputDirectories();  }
+        {
+        my $inputDirectory = $self->ResolveRelativeInputDirectories($onlyDirectoryName);
+
+        if ($onlyDirectoryName)
+            {  $inputDirectoryNames = { $inputDirectory => $onlyDirectoryName };  };
+        }
     else
         {  $self->ResolveInputDirectories($inputDirectoryNames);  };
 
@@ -566,11 +580,12 @@ sub OnDefaultTitleChange #(file)
 #
 #   Returns:
 #
-#       The array ( inputDirectories, relativeFiles ) or an empty array if the file doesn't exist.
+#       The array ( inputDirectories, relativeFiles, onlyDirectoryName ) or an empty array if the file doesn't exist.
 #
 #       inputDirectories - A hashref of all the input directories and their names stored in the menu file.  The keys are the
 #                                 directories and the values are their names.  Undef if none.
-#       relativeFiles - Whether the menu is in a pre-1.16 format that uses relative file names.
+#       relativeFiles - Whether the menu uses relative file names.
+#       onlyDirectoryName - The name of the input directory if there is only one.
 #
 sub LoadMenuFile
     {
@@ -578,6 +593,7 @@ sub LoadMenuFile
 
     my $inputDirectories = { };
     my $relativeFiles;
+    my $onlyDirectoryName;
 
     # A stack of Menu::Entry object references as we move through the groups.
     my @groupStack;
@@ -597,9 +613,6 @@ sub LoadMenuFile
         {
         # We don't check if the menu file is from a future version because we can't just throw it out and regenerate it like we can
         # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
-
-        if ($version < NaturalDocs::Version->FromString('1.16'))
-            {  $relativeFiles = 1;  };
 
         while (my ($keyword, $value, $comment) = NaturalDocs::ConfigFile->GetLine())
             {
@@ -768,6 +781,8 @@ sub LoadMenuFile
                     my ($dirName, $inputDir) = split(/\/\/\//, $data, 2);
                     $inputDirectories->{$inputDir} = $dirName;
                     }
+                elsif ($number == 2)
+                    {  $onlyDirectoryName = $data;  };
                 # Otherwise just ignore it, because it may be from a future format and we don't want to make the user delete it
                 # manually.
                 }
@@ -847,11 +862,14 @@ sub LoadMenuFile
 
 
         if (!scalar keys %$inputDirectories)
-            {  $inputDirectories = undef;  };
+            {
+            $inputDirectories = undef;
+            $relativeFiles = 1;
+            };
 
         NaturalDocs::ConfigFile->Close();
 
-        return ($inputDirectories, $relativeFiles);
+        return ($inputDirectories, $relativeFiles, $onlyDirectoryName);
         }
 
     else
@@ -873,20 +891,9 @@ sub SaveMenuFile
 
 
     print MENUFILEHANDLE
-
-    "##### Do not change or remove these lines. #####\n"
-    . "Format: " . NaturalDocs::Settings->TextAppVersion() . "\n";
+    "Format: " . NaturalDocs::Settings->TextAppVersion() . "\n\n\n";
 
     my $inputDirs = NaturalDocs::Settings->InputDirectories();
-    foreach my $inputDir (@$inputDirs)
-        {
-        print MENUFILEHANDLE
-        'Data: 1(' . NaturalDocs::ConfigFile->Obscure( NaturalDocs::Settings->InputDirectoryNameOf($inputDir)
-                                                                          . '///' . $inputDir ) . ")\n";
-        };
-
-    print MENUFILEHANDLE
-    "##### You can edit below this point. #####\n\n\n";
 
 
     if (defined $title)
@@ -974,17 +981,44 @@ sub SaveMenuFile
     . "# neatness when editing the file.  Natural Docs will clean it up the next\n"
     . "# time it is run.  When working with groups, just deal with the braces and\n"
     . "# forget about the indentation and comments.\n"
-    . "# \n"
-    . "# You can use this file on other computers even if they use different\n"
-    . "# directories.  As long as the command line points to the same source files,\n"
-    . "# Natural Docs will be able to correct the locations automatically.\n"
-    . "# \n"
-    . "# --------------------------------------------------------------------------\n"
+    . "# \n";
+
+    if (scalar @$inputDirs > 1)
+        {
+        print MENUFILEHANDLE
+        "# You can use this file on other computers even if they use different\n"
+        . "# directories.  As long as the command line points to the same source files,\n"
+        . "# Natural Docs will be able to correct the locations automatically.\n"
+        . "# \n";
+        };
+
+    print MENUFILEHANDLE
+    "# --------------------------------------------------------------------------\n"
 
     . "\n\n";
 
 
-    $self->WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef);
+    $self->WriteMenuEntries($menu->GroupContent(), \*MENUFILEHANDLE, undef, (scalar @$inputDirs == 1));
+
+
+    if (scalar @$inputDirs > 1)
+        {
+        print MENUFILEHANDLE
+        "\n\n##### Do not change or remove these lines. #####\n";
+
+        foreach my $inputDir (@$inputDirs)
+            {
+            print MENUFILEHANDLE
+            'Data: 1(' . NaturalDocs::ConfigFile->Obscure( NaturalDocs::Settings->InputDirectoryNameOf($inputDir)
+                                                                              . '///' . $inputDir ) . ")\n";
+            };
+        }
+    elsif (lc(NaturalDocs::Settings->InputDirectoryNameOf($inputDirs->[0])) ne 'default')
+        {
+        print MENUFILEHANDLE
+        "\n\n##### Do not change or remove this line. #####\n";
+        'Data: 2(' . NaturalDocs::ConfigFile->Obscure( NaturalDocs::Settings->InputDirectoryNameOf($inputDirs->[0]) ) . ")\n";
+        }
 
     close(MENUFILEHANDLE);
     };
@@ -1001,18 +1035,26 @@ sub SaveMenuFile
 #       fileHandle      - The handle to the output file.
 #       indentChars   - The indentation _characters_ to add before each line.  It is not the number of characters, it is the characters
 #                              themselves.  Use undef for none.
+#       relativeFiles - Whether to use relative file names.
 #
-sub WriteMenuEntries #(entries, fileHandle, indentChars)
+sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
     {
-    my ($self, $entries, $fileHandle, $indentChars) = @_;
+    my ($self, $entries, $fileHandle, $indentChars, $relativeFiles) = @_;
     my $lastEntryType;
 
     foreach my $entry (@$entries)
         {
         if ($entry->Type() == ::MENU_FILE())
             {
+            my $fileName;
+
+            if ($relativeFiles)
+                {  $fileName = (NaturalDocs::Settings->SplitFromInputDirectory($entry->Target()))[1];  }
+            else
+                {  $fileName = $entry->Target();  };
+
             print $fileHandle $indentChars . 'File: ' . $entry->Title()
-                                  . '  (' . ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 'no auto-title, ' : '') . $entry->Target() . ")\n";
+                                  . '  (' . ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 'no auto-title, ' : '') . $fileName . ")\n";
             }
         elsif ($entry->Type() == ::MENU_GROUP())
             {
@@ -1020,7 +1062,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars)
                 {  print $fileHandle "\n";  };
 
             print $fileHandle $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
-            $self->WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars);
+            $self->WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars, $relativeFiles);
             print $fileHandle '   ' . $indentChars . '}  # Group: ' . $entry->Title() . "\n\n";
             }
         elsif ($entry->Type() == ::MENU_TEXT())
@@ -1103,7 +1145,7 @@ sub LoadPreviousMenuStateFile
         if (NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
             {  $hasChanged = 1;  };
 
-            
+
         my $menu = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), undef, undef, undef);
         my $indexes = { };
         my $files = { };
@@ -1431,7 +1473,10 @@ sub ResolveInputDirectories #(inputDirectoryNames)
     # Quit if there are none.  This means an input directory is in the menu that isn't in the command line.  Natural Docs should
     # proceed normally and let the files be deleted.
     if (!scalar @unresolvedInputDirectories)
-        {  return;  };
+        {
+        $hasChanged = 1;
+        return;
+        };
 
     # The index into menuDirectoryScores is the same as in unresolvedMenuDirectories.  The index into each arrayref within it is
     # the same as in unresolvedInputDirectories.
@@ -1545,7 +1590,7 @@ sub ResolveInputDirectories #(inputDirectoryNames)
 #
 #   Function: ResolveRelativeInputDirectories
 #
-#   Resolves pre-1.16 relative input directories to the input directories available.
+#   Resolves relative input directories to the input directories available.
 #
 sub ResolveRelativeInputDirectories
     {
@@ -1620,7 +1665,10 @@ sub ResolveRelativeInputDirectories
             };
         };
 
-    $hasChanged = 1;
+    if (scalar @$inputDirectories > 1)
+        {  $hasChanged = 1;  };
+
+    return $resolvedInputDirectory;
     };
 
 
