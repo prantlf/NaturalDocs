@@ -30,7 +30,8 @@ package NaturalDocs::Menu::Entry;
 #                      <MENU_LINK>, undef means generate it from the URL itself.
 #       TARGET  - The target of the entry.  If the type is <MENU_FILE>, it will be the source file name.  If the type is <MENU_LINK>,
 #                       it will be the URL.  If the type is <MENU_GROUP>, it will be an arrayref of <NaturalDocs::Menu::Entry>
-#                       objects representing the group's content, or undef if there are none.
+#                       objects representing the group's content, or undef if there are none.  If the type is <MENU_INDEX>, it will be
+#                       one of the <Topic Types> or undef for the general index.
 #
 use constant TYPE => 0;
 use constant TITLE => 1;
@@ -52,7 +53,8 @@ use constant TARGET => 2;
 #       title      - The title of the entry.  If the type is <MENU_FILE>, set this to undef to use the default menu title.  If the type is
 #                     <MENU_LINK>, set this to undef to generate it from the URL itself.
 #       target   - The target of the entry, if applicable.  If the type is <MENU_FILE>, use the source file name.  If the type is
-#                     <MENU_LINK>, use the URL.  Otherwise set it to undef.
+#                     <MENU_LINK>, use the URL.  If the type is <MENU_INDEX>, use one of the <Topic Types> or undef for general.
+#                     Otherwise set it to undef.
 #
 sub New #(type, title, target)
     {
