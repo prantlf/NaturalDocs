@@ -71,9 +71,9 @@ my $documentedOnly;
 # The number of spaces in tabs.
 my $tabLength;
 
-# var: autoGroupLevel
-# The <AutoGroupLevel> to use.
-my $autoGroupLevel;
+# bool: noAutoGroup
+# Whether auto-grouping is turned off.
+my $noAutoGroup;
 
 # bool: rebuildData
 # Whether the script should rebuild all data files from scratch.
@@ -167,7 +167,7 @@ my @styles;
 #
 #       > [UInt8: tab length]
 #       > [UInt8: documented only (0 or 1)]
-#       > [UInt8: auto-group level]
+#       > [UInt8: no auto-group (0 or 1)]
 #       >
 #       > [UInt8: number of input directories]
 #       > [AString16: input directory] [AString16: input directory name] ...
@@ -180,16 +180,12 @@ my @styles;
 #       A count of output targets, then that number of directory/format pairs.
 #
 #
-#   Dependencies:
-#
-#       - <AutoGroupLevels> must fit into a UInt8, i.e. be <= 255.
-#
-#
 #   Revisions:
 #
 #       1.3:
 #
 #           - Removed headers-only, which was a 0/1 UInt8 after tab length.
+#           - Change auto-group level (1 = no, 2 = yes, 3 = full only) to no auto-group (0 or 1).
 #
 #       1.22:
 #
@@ -228,7 +224,6 @@ sub Save
     {
     my ($self) = @_;
 
-    #$self->SaveSettingsFile();
     $self->SavePreviousSettings();
     };
 
@@ -429,10 +424,10 @@ sub DocumentedOnly
 sub TabLength
     {  return $tabLength;  };
 
-# Function: AutoGroupLevel
-# Returns the <AutoGroupLevel> to use.
-sub AutoGroupLevel
-    {  return $autoGroupLevel;  };
+# Function: NoAutoGroup
+# Returns whether auto-grouping is turned off.
+sub NoAutoGroup
+    {  return $noAutoGroup;  };
 
 # Function: RebuildData
 # Returns whether the script should rebuild all data files from scratch.
@@ -496,95 +491,30 @@ sub ParseCommandLine
     {
     my ($self) = @_;
 
-    # The values are the package names or 'Natural Docs' for the buit in ones.
-    my %options = ( '-i' => 'Natural Docs',
-                             '-xi' => 'Natural Docs',
-                             '-o' => 'Natural Docs',
-                             '-p' => 'Natural Docs',
-                             '-s' => 'Natural Docs',
-                             '-do' => 'Natural Docs',
-                             '-r' => 'Natural Docs',
-                             '-ro' => 'Natural Docs',
-                             '-t' => 'Natural Docs',
-                             '-q' => 'Natural Docs',
-                             '-ho' => 'Natural Docs',
-                             '-ag' => 'Natural Docs',
-                             '-h' => 'Natural Docs',
-                             '-?' => 'Natural Docs' );
+    my %synonyms = ( 'input'    => '-i',
+                                  'source' => '-i',
+                                  'excludeinput' => '-xi',
+                                  'excludesource' => '-xi',
+                                  'output'  => '-o',
+                                  'project' => '-p',
+                                  'documentedonly' => '-do',
+                                  'style'    => '-s',
+                                  'rebuild' => '-r',
+                                  'rebuildoutput' => '-ro',
+                                  'tablength' => '-t',
+                                  'quiet'    => '-q',
+                                  'headersonly' => '-ho',
+                                  'help'     => '-h',
+                                  'autogroup' => '-ag',
+                                  'noautogroup' => '-nag' );
 
-    my %synonyms = ( '--input'    => '-i',
-                                  '--source' => '-i',
-                                  '--exclude-input' => '-xi',
-                                  '--excludeinput' => '-xi',
-                                  '--exclude-source' => '-xi',
-                                  '--excludesource' => '-xi',
-                                  '--output'  => '-o',
-                                  '--project' => '-p',
-                                  '--documented-only' => '-do',
-                                  '--documentedonly' => '-do',
-                                  '--style'    => '-s',
-                                  '--rebuild' => '-r',
-                                  '--rebuild-output' => '-ro',
-                                  '--rebuildoutput' => '-ro',
-                                  '--tab-length' => '-t',
-                                  '--tablength' => '-t',
-                                  '--quiet'    => '-q',
-                                  '--headers-only' => '-ho',
-                                  '--headersonly' => '-ho',
-                                  '--help'     => '-h',
-                                  '--auto-group' => '-ag',
-                                  '--autogroup' => '-ag' );
-
-    my %autoGroupOptions = ( 'none' => ::AUTOGROUP_NONE(),
-                                             'off' => ::AUTOGROUP_NONE(),
-                                             'basic' => ::AUTOGROUP_BASIC(),
-                                             'full' => ::AUTOGROUP_FULL() );
-
-
-    # Get all the extension options and check for conflicts.
 
     my @errorMessages;
-
-    my $allExtensionOptions = NaturalDocs::Extensions->CommandLineOptions();
-
-    if (defined $allExtensionOptions)
-        {
-        while (my ($extension, $extensionOptions) = each %$allExtensionOptions)
-            {
-            while (my ($shortOption, $longOption) = each %$extensionOptions)
-                {
-                my $optionIsBad;
-
-                if (exists $options{$shortOption})
-                    {
-                    push @errorMessages,
-                            $extension . ' defines option ' . $shortOption . ' which is already defined by ' . $options{$shortOption} . '.';
-                    $optionIsBad = 1;
-                    };
-
-                if (exists $synonyms{$longOption})
-                    {
-                    push @errorMessages,
-                            $extension . ' defines option ' . $longOption . ' which is already defined by '
-                            . $options{ $synonyms{$longOption} } . '.';
-                    $optionIsBad = 1;
-                    };
-
-                if (!defined $optionIsBad)
-                    {
-                    $options{$shortOption} = $extension;
-                    $synonyms{$longOption} = $shortOption;
-                    };
-                };
-            };
-        };
-
 
     my $valueRef;
     my $option;
 
     my @outputStrings;
-    my %extensionOptions;
 
 
     # Sometimes $valueRef is set to $ignored instead of undef because we don't want certain errors to cause other,
@@ -610,8 +540,16 @@ sub ParseCommandLine
                 splice(@ARGV, $index + 1, 0, $2);
                 };
 
-            if (substr($option, 1, 1) eq '-' && exists $synonyms{$option})
-                {  $option = $synonyms{$option};  }
+            # Convert long forms to short.
+            if (substr($option, 1, 1) eq '-')
+                {
+                # Strip all dashes.
+                my $newOption = $option;
+                $newOption =~ tr/-//d;
+
+                if (exists $synonyms{$newOption})
+                    {  $option = $synonyms{$newOption};  }
+                }
 
             if ($option eq '-i')
                 {
@@ -648,8 +586,12 @@ sub ParseCommandLine
                 }
             elsif ($option eq '-ag')
                 {
-                $valueRef = \$autoGroupLevel;
+                push @errorMessages, 'The -ag setting is no longer supported.  You can use -nag (--no-auto-group) to turn off '
+                                               . "auto-grouping, but there aren't multiple levels anymore.";
+                $valueRef = \$ignored;
                 }
+
+            # Options that aren't followed by content.
             else
                 {
                 $valueRef = undef;
@@ -670,21 +612,15 @@ sub ParseCommandLine
                     push @errorMessages, 'The -ho setting is no longer supported.  You can have Natural Docs skip over the source file '
                                                    . 'extensions by editing Languages.txt in your project directory.';
                     }
+                elsif ($option eq '-nag')
+                    {  $noAutoGroup = 1;  }
                 elsif ($option eq '-?' || $option eq '-h')
                     {
                     $self->PrintSyntax();
                     exit;
                     }
                 else
-                    {
-                    if (exists $options{$option})
-                        {
-                        $extensionOptions{$option} = undef;
-                        $valueRef = \$extensionOptions{$option};
-                        }
-                    else
-                        {  push @errorMessages, 'Unrecognized option ' . $option;  };
-                    };
+                    {  push @errorMessages, 'Unrecognized option ' . $option;  };
 
                 };
 
@@ -866,30 +802,6 @@ sub ParseCommandLine
         {  $tabLength = 4;  };
 
 
-    # Determine the auto-group level, and default to full if not specified.
-
-    if (defined $autoGroupLevel)
-        {
-        if (exists $autoGroupOptions{ lc($autoGroupLevel) })
-            {  $autoGroupLevel = $autoGroupOptions{ lc($autoGroupLevel) };  }
-        else
-            {  push @errorMessages, $autoGroupLevel . ' is not a valid value for -ag.';  };
-        }
-    else
-        {  $autoGroupLevel = ::AUTOGROUP_FULL();  };
-
-
-    # Send the extensions their options.
-
-    if (scalar keys %extensionOptions)
-        {
-        my $extensionErrors = NaturalDocs::Extensions->ParseCommandLineOptions(\%extensionOptions);
-
-        if (defined $extensionErrors)
-            {  push @errorMessages, @$extensionErrors;  };
-        };
-
-
     # Exit with the error message if there was one.
 
     if (scalar @errorMessages)
@@ -970,12 +882,8 @@ sub PrintSyntax
     . "     Automatically done for the project and output directories.  Can\n"
     . "     be specified multiple times.\n"
     . "\n"
-    . " -ag [level]\n--auto-group [level]\n"
-    . "    Specifies the level of auto-grouping to apply.  Defaults to full.\n"
-    . "    Possible levels:\n"
-    . "    - full\n"
-    . "    - basic\n"
-    . "    - none\n"
+    . " -nag\n--no-auto-group\n"
+    . "    Turns off auto-grouping completely.\n"
     . "\n"
     . " -r\n--rebuild\n"
     . "    Rebuilds all output and data files from scratch.\n"
@@ -1070,11 +978,11 @@ sub LoadAndComparePreviousSettings
 
         # [UInt8: tab expansion]
         # [UInt8: documented only (0 or 1)]
-        # [UInt8: auto-group level]
+        # [UInt8: no auto-group (0 or 1)]
         # [UInt8: number of input directories]
 
         read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 4);
-        my ($prevTabLength, $prevDocumentedOnly, $prevAutoGroupLevel, $inputDirectoryCount)
+        my ($prevTabLength, $prevDocumentedOnly, $prevNoAutoGroup, $inputDirectoryCount)
             = unpack('CCCC', $raw);
 
         if ($prevTabLength != $self->TabLength())
@@ -1085,9 +993,11 @@ sub LoadAndComparePreviousSettings
 
         if ($prevDocumentedOnly == 0)
             {  $prevDocumentedOnly = undef;  };
+        if ($prevNoAutoGroup == 0)
+            {  $prevNoAutoGroup = undef;  };
 
         if ($prevDocumentedOnly != $self->DocumentedOnly() ||
-            $prevAutoGroupLevel != $self->AutoGroupLevel())
+            $prevNoAutoGroup != $self->NoAutoGroup())
             {
             # These are biggies, since they affects the symbol table as well.  Nuke everything.
             $rebuildData = 1;
@@ -1184,13 +1094,13 @@ sub SavePreviousSettings
 
     # [UInt8: tab length]
     # [UInt8: documented only (0 or 1)]
-    # [UInt8: auto-group level]
+    # [UInt8: no auto-group (0 or 1)]
     # [UInt8: number of input directories]
 
     my $inputDirectories = $self->InputDirectories();
 
     print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCC', $self->TabLength(), ($self->DocumentedOnly() ? 1 : 0),
-                                                                                    $self->AutoGroupLevel(), scalar @$inputDirectories);
+                                                                                    ($self->NoAutoGroup() ? 1 : 0), scalar @$inputDirectories);
 
     foreach my $inputDirectory (@$inputDirectories)
         {
