@@ -302,7 +302,7 @@ sub GlobalType
 
 
 #
-#   Function: PrototypeTypeDefinedIn
+#   Function: PrototypeDefinedIn
 #
 #   Returns the prototype of symbol defined in the passed file, or undef if it doesn't exist or is not defined in that file.
 #
@@ -336,7 +336,7 @@ sub GlobalPrototype
 
 
 #
-#   Function: SummaryTypeDefinedIn
+#   Function: SummaryDefinedIn
 #
 #   Returns the summary of symbol defined in the passed file, or undef if it doesn't exist or is not defined in that file.
 #
