@@ -620,8 +620,8 @@ sub RichFormatTextBlock #(text)
 
                 if ($linkText =~ /^(?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
                     {  $output .= '<email>' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '</email>';  }
-                elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:[a-z0-9\-\=\~\@\#\%\&\_\+\/\?\.\,]+$/i)
-                    {  $output .= '<url>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText ). '</url>';  }
+                elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:/i)
+                    {  $output .= '<url>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText) . '</url>';  }
                 else
                     {  $output .= '<link>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText) . '</link>';  };
                 }
@@ -738,17 +738,17 @@ sub RichFormatTextBlock #(text)
                         (?:http|https|ftp|news|file)\:
 
                         # The acceptable URL characters as far as I know.
-                        [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\?\.\,]*
+                        [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\.\,]*
 
                         # The URL characters minus period and comma.  If it ends on them, they're probably intended as punctuation.
-                        [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\?]
+                        [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]
 
                         # End capture.
                         )
 
                         # The next character must not be an acceptable character.  This will prevent the URL from ending early just
                         # to get a match.
-                        (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\?]  )
+                        (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]  )
 
                         }
                        {<url>$1<\/url>}igx;
