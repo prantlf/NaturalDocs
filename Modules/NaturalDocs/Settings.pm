@@ -760,7 +760,7 @@ sub ParseCommandLine
         else
             {
             if (!NaturalDocs::File->PathIsAbsolute($directory))
-                {  $directory = NaturalDocs::File->JoinPaths(Cwd::cwd(), $directory);  };
+                {  $directory = NaturalDocs::File->JoinPaths(Cwd::cwd(), $directory, 1);  };
 
             $directory = NaturalDocs::File->CanonizePath($directory);
 
@@ -809,7 +809,7 @@ sub ParseCommandLine
         for (my $i = 0; $i < scalar @inputDirectories; $i++)
             {
             if (!NaturalDocs::File->PathIsAbsolute($inputDirectories[$i]))
-                {  $inputDirectories[$i] = NaturalDocs::File->JoinPaths(Cwd::cwd(), $inputDirectories[$i]);  };
+                {  $inputDirectories[$i] = NaturalDocs::File->JoinPaths(Cwd::cwd(), $inputDirectories[$i], 1);  };
 
             $inputDirectories[$i] = NaturalDocs::File->CanonizePath($inputDirectories[$i]);
 
@@ -823,7 +823,7 @@ sub ParseCommandLine
     if (defined $projectDirectory)
         {
         if (!NaturalDocs::File->PathIsAbsolute($projectDirectory))
-            {  $projectDirectory = NaturalDocs::File->JoinPaths(Cwd::cwd(), $projectDirectory);  };
+            {  $projectDirectory = NaturalDocs::File->JoinPaths(Cwd::cwd(), $projectDirectory, 1);  };
 
         $projectDirectory = NaturalDocs::File->CanonizePath($projectDirectory);
 
@@ -842,7 +842,7 @@ sub ParseCommandLine
     for (my $i = 0; $i < scalar @excludedInputDirectories; $i++)
         {
         if (!NaturalDocs::File->PathIsAbsolute($excludedInputDirectories[$i]))
-            {  $excludedInputDirectories[$i] = NaturalDocs::File->JoinPaths(Cwd::cwd(), $excludedInputDirectories[$i]);  };
+            {  $excludedInputDirectories[$i] = NaturalDocs::File->JoinPaths(Cwd::cwd(), $excludedInputDirectories[$i], 1);  };
 
         $excludedInputDirectories[$i] = NaturalDocs::File->CanonizePath($excludedInputDirectories[$i]);
         };
