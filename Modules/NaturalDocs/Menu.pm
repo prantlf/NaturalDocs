@@ -828,7 +828,7 @@ sub LoadMenuFile
                                 next;
                                 };
 
-                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $name, $extras[0], $flags);
+                            my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $name, join(',', @extras), $flags);
 
                             $currentGroup->PushToGroup($entry);
                             }
@@ -2194,7 +2194,7 @@ sub AddAndRemoveIndexes
     {
     my ($self) = @_;
 
-    my %validIndexes = ( );
+    my %validIndexes;
     my @allIndexes = ( NaturalDocs::Topics->AllIndexable(), '*' );
 
     foreach my $index (@allIndexes)
