@@ -168,7 +168,6 @@ my %synonyms = (
                             'def'           => ::TOPIC_GENERIC(),
                             'macro'      => ::TOPIC_GENERIC(),
                             'format'      => ::TOPIC_GENERIC(),
-                            'style'        => ::TOPIC_GENERIC(),
 
                             'list'                => ::TOPIC_GENERIC_LIST(),
                             'enumeration'  => ::TOPIC_GENERIC_LIST(),
@@ -186,8 +185,7 @@ my %synonyms = (
                             'defines'       => ::TOPIC_GENERIC_LIST(),
                             'defs'           => ::TOPIC_GENERIC_LIST(),
                             'macros'      => ::TOPIC_GENERIC_LIST(),
-                            'formats'      => ::TOPIC_GENERIC_LIST(),
-                            'styles'        => ::TOPIC_GENERIC_LIST()
+                            'formats'      => ::TOPIC_GENERIC_LIST()
 
                             );
 
@@ -1521,8 +1519,8 @@ sub TagType #(textBlocks, index)
 
     if ( ( $textBlocks->[$index] =~ /^[\*_<]$/ ) &&
 
-        # Before it must be whitespace, the beginning of the text, or ({["'.
-        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\']$/ ) &&
+        # Before it must be whitespace, the beginning of the text, or ({["'-/.
+        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/]$/ )&&
 
         # After it must be non-whitespace.
         ( $index + 1 < scalar @$textBlocks && $textBlocks->[$index+1] !~ /^[\ \t\n]/) &&
@@ -1539,9 +1537,9 @@ sub TagType #(textBlocks, index)
 
     elsif ( ( $textBlocks->[$index] =~ /^[\*_>]$/) &&
 
-            # After it must be whitespace, the end of the text, or )}].,!?"';:.
-            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:]/ ||
-              # Also allow link plurals, like <link>s, <linx>es, and <link>'s.
+            # After it must be whitespace, the end of the text, or )}].,!?"';:-/.
+            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/]/ ||
+              # Links also get plurals, like <link>s, <linx>es, and <link>'s.
               ( $textBlocks->[$index] eq '>' && $textBlocks->[$index+1] =~ /^(?:es|s|\'s)/ ) ) &&
 
             # Before it must be non-whitespace.
