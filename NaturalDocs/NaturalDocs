@@ -331,14 +331,15 @@ use NaturalDocs::Builder::FramedHTML;
 eval {
 
     # Add the supported languages.
-    NaturalDocs::Languages::Add( 'C++', [ 'h', 'hpp' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ] );
-    NaturalDocs::Languages::Add( 'C#', [ 'cs' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ] );
-    NaturalDocs::Languages::Add( 'Java', [ 'java' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ] );
-    NaturalDocs::Languages::Add( 'JavaScript', [ 'js' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ] );
-    NaturalDocs::Languages::Add( 'Perl', [ 'pl', 'pm' ], [ 'perl' ], '#', undef, undef, [ '{', ';' ], [ ';', '=' ] );
-    NaturalDocs::Languages::Add( 'PL/SQL', [ 'sql' ], undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ], [ ';', ':=', 'default', 'DEFAULT' ] );
-    NaturalDocs::Languages::Add( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, [ "\n" ], [ "\n", '=' ] );
-    NaturalDocs::Languages::Add( 'Text', [ 'txt' ], undef, undef, undef, undef, undef, undef );
+    NaturalDocs::Languages::Add( 'C++', [ 'h', 'hpp' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'C#', [ 'cs' ], undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'Java', [ 'java' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'JavaScript', [ 'js' ], undef, '//', '/*', '*/', [ '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'Perl', [ 'pl', 'pm' ], [ 'perl' ], '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Add( 'PL/SQL', [ 'sql' ], undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ], [ ';', ':=', 'default', 'DEFAULT' ],
+                                                  undef );
+    NaturalDocs::Languages::Add( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, [ "\n" ], [ "\n", '=' ], '_' );
+    NaturalDocs::Languages::Add( 'Text', [ 'txt' ], undef, undef, undef, undef, undef, undef, undef );
 
     # Almost everything requires Settings to be initialized.
 

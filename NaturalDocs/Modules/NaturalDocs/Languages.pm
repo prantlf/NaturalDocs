@@ -73,10 +73,11 @@ my %shebangs;
 #                                       doesn't have functions.
 #       variableEnders        - An arrayref of symbols that end a variable declaration.  Include "\n" if necessary.  Undef if the
 #                                       doesn't have variables.
+#       lineExtender            - The symbol which extends a line of code past a line break.  Undef if not applicable.
 #
 #       Note that if neither of the comment styles are specified, it is assumed that the entire file should be treated as a comment.
 #
-sub Add #(name, extensions, shebangStrings, lineComment, startComment, endComment, functionEnders, variableEnders)
+sub Add #(name, extensions, shebangStrings, lineComment, startComment, endComment, functionEnders, variableEnders, lineEnder)
     {
     my $name = shift;
     my $languageExtensions = shift;

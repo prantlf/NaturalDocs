@@ -30,6 +30,7 @@ package NaturalDocs::Languages::Language;
 #   END_COMMENT              - The symbol that ends a multi-line comment.  Undef if none.
 #   FUNCTION_ENDERS        - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
+#   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
 #
 
 # DEPENDENCY: New() depends on its parameter list being in the same order as these constants.  If the order changes, New()
@@ -39,6 +40,7 @@ use constant START_COMMENT => 1;
 use constant END_COMMENT => 2;
 use constant FUNCTION_ENDERS => 3;
 use constant VARIABLE_ENDERS => 4;
+use constant LINE_EXTENDER => 5;
 
 
 #############################################################################
@@ -56,8 +58,9 @@ use constant VARIABLE_ENDERS => 4;
 #       endComment             - The symbol that starts a multi-line comment.  Undef if none.
 #       functionEnders           - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #       variableEnders           - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
+#       lineExtender               - The symbel to extend a line of code past a line break.  Undef if not applicable.
 #
-sub New #(lineComment, startComment, endComment, functionEnders, variableEnders)
+sub New #(lineComment, startComment, endComment, functionEnders, variableEnders, lineExtender)
     {
     # DEPENDENCY: This function depends on its parameter list being in the same order as the member constants.  If the order
     # changes, this function needs to be changed.
@@ -101,6 +104,11 @@ sub FunctionEnders
 # Returns an arrayref of the symbols that end a variable declaration, or undef if not applicable.
 sub VariableEnders
     {  return $_[0]->[VARIABLE_ENDERS];  };
+
+# Function: LineExtender
+# Returns the symbol used to extend a line of code past a line break, or undef if not applicable.
+sub LineExtender
+    {  return $_[0]->[LINE_EXTENDER];  };
 
 
 #
@@ -155,6 +163,36 @@ sub EndOfVariable #(stringRef, startingIndex optional)
     };
 
 
+#
+#   Function: RemoveExtenders
+#
+#   Strips any <LineExtender()> symbols out of the prototype.
+#
+#   Parameters:
+#
+#       stringRef - A reference to the string.  It will be altered rather than a new one returned.
+#
+sub RemoveExtenders #(stringRef)
+    {
+    my ($self, $stringRef) = @_;
+
+    if (defined $self->LineExtender())
+        {
+        my @lines = split(/\n/, $$stringRef);
+
+        for (my $i = 0; $i < scalar @lines; $i++)
+            {
+            my $extenderIndex = rindex($lines[$i], $self->LineExtender());
+
+            if ($extenderIndex != -1 && substr($lines[$i], $extenderIndex + length($self->LineExtender())) =~ /^[ \t]*$/)
+                {  $lines[$i] = substr($lines[$i], 0, $extenderIndex);  };
+            };
+
+        $$stringRef = join(' ', @lines);
+        };
+    };
+
+
 ###############################################################################
 # Group: Support Functions
 
@@ -185,7 +223,34 @@ sub EndOfPrototype #(stringRef, startingIndex, symbols)
 
     foreach my $ender (@$symbols)
         {
-        my $testIndex = index($$stringRef, $ender, $startingIndex);
+        my $testIndex;
+
+        if ($ender eq "\n" && defined $self->LineExtender())
+            {
+            my $newStartingIndex = $startingIndex;
+
+            for (;;)
+                {
+                $testIndex = index($$stringRef, $ender, $newStartingIndex);
+
+                if ($testIndex == -1)
+                    {  last;  };
+
+                my $extenderIndex = rindex($$stringRef, $self->LineExtender(), $testIndex);
+
+                if ($extenderIndex == -1 ||
+                    substr( $$stringRef, $extenderIndex + length($self->LineExtender()),
+                               $testIndex - $extenderIndex - length($self->LineExtender()) ) =~ /[^ \t]/)
+                    {
+                    last;
+                    };
+
+                $newStartingIndex = $testIndex + 1;
+                };
+            }
+        else
+            {  $testIndex = index($$stringRef, $ender, $startingIndex);  };
+
 
         if ($testIndex != -1 && ($enderIndex == -1 || $testIndex < $enderIndex))
             {  $enderIndex = $testIndex;  };
