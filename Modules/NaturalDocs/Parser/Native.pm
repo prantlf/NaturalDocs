@@ -376,7 +376,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                 }
 
             # If the line looks like a description list entry...
-            elsif ($commentLines->[$index] =~ /^(.+?) +- +([^ ].*)$/)
+            elsif ($commentLines->[$index] =~ /^(.+?) +- +([^ ].*)$/ && $topLevelTag != TAG_PARAGRAPH)
                 {
                 my $entry = $1;
                 my $description = $2;
