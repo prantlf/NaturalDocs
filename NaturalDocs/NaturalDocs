@@ -1,42 +1,17 @@
 #!/usr/bin/perl
 
-use 5.005;  # When File::Spec was included by default
-
-use FindBin;
-use lib "$FindBin::RealBin/Modules";
-
-sub INIT
-    {
-    # This function is just here so that when I start the debugger, it doesn't open a new file.  Normally it would jump to an INIT
-    # function in some other file since that's the first piece of code to execute.
-    };
-
-use NaturalDocs::Constants;
-use NaturalDocs::Topics;
-use NaturalDocs::Version;
-use NaturalDocs::File;
-use NaturalDocs::ConfigFile;
-use NaturalDocs::NDMarkup;
-use NaturalDocs::Languages;
-use NaturalDocs::Settings;
-use NaturalDocs::Project;
-use NaturalDocs::Menu;
-use NaturalDocs::SymbolTable;
-use NaturalDocs::Parser;
-use NaturalDocs::Builder;
-use NaturalDocs::Extensions;
-
-use strict;
-use integer;
-
+###############################################################################
 #
 #   Script: Natural Docs
+#
+###############################################################################
 #
 #       Version 1.16
 #
 #       Copyright © 2003-2004 Greg Valure
 #
 #       http://www.naturaldocs.org
+#
 #
 #   About: License
 #
@@ -199,7 +174,7 @@ use integer;
 #
 #   Topic: How to Add Languages
 #
-#       In the main script add a call to <NaturalDocs::Languages::Language->New()> after all the rest.  See its documentation for
+#       In the main script add a call to <NaturalDocs::Languages::Simple->New()> after all the rest.  See its documentation for
 #       an explanation of the parameters.
 #
 #
@@ -251,15 +226,43 @@ use integer;
 #       - If you're wondering about some of the line lengths or the strange indentation, it's because I work on Natural Docs using
 #         8pt Verdana.
 #
+###############################################################################
+
+
+use strict;
+use integer;
+
+use 5.005;  # When File::Spec was included by default
+
+use FindBin;
+use lib "$FindBin::RealBin/Modules";
+
+sub INIT
+    {
+    # This function is just here so that when I start the debugger, it doesn't open a new file.  Normally it would jump to an INIT
+    # function in some other file since that's the first piece of code to execute.
+    };
+
+use NaturalDocs::Constants;
+use NaturalDocs::Topics;
+use NaturalDocs::Version;
+use NaturalDocs::File;
+use NaturalDocs::ConfigFile;
+use NaturalDocs::NDMarkup;
+use NaturalDocs::Languages;
+use NaturalDocs::Settings;
+use NaturalDocs::Project;
+use NaturalDocs::Menu;
+use NaturalDocs::SymbolTable;
+use NaturalDocs::Parser;
+use NaturalDocs::Builder;
+use NaturalDocs::Extensions;
+
 
 
 ###############################################################################
-#
-#   Group: Support Functions
-#
-#   General functions that are used throughout the program, and that don't really fit anywhere else.
-#
-###############################################################################
+# Group: Support Functions
+# General functions that are used throughout the program, and that don't really fit anywhere else.
 
 
 #
@@ -347,56 +350,6 @@ sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
 
 
 #
-#   Function: DefineMembers
-#
-#   Defines member constants for use in Natural Docs objects.
-#
-#   Each parameter will be defined as a numeric constant which should be used as that variable's index into the object arrayref.
-#   They will be assigned sequentially from zero, and take into account any members defined this way in parent classes.  Note that
-#   you can *not* use multiple inheritance with this method.
-#
-#   Example:
-#
-#   > package MyPackage;
-#   >
-#   > ::DefineMembers('VAR_A', 'VAR_B', 'VAR_C');
-#   >
-#   > sub SetA #(A)
-#   >    {
-#   >    my ($self, $a) = @_;
-#   >    $self->[VAR_A] = $a;
-#   >    };
-#
-sub DefineMembers #(member, member, member ...)
-    {
-    my (@constants) = @_;
-    my $package = caller();
-
-    no strict 'refs';
-    my $isa = ${$package . '::ISA'}[0];
-    use strict 'refs';
-
-    my $member = 0;
-
-    if (defined $isa && $isa->can('END_OF_MEMBERS'))
-        {  $member = $isa->END_OF_MEMBERS();  };
-
-    my $code = '{ package ' . $package . ";\n";
-
-    foreach my $constant (@constants)
-        {
-        $code .= 'use constant ' . $constant . ' => ' . $member . ";\n";
-        $member++;
-        };
-
-    $code .= 'use constant END_OF_MEMBERS => ' . $member . ";\n";
-    $code .= '};';
-
-    eval $code;
-    };
-
-
-#
 #   Function: UseDirectory
 #
 #   Does the equivalent of "use [module]" for every .pm file in a directory and all its subdirectories.  You *must* call this function
@@ -478,7 +431,6 @@ sub XChomp #(lineRef)
 #   The order in which functions are called here is critically important.  Read the "Usage and Dependencies" sections of all the
 #   packages before even thinking about rearranging these.
 #
-###############################################################################
 
 
 # The Builder and Extension directories are live.  Any .pm files in them are automatically included.
@@ -516,15 +468,15 @@ eval {
     # - Specify line breaks as follows: "\n".  You MUST use quotes instead of apostrophes.  You don't have to worry about \r.
     # - Specify backslashes as follows: "\\".  You MUST use quotes instead of apostrophes.
     # - Follow the documentation on the parameters closely.  You don't want to skip one or put them in the wrong order.
-    # - Don't worry that some lines use something like PLSQL->New() instead of Language->New().  This is only necessary
-    #   when the language's syntax needs special handling.  Language->New() should be fine in most cases.
+    # - Don't worry that some lines use something like PLSQL->New() instead of Simple->New().  This is only necessary
+    #   when the language's syntax needs special handling.  Simple->New() should be fine in most cases.
 
-    NaturalDocs::Languages::Language->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Language->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Language->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
-    NaturalDocs::Languages::Language->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
+    NaturalDocs::Languages::Simple->New( 'C++', $cExtensions, undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Simple->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Simple->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
+    NaturalDocs::Languages::Simple->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Perl->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Language->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
+    NaturalDocs::Languages::Simple->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
 
     # Doesn't detect escapement yet.
     NaturalDocs::Languages::PHP->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
@@ -532,13 +484,13 @@ eval {
 
     NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
                                                               [ ';', ':=', 'default', 'DEFAULT' ], undef );
-    NaturalDocs::Languages::Language->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
+    NaturalDocs::Languages::Simple->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
     NaturalDocs::Languages::Pascal->New( 'Pascal', 'pas', undef, '//', [ '{', '(*' ], [ '}', '*)' ], [ ';' ], [ ';', '=' ], undef );
-    NaturalDocs::Languages::Language->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
+    NaturalDocs::Languages::Simple->New( 'Assembly', 'asm', undef, ';', undef, undef, undef, "\n", "\\" );
     NaturalDocs::Languages::Ada->New( 'Ada', 'ada', undef, '--', undef, undef, [ 'is', 'IS', ';' ], [ ':=', ';' ], undef );
     NaturalDocs::Languages::Tcl->New( 'Tcl', 'tcl', [ 'tclsh', 'wish' ], '#', undef, undef, [ '{', ';' ], [ ';', "\n" ], undef );
     NaturalDocs::Languages::Ruby->New( 'Ruby', 'rb', 'ruby', '#', undef, undef, [ ';', "\n" ], [ ';', '=', "\n" ], "\\" );
-    NaturalDocs::Languages::Language->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
+    NaturalDocs::Languages::Simple->New( 'Text', 'txt', undef, undef, undef, undef, undef, undef, undef );
 
 
     # Migrate from the old file names that were used prior to 1.14.
