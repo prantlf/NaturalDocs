@@ -222,7 +222,7 @@ sub ParseParameterLine #(line)
 
     my @tokens = $line =~ /([^\(\)\[\]\{\}\<\>\'\"\:\=\ ]+|\:\=|.)/g;
 
-    my ($name, $type, $defaultValue, $inType, $inDefaultValue);
+    my ($name, $type, $defaultValue, $defaultValuePrefix, $inType, $inDefaultValue);
 
 
     my @symbolStack;
@@ -280,7 +280,7 @@ sub ParseParameterLine #(line)
             {
             if (!scalar @symbolStack)
                 {
-                $defaultValue .= $token;
+                $defaultValuePrefix = $token;
                 $inDefaultValue = 1;
                 }
             elsif ($inType)
@@ -298,7 +298,12 @@ sub ParseParameterLine #(line)
             };
         };
 
-    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, undef, $defaultValue);
+    foreach my $part (\$type, \$defaultValue)
+        {
+        $$part =~ s/ $//;
+        };
+
+    return NaturalDocs::Languages::Prototype::Parameter->New($type, undef, $name, undef, $defaultValue, $defaultValuePrefix);
     };
 
 
