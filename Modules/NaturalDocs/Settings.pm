@@ -185,6 +185,11 @@ my $defaultStyle;
 #       A count of output targets, then that number of directory/format pairs.
 #
 #
+#   Dependencies:
+#
+#       - <AutoGroupLevels> must fit into a UInt8, i.e. be <= 255.
+#
+#
 #   Revisions:
 #
 #       1.22:
