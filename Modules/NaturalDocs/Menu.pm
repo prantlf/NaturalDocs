@@ -638,7 +638,7 @@ sub LoadMenuFile
                 {
                 my $flags = 0;
 
-                if ($value =~ /^([^\(\)]+?) ?\(([^\)]+)\)$/)
+                if ($value =~ /^([^\(\)]+?) ?\((.+)\)$/)
                     {
                     my ($title, $file) = ($1, $2);
 
