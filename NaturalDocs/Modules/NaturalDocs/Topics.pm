@@ -12,7 +12,8 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
-use Text::Wrap ();
+use Text::Wrap ( );
+use Tie::RefHash ( );
 
 use strict;
 use integer;
@@ -242,6 +243,10 @@ my @mainTopicNames;
 #
 #       Whether list topics should be broken into individual topics in the output.  Defaults to no.
 #
+#       > Can Group With: [topic type], [topic type], ...
+#
+#       The list of <TopicTypes> the topic can possibly be grouped with.
+#
 #       > [Add] Keyword[s]:
 #       >    [keyword]
 #       >    [keyword], [plural keyword]
@@ -355,6 +360,10 @@ sub LoadFile #(isMain)
             {  NaturalDocs::Project->ReparseEverything();  };
 
         my ($topicTypeKeyword, $topicTypeName, $topicType, $topicTypeObject, $inKeywords, $inIgnoredKeywords);
+
+        # Keys are topic type objects, values are unparsed strings.
+        my %canGroupWith;
+        tie %canGroupWith, 'Tie::RefHash';
 
         while (my ($keyword, $value) = NaturalDocs::ConfigFile->GetLine())
             {
@@ -593,6 +602,12 @@ sub LoadFile #(isMain)
                     };
                 }
 
+            elsif ($keyword eq 'can group with')
+                {
+                if (defined $topicTypeObject)
+                    {  $canGroupWith{$topicTypeObject} = lc($value);  };
+                }
+
             elsif ($keyword =~ /^(?:add )?keywords?$/)
                 {
                 $inKeywords = 1;
@@ -652,6 +667,25 @@ sub LoadFile #(isMain)
             };
 
         NaturalDocs::ConfigFile->Close();
+
+
+        # Parse out the Can Group With lines now that everything's defined.
+
+        while (my ($typeObject, $value) = each %canGroupWith)
+            {
+            my @values = split(/ ?, ?/, $value);
+            my @types;
+
+            foreach my $value (@values)
+                {
+                # We're just going to ignore invalid items.
+                if (exists $names{$value})
+                    {  push @types, $names{$value};  };
+                };
+
+            if (scalar @types)
+                {  $typeObject->SetCanGroupWith(\@types);  };
+            };
         }
 
     else # couldn't open file
@@ -757,7 +791,8 @@ sub SaveFile #(isMain)
                     $keyword eq 'scope' ||
                     $keyword eq 'page title if first' ||
                     $keyword eq 'class hierarchy' ||
-                    $keyword eq 'break lists')
+                    $keyword eq 'break lists' ||
+                    $keyword eq 'can group with')
                 {
                 $properties{$topicTypeName}->{$keyword} = lc($value);
                 }
@@ -926,6 +961,9 @@ sub SaveFile #(isMain)
     . "#    Whether list topics should be broken into individual topics in the output.\n"
     . "#    Defaults to no.\n"
     . "#\n"
+    . "# Can Group With: [type], [type], ...\n"
+    . "#    Defines a list of topic types that this one can possibly be grouped with.\n"
+    . "#    Defaults to none.\n"
     . "#-------------------------------------------------------------------------------\n\n";
 
     my $listToPrint;
@@ -991,6 +1029,34 @@ sub SaveFile #(isMain)
                     print FH_TOPICS
                     '   ' . $property . ': ' . ucfirst( $properties{$topicType}->{lc($property)} ) . "\n";
 
+                    $numberOfProperties++;
+                    };
+                };
+
+            if (exists $properties{$topicType}->{'can group with'})
+                {
+                my @typeStrings = split(/ ?, ?/, lc($properties{$topicType}->{'can group with'}));
+                my @types;
+
+                foreach my $typeString (@typeStrings)
+                    {
+                    if (exists $names{$typeString})
+                        {  push @types, $names{$typeString};  };
+                    };
+
+                if (scalar @types)
+                    {
+                    for (my $i = 0; $i < scalar @types; $i++)
+                        {
+                        my $name = NaturalDocs::Topics->NameOfType($types[$i], 1);
+
+                        if ($i == 0)
+                            {  print FH_TOPICS '   Can Group With: ' . $name;  }
+                        else
+                            {  print FH_TOPICS ', ' . $name;  };
+                        };
+
+                    print FH_TOPICS "\n";
                     $numberOfProperties++;
                     };
                 };
