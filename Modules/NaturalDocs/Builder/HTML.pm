@@ -262,19 +262,27 @@ sub UpdateMenu
     # Update index.html
 
     my $firstMenuEntry = $self->FindFirstFile(NaturalDocs::Menu::Content());
-
     my $indexFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'index.html' );
 
-    open(INDEXFILEHANDLE, '>' . $indexFile)
-        or die "Couldn't create output file " . $indexFile . ".\n";
+    # We have to check because it's possible that there may be no files with Natural Docs content and thus no files on the menu.
+    if (defined $firstMenuEntry)
+        {
+        open(INDEXFILEHANDLE, '>' . $indexFile)
+            or die "Couldn't create output file " . $indexFile . ".\n";
 
-    print INDEXFILEHANDLE
-    '<html><head>'
-         . '<meta http-equiv="Refresh" CONTENT="0; URL='
-             . $self->MakeRelativeURL( 'index.html', $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
-    . '</head></html>';
+        print INDEXFILEHANDLE
+        '<html><head>'
+             . '<meta http-equiv="Refresh" CONTENT="0; URL='
+                 . $self->MakeRelativeURL( 'index.html', $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
+        . '</head></html>';
 
-    close INDEXFILEHANDLE;
+        close INDEXFILEHANDLE;
+        }
+
+    elsif (-e $indexFile)
+        {
+        unlink($indexFile);
+        };
     };
 
 

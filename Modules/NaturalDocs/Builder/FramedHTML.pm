@@ -250,44 +250,52 @@ sub UpdateMenu
     # Update index.html
 
     my $firstMenuEntry = $self->FindFirstFile(NaturalDocs::Menu::Content());
-
     my $indexFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'index.html' );
 
-    open(INDEXFILEHANDLE, '>' . $indexFile)
-        or die "Couldn't create output file " . $indexFile . ".\n";
+    # We have to check because it's possible that there may be no files with Natural Docs content and thus no files on the menu.
+    if (defined $firstMenuEntry)
+        {
+        open(INDEXFILEHANDLE, '>' . $indexFile)
+            or die "Couldn't create output file " . $indexFile . ".\n";
 
-    print INDEXFILEHANDLE
+        print INDEXFILEHANDLE
 
-        '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Frameset//EN" '
-            . '"http://www.w3.org/TR/REC-html40/frameset.dtd">'
+            '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Frameset//EN" '
+                . '"http://www.w3.org/TR/REC-html40/frameset.dtd">'
 
-        . '<html>'
+            . '<html>'
 
-            . '<head>'
+                . '<head>'
 
-                . '<title>'
-                    . $self->StringToHTML(NaturalDocs::Menu::Title())
-                . '</title>'
+                    . '<title>'
+                        . $self->StringToHTML(NaturalDocs::Menu::Title())
+                    . '</title>'
 
-            . '</head>'
+                . '</head>'
 
-            . '<frameset cols="185,*">'
-                . '<frame name=Menu src="menu.html">'
-                . '<frame name=Content src="'
-                    . $self->MakeRelativeURL('index.html', $self->OutputFileOf($firstMenuEntry->Target())) . '">'
-            . '</frameset>'
+                . '<frameset cols="185,*">'
+                    . '<frame name=Menu src="menu.html">'
+                    . '<frame name=Content src="'
+                        . $self->MakeRelativeURL('index.html', $self->OutputFileOf($firstMenuEntry->Target())) . '">'
+                . '</frameset>'
 
-            . '<noframes>'
-                . 'This documentation was designed for use with frames.  However, you can still use it by '
-                . '<a href="menu.html">starting from the menu page</a>.'
-                . "<script language=JavaScript><!--\n"
-                    . 'location.href="menu.html";'
-                . "\n// --></script>"
-            . '</noframes>'
+                . '<noframes>'
+                    . 'This documentation was designed for use with frames.  However, you can still use it by '
+                    . '<a href="menu.html">starting from the menu page</a>.'
+                    . "<script language=JavaScript><!--\n"
+                        . 'location.href="menu.html";'
+                    . "\n// --></script>"
+                . '</noframes>'
 
-        . '</html>';
+            . '</html>';
 
-    close INDEXFILEHANDLE;
+        close INDEXFILEHANDLE;
+        }
+
+    elsif (-e $indexFile)
+        {
+        unlink($indexFile);
+        };
     };
 
 
