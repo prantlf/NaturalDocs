@@ -376,7 +376,12 @@ sub ExtractComments
                     # Tabs and line breaks to spaces.
                     $prototype =~ tr/\t\n\r/   /;
 
-                    if (index($prototype, $parsedFile[-1]->Name()) != -1)
+                    # If there's parenthesis inside the prototype name, strip them and anything following.  This allows topic names
+                    # like "Function(2)" or "Function(int,int)" to still match "Function", which won't likely have that verbatim.
+                    my $prototypeMatch = $parsedFile[-1]->Name();
+                    $prototypeMatch =~ s/ *\(.*$//;
+
+                    if (index($prototype, $prototypeMatch) != -1)
                         {
                         $parsedFile[-1]->SetPrototype($prototype);
                         };
