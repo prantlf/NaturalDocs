@@ -35,6 +35,9 @@ package NaturalDocs::Settings;
 # handle: SETTINGSFILEHANDLE
 # The file handle used with <Settings.txt>.
 
+# handle: PREVIOUS_SETTINGS_FILEHANDLE
+# The file handle used with <PreviousSettings.nd>.
+
 # array: inputDirectories
 # An array of input directories.
 my @inputDirectories;
@@ -141,6 +144,45 @@ my $defaultStyle;
 #
 
 
+#
+#   File: PreviousSettings.nd
+#
+#   Stores the previous command line settings.
+#
+#   Format:
+#
+#       > [BINARY_FORMAT]
+#
+#       The file is binary, so the first byte is the <BINARY_FORMAT> token.
+#
+#       > [app version]
+#
+#       Immediately after this is the application version it was generated with.  Manage with the binary functions in
+#       <NaturalDocs::Version>.
+#
+#       > [UInt8: tab length]
+#       > [UInt8: headers only (0 or 1)]
+#       > [UInt8: documented only (0 or 1)]
+#       >
+#       > [UInt8: number of input directories]
+#       > [AString16: input directory] [AString16: input directory name] ...
+#
+#       A count of input directories, then that number of directory/name pairs.
+#
+#       > [UInt8: number of output targets]
+#       > [AString16: output directory] [AString16: output format command line option] ...
+#
+#       A count of output targets, then that number of directory/format pairs.
+#
+#
+#   Revisions:
+#
+#       1.2:
+#
+#           - File was added to the project.  Prior to 1.2, it didn't exist.
+#
+
+
 ###############################################################################
 # Group: Action Functions
 
@@ -155,6 +197,7 @@ sub Load
     my ($self) = @_;
 
     $self->ParseCommandLine();
+    $self->LoadAndComparePreviousSettings();
     };
 
 
@@ -167,7 +210,8 @@ sub Save
     {
     my ($self) = @_;
 
-    $self->SaveSettingsFile();
+    #$self->SaveSettingsFile();
+    $self->SavePreviousSettings();
     };
 
 
@@ -1260,6 +1304,211 @@ sub SaveSettingsFile
         };
 
     close(SETTINGSFILEHANDLE);
+    };
+
+
+#
+#   Function: LoadAndComparePreviousSettings
+#
+#   Loads <PreviousSettings.nd> and compares the values there with those in the command line.  If differences require it,
+#   sets <rebuildData> and/or <rebuildOutput>.
+#
+sub LoadAndComparePreviousSettings
+    {
+    my ($self) = @_;
+
+    my $fileIsOkay = 1;
+    my $fileName = NaturalDocs::Project->PreviousSettingsFile();
+
+    if (!open(PREVIOUS_SETTINGS_FILEHANDLE, '<' . $fileName))
+        {  $fileIsOkay = undef;  }
+    else
+        {
+        # See if it's binary.
+        binmode(PREVIOUS_SETTINGS_FILEHANDLE);
+
+        my $firstChar;
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $firstChar, 1);
+
+        if ($firstChar != ::BINARY_FORMAT())
+            {
+            close(PREVIOUS_SETTINGS_FILEHANDLE);
+            $fileIsOkay = undef;
+            }
+        else
+            {
+            my $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUS_SETTINGS_FILEHANDLE);
+
+            # The file format has not changed since it was introduced.
+
+            if ($version > NaturalDocs::Settings->AppVersion())
+                {
+                close(PREVIOUS_SETTINGS_FILEHANDLE);
+                $fileIsOkay = undef;
+                };
+            };
+        };
+
+
+    if (!$fileIsOkay)
+        {
+        # Rebuild everything.
+        $rebuildData = 1;
+        $rebuildOutput = 1;
+        }
+    else
+        {
+        my $raw;
+
+        # [UInt8: tab expansion]
+        # [UInt8: headers only (0 or 1)]
+        # [UInt8: documented only (0 or 1)]
+        # [UInt8: number of input directories]
+
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 4);
+        my ($prevTabLength, $prevHeadersOnly, $prevDocumentedOnly, $inputDirectoryCount) = unpack('CCCC', $raw);
+
+        if ($prevTabLength != $self->TabLength())
+            {
+            # We need to rebuild all output because this affects all text diagrams.
+            $rebuildOutput = 1;
+            };
+
+        # $prevHeadersOnly doesn't really matter.  The files will be treated as if they were added or deleted anyway.
+
+        if ($prevDocumentedOnly == 0)
+            {  $prevDocumentedOnly = undef;  };
+
+        if ($prevDocumentedOnly != $self->DocumentedOnly())
+            {
+            # This one is a biggie, since it affects the symbol table as well.  Nuke everything.
+            $rebuildData = 1;
+            $rebuildOutput = 1;
+            };
+
+
+        while ($inputDirectoryCount)
+            {
+            # [AString16: input directory] [AString16: input directory name] ...
+
+            read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
+            my $inputDirectoryLength = unpack('n', $raw);
+
+            my $inputDirectory;
+            read(PREVIOUS_SETTINGS_FILEHANDLE, $inputDirectory, $inputDirectoryLength);
+
+            read (PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
+            my $inputDirectoryNameLength = unpack('n', $raw);
+
+            my $inputDirectoryName;
+            read(PREVIOUS_SETTINGS_FILEHANDLE, $inputDirectoryName, $inputDirectoryNameLength);
+
+            # Not doing anything with this for now.
+
+            $inputDirectoryCount--;
+            };
+
+
+        # [UInt8: number of output targets]
+
+        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 1);
+        my $outputTargetCount = unpack('C', $raw);
+
+        # Keys are the directories, values are the command line options.
+        my %previousOutputDirectories;
+
+        while ($outputTargetCount)
+            {
+            # [AString16: output directory] [AString16: output format command line option] ...
+
+            read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
+            my $outputDirectoryLength = unpack('n', $raw);
+
+            my $outputDirectory;
+            read(PREVIOUS_SETTINGS_FILEHANDLE, $outputDirectory, $outputDirectoryLength);
+
+            read (PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
+            my $outputCommandLength = unpack('n', $raw);
+
+            my $outputCommand;
+            read(PREVIOUS_SETTINGS_FILEHANDLE, $outputCommand, $outputCommandLength);
+
+            $previousOutputDirectories{$outputDirectory} = $outputCommand;
+
+            $outputTargetCount--;
+            };
+
+        # Check if any targets were added to the command line, or if their formats changed.  We don't care if targets were
+        # removed.
+        my $buildTargets = $self->BuildTargets();
+
+        foreach my $buildTarget (@$buildTargets)
+            {
+            if (!exists $previousOutputDirectories{$buildTarget->Directory()} ||
+                $buildTarget->Builder()->CommandLineOption() ne $previousOutputDirectories{$buildTarget->Directory()})
+                {
+                $rebuildOutput = 1;
+                last;
+                };
+            };
+
+        close(PREVIOUSSTATEFILEHANDLE);
+        };
+    };
+
+
+#
+#   Function: SavePreviousSettings
+#
+#   Saves the settings into <PreviousSettings.nd>.
+#
+sub SavePreviousSettings
+    {
+    my ($self) = @_;
+
+    open (PREVIOUS_SETTINGS_FILEHANDLE, '>' . NaturalDocs::Project->PreviousSettingsFile())
+        or die "Couldn't save " . NaturalDocs::Project->PreviousSettingsFile() . ".\n";
+
+    binmode(PREVIOUS_SETTINGS_FILEHANDLE);
+
+    print PREVIOUS_SETTINGS_FILEHANDLE '' . ::BINARY_FORMAT();
+    NaturalDocs::Version->ToBinaryFile(\*PREVIOUS_SETTINGS_FILEHANDLE, NaturalDocs::Settings->AppVersion());
+
+    # [UInt8: tab length]
+    # [UInt8: headers only (0 or 1)]
+    # [UInt8: documented only (0 or 1)]
+    # [UInt8: number of input directories]
+
+    my $inputDirectories = $self->InputDirectories();
+
+    print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCC', $self->TabLength(), ($self->HeadersOnly() ? 1 : 0),
+                                                                                    ($self->DocumentedOnly() ? 1 : 0), scalar @$inputDirectories);
+
+    foreach my $inputDirectory (@$inputDirectories)
+        {
+        my $inputDirectoryName = $self->InputDirectoryNameOf($inputDirectory);
+
+        # [AString16: input directory] [AString16: input directory name] ...
+        print PREVIOUS_SETTINGS_FILEHANDLE pack('nA*nA*', length($inputDirectory), $inputDirectory,
+                                                                                          length($inputDirectoryName), $inputDirectoryName);
+        };
+
+    # [UInt8: number of output targets]
+
+    my $buildTargets = $self->BuildTargets();
+    print PREVIOUS_SETTINGS_FILEHANDLE pack('C', scalar @$buildTargets);
+
+    foreach my $buildTarget (@$buildTargets)
+        {
+        my $buildTargetDirectory = $buildTarget->Directory();
+        my $buildTargetCommand = $buildTarget->Builder()->CommandLineOption();
+
+        # [AString16: output directory] [AString16: output format command line option] ...
+        print PREVIOUS_SETTINGS_FILEHANDLE pack('nA*nA*', length($buildTargetDirectory), $buildTargetDirectory,
+                                                                                          length($buildTargetCommand), $buildTargetCommand);
+        };
+
+    close(PREVIOUS_SETTINGS_FILEHANDLE);
     };
 
 

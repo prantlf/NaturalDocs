@@ -552,7 +552,7 @@ eval {
     NaturalDocs::Menu->Save();
     NaturalDocs::Project->Save();
     NaturalDocs::SymbolTable->Save();
-    #NaturalDocs::Settings->Save();
+    NaturalDocs::Settings->Save();
 
     if (!NaturalDocs::Settings->IsQuiet())
         {  print "Done.\n";  };
