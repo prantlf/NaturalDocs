@@ -64,7 +64,7 @@ sub New
 #   Function: AddDefinition
 #
 #   Adds a symbol definition.  If this is the first definition for this symbol, it will become the global definition.  If the definition
-#   already exists for the file, it will replace the old one.
+#   already exists for the file, it will be ignored.
 #
 #   Parameters:
 #
@@ -82,7 +82,34 @@ sub AddDefinition #(file, type, prototype)
         $self->[GLOBAL_DEFINITION] = $file;
         };
 
-    $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype);
+    if (!exists $self->[DEFINITIONS]{$file})
+        {
+        $self->[DEFINITIONS]{$file} = NaturalDocs::SymbolTable::SymbolDefinition::New($type, $prototype);
+        };
+    };
+
+
+#
+#   Function: ChangeDefinition
+#
+#   Changes the information about an existing definition.
+#
+#   Parameters:
+#
+#       file   - The file that defines the symbol.  Must exist.
+#       type - The new topic type of the definition.  One of <Topic Types>.
+#       prototype - The new prototype of the definition, if applicable.  Undef otherwise.
+#
+sub ChangeDefinition #(file, type, prototype)
+    {
+    my ($self, $file, $type, $prototype) = @_;
+
+    if (defined $self->[DEFINITIONS] &&
+        exists $self->[DEFINITIONS]{$file})
+        {
+        $self->[DEFINITIONS]{$file}->SetType($type);
+        $self->[DEFINITIONS]{$file}->SetPrototype($prototype);
+        };
     };
 
 
