@@ -45,7 +45,7 @@ package NaturalDocs::Project;
 #
 #   hash: supportedFiles
 #
-#   A hash of all the supported files in the input directory.  The keys are the file names, and the values are
+#   A hash of all the supported files in the input directory.  The keys are the <FileNames>, and the values are
 #   <NaturalDocs::Project::File> objects.
 #
 my %supportedFiles;
@@ -53,28 +53,29 @@ my %supportedFiles;
 #
 #   hash: filesToParse
 #
-#   An existence hash of all the files that need to be parsed.
+#   An existence hash of all the <FileNames> that need to be parsed.
 #
 my %filesToParse;
 
 #
 #   hash: filesToBuild
 #
-#   An existence hash of all the files that need to be built.
+#   An existence hash of all the <FileNames> that need to be built.
 #
 my %filesToBuild;
 
 #
 #   hash: filesToPurge
 #
-#   An existence hash of files that had Natural Docs content last time, but now either don't exist or no longer have content.
+#   An existence hash of the <FileNames> that had Natural Docs content last time, but now either don't exist or no longer have
+#   content.
 #
 my %filesToPurge;
 
 #
 #   hash: unbuiltFilesWithContent
 #
-#   An existence hashref of all the files that have Natural Docs content but are not part of <filesToBuild>.
+#   An existence hash of all the <FileNames> that have Natural Docs content but are not part of <filesToBuild>.
 #
 my %unbuiltFilesWithContent;
 
@@ -324,17 +325,20 @@ sub Save
 #
 #   Function: RebuildFile
 #
-#   Adds the file to the list of files to build.  Assumes the file contains Natural Docs content.
+#   Adds the file to the list of files to build.  This function will automatically filter out files that don't have Natural Docs content and
+#   files that are part of <FilesToPurge()>.  If this gets called on a file and that file later gets Natural Docs content, it will be added.
 #
 #   Parameters:
 #
-#       file - The name of the file to build or rebuild.
+#       file - The <FileName> to build or rebuild.
 #
 sub RebuildFile #(file)
     {
     my ($self, $file) = @_;
 
-    if (!exists $filesToPurge{$file})
+    # We don't want to add it to the build list if it doesn't exist, doesn't have Natural Docs content, or it's going to be purged.
+    # If it wasn't parsed yet and will later be found to have ND content, it will be added by SetHasContent().
+    if (exists $supportedFiles{$file} && !exists $filesToPurge{$file} && $supportedFiles{$file}->HasContent())
         {
         $filesToBuild{$file} = 1;
 
@@ -406,8 +410,10 @@ sub MigrateOldFiles
     };
 
 
+
 ###############################################################################
-# Group: Information Functions
+# Group: Data File Functions
+
 
 # Function: FileInfoFile
 # Returns the full path to the file information file.
@@ -449,30 +455,36 @@ sub PreviousMenuStateFile
 sub MenuBackupFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu_Backup.txt' );  };
 
+
+
+###############################################################################
+# Group: Source File Functions
+
+
 # Function: FilesToParse
-# Returns an existence hashref of the list of files to parse.  This is not a copy of the data, so don't change it.
+# Returns an existence hashref of the <FileNames> to parse.  This is not a copy of the data, so don't change it.
 sub FilesToParse
     {  return \%filesToParse;  };
 
 # Function: FilesToBuild
-# Returns an existence hashref of the list of files to build.  This is not a copy of the data, so don't change it.
+# Returns an existence hashref of the <FileNames> to build.  This is not a copy of the data, so don't change it.
 sub FilesToBuild
     {  return \%filesToBuild;  };
 
 # Function: FilesToPurge
-# Returns an existence hashref of the list of files that had content last time, but now either don't anymore or were deleted.
+# Returns an existence hashref of the <FileNames> that had content last time, but now either don't anymore or were deleted.
 # This is not a copy of the data, so don't change it.
 sub FilesToPurge
     {  return \%filesToPurge;  };
 
 # Function: UnbuiltFilesWithContent
-# Returns an existence hashref of files that have Natural Docs content but are not part of <FilesToBuild()>.  This is not a copy of
-# the data so don't change it.
+# Returns an existence hashref of the <FileNames> that have Natural Docs content but are not part of <FilesToBuild()>.  This is
+# not a copy of the data so don't change it.
 sub UnbuiltFilesWithContent
     {  return \%unbuiltFilesWithContent;  };
 
 # Function: FilesWithContent
-# Returns and existence hashref of the files that have Natural Docs content.
+# Returns and existence hashref of the <FileNames> that have Natural Docs content.
 sub FilesWithContent
     {
     # Don't keep this one internally, but there's an easy way to make it.
@@ -483,7 +495,7 @@ sub FilesWithContent
 #
 #   Function: HasContent
 #
-#   Returns whether the file contains Natural Docs content.
+#   Returns whether the <FileName> contains Natural Docs content.
 #
 sub HasContent #(file)
     {
@@ -495,50 +507,11 @@ sub HasContent #(file)
         {  return undef;  };
     };
 
-#
-#   Function: StatusOf
-#
-#   Returns the status of the passed file.  Will be one of the <File Status Constants>.
-#
-sub StatusOf #(file)
-    {
-    my ($self, $file) = @_;
-
-    if (exists $supportedFiles{$file})
-        {  return $supportedFiles{$file}->Status();  }
-    else
-        {  return ::FILE_DOESNTEXIST();  };
-    };
-
-#
-#   Function: DefaultMenuTitleOf
-#
-#   Returns the default menu title of the file.  If one isn't specified, it returns the file name.
-#
-#   Parameters:
-#
-#       file - The name of the file.
-#
-sub DefaultMenuTitleOf #(file)
-    {
-    my ($self, $file) = @_;
-
-    if (exists $supportedFiles{$file})
-        {  return $supportedFiles{$file}->DefaultMenuTitle();  }
-    else
-        {  return $file;  };
-    };
-
 
 #
 #   Function: SetHasContent
 #
-#   Sets whether the file has Natural Docs content or not.
-#
-#   Parameters:
-#
-#       file - The file being modified.
-#       hasContent - Whether the file now has Natural Docs content or not.
+#   Sets whether the <FileName> has Natural Docs content or not.
 #
 sub SetHasContent #(file, hasContent)
     {
@@ -563,15 +536,43 @@ sub SetHasContent #(file, hasContent)
         };
     };
 
+
+#
+#   Function: StatusOf
+#
+#   Returns the <FileStatus> of the passed <FileName>.
+#
+sub StatusOf #(file)
+    {
+    my ($self, $file) = @_;
+
+    if (exists $supportedFiles{$file})
+        {  return $supportedFiles{$file}->Status();  }
+    else
+        {  return ::FILE_DOESNTEXIST();  };
+    };
+
+
+#
+#   Function: DefaultMenuTitleOf
+#
+#   Returns the default menu title of the <FileName>.  If one isn't specified, it returns the <FileName>.
+#
+sub DefaultMenuTitleOf #(file)
+    {
+    my ($self, $file) = @_;
+
+    if (exists $supportedFiles{$file})
+        {  return $supportedFiles{$file}->DefaultMenuTitle();  }
+    else
+        {  return $file;  };
+    };
+
+
 #
 #   Function: SetDefaultMenuTitle
 #
-#   Sets the file's default menu title.
-#
-#   Parameters:
-#
-#       file - The file which is having its title changed.
-#       menuTitle - The new menu title.
+#   Sets the <FileName's> default menu title.
 #
 sub SetDefaultMenuTitle #(file, menuTitle)
     {
