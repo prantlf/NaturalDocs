@@ -590,42 +590,26 @@ sub BuildContent #(sourceFile, parsedFile)
         # The anchors are closed, but not around the text, so the :hover CSS style won't accidentally kick in.
         # There's plenty of repeated code in this if-else tree, but this makes it simpler.
 
+        my $headerType;
+
         if ($i == 0)
-            {
-            $output .=
-
-            '<div class=CMain>'
-                . '<div class=CTopic>'
-
-                . '<h1 class=CTitle>'
-                    . '<a name="' . $anchor . '"></a>'
-                    . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ) )
-                . '</h1>';
-            }
+            {  $headerType = 'h1';  }
         elsif ($parsedFile->[$i]->Type() == ::TOPIC_SECTION() || $parsedFile->[$i]->Type() == ::TOPIC_CLASS())
-            {
-            $output .=
-
-            '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type() ) . '>'
-                . '<div class=CTopic>'
-
-                . '<h2 class=CTitle>'
-                    . '<a name="' . $anchor . '"></a>'
-                    . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ))
-                . '</h2>';
-            }
+            {  $headerType = 'h2';  }
         else
-            {
-            $output .=
+            {  $headerType = 'h3';  };
 
-            '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type() ) . '>'
-                . '<div class=CTopic>'
+        $output .=
 
-                . '<h3 class=CTitle>'
-                    . '<a name="' . $anchor . '"></a>'
-                    . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ))
-                . '</h3>';
-            };
+        '<div class=C' . NaturalDocs::Topics->NameOf( $parsedFile->[$i]->Type() )
+            . ($i == 0 ? ' id=MainTopic' : '') . '>'
+            
+            . '<div class=CTopic>'
+
+            . '<' . $headerType . ' class=CTitle>'
+                . '<a name="' . $anchor . '"></a>'
+                . $self->AddHiddenBreaks( $self->StringToHTML( $parsedFile->[$i]->Name() ))
+            . '</' . $headerType . '>';
 
 
         if (defined $parsedFile->[$i]->Prototype())
