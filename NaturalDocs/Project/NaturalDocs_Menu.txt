@@ -74,7 +74,7 @@ Group: Languages  {
    File: Base  (no auto-title, Modules\NaturalDocs\Languages\Language.pm)
    File: Ada  (Modules\NaturalDocs\Languages\Ada.pm)
    File: Pascal  (Modules\NaturalDocs\Languages\Pascal.pm)
-   File: PLSQL  (Modules\NaturalDocs\Languages\PLSQL.pm)
+   File: PL/SQL  (no auto-title, Modules\NaturalDocs\Languages\PLSQL.pm)
    File: Tcl  (Modules\NaturalDocs\Languages\Tcl.pm)
    }  # Group: Languages
 
