@@ -977,83 +977,120 @@ sub BuildPrototype #(type, prototype, file)
     my ($self, $type, $prototype, $file) = @_;
 
     my $language = NaturalDocs::Languages->LanguageOf($file);
-
-    my ($pre, $open, $params, $close, $post) = $language->FormatPrototype($type, $prototype);
+    my $prototypeObject = $language->ParsePrototype($type, $prototype);
 
     my $output;
 
-    if (defined $params && scalar @$params > 1)
+    if ($prototypeObject->OnlyBeforeParameters())
         {
-        if (defined $open)
-            {
-            $open = $self->ConvertAmpChars($open);
-            $open =~ s/ /&nbsp;/g;
-            };
-        if (defined $close)
-            {
-            $close = $self->ConvertAmpChars($close);
-            $close =~ s/ /&nbsp;/g;
-            };
+        $output =
+        # A surrounding table as a hack to make the div form-fit.
+        '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
+            . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
+        . '</tr></td></table>';
+        }
 
-        my $firstParam = shift @$params;
-        my $lastParam = pop @$params;
+    else
+        {
+        my $params = $prototypeObject->Parameters();
+        my $beforeParams = $prototypeObject->BeforeParameters();
+        my $afterParams = $prototypeObject->AfterParameters();
 
         $output =
-        # Crappy hacky extra div and table because browsers interpret padding on tables differently.
-        '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
-        . '<table border=0 cellspacing=0 cellpadding=0><tr>'
+        '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
 
-            . '<td style="vertical-align: bottom; text-align: right">' . $self->ConvertAmpChars($pre) . '</td>'
-            . '<td style="vertical-align: bottom">' . $open . '</td>'
-            . '<td style="vertical-align: bottom" nowrap>' . $self->ConvertAmpChars($firstParam) . '</td>';
+            # Stupid hack to get it to work right in IE.
+            . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
-            if (scalar @$params)
+            . '<td class=PBeforeParameters>' . $self->ConvertAmpChars($beforeParams);
+
+            if ($beforeParams && $beforeParams !~ /[\(\[\{\<]$/)
+                {  $output .= '&nbsp;';  };
+
+            $output .=
+            '</td>';
+
+            my ($hasType, $hasTypeSuffix, $hasDefaultValue);
+
+            foreach my $param (@$params)
                 {
-                $output .=
-                   '<td colspan=2></td>'
-               . '</tr><tr>'
-                   . '<td colspan=2></td>'
-                   . '<td nowrap>';
-
-                for (my $i = 0; $i < scalar @$params; $i++)
-                    {
-                    if ($i > 0)
-                        {  $output .= '<br>';  };
-
-                    $output .= $self->ConvertAmpChars($params->[$i]);
-                    };
-
-                $output .= '</td>';
+                if ($param->Type())
+                    {  $hasType = 1;  };
+                if ($param->TypeSuffix())
+                    {  $hasTypeSuffix = 1;  };
+                if ($param->DefaultValue())
+                    {  $hasDefaultValue = 1;  };
                 };
 
-            if (defined $lastParam)
+            for (my $i = 0; $i < scalar @$params; $i++)
                 {
+                if ($i > 0)
+                    {
+                    # Skip the AfterParameters cell, go to the next row, and skip the BeforeParameters cell.
+                    $output .= '<td></td></tr><tr><td></td>';
+                    };
+
+                if ($language->TypeBeforeParameter())
+                    {
+                    if ($hasType)
+                        {
+                        $output .=
+                        '<td class=PLeftType>'
+                            . $self->ConvertAmpChars($params->[$i]->Type())
+                            . ($hasTypeSuffix ? '' : '&nbsp;')
+                        . '</td>';
+                        };
+
+                    if ($hasTypeSuffix)
+                        {
+                        $output .=
+                        '<td class=PLeftTypeSuffix>'
+                            . $self->ConvertAmpChars($params->[$i]->TypeSuffix()) . '&nbsp;'
+                        . '</td>';
+                        };
+                    };
+
                 $output .=
-                    '<td colspan=2></td>'
-                . '</tr><tr>'
-                    . '<td colspan=2></td>'
-                    . '<td style="vertical-align: top" nowrap>' . $self->ConvertAmpChars($lastParam) . '</td>';
+                '<td class=P' . ($language->TypeBeforeParameter() ? 'Right' : 'Left') . 'Parameter>'
+                    . $self->ConvertAmpChars($params->[$i]->Name())
+                . '</td>';
+
+                if (!$language->TypeBeforeParameter())
+                    {
+                    my $string = $params->[$i]->Type() . $params->[$i]->TypeSuffix();
+
+                    if ($hasType || $hasTypeSuffix)
+                        {
+                        $output .=
+                        '<td class=PRightType>'
+                            . '&nbsp;' . $self->ConvertAmpChars($string)
+                        . '</td>'
+                        };
+                    };
+
+                if ($hasDefaultValue)
+                    {
+                    $output .=
+                    '<td class=PDefaultValue>'
+                        . '&nbsp;' . $self->ConvertAmpChars($params->[$i]->DefaultValue())
+                    . '</td>';
+                    };
                 };
 
             $output .=
-            '<td style="vertical-align: top">' . $close . '</td>'
-            . '<td style="vertical-align: top">' . $self->ConvertAmpChars($post) . '</td>'
-       . '</tr></table>'
-       . '</div></td></tr></table>';
-        }
+            '<td class=PAfterParameters>'
+                 . $self->ConvertAmpChars($afterParams);
 
-    else # (!defined $params || scalar @$params == 1)
-        {
-        my $string = $pre . $open . (defined $params ? $params->[0] : '') . $close . $post;
+                if ($afterParams && $afterParams !~ /^[\)\]\}\>]/)
+                    {  $output .= '&nbsp;';  };
 
-        $output =
-        # A surrounding table as a hack to make the div form-fit.
-        '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
-            . '<div class=CPrototype>'
-                . $self->ConvertAmpChars($string)
-            . '</div>'
-        . '</tr></td></table>';
-        };
+            $output .=
+            '</td>'
+        . '</tr></table>'
+
+        # Hack.
+        . '</td></tr></table>';
+       };
 
     return $output;
     };
