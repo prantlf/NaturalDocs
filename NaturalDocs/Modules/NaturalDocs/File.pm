@@ -66,7 +66,7 @@ sub CanonizePath #(path)
     {
     my ($self, $path) = @_;
 
-    if ($^O eq 'MSWin32')
+    if ($::OSNAME eq 'MSWin32')
         {
         # We don't have to use a smarter algorithm for dropping quotes because they're invalid characters for actual file and
         # directory names.
