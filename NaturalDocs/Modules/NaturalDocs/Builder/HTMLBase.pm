@@ -2232,19 +2232,14 @@ sub BuildURLLink #(url)
         {  return '<a href="' . $url . '" class=LURL>' . $self->ConvertAmpChars($url) . '</a>';  };
 
     my @segments = split(/([\,\&\/])/, $url);
-
     my $output = '<a href="' . $url . '" class=LURL>';
 
     # Get past the first batch of slashes, since we don't want to break on things like http://.
 
-    my $i = 0;
-    while ($i < scalar @segments && $segments[$i] ne '/')
-        {
-        $output .= $self->ConvertAmpChars($segments[$i]);
-        $i++;
-        };
+    $output .= $self->ConvertAmpChars($segments[0]);
 
-    while ($i < scalar @segments && $segments[$i] eq '/')
+    my $i = 1;
+    while ($i < scalar @segments && ($segments[$i] eq '/' || !$segments[$i]))
         {
         $output .= $segments[$i];
         $i++;
