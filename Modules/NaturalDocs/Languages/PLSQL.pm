@@ -77,4 +77,60 @@ sub EndOfFunction #(stringRef, falsePositives)
     };
 
 
+#
+#   Function: FormatPrototype
+#
+#   Parses a prototype so that it can be formatted nicely in the output.  By default, this function assumes the parameter list is
+#   enclosed in parenthesis and parameters are separated by commas and semicolons.
+#
+#   Parameters:
+#
+#       prototype - The text prototype.
+#
+#   Returns:
+#
+#       The array ( preParam, opening, params, closing, postParam ).
+#
+#       pre - The part of the prototype prior to the parameter list.
+#       open - The opening symbol to the parameter list, such as parenthesis.  If there is none, it will be a space.
+#       params - An arrayref of parameters, one per entry.  Will be undef if none.
+#       close - The closing symbol to the parameter list, such as parenthesis.  If there is none, it will be space.
+#       post - The part of the prototype after the parameter list, or undef if none.
+#
+#   Language Issue:
+#
+#       Microsoft's SQL implementation doesn't require parenthesis.  Instead, parameters are specified with the @ symbol as
+#       below:
+#
+#       > CREATE PROCEDURE Test @as int, @foo int AS ...
+#
+#       If the prototype doesn't have parenthesis but does have @text, it makes sure it is still formatted correctly.
+#
+sub FormatPrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+
+    if ($prototype !~ /\(/ && $prototype =~ /@/)
+        {
+        $prototype =~ tr/\t\n /   /s;
+        $prototype =~ s/^ //;
+        $prototype =~ s/ $//;
+
+        my $atIndex = index($prototype, '@');
+
+        my $pre = substr($prototype, 0, $atIndex, '');
+        $pre =~ s/ $//;
+
+        my $params = [ ];
+
+        while ($prototype =~ /(\@[^\@,]+,?) ?/g)
+            {  push @$params, $1;  };
+
+        return ( $pre, ' ', $params, ' ', undef );
+        }
+    else
+        {  return $self->SUPER::FormatPrototype($prototype);  };
+    };
+
+
 1;
