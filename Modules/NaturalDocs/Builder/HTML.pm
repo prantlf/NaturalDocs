@@ -1545,38 +1545,6 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
             {
             # Format non-code text.
 
-            # Resolve and convert links.
-            $text =~ s/<link>([^<]+)<\/link>/MakeLink($scope, $1, $sourceFile)/ge;
-
-            sub MakeLink #(scope, text, sourceFile)
-                {
-                my ($scope, $text, $sourceFile) = @_;
-
-                my $target = NaturalDocs::SymbolTable::References($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text),
-                                                                                              $sourceFile);
-
-                if (defined $target)
-                    {
-                    my $targetFile;
-
-                    if ($target->File() ne $sourceFile)
-                        {  $targetFile = MakeRelativeURL(OutputFileOf($sourceFile), OutputFileOf($target->File()));  };
-                    # else leave it undef
-
-                    my $prototypeAttr;
-
-                    if (defined $target->Prototype())
-                        {  $prototypeAttr = ' title="' . ConvertAmpChars($target->Prototype()) . '"';  };
-
-                    return '<a href="' . $targetFile . '#' . SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '"'
-                            . $prototypeAttr . ' class=L' . $topicNames{$target->Type()} . '>' . $text . '</a>';
-                    }
-                else
-                    {
-                    return '&lt;' . $text . '&gt;';
-                    };
-                };
-
             # Convert quotes to fancy quotes.
             $text =~ s/^\'/&lsquo;/gm;
             $text =~ s/([\ \(\[\{])\'/$1&lsquo;/g;
@@ -1585,6 +1553,11 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
             $text =~ s/^&quot;/&ldquo;/gm;
             $text =~ s/([\ \(\[\{])&quot;/$1&ldquo;/g;
             $text =~ s/&quot;/&rdquo;/g;
+
+            # Resolve and convert links.
+            $text =~ s/<link>([^<]+)<\/link>/MakeLink($scope, $1, $sourceFile)/ge;
+            $text =~ s/<url>([^<]+)<\/url>/<a href=\"$1\" class=LURL>$1<\/a>/g;
+            $text =~ s/<email>([^<]+)<\/email>/MakeEMailLink($1)/eg;
 
             # Add double spaces too.
             $text = AddDoubleSpaces($text);
@@ -1629,6 +1602,96 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
         };
 
     return $output;
+    };
+
+
+#
+#   Function: MakeLink
+#
+#   Creates a HTML link to a symbol, if it exists.
+#
+#   Parameters:
+#
+#       scope  - The scope the link appears in.
+#       text  - The link text
+#       sourceFile  - The file the link appears in.
+#
+#   Returns:
+#
+#       The link in HTML, including tags.  If the link doesn't resolve to anything, returns the HTML that should be substituted for it.
+#
+sub MakeLink #(scope, text, sourceFile)
+    {
+    my ($scope, $text, $sourceFile) = @_;
+
+    my $target = NaturalDocs::SymbolTable::References($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text),
+                                                                                  $sourceFile);
+
+    if (defined $target)
+        {
+        my $targetFile;
+
+        if ($target->File() ne $sourceFile)
+            {  $targetFile = MakeRelativeURL(OutputFileOf($sourceFile), OutputFileOf($target->File()));  };
+        # else leave it undef
+
+        my $prototypeAttr;
+
+        if (defined $target->Prototype())
+            {  $prototypeAttr = ' title="' . ConvertAmpChars($target->Prototype()) . '"';  };
+
+        return '<a href="' . $targetFile . '#' . SymbolToHTMLSymbol( $target->Class(), $target->Symbol() ) . '"'
+                . $prototypeAttr . ' class=L' . $topicNames{$target->Type()} . '>' . $text . '</a>';
+        }
+    else
+        {
+        return '&lt;' . $text . '&gt;';
+        };
+    };
+
+
+#
+#   Function: MakeEMailLink
+#
+#   Creates a HTML link to an e-mail address.  The address will be transparently munged to protect it (hopefully) from spambots.
+#
+#   Parameters:
+#
+#       address  - The e-mail address.
+#
+#   Returns:
+#
+#       The HTML e-mail link, complete with tags.
+#
+sub MakeEMailLink #(address)
+    {
+    my $address = shift;
+    my @splitAddress;
+
+
+    # Hack the address up.  We want two user pieces and two host pieces.
+
+    my ($user, $host) = split(/\@/, $address);
+
+    my $userSplit = length($user) / 2;
+
+    push @splitAddress, substr($user, 0, $userSplit);
+    push @splitAddress, substr($user, $userSplit);
+
+    push @splitAddress, '@';
+
+    my $hostSplit = length($host) / 2;
+
+    push @splitAddress, substr($host, 0, $hostSplit);
+    push @splitAddress, substr($host, $hostSplit);
+
+
+    # Now put it back together again.  We'll use spans to split the text transparently and JavaScript to split and join the link.
+
+    return
+    "<a href=\"#\" onClick=\"location.href='mailto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>"
+        . '<span>' . join('</span><span>', @splitAddress) . '</span>'
+    . '</a>';
     };
 
 
