@@ -403,7 +403,14 @@ sub ParseParameterLine #(line)
         {
         $typeSuffix = $1;
         $type = substr($type, 0, 0 - length($typeSuffix));
-        };
+        $type =~ s/ $//;
+        }
+    elsif ($name =~ /^([\*\&]+)/)
+        {
+        $typeSuffix = $1;
+        $name = substr($name, length($typeSuffix));
+        $name =~ s/^ //;
+        }
 
     return NaturalDocs::Languages::Prototype::Parameter->New($type, $typeSuffix, $name, $defaultValue);
     };
