@@ -331,10 +331,13 @@ sub RebuildFile #(file)
     {
     my ($self, $file) = @_;
 
-    $filesToBuild{$file} = 1;
+    if (!exists $filesToPurge{$file})
+        {
+        $filesToBuild{$file} = 1;
 
-    if (exists $unbuiltFilesWithContent{$file})
-        {  delete $unbuiltFilesWithContent{$file};  };
+        if (exists $unbuiltFilesWithContent{$file})
+            {  delete $unbuiltFilesWithContent{$file};  };
+        };
     };
 
 
@@ -412,6 +415,11 @@ sub FileInfoFile
 # Returns the full path to the symbol table's data file.
 sub SymbolTableFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'SymbolTable.nd' );  };
+
+# Function: ClassHierarchyFile
+# Returns thhe full path to the class hierarchy's data file.
+sub ClassHierarchyFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'ClassHierarchy.nd' );  };
 
 # Function: MenuFile
 # Returns the full path to the project's menu file.
