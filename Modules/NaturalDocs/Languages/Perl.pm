@@ -60,6 +60,13 @@ sub ShebangStrings
 #       sourceFile - The name of the source file to parse.
 #       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
 #
+#   Returns:
+#
+#       The array ( autoTopics, scopeRecord ).
+#
+#       autoTopics - An arrayref of automatically generated topics from the file, or undef if none.
+#       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>, or undef if none.
+#
 sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
@@ -74,6 +81,7 @@ sub ParseFile #(sourceFile, topicsList)
         {
         if ($self->TryToSkipWhitespace(\$index, \$lineNumber) ||
             $self->TryToGetPackage(\$index, \$lineNumber) ||
+#            $self->TryToGetBase(\$index, \$lineNumber) ||
             $self->TryToGetFunction(\$index, \$lineNumber) ||
             $self->TryToGetVariable(\$index, \$lineNumber) )
             {
@@ -111,7 +119,16 @@ sub ParseFile #(sourceFile, topicsList)
     # Don't need to keep these around.
     $self->ClearTokens();
 
-    $self->OnEndParse($topicsList);
+
+    my $autoTopics = $self->AutoTopics();
+    if (!scalar @$autoTopics)
+        {  $autoTopics = undef;  };
+
+    my $scopeRecord = $self->ScopeRecord();
+    if (!scalar @$scopeRecord)
+        {  $scopeRecord = undef;  };
+
+    return ( $autoTopics, $scopeRecord );
     };
 
 
@@ -188,6 +205,13 @@ sub TryToGetPackage #(indexRef, lineNumberRef)
 
     return undef;
     };
+
+
+#
+#   Function: TryToGetBase
+#
+#   Determines whether the position is at a package base declaration statement, and if so, adds it to
+#   <NaturalDocs::ClassHierarchy>.
 
 
 #
@@ -453,9 +477,7 @@ sub GenericSkip #(indexRef, lineNumberRef)
     my ($self, $indexRef, $lineNumberRef) = @_;
     my $tokens = $self->Tokens();
 
-    "aoeu" =~ m//;
-
-    if ($tokens->[$$indexRef] eq "\\" && $tokens + 1 < scalar @$tokens && $tokens->[$$indexRef+1] ne "\n")
+    if ($tokens->[$$indexRef] eq "\\" && $$indexRef + 1 < scalar @$tokens && $tokens->[$$indexRef+1] ne "\n")
         {  $$indexRef += 2;  }
 
     # Note that we don't want to count backslashed ()[]{} since they could be in regexps.  Also, ()[] are valid variable names
