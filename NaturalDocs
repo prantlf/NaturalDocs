@@ -409,8 +409,19 @@ eval {
 
 if ($@)  # Oops.
     {
+    my $perlVersion;
+
+    if ($^V)
+        {  $perlVersion = sprintf('%vd', $^V);  }
+    if (!$perlVersion || substr($perlVersion, 0, 1) eq '%')
+        {  $perlVersion = $];  };
+
     die
          "\n"
          . "Natural Docs encountered the following error and was stopped:\n"
-         . "     " . $@ . "\n";
+         . "     " . $@
+         . "\n"
+         . "Natural Docs Version: " . NaturalDocs::Settings::TextAppVersion() . "\n"
+         . "Perl Version: " .$perlVersion . "\n"
+         . "\n";
     };
