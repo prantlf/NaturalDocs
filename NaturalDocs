@@ -22,7 +22,7 @@ use NaturalDocs::Menu;
 use NaturalDocs::SymbolTable;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
-
+use NaturalDocs::Extensions;
 
 use strict;
 use integer;
@@ -103,7 +103,7 @@ use integer;
 #
 #           -ho                - For C and C++, only check the headers and not the source files.  Also --headersonly.
 #
-#           -h                  - Prints the syntax reference.  Also --help.
+#           -h                  - Prints the syntax reference.  Also -?, --help.
 #
 #
 #   About: Supported Languages
@@ -203,8 +203,18 @@ use integer;
 #       - Create a new <NaturalDocs::Builder> sub-package derived from <NaturalDocs::Builder::Base>.
 #       - See <NaturalDocs::Builder::Base>'s documentation for a list of the interface functions that should be implemented and
 #         examples of how to do so.
-#       - Add a 'use' statement for your package after the others in the main script.
-#       - Document the additional option in <Supported Output Formats>.
+#       - By placing the file in the Modules/NaturalDocs/Builder directory, it will automatically be included by Natural Docs.  You
+#         do not have to add a 'use' statement anywhere in the code, which makes it easy to keep custom output formats whenever
+#         you upgrade Natural Docs.
+#
+#
+#   Topic: How to Add Extensions
+#
+#       - Create a new <NaturalDocs::Extensions> sub-package derived from <NaturalDocs::Extensions::Base>.
+#       - See <NaturalDocs::Extensions::Base's> documentation for a list of interface functions can be implemented.
+#       - By placing the file in the Modules/NaturalDocs/Extensions directory, it will automatically be included by Natural Docs.  You
+#         do not have to add a 'use' statement anywhere in the code, which makes it easy to keep custom extensions whenever
+#         you upgrade Natural Docs.
 #
 #
 #   Topic: How to Add HTML Styles
