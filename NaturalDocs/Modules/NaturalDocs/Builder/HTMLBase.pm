@@ -286,6 +286,9 @@ sub BuildMenu #(outputFile, isFramed)
     %menuGroupLengths = ( );
     %menuGroupNumbers = ( );
 
+    my ($segmentOutput, $hasSelection, $rootLength) =
+        $self->BuildMenuSegment($outputFile, $isFramed, NaturalDocs::Menu::Content());
+
 
     # Comment needed for UpdateFile().
     my $output = '<!--START_ND_MENU-->';
@@ -296,6 +299,7 @@ sub BuildMenu #(outputFile, isFramed)
     if (defined $menuTitle)
         {
         $menuLength += MENU_TITLELENGTH;
+        $rootLength += MENU_TITLELENGTH;
 
         $output .=
         '<div class=MTitle>'
@@ -305,6 +309,7 @@ sub BuildMenu #(outputFile, isFramed)
         if (defined $menuSubTitle)
             {
             $menuLength += MENU_SUBTITLELENGTH;
+            $rootLength += MENU_SUBTITLELENGTH;
 
             $output .=
             '<div class=MSubTitle>'
@@ -316,9 +321,6 @@ sub BuildMenu #(outputFile, isFramed)
         '</div>';
         };
 
-
-    my ($segmentOutput, $hasSelection, $rootLength) =
-        $self->BuildMenuSegment($outputFile, $isFramed, NaturalDocs::Menu::Content());
 
     $output .= $segmentOutput;
 
