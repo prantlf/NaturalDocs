@@ -723,7 +723,7 @@ sub DeleteClass #(file, class)
     {
     my ($self, $file, $class) = @_;
 
-    my @parents = $files{$file}->ParentsReferencesOf($class);
+    my @parents = $files{$file}->ParentReferencesOf($class);
     foreach my $parent (@parents)
         {
         $self->DeleteParentReference($file, $class, $parent);
