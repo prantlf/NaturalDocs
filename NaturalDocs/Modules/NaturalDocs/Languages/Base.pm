@@ -250,11 +250,9 @@ sub FormatPrototype #(type, prototype)
 
 
 #
-#   Function: MakeSortableSymbol
+#   Function: IgnoredPrefixLength
 #
-#   Returns the symbol that should be used for sorting.  For example, in Perl, a scalar variable would be "$var".  However, we
-#   would want to sort on "var" so that all scalar variables don't get dumped into the symbols category in the indexes.  By
-#   default, this function returns the original symbol.
+#   Returns the length of the prefix that should be ignored in the index, or zero if none.
 #
 #   Parameters:
 #
@@ -263,9 +261,9 @@ sub FormatPrototype #(type, prototype)
 #
 #   Returns:
 #
-#       The symbol to sort on.  If the symbol doesn't need to be altered, just return name.
+#       The length of the prefix to ignore, or zero if none.
 #
-sub MakeSortableSymbol #(name, type)
+sub IgnoredPrefixLength #(name, type)
     {
     my ($self, $name, $type) = @_;
 
@@ -276,13 +274,12 @@ sub MakeSortableSymbol #(name, type)
             foreach my $prefix (@$prefixes)
                 {
                 if (substr($name, 0, length($prefix)) eq $prefix)
-                    {  return substr($name, length($prefix));  };
+                    {  return length($prefix);  };
                 };
             };
         };
 
-
-    return $name;
+    return 0;
     };
 
 
