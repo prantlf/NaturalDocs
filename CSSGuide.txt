@@ -150,58 +150,64 @@ Topic: Content Structure
     In addition to the top-level <NDMarkup> tags, you also have <CPrototype>, <CTitle>, and <Summaries>.  <Summaries> are
     described in their own section.
 
-    >   <Content>
-    >
-    >       <CType (CFunction, CItem, etc.)>
-    >           <CTopic>
-    >
-    >               <CTitle>
-    >                   Topic title
-    >               </CTitle>
-    >
-    >               <CBody>
-    >
-    >                   <CPrototype>
-    >                       Prototype
-    >                   </CPrototype>
-    >
-    >                   <p CParagraph>
-    >                        Paragraph
-    >                   </p CParagraph>
-    >
-    >                   <CHeading>
-    >                       Heading
-    >                   </CHeading>
-    >
-    >                   <pre CCode>
-    >                   Code
-    >                   </pre CCode>
-    >
-    >                   <ul CBulletList>
-    >                       <li>
-    >                       Bullet item
-    >                       </li>
-    >                   </ul CBulletList>
-    >
-    >                   <table CDescriptionList>
-    >                       <tr>
-    >                           <td CDLEntry>
-    >                           Entry
-    >                           </td CDLEntry>
-    >                           <td CDLDescription>
-    >                           Description
-    >                           </td CDLDescription>
-    >                       </tr>
-    >                   </table CDescriptionList>
-    >
-    >                   <Summary> (See it's section)
-    >
-    >              </CBody>
-    >
-    >          </CTopic>
-    >       </CType (CFunction, CItem, etc.)>
-    >
-    >   </Content>
+    (start diagram)
+
+    <Content>
+
+        <CType (CFunction, CItem, etc.)>
+            <CTopic>
+
+                <CTitle>
+                    Topic title
+                </CTitle>
+
+                <CBody>
+
+                    <ClassHierarchy> (See it's section)
+
+                    <CPrototype>
+                        Prototype
+                    </CPrototype>
+
+                    <p CParagraph>
+                         Paragraph
+                    </p CParagraph>
+
+                    <CHeading>
+                        Heading
+                    </CHeading>
+
+                    <pre CCode>
+                    Code
+                    </pre CCode>
+
+                    <ul CBulletList>
+                        <li>
+                        Bullet item
+                        </li>
+                    </ul CBulletList>
+
+                    <table CDescriptionList>
+                        <tr>
+                            <td CDLEntry>
+                            Entry
+                            </td CDLEntry>
+                            <td CDLDescription>
+                            Description
+                            </td CDLDescription>
+                        </tr>
+                    </table CDescriptionList>
+
+                    <Summary> (See it's section)
+
+               </CBody>
+
+           </CTopic>
+        </CType (CFunction, CItem, etc.)>
+
+    </Content>
+
+    (end diagram)
 
     Take advantange of the CSS inheritance model.  For example, you can style all titles via .CTitle, and you can style
     specific titles with .CType .CTitle.
@@ -313,6 +319,45 @@ List: Menu Styles
     MLink - An external link entry.
 
     #MSelected - The ID of the currently selected <MFile>.
+
+
+Topic: Class Hierarchy Structure
+
+    Everything is contained in a single <ClassHierarchy>.  Each entry is surrounded by its type, such as <CHParent>, and the
+    generic <CHEntry>.  Depending on the context, entries may be surrounded by one or more <CHIndents>.
+
+    (start diagram)
+
+    <ClassHierarchy>
+
+        <CHIndent>?
+
+            <type (CHParent, CHCurrent, etc.)>
+                <CHEntry>
+
+                    Entry
+
+                </CHEntry>
+            </type (CHParent, CHCurrent, etc.)>
+
+        </CHIndent>?
+
+    </ClassHierarchy>
+
+    (end diagram)
+
+
+List: Class Hierarchy Styles
+
+    ClassHierarchy - The topmost style containing everything.
+
+    CHEntry - A generic class entry.
+
+    CHParent - The style for a parent class.
+    CHCurrent - The style for the current class, which is the one the hierarchy is generated for.
+    CHChild - The style for a child class.
+
+    CHIndent - A style used to indent a level.
 
 
 Topic: Summary Structure
@@ -582,6 +627,10 @@ List: Miscellaneous Styles
 Topic: Revisions
 
     How the page structure has changed throughout the various releases.
+
+    1.2:
+
+        - Added <Class Hierarchy Styles> since 1.2 added class hierarchies.
 
     1.16:
 
