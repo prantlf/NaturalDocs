@@ -12,7 +12,7 @@
 
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
- 
+
 
 use strict;
 use integer;
@@ -90,13 +90,13 @@ sub BuildFile #(sourceFile, parsedFile)
             . '<link rel="stylesheet" type="text/css" href="'
                 . $self->MakeRelativeURL($outputFile,
                                                       NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                'NaturalDocs.css' ) )
+                                                                                                'NaturalDocs.css' ), 1 )
                 . '">'
 
             . '<script language=JavaScript src="'
                 . $self->MakeRelativeURL($outputFile,
                                                       NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                  'NaturalDocs.js' ) )
+                                                                                                  'NaturalDocs.js' ), 1 )
                 . '"></script>'
 
         . '</head><body class=UnframedPage>'
@@ -111,7 +111,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<td class=MenuSection valign=top>'
 
-                . $self->BuildMenu($outputFile, undef)
+                . $self->BuildMenu($sourceFile, undef, undef)
 
             . '</td>' . "\n\n"
 
@@ -172,13 +172,13 @@ sub BuildIndex #(type)
             . '<link rel="stylesheet" type="text/css" href="'
                 . $self->MakeRelativeURL($indexFile,
                                                       NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                'NaturalDocs.css' ) )
+                                                                                                'NaturalDocs.css' ), 1 )
                 . '">'
 
             . '<script language=JavaScript src="'
                 . $self->MakeRelativeURL($indexFile,
                                                       NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                                                                  'NaturalDocs.js' ) )
+                                                                                                  'NaturalDocs.js' ), 1 )
                 . '"></script>'
 
         . '</head><body class=UnframedPage>'
@@ -193,7 +193,7 @@ sub BuildIndex #(type)
 
             . '<td class=MenuSection valign=top>'
 
-                . $self->BuildMenu($indexFile, undef)
+                . $self->BuildMenu(undef, $type, undef)
 
             . '</td>'
 
@@ -269,7 +269,7 @@ sub UpdateMenu
         '<html><head>'
              . '<meta http-equiv="Refresh" CONTENT="0; URL='
                  . $self->MakeRelativeURL( NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'index.html'),
-                                                        $self->OutputFileOf($firstMenuEntry->Target()) ) . '">'
+                                                        $self->OutputFileOf($firstMenuEntry->Target()), 1 ) . '">'
         . '</head></html>';
 
         close INDEXFILEHANDLE;
@@ -313,7 +313,7 @@ sub UpdateFile #(sourceFile)
 
         $content =~ s{<title>[^<]*<\/title>}{'<title>' . $self->BuildTitle($sourceFile) . '</title>'}e;
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($outputFile, undef)/es;
+        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($sourceFile, undef, undef)/es;
 
         $content =~ s/<!--START_ND_FOOTER-->.*?<!--END_ND_FOOTER-->/$self->BuildFooter()/e;
 
@@ -343,7 +343,7 @@ sub UpdateIndex #(type)
 
     my $outputFile = $self->IndexFileOf($type, $page);
 
-    my $newMenu = $self->BuildMenu($outputFile, undef);
+    my $newMenu = $self->BuildMenu(undef, $type, undef);
     my $newFooter = $self->BuildFooter();
 
     while (-e $outputFile)
