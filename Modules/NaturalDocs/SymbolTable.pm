@@ -572,6 +572,7 @@ sub AddSymbol #(symbol, file, type, prototype, summary)
         $symbols{$symbol} = $newSymbol;
 
         $self->OnIndexChange($type);
+        NaturalDocs::Project->RebuildFile($file);
         }
 
 
@@ -603,6 +604,7 @@ sub AddSymbol #(symbol, file, type, prototype, summary)
                 };
 
             $self->OnIndexChange($type);
+            NaturalDocs::Project->RebuildFile($file);
             }
 
         # If the symbol is defined but not in this file...
@@ -611,13 +613,9 @@ sub AddSymbol #(symbol, file, type, prototype, summary)
             $symbolObject->AddDefinition($file, $type, $prototype, $summary);
 
             $self->OnIndexChange($type);
+            NaturalDocs::Project->RebuildFile($file);
 
-            # There's only one potential issue here, which is if this definition is new and the file references this symbol.  The file would
-            # need to be rebuilt because its own definition takes precedence over the global one.  However, the only way for a file
-            # to be adding symbols in the first place is if it is being parsed and has content, in which case it's going to be rebuilt
-            # anyway, so we don't have to detect this condition.
-
-            # We don't have to check other files, by the way, because if the symbol is defined it already has a global definiton,
+            # We don't have to check other files because if the symbol is defined it already has a global definiton,
             # and everything else is either using that or its own definition, and thus wouldn't be affected by this.
             };
 
@@ -764,6 +762,8 @@ sub AnalyzeChanges
 
         # Go through the symbols.
 
+        my $rebuildFile;
+
         my @symbols = $files{$watchedFileName}->Symbols();
         foreach my $symbol (@symbols)
             {
@@ -772,6 +772,7 @@ sub AnalyzeChanges
             if (!$watchedFile->DefinesSymbol($symbol))
                 {
                 $self->DeleteSymbol($symbol, $watchedFileName);
+                $rebuildFile = 1;
                 }
 
             else
@@ -787,6 +788,7 @@ sub AnalyzeChanges
                     {
                     $self->OnIndexChange($symbolObject->TypeDefinedIn($watchedFileName));
                     $self->OnIndexChange($newSymbolDef->Type());
+                    $rebuildFile = 1;
 
                     $symbolObject->ChangeDefinition($watchedFileName, $newSymbolDef->Type(), $newSymbolDef->Prototype(),
                                                                        $newSymbolDef->Summary());
@@ -807,6 +809,9 @@ sub AnalyzeChanges
                     }; # If the symbol definition changed
                 }; # If the symbol still exists
             }; # foreach symbol in watched file
+
+        if ($rebuildFile)
+            {  NaturalDocs::Project->RebuildFile($watchedFileName);  };
 
         };
 
