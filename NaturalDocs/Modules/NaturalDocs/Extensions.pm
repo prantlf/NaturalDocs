@@ -197,7 +197,7 @@ sub ParseCommandLineOptions #(options)
 #
 #   Parameters:
 #
-#       file - The source file.
+#       file - The source <FileName>.
 #       parsedFile - The arrayref of <NaturalDocs::Parser::ParsedTopic> objects.
 #
 sub AfterFileParsed #(file, parsedFile)
