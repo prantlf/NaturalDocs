@@ -267,20 +267,6 @@ p {
         border-width: 0 0 3px 0; border-color: #000000; border-style: solid;
         margin: -15px -15px 0 -15px }
 
-    .ISubIndex {
-        padding-left: 3ex; padding-bottom: .5em }
-
-    .IHeading {
-        font-weight: bold; font-size: 20pt;
-        padding-top: 1.5em; padding-bottom: .5em;
-        }
-
-    /*  While it may cause some entries to look like links when they aren't, I found it's much easier to read the
-         index if everything's the same color.  */
-    .ISymbol {
-        font-weight: bold; color: #900000;
-        }
-
     .INavigationBar {
         text-align: center;
         background-color: #FFFFF0;
@@ -290,6 +276,25 @@ p {
 
     .INavigationBar a {
         font-weight: bold }
+
+    .ISection {
+        margin-bottom: 2.5em;
+        }
+
+    .IHeading {
+        font-weight: bold; font-size: 20pt;
+        margin-bottom: .5em;
+        }
+
+    .ISubIndex {
+        padding-left: 3ex; padding-bottom: .5em }
+
+    /*  While it may cause some entries to look like links when they aren't, I found it's much easier to read the
+         index if everything's the same color.  */
+    .ISymbol {
+        font-weight: bold; color: #900000;
+        }
+
 
 
 
