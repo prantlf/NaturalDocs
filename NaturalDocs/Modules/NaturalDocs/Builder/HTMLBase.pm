@@ -468,6 +468,9 @@ sub BuildMenuSegment #(outputFile, menuSegment, hasSelectionRef)
                         . $self->StringToHTML( $entry->Title() )
                     . '</div>'
                 . '</div>';
+
+                if ($hasSelectionRef)
+                    {  $$hasSelectionRef = 1;  };
                 }
             else
                 {
