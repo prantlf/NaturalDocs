@@ -386,6 +386,7 @@ sub Parse
         {  ExtractComments($fileContent);  };
     };
 
+
 #
 #   Function: ExtractComments
 #
@@ -405,8 +406,9 @@ sub ExtractComments #(content)
 
     if (defined $language->StartComment())
         {
-        my $startIndex;
+        my $startIndex = 0;
         my $endIndex = 0;
+        my $symbolLength;
         my $prototypeStart;
         my $functionPrototype;
         my $variablePrototype;
@@ -414,7 +416,7 @@ sub ExtractComments #(content)
         do
             {
             # Find the next multi-line comment.
-            $startIndex = index($content, $language->StartComment(), $startIndex);
+            ($startIndex, $symbolLength) = $language->NextStartComment(\$content, $startIndex);
 
             if ($startIndex == -1)
                 {
@@ -431,9 +433,9 @@ sub ExtractComments #(content)
                 ExtractLineComments(substr($content, $endIndex, $startIndex - $endIndex));
 
                 # Find the start and end of the comment, not including the symbols.
-                $startIndex += length($language->StartComment());
+                $startIndex += $symbolLength;
 
-                $endIndex = index($content, $language->EndComment(), $startIndex);
+                ($endIndex, $symbolLength) = $language->NextEndComment(\$content, $startIndex);
                 if ($endIndex == -1)
                     {  $endIndex = $length - $startIndex;  };
 
@@ -441,7 +443,7 @@ sub ExtractComments #(content)
                 if (defined $language->FunctionEnders() || defined $language->VariableEnders())
                     {
                     # Put the start of the potential prototype past all completely blank lines.
-                    $prototypeStart = $endIndex + length($language->EndComment());
+                    $prototypeStart = $endIndex + $symbolLength;
 
                     while ($prototypeStart < length($content))
                         {
@@ -481,7 +483,7 @@ sub ExtractComments #(content)
 
                 CleanComment(substr($content, $startIndex, $endIndex - $startIndex), $functionPrototype, $variablePrototype);
 
-                $endIndex += length($language->EndComment());
+                $endIndex += $symbolLength;
                 $functionPrototype = undef;
                 $variablePrototype = undef;
                 };
@@ -538,27 +540,37 @@ sub ExtractLineComments #(content)
 
         while (defined $line)
             {
-            $line =~ s/^\s+//;
+            $line =~ s/^[ \t]+//;
             $line .= "\n";
 
+            my $lineComment;
+            foreach my $commentSymbol (@{$language->LineComment()})
+                {
+                if ( substr($line, 0, length($commentSymbol)) eq $commentSymbol)
+                    {
+                    $lineComment = substr($line, length($commentSymbol));
+                    last;
+                    };
+                };
+
             # If the line begins with the comment symbol...
-            if ( substr($line, 0, length($language->LineComment())) eq $language->LineComment())
+            if (defined $lineComment)
                 {
                 if ($state == FIND_COMMENT)
                     {
-                    $comment = substr($line, length($language->LineComment()));
+                    $comment = $lineComment;
                     $state = GET_COMMENT;
                     }
                 elsif ($state == GET_COMMENT)
                     {
-                    $comment .= substr($line, length($language->LineComment()));
+                    $comment .= $lineComment;
                     }
                 else # ($state == FIND/GET_PROTOTYPE)
                     {
                     CleanComment($comment, $functionPrototype, $variablePrototype);
                     $functionPrototype = undef;
                     $variablePrototype = undef;
-                    $comment = substr($line, length($language->LineComment()));
+                    $comment = $lineComment;
                     $state = GET_COMMENT;
                     }
                 }
