@@ -43,12 +43,14 @@ _______________________________________________________________________________
     SQL:
 
         > FunctionName ( identifier type, identifier modifier type, identifier type := value )
-        > FunctionName @identifier type, @dentifier modifier type, @identifier type := value
 
         Parameters separated by commas.  Identifiers come before the types and are separated by a space.  Default values are
         specified with colon-equals.
 
-        Microsoft's SQL doesn't need the parenthesis if the identifiers start with at signs.
+        > FunctionName @identifier type, @dentifier modifier type, @identifier type = value
+
+        Microsoft's SQL uses equals instead of colon-equals, doesn't need parenthesis, and starts its parameter names with an @
+        symbol.
 
 
     Visual Basic:
@@ -71,24 +73,24 @@ _______________________________________________________________________________
     Topic: Syntax References
     ___________________________________________________________________________
 
-    - C++ BNF at http://www.csci.csusb.edu/dick/c++std/syntax.html.
+    C++ - http://www.csci.csusb.edu/dick/c++std/syntax.html
 
-    - C# language specification at
-       http://msdn.microsoft.com/library/default.asp?url=/library/en-us/csspec/html/CSharpSpecStart.asp.  Open in IE.
+    C# - http://msdn.microsoft.com/library/default.asp?url=/library/en-us/csspec/html/CSharpSpecStart.asp.  Open in IE.
 
-    - Java, SQL, Ada, others BNF at http://cui.unige.ch/db-research/Enseignement/analyseinfo/.
+    Java - http://cui.unige.ch/db-research/Enseignement/analyseinfo/
+    Ada - http://cui.unige.ch/db-research/Enseignement/analyseinfo/
 
-    - Another PL/SQL reference at http://www.cs.umb.edu/cs634/ora9idocs/appdev.920/a96624/13_elems.htm.
+    SQL - http://cui.unige.ch/db-research/Enseignement/analyseinfo/ or
+             http://www.cs.umb.edu/cs634/ora9idocs/appdev.920/a96624/13_elems.htm.
 
-    - JavaScript reference at http://academ.hvcc.edu/~kantopet/javascript/index.php.
+    JavaScript - http://academ.hvcc.edu/~kantopet/javascript/index.php
 
-    - Python language reference at http://www.python.org/doc/2.3.4/ref/ref.html.
+    Python - http://www.python.org/doc/2.3.4/ref/ref.html
 
-    - PHP language reference at http://www.php.net/manual/en/langref.php.
+    PHP - http://www.php.net/manual/en/langref.php
 
-    - Visual Basic language specification at
-      http://msdn.microsoft.com/library/default.asp?url=/library/en-us/vbls7/html/vbspecstart.asp.  Open in IE.
+    Visual Basic - http://msdn.microsoft.com/library/default.asp?url=/library/en-us/vbls7/html/vbspecstart.asp.  Open in IE.
 
-    - Pascal BNF at http://pages.cpsc.ucalgary.ca/~becker/231/SyntaxDiagrams/pascal-syntax_files/frame.htm.  Open in IE.
+    Pascal - http://pages.cpsc.ucalgary.ca/~becker/231/SyntaxDiagrams/pascal-syntax_files/frame.htm.  Open in IE.
 
-    - Ruby reference at http://www.rubycentral.com/book/.
+    Ruby - http://www.rubycentral.com/book/
