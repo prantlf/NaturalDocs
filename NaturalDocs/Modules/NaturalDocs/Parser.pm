@@ -285,7 +285,7 @@ sub Parse
     NaturalDocs::Parser::Native->Start();
     @parsedFile = ( );
 
-    my ($autoTopics, $scopeRecord) = $language->ParseFile($sourceFile, \@parsedFile);
+    my ($autoTopics, $scopeRecord, $exportedSymbols) = $language->ParseFile($sourceFile, \@parsedFile);
 
 
     # Set the menu title.
@@ -341,11 +341,14 @@ sub Parse
         $self->MergeAutoTopics($language, $autoTopics);
         };
 
-    $self->MakeAutoGroups($autoTopics);
-
     # We don't need to do this if there aren't any auto-topics because the only package changes would be implied by the comments.
     if (defined $autoTopics)
         {  $self->AddPackageDelineators();  };
+
+    if (defined $exportedSymbols)
+        {  $self->MatchExportedSymbols($exportedSymbols);  };
+
+    $self->MakeAutoGroups($autoTopics);
 
     return $defaultMenuTitle;
     };
@@ -858,6 +861,47 @@ sub AddToClassHierarchy
                 {
                 $self->OnClass( NaturalDocs::SymbolString->FromText($1) );
                 };
+            };
+        };
+    };
+
+
+#
+#   Function: MatchExportedSymbols
+#
+#   Determines which topics should be exported and sets <NaturalDocs::Parser::ParsedTopic->SetIsExported()> on them.
+#
+#   Parameters:
+#
+#       exportedSymbols - An existence hashref of exported symbols.  *The original memory will be changed.*
+#
+sub MatchExportedSymbols #(exportedSymbols)
+    {
+    my ($self, $exportedSymbols) = @_;
+
+    foreach my $topic (@parsedFile)
+        {
+        if (NaturalDocs::Topics->IsList( $topic->Type() ))
+            {
+            # The regexp doesn't work directly on a function call.  It must be a variable.
+            my $body = $topic->Body();
+
+            while ($body =~ /<ds>([^<]+)<\/ds>/g)
+                {
+                my $listSymbol = NaturalDocs::NDMarkup->RestoreAmpChars($1);
+
+                if (exists $exportedSymbols->{$listSymbol})
+                    {
+                    delete $exportedSymbols->{$listSymbol};
+                    $topic->SetIsExported(1);
+                    $topic->AddExportedListSymbol($listSymbol);
+                    };
+                };
+            }
+        elsif (exists $exportedSymbols->{ $topic->Title() })
+            {
+            delete $exportedSymbols->{ $topic->Title() };
+            $topic->SetIsExported(1);
             };
         };
     };

@@ -89,10 +89,11 @@ sub PackageSeparator
 #
 #   Returns:
 #
-#       The array ( autoTopics, scopeRecord ).
+#       The array ( autoTopics, scopeRecord, exportedSymbols ).
 #
 #       autoTopics - An arrayref of automatically generated <NaturalDocs::Parser::ParsedTopics> from the file, or undef if none.
 #       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>, or undef if none.
+#       exportedSymbols - An existence hashref of all the exported symbols, or undef for none.
 #
 
 
