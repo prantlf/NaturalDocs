@@ -54,6 +54,55 @@ my %shebangs;
 # Group: Functions
 
 
+
+#
+#   Function: Add
+#
+#   Adds a language to the package.
+#
+#   Parameters:
+#
+#       name                      - The name of the language.
+#       extensions              - An arrayref of the extensions of the language's files.
+#       shebangStrings       - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
+#                                       has a .cgi extension or no extension at all.  Undef if not applicable.
+#       lineComment          - The symbol that starts a single line comment.  Undef if none.
+#       startComment         - The symbol that starts a multi-line comment.  Undef if none.
+#       endComment          - The symbol that ends a multi-line comment.  Undef if none.
+#       functionEnders         - An arrayref of symbols that end a function prototype.  Include "\n" if necessary.  Undef if the language
+#                                       doesn't have functions.
+#       variableEnders        - An arrayref of symbols that end a variable declaration.  Include "\n" if necessary.  Undef if the
+#                                       doesn't have variables.
+#
+#       Note that if neither of the comment styles are specified, it is assumed that the entire file should be treated as a comment.
+#
+sub Add #(name, extensions, shebangStrings, lineComment, startComment, endComment, functionEnders, variableEnders)
+    {
+    my $name = shift;
+    my $languageExtensions = shift;
+    my $languageShebangStrings = shift;
+
+    # This depends on New() having the same parameter order as this function after the first three parameters.
+    my $language = NaturalDocs::Languages::Language::New(@_);
+
+    my $languageIndex = scalar @languages;
+    push @languages, $language;
+
+    foreach my $extension (@$languageExtensions)
+        {
+        $extensions{ lc($extension) } = $languageIndex;
+        };
+
+    if (defined $languageShebangStrings)
+        {
+        foreach my $shebangString (@$languageShebangStrings)
+            {
+            $shebangs{ lc($shebangString) } = $languageIndex;
+            };
+        };
+    };
+
+
 #
 #   Function: LanguageOf
 #
@@ -167,55 +216,5 @@ sub SeparateMember #(string)
         {  return $string;  };
     };
 
-
-###############################################################################
-# Group: Support Functions
-
-#
-#   Function: Add
-#
-#   Adds a language to the package.
-#
-#   Parameters:
-#
-#       name                      - The name of the language.
-#       extensions              - An arrayref of the extensions of the language's files.
-#       shebangStrings       - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
-#                                       has a .cgi extension or no extension at all.  Undef if not applicable.
-#       lineComment          - The symbol that starts a single line comment.  Undef if none.
-#       startComment         - The symbol that starts a multi-line comment.  Undef if none.
-#       endComment          - The symbol that ends a multi-line comment.  Undef if none.
-#       functionEnders         - An arrayref of symbols that end a function prototype.  Include "\n" if necessary.  Undef if the language
-#                                       doesn't have functions.
-#       variableEnders        - An arrayref of symbols that end a variable declaration.  Include "\n" if necessary.  Undef if the
-#                                       doesn't have variables.
-#
-#       Note that if neither of the comment styles are specified, it is assumed that the entire file should be treated as a comment.
-#
-sub Add #(name, extensions, shebangStrings, lineComment, startComment, endComment, functionEnders, variableEnders)
-    {
-    my $name = shift;
-    my $languageExtensions = shift;
-    my $languageShebangStrings = shift;
-
-    # This depends on New() having the same parameter order as this function after the first three parameters.
-    my $language = NaturalDocs::Languages::Language::New(@_);
-
-    my $languageIndex = scalar @languages;
-    push @languages, $language;
-
-    foreach my $extension (@$languageExtensions)
-        {
-        $extensions{ lc($extension) } = $languageIndex;
-        };
-
-    if (defined $languageShebangStrings)
-        {
-        foreach my $shebangString (@$languageShebangStrings)
-            {
-            $shebangs{ lc($shebangString) } = $languageIndex;
-            };
-        };
-    };
 
 1;
