@@ -1989,6 +1989,7 @@ sub NDMarkupToHTML #(sourceFile, text, scope)
             # Format non-code text.
 
             # Convert quotes to fancy quotes.
+            # DEPENDENCY: BuildLink needs to be able to undo these.
             $text =~ s/^\'/&lsquo;/gm;
             $text =~ s/([\ \(\[\{])\'/$1&lsquo;/g;
             $text =~ s/\'/&rsquo;/g;
@@ -2066,8 +2067,13 @@ sub BuildLink #(scope, text, sourceFile)
     {
     my ($self, $scope, $text, $sourceFile) = @_;
 
-    my $target = NaturalDocs::SymbolTable::References($scope, NaturalDocs::NDMarkup::RestoreAmpChars($text),
-                                                                                  $sourceFile);
+    my $restoredText = NaturalDocs::NDMarkup::RestoreAmpChars($text);
+
+    # DEPENDENCY: This is undoing the fancy quotes from NDMarkupToHTML.
+    $restoredText =~ s/&(?:[lr]dquo|quot);/\"/g;
+    $restoredText =~ s/&[lr]squo;/\'/g;
+
+    my $target = NaturalDocs::SymbolTable::References($scope, $restoredText, $sourceFile);
 
     if (defined $target)
         {
