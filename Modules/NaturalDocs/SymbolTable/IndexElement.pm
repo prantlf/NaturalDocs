@@ -11,6 +11,8 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
+use Tie::RefHash;
+
 use strict;
 use integer;
 
@@ -89,6 +91,31 @@ package NaturalDocs::SymbolTable::IndexElement;
 #   it has multiple package, you do want the subindex and to link to each one individually.  Use <HasMultiplePackages()> and
 #   <HasMultipleFiles()> to determine whether you need to add a subindex for it.
 #
+#
+#   Combining Properties:
+#
+#   All IndexElements also have combining properties set.
+#
+#   CombinedType - The general <TopicType> of the entry.  Conflicts combine into <TOPIC_GENERAL>.
+#   PackageSeparator - The package separator symbol of the entry.  Conflicts combine into a dot.
+#
+#   So if an IndexElement only has one definition, <CombinedType()> is the same as the <TopicType> and <PackageSeparator()>
+#   is that of the definition's language.  If other definitions are added and they have the same properties, the combined properties
+#   will remain the same.  However, if they're different, they switch values as noted above.
+#
+#
+#   Sortable Symbol:
+#
+#   <SortableSymbol()> is a pseudo-combining property.  There were a few options for dealing with multiple languages defining
+#   the same symbol but stripping different prefixes off it, but ultimately I decided to go with whatever the language does that
+#   has the most definitions.  There's not likely to be many conflicts here in the real world; probably the only thing would be
+#   defining it in a text file and forgetting to specify the prefixes to strip there too.  So this works.
+#
+#   Ties are broken pretty much randomly, except that text files always lose if its one of the options.
+#
+#   It's a pseudo-combining property because it's done after the IndexElements are all filled in and only stored in the top-level
+#   ones.
+#
 
 
 ###############################################################################
@@ -99,22 +126,30 @@ package NaturalDocs::SymbolTable::IndexElement;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are its members.
 #
-#   SYMBOL  - The <SymbolString> without the package portion.
-#   PACKAGE  - The package <SymbolString>.  Will be a package <SymbolString>, undef for global, or an arrayref of
-#                      <NaturalDocs::SymbolTable::IndexElement> objects if multiple packages define the symbol.
-#   FILE  - The <FileName> the package/symbol is defined in.  Will be the file name or an arrayref of
-#             <NaturalDocs::SymbolTable::IndexElements> if multiple files define the package/symbol.
-#   TYPE  - The package/symbol/file <TopicType>.
-#   PROTOTYPE  - The package/symbol/file prototype, or undef if not applicable.
-#   SUMMARY     - The package/symbol/file summary, or undef if not applicable.
+#   SYMBOL - The <SymbolString> without the package portion.
+#   PACKAGE - The package <SymbolString>.  Will be a package <SymbolString>, undef for global, or an arrayref of
+#                    <NaturalDocs::SymbolTable::IndexElement> objects if multiple packages define the symbol.
+#   FILE - The <FileName> the package/symbol is defined in.  Will be the file name or an arrayref of
+#            <NaturalDocs::SymbolTable::IndexElements> if multiple files define the package/symbol.
+#   TYPE - The package/symbol/file <TopicType>.
+#   PROTOTYPE - The package/symbol/file prototype, or undef if not applicable.
+#   SUMMARY - The package/symbol/file summary, or undef if not applicable.
+#   COMBINED_TYPE - The combined <TopicType> of the element.
+#   PACKAGE_SEPARATOR - The combined package separator symbol of the element.
+#   SORTABLE_SYMBOL - The sortable symbol as a text string.
+#   STRIPPED_PREFIX - The part of the symbol that was stripped off to make the sortable symbol.
 #
-use constant SYMBOL => 0;
-use constant PACKAGE => 1;
-use constant FILE => 2;
-use constant TYPE => 3;
-use constant PROTOTYPE => 4;
-use constant SUMMARY => 5;
-# DEPENDENCY: New() depends on the order of these constants.
+use NaturalDocs::DefineMembers 'SYMBOL', 'Symbol()',
+                                                 'PACKAGE', 'Package()',
+                                                 'FILE', 'File()',
+                                                 'TYPE', 'Type()',
+                                                 'PROTOTYPE', 'Prototype()',
+                                                 'SUMMARY', 'Summary()',
+                                                 'COMBINED_TYPE', 'CombinedType()',
+                                                 'PACKAGE_SEPARATOR', 'PackageSeparator()',
+                                                 'SORTABLE_SYMBOL', 'SortableSymbol()',
+                                                 'STRIPPED_PREFIX', 'StrippedPrefix()';
+# DEPENDENCY: New() depends on the order of these constants and that there is no inheritance..
 
 
 ###############################################################################
@@ -137,7 +172,14 @@ use constant SUMMARY => 5;
 #       prototype  - The symbol's prototype, if applicable.
 #       summary  - The symbol's summary, if applicable.
 #
-sub New #(symbol, package, file, type, prototype, summary)
+#   Optional Parameters:
+#
+#       These parameters don't need to be specified.  You should ignore them when calling this externally.
+#
+#       combinedType - The symbol's combined <TopicType>.
+#       packageSeparator - The symbol's combined package separator symbol.
+#
+sub New #(symbol, package, file, type, prototype, summary, combinedType, packageSeparator)
     {
     # DEPENDENCY: This depends on the parameter list being in the same order as the constants.
 
@@ -145,6 +187,19 @@ sub New #(symbol, package, file, type, prototype, summary)
 
     my $object = [ @_ ];
     bless $object, $self;
+
+    if (!defined $object->[COMBINED_TYPE])
+        {  $object->[COMBINED_TYPE] = $object->[TYPE];  };
+
+    if (!defined $object->[PACKAGE_SEPARATOR])
+        {
+        if ($object->[TYPE] eq ::TOPIC_FILE())
+            {  $object->[PACKAGE_SEPARATOR] = '.';  }
+        else
+            {
+            $object->[PACKAGE_SEPARATOR] = NaturalDocs::Languages->LanguageOf($object->[FILE])->PackageSeparator();
+            };
+        };
 
     return $object;
     };
@@ -181,7 +236,8 @@ sub Merge #(package, file, type, prototype, summary)
             {
             my $selfDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $self->Package(), $self->File(),
                                                                                                                  $self->Type(), $self->Prototype(),
-                                                                                                                 $self->Summary());
+                                                                                                                 $self->Summary(), $self->CombinedType(),
+                                                                                                                 $self->PackageSeparator());
             my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $package, $file, $type, $prototype,
                                                                                                                   $summary);
 
@@ -190,6 +246,11 @@ sub Merge #(package, file, type, prototype, summary)
             $self->[TYPE] = undef;
             $self->[PROTOTYPE] = undef;
             $self->[SUMMARY] = undef;
+
+            if ($newDefinition->Type() ne $self->CombinedType())
+                {  $self->[COMBINED_TYPE] = ::TOPIC_GENERAL();  };
+            if ($newDefinition->PackageSeparator() ne $self->PackageSeparator())
+                {  $self->[PACKAGE_SEPARATOR] = '.';  };
             };
         }
 
@@ -209,8 +270,14 @@ sub Merge #(package, file, type, prototype, summary)
                 };
             };
 
-        push @{$self->[PACKAGE]},
-                NaturalDocs::SymbolTable::IndexElement->New(undef, $package, $file, $type, $prototype, $summary);
+        my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, $package, $file, $type, $prototype,
+                                                                                                              $summary);
+        push @{$self->[PACKAGE]}, $newDefinition;
+
+        if ($newDefinition->Type() ne $self->CombinedType())
+            {  $self->[COMBINED_TYPE] = ::TOPIC_GENERAL();  };
+        if ($newDefinition->PackageSeparator() ne $self->PackageSeparator())
+            {  $self->[PACKAGE_SEPARATOR] = '.';  };
         };
     };
 
@@ -242,53 +309,141 @@ sub Sort
     };
 
 
+#
+#   Function: MakeSortableSymbol
+#
+#   Generates <SortableSymbol()> and <StrippedPrefix()>.  Should only be called after everything is merged.
+#
+sub MakeSortableSymbol
+    {
+    my $self = shift;
+
+    my $finalLanguage;
+
+    if ($self->HasMultiplePackages() || $self->HasMultipleFiles())
+        {
+        # Collect all the files that define this symbol.
+
+        my @files;
+
+        if ($self->HasMultipleFiles())
+            {
+            my $fileElements = $self->File();
+
+            foreach my $fileElement (@$fileElements)
+                {  push @files, $fileElement->File();  };
+            }
+        else # HasMultiplePackages
+            {
+            my $packages = $self->Package();
+
+            foreach my $package (@$packages)
+                {
+                if ($package->HasMultipleFiles())
+                    {
+                    my $fileElements = $package->File();
+
+                    foreach my $fileElement (@$fileElements)
+                        {  push @files, $fileElement->File();  };
+                    }
+                else
+                    {  push @files, $package->File();  };
+                };
+            };
+
+
+        # Determine which language defines it the most.
+
+        # Keys are language objects, values are counts.
+        my %languages;
+        tie %languages, 'Tie::RefHash';
+
+        foreach my $file (@files)
+            {
+            my $language = NaturalDocs::Languages->LanguageOf($file);
+
+            if (exists $languages{$language})
+                {  $languages{$language}++;  }
+            else
+                {  $languages{$language} = 1;  };
+            };
+
+        my $topCount = 0;
+        my @topLanguages;
+
+        while (my ($language, $count) = each %languages)
+            {
+            if ($count > $topCount)
+                {
+                $topCount = $count;
+                @topLanguages = ( $language );
+                }
+            elsif ($count == $topCount)
+                {
+                push @topLanguages, $language;
+                };
+            };
+
+        if (scalar @topLanguages == 1)
+            {  $finalLanguage = $topLanguages[0];  }
+        else
+            {
+            if ($topLanguages[0]->Name() ne 'Text File')
+                {  $finalLanguage = $topLanguages[0];  }
+            else
+                {  $finalLanguage = $topLanguages[1];  };
+            };
+        }
+
+    else # !hasMultiplePackages && !hasMultipleFiles
+        {  $finalLanguage = NaturalDocs::Languages->LanguageOf($self->File());  };
+
+    my $textSymbol = NaturalDocs::SymbolString->ToText($self->Symbol(), $self->PackageSeparator());
+    my $sortableSymbol = $finalLanguage->MakeSortableSymbol($textSymbol, $self->CombinedType());
+
+    $self->[SORTABLE_SYMBOL] = $sortableSymbol;
+
+    if (length $textSymbol > length $sortableSymbol &&
+        substr($textSymbol, 0 - length $sortableSymbol) eq $sortableSymbol)
+        {
+        $self->[STRIPPED_PREFIX] = substr($textSymbol, 0, 0 - length $sortableSymbol);
+        };
+    };
+
+
+
 ###############################################################################
-# Group: Information Functions
-
-
-#   Function: Symbol
-#   Returns the <SymbolString> without the package portion.
-sub Symbol
-    {  return $_[0]->[SYMBOL];  };
-
 #
-#   Function: Package
-#   If <HasMultiplePackages()> is true, returns an arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.  Otherwise
-#   returns the package <SymbolString>, or undef if global.
+#   Functions: Information Functions
 #
-sub Package
-    {  return $_[0]->[PACKAGE];  };
+#   Symbol - Returns the <SymbolString> without the package portion.
+#   Package - If <HasMultiplePackages()> is true, returns an arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.
+#                  Otherwise returns the package <SymbolString>, or undef if global.
+#   File - If <HasMultipleFiles()> is true, returns an arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.  Otherwise
+#           returns the name of the definition file.
+#   Type - Returns the <TopicType> of the package/symbol/file, if applicable.
+#   Prototype - Returns the prototype of the package/symbol/file, if applicable.
+#   Summary - Returns the summary of the package/symbol/file, if applicable.
+#   CombinedType - Returns the combined <TopicType> of the element.
+#   PackageSeparator - Returns the combined package separator symbol of the element.
+#   SortableSymbol - Returns the sortable symbol as a text string.  Only available after calling <MakeSortableSymbol()>.
+#   StrippedPrefix - Returns the part of the symbol that was stripped off to make the <SortableSymbol()>, or undef if none.
+#                           Only available after calling <MakeSortableSymbol()>.
+#
 
 #   Function: HasMultiplePackages
 #   Returns whether <Packages()> is broken out into more elements.
 sub HasMultiplePackages
     {  return ref($_[0]->[PACKAGE]);  };
 
-#   Function: File
-#   If <HasMultipleFiles()> is true, returns an arrayref of <NaturalDocs::SymbolTable::IndexElement> objects.  Otherwise returns
-#   the name of the definition file.
-sub File
-    {  return $_[0]->[FILE];  };
-
 #   Function: HasMultipleFiles
 #   Returns whether <File()> is broken out into more elements.
 sub HasMultipleFiles
     {  return ref($_[0]->[FILE]);  };
 
-#   Function: Type
-#   Returns the <TopicType> of the package/symbol/file, if applicable.
-sub Type
-    {  return $_[0]->[TYPE];  };
 
-#   Function: Prototype
-#   Returns the prototype of the package/symbol/file, if applicable.
-sub Prototype
-    {  return $_[0]->[PROTOTYPE];  };
 
-#   Function: Summary
-#   Returns the summary of the package/symbol/file, if applicable.
-sub Summary
-    {  return $_[0]->[SUMMARY];  };
+
 
 
 ###############################################################################
@@ -317,13 +472,21 @@ sub MergeFile #(file, type, prototype, summary)
         if ($file ne $self->File())
             {
             my $selfDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $self->File(), $self->Type(),
-                                                                                                                $self->Prototype(), $self->Summary());
-            my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype, $summary);
+                                                                                                                 $self->Prototype(), $self->Summary(),
+                                                                                                                 $self->CombinedType(),
+                                                                                                                 $self->PackageSeparator());
+            my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype,
+                                                                                                                  $summary);
 
             $self->[FILE] = [ $selfDefinition, $newDefinition ];
             $self->[TYPE] = undef;
             $self->[PROTOTYPE] = undef;
             $self->[SUMMARY] = undef;
+
+            if ($newDefinition->Type() ne $self->CombinedType())
+                {  $self->[COMBINED_TYPE] = ::TOPIC_GENERAL();  };
+            if ($newDefinition->PackageSeparator() ne $self->PackageSeparator())
+                {  $self->[PACKAGE_SEPARATOR] = '.';  };
             }
 
         # If the file was the same, just ignore the duplicate in the index.
@@ -344,7 +507,14 @@ sub MergeFile #(file, type, prototype, summary)
                 };
             };
 
-        push @{$self->[FILE]}, NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype, $summary);
+        my $newDefinition = NaturalDocs::SymbolTable::IndexElement->New(undef, undef, $file, $type, $prototype,
+                                                                                                              $summary);
+        push @{$self->[FILE]}, $newDefinition;
+
+        if ($newDefinition->Type() ne $self->CombinedType())
+            {  $self->[COMBINED_TYPE] = ::TOPIC_GENERAL();  };
+        if ($newDefinition->PackageSeparator() ne $self->PackageSeparator())
+            {  $self->[PACKAGE_SEPARATOR] = '.';  };
         };
     };
 
