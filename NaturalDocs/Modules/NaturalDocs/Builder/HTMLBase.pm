@@ -257,9 +257,26 @@ sub PurgeIndexes #(indexes)
 
 
 #
+#   Function: BeginBuild
+#
+#   Creates the necessary subdirectories in the output directory.
+#
+sub BeginBuild #(hasChanged)
+    {
+    my ($self, $hasChanged) = @_;
+
+    foreach my $directory ( $self->JavaScriptDirectory(), $self->CSSDirectory(), $self->IndexDirectory() )
+        {
+        if (!-d $directory)
+            {  NaturalDocs::File->CreatePath($directory);  };
+        };
+    };
+
+
+#
 #   Function: EndBuild
 #
-#   Checks that the project's CSS file is the same as the master CSS file, unless -s Custom is specified.
+#   Synchronizes the projects CSS and JavaScript files.
 #
 sub EndBuild #(hasChanged)
     {
@@ -271,8 +288,8 @@ sub EndBuild #(hasChanged)
     my $styles = NaturalDocs::Settings->Styles();
     my $changed;
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
-    my $mainCSSFile = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs.css');
+    my $cssDirectory = $self->CSSDirectory();
+    my $mainCSSFile = $self->MainCSSFile();
 
     for (my $i = 0; $i < scalar @$styles; $i++)
         {
@@ -281,7 +298,7 @@ sub EndBuild #(hasChanged)
         if (scalar @$styles == 1)
             {  $outputCSSFile = $mainCSSFile;  }
         else
-            {  $outputCSSFile = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs' . ($i + 1) . '.css');  };
+            {  $outputCSSFile = NaturalDocs::File->JoinPaths($cssDirectory, ($i + 1) . '.css');  };
 
 
         my $masterCSSFile = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), $styles->[$i] . '.css' );
@@ -306,7 +323,7 @@ sub EndBuild #(hasChanged)
             $changed = 1;
             };
         };
-        
+
 
     my $deleteFrom;
 
@@ -317,7 +334,7 @@ sub EndBuild #(hasChanged)
 
     for (;;)
         {
-        my $file = NaturalDocs::File->JoinPaths($outputDirectory, 'NaturalDocs' . $deleteFrom . '.css');
+        my $file = NaturalDocs::File->JoinPaths($cssDirectory, $deleteFrom . '.css');
 
         if (! -e $file)
             {  last;  };
@@ -337,7 +354,7 @@ sub EndBuild #(hasChanged)
 
             for (my $i = 0; $i < scalar @$styles; $i++)
                 {
-                print FH_CSS_FILE '@import URL("NaturalDocs' . ($i + 1) . '.css");' . "\n";
+                print FH_CSS_FILE '@import URL("' . ($i + 1) . '.css");' . "\n";
                 };
 
             close(FH_CSS_FILE);
@@ -349,7 +366,7 @@ sub EndBuild #(hasChanged)
     # Update the JavaScript file.
 
     my $jsMaster = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->JavaScriptDirectory(), 'NaturalDocs.js' );
-    my $jsOutput = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'NaturalDocs.js' );
+    my $jsOutput = $self->MainJavaScriptFile();
 
     # We check both the date and the size in case the user switches between two styles which just happen to have the same
     # date.  Should rarely happen, but it might.
@@ -1946,7 +1963,7 @@ sub BuildIndexNavigationBar #(type, page, locations)
 
 
 ###############################################################################
-# Group: Support Functions
+# Group: File Functions
 
 
 #
@@ -2024,6 +2041,18 @@ sub OutputFileOf #(sourceFile)
 
 
 #
+#   Function: IndexDirectory
+#
+#   Returns the directory of the index files.
+#
+sub IndexDirectory
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'index', 1);
+    };
+
+
+#
 #   function: IndexFileOf
 #
 #   Returns the output file name of the index file.
@@ -2036,9 +2065,7 @@ sub OutputFileOf #(sourceFile)
 sub IndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
-
-    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self),
-                                                        $self->RelativeIndexFileOf($type, $page) );
+    return NaturalDocs::File->JoinPaths( $self->IndexDirectory(), $self->RelativeIndexFileOf($type, $page) );
     };
 
 #
@@ -2054,10 +2081,63 @@ sub IndexFileOf #(type, page)
 sub RelativeIndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
-
-    return NaturalDocs::Topics->NameOfType($type, 0, 1) . 'Index'
-            . (defined $page && $page != 1 ? $page : '') . '.html';
+    return NaturalDocs::Topics->NameOfType($type, 1, 1) . (defined $page && $page != 1 ? $page : '') . '.html';
     };
+
+
+#
+#   function: CSSDirectory
+#
+#   Returns the directory of the CSS files.
+#
+sub CSSDirectory
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'styles', 1);
+    };
+
+
+#
+#   Function: MainCSSFile
+#
+#   Returns the location of the main CSS file.
+#
+sub MainCSSFile
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( $self->CSSDirectory(), 'main.css' );
+    };
+
+
+#
+#   function: JavaScriptDirectory
+#
+#   Returns the directory of the JavaScript files.
+#
+sub JavaScriptDirectory
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'javascript', 1);
+    };
+
+
+#
+#   Function: MainJavaScriptFile
+#
+#   Returns the location of the main JavaScript file.
+#
+sub MainJavaScriptFile
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'main.js' );
+    };
+
+
+
+
+###############################################################################
+# Group: Support Functions
+
 
 #
 #   function:IndexTitleOf
