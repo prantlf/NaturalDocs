@@ -1338,7 +1338,8 @@ sub GenerateSingularInterpretations #(symbol)
                                       'men', 'man',  # women => woman
                                       'ice', 'ouse',  # mice => mouse
                                       'oes', 'o',  # vetoes => veto
-                                      'ces', 'x' ],  # matrices => matrix
+                                      'ces', 'x',  # matrices => matrix
+                                      'xen', 'x' ],  # oxen => ox
 
                                     [ 'ices', 'ex',  # indices => index
                                       'feet', 'foot',  # feet => foot
