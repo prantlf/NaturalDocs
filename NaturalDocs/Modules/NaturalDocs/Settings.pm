@@ -647,7 +647,7 @@ sub PrintSyntax
     . "\n"
     . " -o [fmt] [dir]\n--output [fmt] [dir]\n"
     . "     Specifies the output format and directory.  Required.\n"
-    . "     Can be specified multiple times, but only once per output format.\n"
+    . "     Can be specified multiple times, but only once per directory.\n"
     . "     Possible output formats:\n";
 
     my $outputPackages = NaturalDocs::Builder::OutputPackages();
