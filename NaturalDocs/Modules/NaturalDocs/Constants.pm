@@ -134,11 +134,9 @@ use constant FILE_DOESNTEXIST => 4;
 #   Used to influence the method of resolving references in <NaturalDocs::SymbolTable>.
 #
 #       RESOLVE_RELATIVE - The reference text is truly relative, rather than Natural Docs' semi-relative.
-#       RESOLVE_ABSOLUTE - The reference text is always absolute.  No local, relative, or using references.  This implies
-#                                        <RESOLVE_NOUSING>.
+#       RESOLVE_ABSOLUTE - The reference text is always absolute.  No local or relative references.
 #       RESOLVE_NOPLURAL - The reference text may not be interpreted as a plural, and thus match singular forms as well.
-#       RESOLVE_NOUSING - The reference text may not include "using" statements when being resolved.  This is implied if
-#                                       <RESOLVE_ABSOLUTE> is specified.
+#       RESOLVE_NOUSING - The reference text may not include "using" statements when being resolved.
 #
 #       If neither <RESOLVE_RELATIVE> or <RESOLVE_ABSOLUTE> is specified, Natural Docs' semi-relative kicks in instead,
 #       which is where links are interpreted as local, then global, then relative.  <RESOLVE_RELATIVE> states that links are
