@@ -550,6 +550,8 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         elsif ($hasB)
             {  $prototype .= ' { ' . $bWord . ' }';  };
 
+        $prototype = $self->NormalizePrototype($prototype);
+
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_PROPERTY(), $name,
                                                                                                   $self->CurrentScope(), undef,
                                                                                                   $prototype,
@@ -570,9 +572,11 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         else
             {  $type = ::TOPIC_FUNCTION();  };
 
+        my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
                                                                                                   $self->CurrentScope(), undef,
-                                                                                                  $self->CreateString($startIndex, $index),
+                                                                                                  $prototype,
                                                                                                   undef, undef, $startLine));
 
         $self->SkipRestOfStatement(\$index, \$lineNumber);
@@ -583,9 +587,11 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 
     elsif ($isEvent && $tokens->[$index] eq ';')
         {
+        my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_PROPERTY(), $name,
                                                                                                   $self->CurrentScope(), undef,
-                                                                                                  $self->CreateString($startIndex, $index),
+                                                                                                  $prototype,
                                                                                                   undef, undef, $startLine));
         $index++;
         }
@@ -697,9 +703,11 @@ sub TryToGetOverloadedOperator #(indexRef, lineNumberRef)
     # This should skip the parenthesis completely.
     $self->GenericSkip(\$index, \$lineNumber);
 
+    my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+
     $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FUNCTION(), 'operator ' . $name,
                                                                                               $self->CurrentScope(), undef,
-                                                                                              $self->CreateString($startIndex, $index),
+                                                                                              $prototype,
                                                                                               undef, undef, $startLine));
 
     $self->SkipRestOfStatement(\$index, \$lineNumber);
@@ -815,9 +823,11 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
     foreach my $name (@names)
         {
+        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $name );
+
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
                                                                                                   $self->CurrentScope(), undef,
-                                                                                                  $prototypePrefix . ' ' . $name,
+                                                                                                  $prototype,
                                                                                                   undef, undef, $startLine));
         };
 

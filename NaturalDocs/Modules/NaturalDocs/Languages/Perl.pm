@@ -322,9 +322,11 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
                 {
                 # Found it!
 
+                my $prototype = $self->NormalizePrototype( $self->CreateString($prototypeStart, $prototypeEnd) );
+
                 $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FUNCTION(), $name,
                                                                                                           $self->CurrentScope(), undef,
-                                                                                                          $self->CreateString($prototypeStart, $prototypeEnd),
+                                                                                                          $prototype,
                                                                                                           undef, undef, $prototypeStartLine));
 
                 $$indexRef = $prototypeEnd;
@@ -459,9 +461,11 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
             foreach $name (@names)
                 {
+                my $prototype = $self->NormalizePrototype( $prototypePrefix . $name . $prototypeSuffix );
+
                 $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $name,
                                                                                                            $self->CurrentScope(), undef,
-                                                                                                           $prototypePrefix . $name . $prototypeSuffix,
+                                                                                                           $prototype,
                                                                                                            undef, undef, $prototypeStartLine));
                 };
 
@@ -484,9 +488,11 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
                 $prototypeEnd++;
                 };
 
+            my $prototype = $self->NormalizePrototype( $self->CreateString($prototypeStart, $prototypeEnd) );
+
             $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $name,
                                                                                                        $self->CurrentScope(), undef,
-                                                                                                       $self->CreateString($prototypeStart, $prototypeEnd),
+                                                                                                       $prototype,
                                                                                                        undef, undef, $prototypeStartLine));
 
             $self->SkipRestOfStatement(\$prototypeEnd, \$prototypeEndLine);
