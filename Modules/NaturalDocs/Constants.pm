@@ -40,7 +40,7 @@ require Exporter;
                    'BINARY_FORMAT');
 
 #
-#   Note: Assumptions
+#   Topic: Assumptions
 #
 #   - No constant here will ever be zero.
 #   - All constants are exported by default.
