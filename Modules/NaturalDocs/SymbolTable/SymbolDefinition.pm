@@ -34,7 +34,7 @@ use constant PROTOTYPE => 1;
 
 
 ###############################################################################
-# Group: Functions
+# Group: Modification Functions
 
 #
 #   Function: New
@@ -57,13 +57,33 @@ sub New #(type, prototype)
     };
 
 
+# Function: SetType
+# Changes the type.
+sub SetType #(type)
+    {
+    my ($self, $type) = @_;
+    $self->[TYPE] = $type;
+    };
+
+# Function: SetPrototype
+# Changes the prototype.
+sub SetPrototype #(prototype)
+    {
+    my ($self, $prototype) = @_;
+    $self->[PROTOTYPE] = $prototype;
+    };
+
+
+###############################################################################
+# Group: Information Functions
+
 #
 #   Function: Type
 #
 #   Returns the definition's type.  Will be one of the <Topic Types>.
 #
 sub Type
-    {  return $_[TYPE];  };
+    {  return $_[0]->[TYPE];  };
 
 
 #
@@ -72,7 +92,7 @@ sub Type
 #   Returns the definition's prototype, or undef if it doesn't have one.
 #
 sub Prototype
-    {  return $_[PROTOTYPE];  };
+    {  return $_[0]->[PROTOTYPE];  };
 
 
 1;
