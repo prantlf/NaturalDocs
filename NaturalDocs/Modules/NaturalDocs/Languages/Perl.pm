@@ -45,6 +45,13 @@ my $inNDPOD;
 #
 my $mustBreakPOD;
 
+#
+#   array: hereDocTerminators
+#   An array of active Here Doc terminators, or an empty array if not active.  Each entry is an arrayref of tokens.  The entries
+#   must appear in the order they must appear in the source.
+#
+my @hereDocTerminators;
+
 
 
 ###############################################################################
@@ -86,6 +93,10 @@ sub EnumValues
 sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
+
+    $inNDPOD = 0;
+    $mustBreakPOD = 0;
+    @hereDocTerminators = ( );
 
     $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], [ '=begin nd', '=end nd' ]);
 
@@ -750,6 +761,7 @@ sub GenericSkip #(indexRef, lineNumberRef, noRegExps, allowStringedClosingParens
 
     elsif ($self->TryToSkipWhitespace($indexRef, $lineNumberRef) ||
             $self->TryToSkipString($indexRef, $lineNumberRef) ||
+            $self->TryToSkipHereDocDeclaration($indexRef, $lineNumberRef) ||
             (!$noRegExps && $self->TryToSkipRegexp($indexRef, $lineNumberRef) ) )
         {
         }
@@ -884,8 +896,16 @@ sub SkipRestOfStatement #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipWhitespace
-#   If the current position is on a whitespace token, line break token, or comment, it skips them and returns true.  If there are
-#   a number of these in a row, it skips them all.
+#
+#   If the current position is on whitespace it skips them and returns true.  If there are a number of these in a row, it skips them
+#   all.
+#
+#   Supported Syntax:
+#
+#       - Whitespace
+#       - Line break
+#       - All comment forms supported by <TryToSkipComment()>
+#       - Here Doc content
 #
 sub TryToSkipWhitespace #(indexRef, lineNumberRef)
     {
@@ -896,7 +916,12 @@ sub TryToSkipWhitespace #(indexRef, lineNumberRef)
 
     while ($$indexRef < scalar @$tokens)
         {
-        if ($tokens->[$$indexRef] =~ /^[ \t]/)
+        if ($self->TryToSkipHereDocContent($indexRef, $lineNumberRef) ||
+            $self->TryToSkipComment($indexRef, $lineNumberRef))
+            {
+            $result = 1;
+            }
+        elsif ($tokens->[$$indexRef] =~ /^[ \t]/)
             {
             $$indexRef++;
             $result = 1;
@@ -907,7 +932,7 @@ sub TryToSkipWhitespace #(indexRef, lineNumberRef)
             $$lineNumberRef++;
             $result = 1;
             }
-        elsif (!$self->TryToSkipComment($indexRef, $lineNumberRef))
+        else
             {  last;  };
         };
 
@@ -1053,6 +1078,110 @@ sub TryToSkipString #(indexRef, lineNumberRef, startContentIndexRef, endContentI
         }
     else
         {  return undef;  };
+    };
+
+
+#
+#   Function: TryToSkipHereDocDeclaration
+#
+#   If the current position is on a Here Doc declaration, add its terminators to <hereDocTerminators> and skip it.
+#
+#   Syntax Support:
+#
+#       - Supports <<EOF
+#       - Supports << "String" with all string forms supported by <TryToSkipString()>.
+#
+sub TryToSkipHereDocDeclaration #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my $index = $$indexRef;
+    my $lineNumber = $$lineNumberRef;
+
+    if ($tokens->[$index] eq '<' && $tokens->[$index + 1] eq '<')
+        {
+        $index += 2;
+        my $success;
+
+        # No whitespace allowed with the bare word.
+        if ($tokens->[$index] eq 'EOF')
+            {
+            push @hereDocTerminators, [ 'EOF' ];
+            $index++;
+            $success = 1;
+            }
+        else
+            {
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+            my ($contentStart, $contentEnd);
+            if ($self->TryToSkipString(\$index, \$lineNumber, \$contentStart, \$contentEnd))
+                {
+                push @hereDocTerminators, [ @{$tokens}[$contentStart..$contentEnd - 1] ];
+                $success = 1;
+                };
+            };
+
+        if ($success)
+            {
+            $$indexRef = $index;
+            $$lineNumberRef = $lineNumber;
+
+            return 1;
+            };
+        };
+
+    return 0;
+    };
+
+
+#
+#   Function: TryToSkipHereDocContent
+#
+#   If the current position is at the beginning of a line and there are entries in <hereDocTerminators>, skips lines until all the
+#   terminators are exhausted or we reach the end of the file.
+#
+#   Returns:
+#
+#       Whether the position was on Here Doc content.
+#
+sub TryToSkipHereDocContent #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    # We don't use IsFirstLineToken() because it really needs to be the first line token.  Whitespace is not allowed.
+    if ($$indexRef > 0 && $tokens->[$$indexRef - 1] eq "\n")
+        {
+        my $success = (scalar @hereDocTerminators > 0);
+
+        while (scalar @hereDocTerminators && $$indexRef < scalar @$tokens)
+            {
+            my $terminatorIndex = 0;
+
+            while ($hereDocTerminators[0]->[$terminatorIndex] eq $tokens->[$$indexRef])
+                {
+                $terminatorIndex++;
+                $$indexRef++;
+                };
+
+            if ($terminatorIndex == scalar @{$hereDocTerminators[0]} &&
+                ($tokens->[$$indexRef] eq "\n" || ($tokens->[$$indexRef] =~ /^[ \t]/ && $tokens->[$$indexRef + 1] eq "\n")) )
+                {
+                shift @hereDocTerminators;
+                $$indexRef++;
+                $$lineNumberRef++;
+                }
+            else
+                {  $self->SkipRestOfLine($indexRef, $lineNumberRef);  };
+            };
+
+        return $success;
+        }
+
+    else
+        {  return 0;  };
     };
 
 
