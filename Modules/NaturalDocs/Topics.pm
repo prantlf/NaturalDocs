@@ -15,493 +15,765 @@
 use strict;
 use integer;
 
+use NaturalDocs::Topics::Type;
+
 package NaturalDocs::Topics;
 
-use vars qw(@EXPORT @ISA);
-require Exporter;
-@ISA = qw(Exporter);
-
-@EXPORT = ('TOPIC_CLASS', 'TOPIC_SECTION', 'TOPIC_FILE', 'TOPIC_GROUP', 'TOPIC_FUNCTION', 'TOPIC_VARIABLE',
-                   'TOPIC_GENERIC', 'TOPIC_TYPE', 'TOPIC_CONSTANT', 'TOPIC_PROPERTY', 'TOPIC_DATABASE',
-                   'TOPIC_DATABASE_TABLE', 'TOPIC_COOKIE',
-
-                   'TOPIC_CLASS_LIST', 'TOPIC_FILE_LIST', 'TOPIC_FUNCTION_LIST', 'TOPIC_VARIABLE_LIST',
-                   'TOPIC_GENERIC_LIST', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT_LIST', 'TOPIC_PROPERTY_LIST',
-                   'TOPIC_DATABASE_LIST', 'TOPIC_DATABASE_TABLE_LIST', 'TOPIC_COOKIE_LIST');
+use base 'Exporter';
+our @EXPORT = ( 'TOPIC_GENERAL', 'TOPIC_GENERIC', 'TOPIC_GROUP', 'TOPIC_CLASS', 'TOPIC_FILE', 'TOPIC_FUNCTION',
+                          'TOPIC_VARIABLE', 'TOPIC_PROPERTY', 'TOPIC_TYPE', 'TOPIC_CONSTANT' );
 
 
 
 ###############################################################################
-# Group: Virtual Types
-# These are only groups of constants, but should be treated like typedefs or enums.  Each one represents a distinct type and
-# their values should only be one of their constants or undef.  All values are exported by default.
+# Group: Types
+
 
 #
-#   Note: Assumptions
+#   Type: TopicType
 #
-#   - No constant here will ever be zero.
-#   - All constants are exported by default.
+#   A string representing a topic type as defined in <Topics.txt>.  It's format should be treated as opaque; use <MakeTopicType()>
+#   to get them from topic names.  However, they can be compared for equality with string functions.
 #
 
-#
-#   Constants: TopicType
-#
-#   The type of a Natural Docs topic.
-#
-#       TOPIC_CLASS      - A class.  All topics until the next class or section become its members.
-#       TOPIC_SECTION  - A main section of code or text.  Formats like a class but doesn't provide scope.  Also ends the
-#                                    scope of a class.
-#       TOPIC_FILE          - A file.  Is always referenced as a global, but does not end a class scope.
-#       TOPIC_GROUP      - A subdivider for long lists.
-#       TOPIC_FUNCTION - A function.  The code immediately afterwards will be used as the prototype if it matches the name.
-#       TOPIC_VARIABLE  - A variable.  The code immediately afterwards will be used as the prototype if it matches the name.
-#       TOPIC_PROPERTY - A property.  The code immediately afterwards will be used as the prototype if it matches the name.
-#       TOPIC_GENERIC   - A generic topic.
-#
-#       TOPIC_CONSTANT - A constant.  Same as generic, but distinguished for indexing.
-#       TOPIC_TYPE          - A type.  Same as generic, but distinguished for indexing.
-#
-#       TOPIC_DATABASE - A database.  Has scope.
-#       TOPIC_DATABASE_TABLE - A database table.  Has scope.
-#
-#       TOPIC_COOKIE - A cookie.  Always global.
-#
-#       TOPIC_CLASS_LIST        - A list of classes.  Will not have scope.
-#       TOPIC_FILE_LIST            - A list of files.
-#       TOPIC_FUNCTION_LIST  - A list of functions.  Will not have prototypes.
-#       TOPIC_VARIABLE_LIST   - A list of variables.  Will not have prototypes.
-#       TOPIC_PROPERTY_LIST  - A list of properties.  Will not have prototypes.
-#       TOPIC_GENERIC_LIST    - A list of generic topics.
-#
-#       TOPIC_CONSTANT_LIST - A list of constants.
-#       TOPIC_TYPE_LIST - A list of types.
-#
-#       TOPIC_DATABASE_LIST - A list of databases.
-#       TOPIC_DATABASE_TABLE_LIST - A list of database tables.
-#
-#       TOPIC_COOKIE_LIST - A list of cookies.
-#
-#   Dependencies:
-#
-#       - <PreviousMenuState.nd> and <SymbolTable.nd> depend on these values all being able to fit into a UInt8, i.e. <= 255.
-#       - Most of the variables below depend on the order of the values.
-#
-use constant TOPIC_CLASS => 1;
-use constant TOPIC_SECTION => 2;
-use constant TOPIC_FILE => 3;
-use constant TOPIC_GROUP => 4;
-use constant TOPIC_FUNCTION => 5;
-use constant TOPIC_VARIABLE => 6;
-use constant TOPIC_GENERIC => 7;
-use constant TOPIC_TYPE => 8;
-use constant TOPIC_CONSTANT => 9;
-use constant TOPIC_PROPERTY => 10;
-use constant TOPIC_DATABASE => 11;
-use constant TOPIC_DATABASE_TABLE => 12;
-use constant TOPIC_COOKIE => 13;
 
-use constant TOPIC_LIST_BASE => 100;  # To accomodate for future expansion without changing the actual values.
+#
+#   Constants: Default TopicTypes
+#
+#   Exported constants of the default <TopicTypes>, so you don't have to go through <TypeFromName()> every time.
+#
+#   TOPIC_GENERAL - The general <TopicType>, which has the special meaning of none in particular.
+#   TOPIC_GENERIC - Generic <TopicType>.
+#   TOPIC_GROUP - Group <TopicType>.
+#   TOPIC_CLASS - Class <TopicType>.
+#   TOPIC_FILE - File <TopicType>.
+#   TOPIC_SECTION - Section <TopicType>.
+#   TOPIC_FUNCTION - Function <TopicType>.
+#   TOPIC_VARIABLE - Variable <TopicType>.
+#   TOPIC_PROPERTY - Property <TopicType>.
+#   TOPIC_TYPE - Type <TopicType>.
+#   TOPIC_CONSTANT - Constant <TopicType>.
+#
+use constant TOPIC_GENERAL => 'general';
+use constant TOPIC_GENERIC => 'generic';
+use constant TOPIC_GROUP => 'group';
+use constant TOPIC_CLASS => 'class';
+use constant TOPIC_FILE => 'file';
+use constant TOPIC_SECTION => 'section';
+use constant TOPIC_FUNCTION => 'function';
+use constant TOPIC_VARIABLE => 'variable';
+use constant TOPIC_PROPERTY => 'property';
+use constant TOPIC_TYPE => 'type';
+use constant TOPIC_CONSTANT => 'constant';
+# Dependency: These constants must be checked for existence in Load().
+# Dependency: The values of these constants must match what is generated by MakeTopicType().
 
-use constant TOPIC_CLASS_LIST => (TOPIC_CLASS + TOPIC_LIST_BASE);
-use constant TOPIC_FILE_LIST => (TOPIC_FILE + TOPIC_LIST_BASE);
-use constant TOPIC_FUNCTION_LIST => (TOPIC_FUNCTION + TOPIC_LIST_BASE);
-use constant TOPIC_VARIABLE_LIST => (TOPIC_VARIABLE + TOPIC_LIST_BASE);
-use constant TOPIC_GENERIC_LIST => (TOPIC_GENERIC + TOPIC_LIST_BASE);
-use constant TOPIC_TYPE_LIST => (TOPIC_TYPE + TOPIC_LIST_BASE);
-use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
-use constant TOPIC_PROPERTY_LIST => (TOPIC_PROPERTY + TOPIC_LIST_BASE);
-use constant TOPIC_DATABASE_LIST => (TOPIC_DATABASE + TOPIC_LIST_BASE);
-use constant TOPIC_DATABASE_TABLE_LIST => (TOPIC_DATABASE_TABLE + TOPIC_LIST_BASE);
-use constant TOPIC_COOKIE_LIST => (TOPIC_COOKIE + TOPIC_LIST_BASE);
+
 
 
 ###############################################################################
 # Group: Variables
 
-#
-#   array: names
-#
-#   An array of the topic names.  Use the <TopicTypes> as indexes, except for list types.
-#
-#   *Important:* The name with any spaces removed must map back to the <TopicType> via <constants>.
-#
-my @names = ( undef, 'Class', 'Section', 'File', 'Group', 'Function', 'Variable', 'Generic', 'Type', 'Constant', 'Property',
-                        'Database', 'Database Table', 'Cookie' );
-# The string order must match the constant values.
 
 #
-#   array: pluralNames
+#   hash: types
 #
-#   An array of the topic names, but plural.  Use the <TopicTypes> as indexes, except for list types.
+#   A hashref that maps <TopicTypes> to <NaturalDocs::Topics::Type>s.
 #
-#   *Important:* The name with any spaces removed must map back to the list <TopicType> via <constants>.
-#
-my @pluralNames = ( undef, 'Classes', 'Sections', 'Files', 'Groups', 'Functions', 'Variables', 'Generics', 'Types', 'Constants',
-                                'Properties', 'Databases', 'Database Tables', 'Cookies' );
-# The string order must match the constant values.  "Generics" is wierd, I know.
+my %types;
+
 
 #
-#   hash: constants
+#   hash: names
 #
-#   A hash where the keys are the names in all lowercase, and the values are the <TopicTypes>.  Note that this contains
-#   every synonym used in the parser.  If the name is plural, it will be a list type.  Spaces are not allowed.
+#   A hashref that maps various forms of the all-lowercase type names to <TopicTypes>.  All are in the same hash because
+#   two names that reduce to the same thing it would cause big problems, and we need to catch that.  Keys include
 #
-my %constants = (
+#   - Topic names
+#   - Plural topic names
+#   - Alphanumeric-only topic names
+#   - Alphanumeric-only plural topic names
+#
+my %names;
 
-                            'class'  => TOPIC_CLASS,
-                            'structure'  => TOPIC_CLASS,
-                            'struct'  => TOPIC_CLASS,
-                            'package'  => TOPIC_CLASS,
-                            'namespace'  => TOPIC_CLASS,
 
-                            'classes'  => TOPIC_CLASS_LIST,
-                            'structures'  => TOPIC_CLASS_LIST,
-                            'structs'  => TOPIC_CLASS_LIST,
-                            'packages'  => TOPIC_CLASS_LIST,
-                            'namespaces'  => TOPIC_CLASS_LIST,
+#
+#   hash: keywords
+#
+#   A hashref that maps all-lowercase keywords to their <TopicTypes>.  Must not have any of the same keys as
+#   <pluralKeywords>.
+#
+my %keywords;
 
-                            'section'  => TOPIC_SECTION,
-                            'title'  => TOPIC_SECTION,
 
-                            'file'  => TOPIC_FILE,
-                            'program'  => TOPIC_FILE,
-                            'script'  => TOPIC_FILE,
-                            'module'  => TOPIC_FILE,
-                            'document'  => TOPIC_FILE,
-                            'doc'  => TOPIC_FILE,
-                            'header'  => TOPIC_FILE,
+#
+#   hash: pluralKeywords
+#
+#   A hashref that maps all-lowercase plural keywords to their <TopicTypes>.  Must not have any of the same keys as
+#   <keywords>.
+#
+my %pluralKeywords;
 
-                            'files'  => TOPIC_FILE_LIST,
-                            'programs'  => TOPIC_FILE_LIST,
-                            'scripts'  => TOPIC_FILE_LIST,
-                            'modules'  => TOPIC_FILE_LIST,
-                            'documents'  => TOPIC_FILE_LIST,
-                            'docs'  => TOPIC_FILE_LIST,
-                            'headers'  => TOPIC_FILE_LIST,
-
-                            'group'  => TOPIC_GROUP,
-
-                            'function'  => TOPIC_FUNCTION,
-                            'func'  => TOPIC_FUNCTION,
-                            'procedure'  => TOPIC_FUNCTION,
-                            'proc'  => TOPIC_FUNCTION,
-                            'routine'  => TOPIC_FUNCTION,
-                            'subroutine'  => TOPIC_FUNCTION,
-                            'sub'  => TOPIC_FUNCTION,
-                            'method'  => TOPIC_FUNCTION,
-                            'callback'  => TOPIC_FUNCTION,
-                            'constructor'  => TOPIC_FUNCTION,
-                            'destructor'  => TOPIC_FUNCTION,
-
-                            'functions'  => TOPIC_FUNCTION_LIST,
-                            'funcs'  => TOPIC_FUNCTION_LIST,
-                            'procedures'  => TOPIC_FUNCTION_LIST,
-                            'procs'  => TOPIC_FUNCTION_LIST,
-                            'routines'  => TOPIC_FUNCTION_LIST,
-                            'subroutines'  => TOPIC_FUNCTION_LIST,
-                            'subs'  => TOPIC_FUNCTION_LIST,
-                            'methods'  => TOPIC_FUNCTION_LIST,
-                            'callbacks'  => TOPIC_FUNCTION_LIST,
-                            'constructors'  => TOPIC_FUNCTION_LIST,
-                            'destructors'  => TOPIC_FUNCTION_LIST,
-
-                            'variable'  => TOPIC_VARIABLE,
-                            'var'  => TOPIC_VARIABLE,
-                            'integer'  => TOPIC_VARIABLE,
-                            'int'  => TOPIC_VARIABLE,
-                            'uint'  => TOPIC_VARIABLE,
-                            'long'  => TOPIC_VARIABLE,
-                            'ulong'  => TOPIC_VARIABLE,
-                            'short'  => TOPIC_VARIABLE,
-                            'ushort'  => TOPIC_VARIABLE,
-                            'byte'  => TOPIC_VARIABLE,
-                            'ubyte'  => TOPIC_VARIABLE,
-                            'sbyte'  => TOPIC_VARIABLE,
-                            'float'  => TOPIC_VARIABLE,
-                            'double'  => TOPIC_VARIABLE,
-                            'real'  => TOPIC_VARIABLE,
-                            'decimal'  => TOPIC_VARIABLE,
-                            'scalar'  => TOPIC_VARIABLE,
-                            'array'  => TOPIC_VARIABLE,
-                            'arrayref'  => TOPIC_VARIABLE,
-                            'hash'  => TOPIC_VARIABLE,
-                            'hashref'  => TOPIC_VARIABLE,
-                            'bool'  => TOPIC_VARIABLE,
-                            'boolean'  => TOPIC_VARIABLE,
-                            'flag'  => TOPIC_VARIABLE,
-                            'bit'  => TOPIC_VARIABLE,
-                            'bitfield'  => TOPIC_VARIABLE,
-                            'field'  => TOPIC_VARIABLE,
-                            'pointer'  => TOPIC_VARIABLE,
-                            'ptr'  => TOPIC_VARIABLE,
-                            'reference'  => TOPIC_VARIABLE,
-                            'ref'  => TOPIC_VARIABLE,
-                            'object'  => TOPIC_VARIABLE,
-                            'obj'  => TOPIC_VARIABLE,
-                            'character'  => TOPIC_VARIABLE,
-                            'wcharacter'  => TOPIC_VARIABLE,
-                            'char'  => TOPIC_VARIABLE,
-                            'wchar'  => TOPIC_VARIABLE,
-                            'string'  => TOPIC_VARIABLE,
-                            'wstring'  => TOPIC_VARIABLE,
-                            'str'  => TOPIC_VARIABLE,
-                            'wstr'  => TOPIC_VARIABLE,
-                            'handle'  => TOPIC_VARIABLE,
-
-                            'variables'  => TOPIC_VARIABLE_LIST,
-                            'vars'  => TOPIC_VARIABLE_LIST,
-                            'integers'  => TOPIC_VARIABLE_LIST,
-                            'ints'  => TOPIC_VARIABLE_LIST,
-                            'uints'  => TOPIC_VARIABLE_LIST,
-                            'longs'  => TOPIC_VARIABLE_LIST,
-                            'ulongs'  => TOPIC_VARIABLE_LIST,
-                            'shorts'  => TOPIC_VARIABLE_LIST,
-                            'ushorts'  => TOPIC_VARIABLE_LIST,
-                            'bytes'  => TOPIC_VARIABLE_LIST,
-                            'ubytes'  => TOPIC_VARIABLE_LIST,
-                            'sbytes'  => TOPIC_VARIABLE_LIST,
-                            'floats'  => TOPIC_VARIABLE_LIST,
-                            'doubles'  => TOPIC_VARIABLE_LIST,
-                            'reals'  => TOPIC_VARIABLE_LIST,
-                            'decimals'  => TOPIC_VARIABLE_LIST,
-                            'arrays'  => TOPIC_VARIABLE_LIST,
-                            'arrayrefs'  => TOPIC_VARIABLE_LIST,
-                            'hashes'  => TOPIC_VARIABLE_LIST,
-                            'hashrefs'  => TOPIC_VARIABLE_LIST,
-                            'bools'  => TOPIC_VARIABLE_LIST,
-                            'booleans'  => TOPIC_VARIABLE_LIST,
-                            'flags'  => TOPIC_VARIABLE_LIST,
-                            'bits'  => TOPIC_VARIABLE_LIST,
-                            'bitfields'  => TOPIC_VARIABLE_LIST,
-                            'fields'  => TOPIC_VARIABLE_LIST,
-                            'pointers'  => TOPIC_VARIABLE_LIST,
-                            'ptrs'  => TOPIC_VARIABLE_LIST,
-                            'references'  => TOPIC_VARIABLE_LIST,
-                            'refs'  => TOPIC_VARIABLE_LIST,
-                            'objects'  => TOPIC_VARIABLE_LIST,
-                            'objs'  => TOPIC_VARIABLE_LIST,
-                            'characters'  => TOPIC_VARIABLE_LIST,
-                            'wcharacters'  => TOPIC_VARIABLE_LIST,
-                            'chars'  => TOPIC_VARIABLE_LIST,
-                            'wchars'  => TOPIC_VARIABLE_LIST,
-                            'strings'  => TOPIC_VARIABLE_LIST,
-                            'wstrings'  => TOPIC_VARIABLE_LIST,
-                            'strs'  => TOPIC_VARIABLE_LIST,
-                            'wstrs'  => TOPIC_VARIABLE_LIST,
-                            'handles'  => TOPIC_VARIABLE_LIST,
-
-                            'property'  => TOPIC_PROPERTY,
-                            'prop'  => TOPIC_PROPERTY,
-
-                            'properties'  => TOPIC_PROPERTY_LIST,
-                            'props'  => TOPIC_PROPERTY_LIST,
-
-                            'topic'  => TOPIC_GENERIC,
-                            'about'  => TOPIC_GENERIC,
-                            'note'  => TOPIC_GENERIC,
-
-                            'item'  => TOPIC_GENERIC,
-                            'option'  => TOPIC_GENERIC,
-                            'symbol'  => TOPIC_GENERIC,
-                            'sym'  => TOPIC_GENERIC,
-                            'definition'  => TOPIC_GENERIC,
-                            'define'  => TOPIC_GENERIC,
-                            'def'  => TOPIC_GENERIC,
-                            'macro'  => TOPIC_GENERIC,
-                            'format'  => TOPIC_GENERIC,
-
-                            'list'  => TOPIC_GENERIC_LIST,
-
-                            'items'  => TOPIC_GENERIC_LIST,
-                            'options'  => TOPIC_GENERIC_LIST,
-                            'symbols'  => TOPIC_GENERIC_LIST,
-                            'syms'  => TOPIC_GENERIC_LIST,
-                            'definitions'  => TOPIC_GENERIC_LIST,
-                            'defines'  => TOPIC_GENERIC_LIST,
-                            'defs'  => TOPIC_GENERIC_LIST,
-                            'macros'  => TOPIC_GENERIC_LIST,
-                            'formats'  => TOPIC_GENERIC_LIST,
-
-                            'constant'  => TOPIC_CONSTANT,
-                            'const'  => TOPIC_CONSTANT,
-
-                            'constants'  => TOPIC_CONSTANT_LIST,
-                            'consts'  => TOPIC_CONSTANT_LIST,
-                            'enumeration'  => TOPIC_CONSTANT_LIST,
-                            'enum'  => TOPIC_CONSTANT_LIST,
-
-                            'type'  => TOPIC_TYPE,
-                            'typedef'  => TOPIC_TYPE,
-
-                            'types'  => TOPIC_TYPE_LIST,
-                            'typedefs'  => TOPIC_TYPE_LIST,
-
-                            'database'  => TOPIC_DATABASE,
-                            'db'  => TOPIC_DATABASE,
-
-                            'databases'  => TOPIC_DATABASE_LIST,
-                            'dbs'  => TOPIC_DATABASE_LIST,
-
-                            'databasetable'  => TOPIC_DATABASE_TABLE,
-                            'dbtable'  => TOPIC_DATABASE_TABLE,
-
-                            'databasetables'  => TOPIC_DATABASE_TABLE_LIST,
-                            'dbtables'  => TOPIC_DATABASE_TABLE_LIST,
-
-                            'cookie'  => TOPIC_COOKIE,
-
-                            'cookies'  => TOPIC_COOKIE_LIST
-
-             );
 
 #
 #   hash: indexable
 #
-#   An existence hash of the <TopicTypes> that should be indexed.
+#   An existence hash of all the indexable <TopicTypes>.
 #
-my %indexable = ( TOPIC_FUNCTION() => 1,
-                             TOPIC_CLASS() => 1,
-                             TOPIC_FILE() => 1,
-                             TOPIC_VARIABLE() => 1,
-                             TOPIC_PROPERTY() => 1,
-                             TOPIC_TYPE() => 1,
-                             TOPIC_CONSTANT() => 1,
-                             TOPIC_DATABASE() => 1,
-                             TOPIC_DATABASE_TABLE() => 1,
-                             TOPIC_COOKIE() => 1 );
-
-#
-#   hash: basicAutoGroupable
-#
-#   An existence hash of the <TopicTypes> that auto-groups should be created for when using <AUTOGROUP_BASIC>.
-#
-my %basicAutoGroupable = ( TOPIC_FUNCTION() => 1,
-                                           TOPIC_VARIABLE() => 1,
-                                           TOPIC_PROPERTY() => 1 );
-
-#
-#   hash: fullAutoGroupable
-#
-#   An existence hash of the <TopicTypes> that auto-groups should be created for when using <AUTOGROUP_FULL> *in
-#   addition to* those found in <basicAutoGroupable>.
-#
-my %fullAutoGroupable = ( TOPIC_FILE() => 1,
-                                        TOPIC_TYPE() => 1,
-                                        TOPIC_CONSTANT() => 1,
-                                        TOPIC_COOKIE() => 1 );
+my %indexable;
 
 
 #
-#   hash: isAlwaysGlobal
+#   array: legacyTypes
 #
-#   An existence hash of the <TopicTypes> that are always global, even when they appear in a class.
+#   An array that converts the legacy topic types, which were numeric constants prior to 1.3, to the current <TopicTypes>.
+#   The legacy types are used as an index into the array.  Note that this does not support list type values.
 #
-my %isAlwaysGlobal = ( TOPIC_FILE() => 1,
-                                    TOPIC_FILE_LIST() => 1,
-                                    TOPIC_COOKIE() => 1,
-                                    TOPIC_COOKIE_LIST() => 1 );
+my @legacyTypes = ( TOPIC_GENERAL, TOPIC_CLASS, TOPIC_SECTION, TOPIC_FILE, TOPIC_GROUP, TOPIC_FUNCTION,
+                                TOPIC_VARIABLE, TOPIC_GENERIC, TOPIC_TYPE, TOPIC_CONSTANT, TOPIC_PROPERTY );
+
+
+
+###############################################################################
+# Group: Files
 
 
 #
-#   hash: hasScope
+#   File: Topics.txt
 #
-#   An existence hash of the <TopicTypes> that create a scope after them, like classes do.
+#   The configuration file that defines or overrides the topic definitions for Natural Docs.  One version sits in Natural Docs'
+#   configuration directory, and another can be in a project directory to add to or override them.
 #
-my %hasScope = ( TOPIC_CLASS() => 1,
-                             TOPIC_DATABASE() => 1,
-                             TOPIC_DATABASE_TABLE() => 1 );
+#   > # [comments]
+#
+#   Everything after a # symbol is ignored.
+#
+#   Except when specifying topic names, everything below is case-insensitive.
+#
+#   > Format: [version]
+#
+#   Specifies the file format version of the file.
+#
+#
+#   Sections:
+#
+#       > Topic Type: [name]
+#       > Alter Topic Type: [name]
+#
+#       Starts a topic type section.  The name can only contain <CFChars> and isn't case sensitive for matching, but the original
+#       case is remembered for presentation.  The section continues until another topic type section, a topic keyword section, or
+#       the end of the file.
+#
+#       Alter Topic Type is used to override existing topic type settings.  It's done so that users cannot accidentally override
+#       existing topic types.
+#
+#       The name General is reserved.  The following default types must be defined in the main file: Generic, Group, Class, File,
+#       Section, Function, Variable, Property, Type, and Constant.  The default types can have their keywords or behaviors
+#       changed, though, either by editing the default file or by overriding them in the user file.
+#
+#       > Topic Keywords: [topic type]
+#
+#       Starts a topic keyword section.  The name must correspond to a previously defined topic type.  It cannot be General.
+#
+#
+#   Topic Type Sections:
+#
+#       > Plural: [name]
+#
+#       Specifies the plural name of the topic type.  Defaults to the signular name.  Has the same restrictions as the topic type
+#       name.
+#
+#       > Index: [yes|no]
+#
+#       Whether the topic type gets an index.  Defaults to no.
+#
+#       > Scope: [normal|start|end|always global]
+#
+#       How the topic affects scope.  Defaults to normal.
+#
+#       normal - The topic stays within the current scope.
+#       start - The topic starts a new scope for all the topics beneath it, like class topics.
+#       end - The topic resets the scope back to global for all the topics beneath it, like section topics.
+#       always global - The topic is defined as a global symbol, but does not change the scope for any other topics.
+#
+#       > Page Title if First: [yes|no]
+#
+#       Whether the title of this topic becomes the page title if it is the first topic in a file.  Defaults to no.
+#
+#       > Auto Group: [yes|no|full only]
+#
+#       Whether this topic has groups created for it by default.  Defaults to no.
+#
+#       no - The topic will never be auto-grouped.
+#       yes - The topic will be auto-grouped when using --autogroup full AND --autogroup basic.
+#       full only - The topic will be auto-grouped when using --autogroup full but NOT --autogroup basic.
+#
+#
+#   Topic Keyword Sections:
+#
+#       > [keyword]
+#       > [keyword], [plural keyword]
+#
+#       Each line is the keyword and optionally its plural form.  Keywords can only have letters and numbers.  No punctuation or
+#       spaces are allowed.  Keywords are not case sensitive.
+#
+#
+#   Revisions:
+#
+#       1.3:
+#
+#           The initial version of this file.
+#
+
+
+###############################################################################
+# Group: File Functions
 
 
 #
-#   hash: endsScope
+#   Function: Load
 #
-#   An existence hash of the <TopicTypes> that end a scope, like sections do.
+#   Loads both the master and the project version of <Topics.txt>.
 #
-my %endsScope = ( TOPIC_SECTION() => 1,
-                               TOPIC_CLASS_LIST() => 1 );
+sub Load
+    {
+    my $self = shift;
+
+    # Add the special General topic type.
+
+    $types{::TOPIC_GENERAL()} = NaturalDocs::Topics::Type->New('General', 'General', 1, ::SCOPE_NORMAL(),
+                                                                                                   ::AUTO_GROUP_NO(), undef);
+    $names{'general'} = ::TOPIC_GENERAL();
+    $indexable{::TOPIC_GENERAL()} = 1;
+    # There are no keywords for the general topic.
+
+
+    $self->LoadFile(1);  # Main
+
+    # Dependency: All the default topic types must be checked for existence.
+
+    # Check to see if the required types are defined.
+    foreach my $name ('Generic', 'Group', 'Class', 'Section', 'File', 'Function', 'Variable', 'Property', 'Type', 'Constant')
+        {
+        if (!exists $names{lc($name)})
+            {  NaturalDocs::ConfigFile->AddError('The ' . $name . ' topic type must be defined in the main topics file.');  };
+        };
+
+    if (NaturalDocs::ConfigFile->ErrorCount())
+        {
+        NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
+        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
+           . ' in ' . NaturalDocs::Project->MainTopicsFile() . "\n";
+        }
+
+
+    $self->LoadFile();  # User
+
+    if (NaturalDocs::ConfigFile->ErrorCount())
+        {
+        NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
+        die 'There ' . (NaturalDocs::ConfigFile->ErrorCount() == 1 ? 'is an error' : 'are errors')
+           . ' in ' . NaturalDocs::Project->UserTopicsFile() . "\n";
+        }
+    };
 
 
 #
-#   hash: canBePageTitle
+#   Function: LoadFile
 #
-#   An existence hash of the <TopicTypes> that can be the page title if they are the first topic in the file.
+#   Loads a particular version of <Topics.txt>.
 #
-my %canBePageTitle = ( TOPIC_CLASS() => 1,
-                                     TOPIC_FILE() => 1,
-                                     TOPIC_SECTION() => 1,
-                                     TOPIC_DATABASE() => 1,
-                                     TOPIC_DATABASE_TABLE() => 1 );
+#   Parameters:
+#
+#       isMain - Whether the file is the main file or not.
+#
+sub LoadFile #(isMain)
+    {
+    my ($self, $isMain) = @_;
+
+    my ($file, $status);
+
+    if ($isMain)
+        {
+        $file = NaturalDocs::Project->MainTopicsFile();
+        $status = NaturalDocs::Project->MainTopicsFileStatus();
+        }
+    else
+        {
+        $file = NaturalDocs::Project->UserTopicsFile();
+        $status = NaturalDocs::Project->UserTopicsFileStatus();
+        };
+
+    my $version;
+
+    if ($version = NaturalDocs::ConfigFile->Open($file))
+        {
+        # The format hasn't changed since the file was introduced.
+
+        if ($status == ::FILE_CHANGED())
+            {  NaturalDocs::Project->ReparseEverything();  };
+
+        my ($keyword, $value) = NaturalDocs::ConfigFile->GetLine();
+
+        while ($value)
+            {
+            if ($keyword eq 'topic type' || $keyword eq 'alter topic type')
+                {
+                my $topicTypeKeyword = $keyword;
+                my $topicTypeName = $value;
+                my $topicTypeObject;
+
+                my $topicType = $self->MakeTopicType($topicTypeName);
+
+                # Resolve conflicts and create the type if necessary.
+
+                if ($topicTypeKeyword eq 'topic type')
+                    {
+                    my $lcTopicTypeName = lc($topicTypeName);
+
+                    my $lcTopicTypeAName = $lcTopicTypeName;
+                    $lcTopicTypeAName =~ tr/a-z0-9//cd;
+
+                    if (!NaturalDocs::ConfigFile->HasOnlyCFChars($topicTypeName))
+                        {
+                        NaturalDocs::ConfigFile->AddError('Topic names can only have ' . NaturalDocs::ConfigFile->CFCharNames() . '.');
+                        }
+                    elsif ($topicType eq ::TOPIC_GENERAL())
+                        {
+                        NaturalDocs::ConfigFile->AddError('You cannot define a General topic type.');
+                        }
+                    elsif (defined $types{$topicType} || defined $names{$lcTopicTypeName} || defined $names{$lcTopicTypeAName})
+                        {
+                        NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' is already defined or its name is too '
+                                                                         . 'similar to an existing name.  Use Alter Topic Type if you meant to override '
+                                                                         . 'its settings.');
+                        }
+                    else
+                        {
+                        $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, undef,
+                                                                                                      ::AUTO_GROUP_NO(), ::SCOPE_NORMAL(), undef);
+
+                        $types{$topicType} = $topicTypeObject;
+                        $names{$lcTopicTypeName} = $topicType;
+                        $names{$lcTopicTypeAName} = $topicType;
+                        };
+                    }
+                else # ($topicTypeKeyword eq 'alter topic type')
+                    {
+                    if ($topicType eq ::TOPIC_GENERAL())
+                        {  NaturalDocs::ConfigFile->AddError('You cannot alter the General topic type.');  }
+                    else
+                        {
+                        $topicTypeObject = $types{$topicType};
+
+                        if (!defined $topicTypeObject)
+                            {  NaturalDocs::ConfigFile->AddError('Topic type ' . $topicTypeName . ' doesn\'t exist.');  };
+                        };
+                    };
+
+                # We continue even if there are errors so that we can find any other errors in the file as well.  We'd rather them
+                # all show up at once instead of them showing up one at a time between Natural Docs runs.  So we just ignore the
+                # settings if $topicTypeObject is undef.
+
+
+                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
+                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'topic keywords')
+                    {
+                    if ($keyword eq 'plural')
+                        {
+                        my $pluralName = $value;
+
+                        my $lcPluralName = lc($pluralName);
+
+                        my $lcPluralAName = $lcPluralName;
+                        $lcPluralAName =~ tr/a-zA-Z0-9//cd;
+
+                        if (!NaturalDocs::ConfigFile->HasOnlyCFChars($pluralName))
+                            {
+                            NaturalDocs::ConfigFile->AddError('Plural names can only have '
+                                                                             . NaturalDocs::ConfigFile->CFCharNames() . '.');
+                            }
+                        elsif ($lcPluralAName eq 'general')
+                            {
+                            NaturalDocs::ConfigFile->AddError('You cannot use General as a plural name for ' . $topicTypeName . '.');
+                            }
+                        elsif ( (defined $names{$lcPluralName} && $names{$lcPluralName} ne $topicType) ||
+                                 (defined $names{$lcPluralAName} && $names{$lcPluralAName} ne $topicType) )
+                            {
+                            NaturalDocs::ConfigFile->AddError($topicTypeName . "'s plural name, " . $pluralName
+                                                                             . ', is already defined or is too similar to an existing name.');
+                            }
+
+                        elsif (defined $topicTypeObject)
+                            {
+                            $topicTypeObject->SetPluralName($pluralName);
+
+                            $names{$lcPluralName} = $topicType;
+                            $names{$lcPluralAName} = $topicType;
+                            };
+                        }
+
+                    elsif ($keyword eq 'index')
+                        {
+                        $value = lc($value);
+
+                        if ($value eq 'yes')
+                            {
+                            if (defined $topicTypeObject)
+                                {
+                                $topicTypeObject->SetIndex(1);
+                                $indexable{$topicType} = 1;
+                                };
+                            }
+                        elsif ($value eq 'no')
+                            {
+                            if (defined $topicTypeObject)
+                                {
+                                $topicTypeObject->SetIndex(undef);
+                                delete $indexable{$topicType};
+                                };
+                            }
+                        else
+                            {
+                            NaturalDocs::ConfigFile->AddError('Index lines can only be "yes" or "no".');
+                            };
+                        }
+
+                    elsif ($keyword eq 'scope')
+                        {
+                        $value = lc($value);
+
+                        if ($value eq 'normal')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetScope(::SCOPE_NORMAL());  };
+                            }
+                        elsif ($value eq 'start')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetScope(::SCOPE_START());  };
+                            }
+                        elsif ($value eq 'end')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetScope(::SCOPE_END());  };
+                            }
+                        elsif ($value eq 'always global')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetScope(::SCOPE_ALWAYS_GLOBAL());  };
+                            }
+                        else
+                            {
+                            NaturalDocs::ConfigFile->AddError('Scope lines can only be "normal", "start", "end", or "always global".');
+                            };
+                        }
+
+                    elsif ($keyword eq 'page title if first')
+                        {
+                        $value = lc($value);
+
+                        if ($value eq 'yes')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetPageTitleIfFirst(1);  };
+                            }
+                        elsif ($value eq 'no')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetPageTitleIfFirst(undef);  };
+                            }
+                        else
+                            {
+                            NaturalDocs::ConfigFile->AddError('Page Title if First lines can only be "yes" or "no".');
+                            };
+                        }
+
+                    elsif ($keyword eq 'auto group')
+                        {
+                        $value = lc($value);
+
+                        if ($value eq 'yes')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetAutoGroup(::AUTO_GROUP_YES());  };
+                            }
+                        elsif ($value eq 'no')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetAutoGroup(::AUTO_GROUP_NO());  };
+                            }
+                        elsif ($value eq 'full only')
+                            {
+                            if (defined $topicTypeObject)
+                                {  $topicTypeObject->SetAutoGroup(::AUTO_GROUP_FULL_ONLY());  };
+                            }
+                        else
+                            {
+                            NaturalDocs::ConfigFile->AddError('Index lines can only be "yes" or "no".');
+                            };
+                        }
+
+                    elsif (!defined $keyword)
+                        {
+                        NaturalDocs::ConfigFile->AddError('All lines in ' . $topicTypeKeyword . ' sections must begin with a keyword.');
+                        }
+                    else
+                        {  NaturalDocs::ConfigFile->AddError($keyword . ' is not a valid keyword.');  };
+                    };
+                }
+
+            elsif ($keyword eq 'topic keywords')
+                {
+                my $topicTypeName = $value;
+                my $topicType = $names{lc($topicTypeName)};
+
+                if (!defined $topicType)
+                    {  NaturalDocs::ConfigFile->AddError($topicTypeName . ' is not a defined topic type.');  }
+                elsif ($topicType eq ::TOPIC_GENERAL())
+                    {
+                    NaturalDocs::ConfigFile->AddError('You cannot define keywords for the General topic type.');
+                    $topicType = undef;
+                    };
+
+                # We continue even if the type doesn't exist so that we can find any other errors in the file as well.  We'd rather them
+                # all show up at once instead of them showing up one at a time between Natural Docs runs.  So we just ignore the
+                # settings if $topicType is undef.
+
+
+                while ( (($keyword, $value) = NaturalDocs::ConfigFile->GetLine()) &&
+                          $keyword ne 'topic type' && $keyword ne 'alter topic type' && $keyword ne 'topic keywords')
+                    {
+                    $value = lc($value);
+
+                    if (defined $keyword)
+                        {
+                        NaturalDocs::ConfigFile->AddError($keyword . ' lines are not allowed in Topic Keywords sections.');
+                        }
+                    elsif ($value =~ /^([a-z0-9]+), ?([a-z0-9]+)$/)
+                        {
+                        if (defined $topicType)
+                            {
+                            $keywords{$1} = $topicType;
+                            delete $pluralKeywords{$1};
+
+                            $pluralKeywords{$2} = $topicType;
+                            delete $keywords{$2};
+                            };
+                        }
+                    elsif ($value =~ /^[a-z0-9]+$/)
+                        {
+                        if (defined $topicType)
+                            {
+                            $keywords{$value} = $topicType;
+                            delete $pluralKeywords{$value};
+                            };
+                        }
+                    else
+                        {
+                        NaturalDocs::ConfigFile->AddError('Keywords can only have letters and numbers.  '
+                                                                         . 'Plurals must be separated by a comma.');
+                        };
+                    };
+                }
+
+            else
+                {
+                NaturalDocs::ConfigFile->AddError('The file must start with a Topic Type, Alter Topic Type, or Topic Keywords line.');
+                last;
+                };
+            };
+
+        NaturalDocs::ConfigFile->Close();
+        }
+
+    else # couldn't open file
+        {
+        if ($isMain)
+            {  die "Couldn't open topics file " . $file . "\n";  }
+        else
+            {  NaturalDocs::Project->ReparseEverything();  };
+        };
+    };
+
 
 
 ###############################################################################
 # Group: Functions
 
+
 #
-#   Function: IsList
+#   Function: KeywordInfo
 #
-#   Returns whether the <TopicType> is a list topic.
+#   Returns information about a topic keyword.
 #
-sub IsList #(topic)
+#   Parameters:
+#
+#       keyword - The keyword, which may be plural.
+#
+#   Returns:
+#
+#       The array ( topicType, info, isPlural ), or an empty array if the keyword doesn't exist.
+#
+#       topicType - The <TopicType> of the keyword.
+#       info - The <NaturalDocs::Topics::Type> of its type.
+#       isPlural - Whether the keyword was plural or not.
+#
+sub KeywordInfo #(keyword)
     {
-    my ($self, $topic) = @_;
-    return ($topic >= TOPIC_LIST_BASE);
+    my ($self, $keyword) = @_;
+
+    $keyword = lc($keyword);
+
+    my $type = $keywords{$keyword};
+
+    if (defined $type)
+        {  return ( $type, $types{$type}, undef );  };
+
+    $type = $pluralKeywords{$keyword};
+
+    if (defined $type)
+        {  return ( $type, $types{$type}, 1 );  };
+
+    return ( );
     };
 
 
 #
-#   Function: IsListOf
+#   Function: NameInfo
 #
-#   Returns what <TopicType> the list <TopicType> is of.
+#   Returns information about a topic name.
 #
-sub IsListOf #(topic)
+#   Parameters:
+#
+#      name - The topic type name, which can be plural and/or alphanumeric only.
+#
+#   Returns:
+#
+#       The array ( topicType, info ), or an empty array if the name doesn't exist.  Note that unlike <InfoFromKeyword()>, this
+#       does *not* tell you whether the name is plural or not.
+#
+#       topicType - The <TopicType> of the name.
+#       info - The <NaturalDocs::Topics::Type> of the type.
+#
+sub NameInfo #(name)
     {
-    my ($self, $topic) = @_;
-    return ($topic - TOPIC_LIST_BASE);
-    };
+    my ($self, $name) = @_;
 
+    my $type = $names{lc($name)};
 
-#
-#   Function: IsIndexable
-#
-#   Returns whether the <TopicType> should be indexed.
-#
-sub IsIndexable #(topic)
-    {
-    my ($self, $topic) = @_;
-    return $indexable{$topic};
-    };
-
-
-#
-#   Function: IsAutoGroupable
-#
-#   Returns whether the <TopicType> should have auto-groups created for it.
-#
-sub IsAutoGroupable #(topic)
-    {
-    my ($self, $topic) = @_;
-
-    my $level = NaturalDocs::Settings->AutoGroupLevel();
-
-    if ($level == ::AUTOGROUP_BASIC())
-        {
-        return $basicAutoGroupable{$topic};
-        }
-    elsif ($level == ::AUTOGROUP_FULL())
-        {
-        return (exists $basicAutoGroupable{$topic} || exists $fullAutoGroupable{$topic});
-        }
+    if (defined $type)
+        {  return ( $type, $types{$type} );  }
     else
-        {  return undef;  };
+        {  return ( );  };
     };
 
 
 #
-#   Function: AllIndexable
+#   Function: TypeInfo
+#
+#   Returns information about a <TopicType>.
+#
+#   Parameters:
+#
+#      type - The <TopicType>.
+#
+#   Returns:
+#
+#       The <NaturalDocs::Topics::Type> of the type, or undef if it didn't exist.
+#
+sub TypeInfo #(type)
+    {
+    my ($self, $type) = @_;
+    return $types{$type};
+    };
+
+
+#
+#   Function: NameOfType
+#
+#   Returns the name of the passed <TopicType>, or undef if it doesn't exist.
+#
+#   Parameters:
+#
+#       topicType - The <TopicType>.
+#       plural - Whether to return the plural instead of the singular.
+#       alphanumericOnly - Whether to strips everything but alphanumeric characters out.  Case isn't modified.
+#
+#   Returns:
+#
+#       The topic type name, according to what was specified in the parameters, or undef if it doesn't exist.
+#
+sub NameOfType #(topicType, plural, alphanumericOnly)
+    {
+    my ($self, $topicType, $plural, $alphanumericOnly) = @_;
+
+    my $topicObject = $types{$topicType};
+
+    if (!defined $topicObject)
+        {  return undef;  };
+
+    my $topicName = ($plural ? $topicObject->PluralName() : $topicObject->Name());
+
+    if ($alphanumericOnly)
+        {  $topicName =~ tr/a-zA-Z0-9//cd;  };
+
+    return $topicName;
+    };
+
+
+#
+#   Function: TypeFromName
+#
+#   Returns a <TopicType> for the passed topic name.
+#
+#   Parameters:
+#
+#       topicName - The name of the topic, which can be plural and/or alphanumeric only.
+#
+#   Returns:
+#
+#       The <TopicType>.  It does not specify whether the name was plural or not.
+#
+sub TypeFromName #(topicName)
+    {
+    my ($self, $topicName) = @_;
+
+    return $names{lc($topicName)};
+    };
+
+
+#
+#   Function: IsValidType
+#
+#   Returns whether the passed <TopicType> is defined.
+#
+sub IsValidType #(type)
+    {
+    my ($self, $type) = @_;
+    return exists $types{$type};
+    };
+
+
+#
+#   Function: TypeFromLegacy
+#
+#   Returns a <TopicType> for the passed legacy topic type integer.  <TopicTypes> were changed from integer constants to
+#   strings in 1.3.
+#
+sub TypeFromLegacy #(legacyInt)
+    {
+    my ($self, $int) = @_;
+    return $legacyTypes[$int];
+    };
+
+
+#
+#   Function: AllIndexableTypes
 #
 #   Returns an array of all possible indexable <TopicTypes>.
 #
-sub AllIndexable
+sub AllIndexableTypes
     {
     my ($self) = @_;
     return keys %indexable;
@@ -509,134 +781,58 @@ sub AllIndexable
 
 
 #
-#   Function: NameOf
+#   Function: ShouldAutoGroup
 #
-#   Returns the name string of the passed <TopicType>.
+#   Returns whether the passed <TopicType> should be auto-grouped, taking into account both the <TopicType's> setting and
+#   <NaturalDocs::Settings->AutoGroupLevel()>.
+#
+sub ShouldAutoGroup #(type)
+    {
+    my ($self, $type) = @_;
+
+    my $level = NaturalDocs::Settings->AutoGroupLevel();
+
+    if ($level == ::AUTOGROUP_NONE())
+        {  return undef;  };
+
+    my $topicLevel = $self->TypeInfo($type)->AutoGroup();
+
+    if ($topicLevel == ::AUTO_GROUP_NO())
+        {  return 0;  }
+    elsif ($topicLevel == ::AUTO_GROUP_YES())
+        {  return 1;  }
+    elsif ($topicLevel == ::AUTO_GROUP_FULL_ONLY() && $level == ::AUTOGROUP_FULL())
+        {  return 1;  }
+    else
+        {  return 0;  };
+    };
+
+
+
+###############################################################################
+# Group: Support Functions
+
+
+#
+#   Function: MakeTopicType
+#
+#   Returns a <TopicType> for the passed topic name.  It does not check to see if it exists already.
 #
 #   Parameters:
 #
-#       topic - The <TopicType> to get the name of.
-#       spaceless - Whether to remove all spaces from the name.
-#
-sub NameOf #(topic, spaceless)
+sub MakeTopicType #(topicName)
     {
-    my ($self, $topic, $spaceless) = @_;
+    my ($self, $topicName) = @_;
 
-    my $name;
+    # Dependency: The values of the default topic type constants must match what is generated here.
 
-    if ($self->IsList($topic))
-        {  $name = $names[ $self->IsListOf($topic) ] . 'List';  }
-    else
-        {  $name = $names[ $topic ];  };
+    # Turn everything to lowercase and strip non-alphanumeric characters.
+    $topicName = lc($topicName);
+    $topicName =~ tr/a-z0-9//cd;
 
-    if ($spaceless)
-        {  $name =~ tr/ //d;  };
-
-    return $name;
+    return $topicName;
     };
 
-
-#
-#   Function: PluralNameOf
-#
-#   Returns the plural name string of the passed <TopicType>.  Note that if you pass the plural name back to <ConstantOf()>,
-#   you will get a list <TopicType> instead of the original one.
-#
-#   Parameters:
-#
-#       topic - The <TopicType> to get the plural name of.
-#       spaceless - Whether to remove all spaces from the name.
-#
-sub PluralNameOf #(topic, spaceless)
-    {
-    my ($self, $topic, $spaceless) = @_;
-
-    my $name;
-
-    if ($self->IsList($topic))
-        {  $name = $names[ $self->IsListOf($topic) ] . 'Lists';  }
-    else
-        {  $name = $pluralNames[ $topic ];  };
-
-    if ($spaceless)
-        {  $name =~ tr/ //d;  };
-
-    return $name;
-    };
-
-#
-#   Function: ConstantOf
-#
-#   Returns the <TopicType> associated with the string, or undef if none.  This supports every Natural Docs synonym the parser
-#   supports.  Note that if the string is plural, it will return a list type.  If that's not desired, use <BaseConstantOf()> instead.
-#
-sub ConstantOf #(string)
-    {
-    my ($self, $string) = @_;
-    return $constants{ lc($string) };
-    };
-
-#
-#   Function: BaseConstantOf
-#
-#   Returns the <TopicType> associated with the string, or undef if none.  The result will never be a list topic.  This supports
-#   every Natural Docs synonym the parser supports.
-#
-sub BaseConstantOf #(string)
-    {
-    my ($self, $string) = @_;
-
-    my $topic = $self->ConstantOf($string);
-
-    if ($self->IsList($topic))
-        {  return $self->IsListOf($topic);  }
-    else
-        {  return $topic;  };
-    };
-
-#
-#   Function: IsAlwaysGlobal
-#
-#   Returns whether the <TopicType> is always global, even when it appears in a class.
-#
-sub IsAlwaysGlobal #(topic)
-    {
-    my ($self, $topic) = @_;
-    return exists $isAlwaysGlobal{$topic};
-    };
-
-#
-#   Function: HasScope
-#
-#   Returns whether the <TopicType> creates a scope after it.
-#
-sub HasScope #(topic)
-    {
-    my ($self, $topic) = @_;
-    return exists $hasScope{$topic};
-    };
-
-#
-#   Function: EndsScope
-#
-#   Returns whether the <TopicType> ends a scope.
-#
-sub EndsScope #(topic)
-    {
-    my ($self, $topic) = @_;
-    return exists $endsScope{$topic};
-    };
-
-#
-#   Function: CanBePageTitle
-#
-#   Returns whether the <TopicType> can be the page title if it's the first topic in a file.
-#
-sub CanBePageTitle #(topic)
-    {
-    my ($self, $topic) = @_;
-    return exists $canBePageTitle{$topic};
-    };
 
 
 1;
