@@ -658,7 +658,7 @@ sub BuildContent #(sourceFile, parsedFile)
                 $hasCBody = 1;
                 };
 
-            $output .= $self->BuildPrototype($parsedFile->[$i]->Prototype());
+            $output .= $self->BuildPrototype($parsedFile->[$i]->Prototype(), $sourceFile);
             };
 
 
@@ -802,7 +802,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
             if (defined $topic->Prototype())
                 {
-                my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $topic->Type(),
+                my $tooltipID = $self->BuildToolTip($topic->Class(), $topic->Name(), $sourceFile, $topic->Type(),
                                                                      $topic->Prototype(), $topic->Summary());
                 $toolTipProperties = $self->BuildToolTipLinkProperties($tooltipID);
                 };
@@ -901,121 +901,93 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 #
 #   Builds and returns the prototype as HTML.
 #
-sub BuildPrototype #(prototype)
+#   Parameters:
+#
+#       prototype - The prototype to format.
+#       file - The file the prototype was defined in.
+#
+#   Returns:
+#
+#       The prototype in HTML.
+#
+sub BuildPrototype #(prototype, file)
     {
-    my ($self, $prototype) = @_;
+    my ($self, $prototype, $file) = @_;
 
-    $prototype =~ s/\t/ /g;
-    $prototype =~ s/ {2,}/ /g;
-
-    $prototype = $self->ConvertAmpChars($prototype);
-
-    # The parsing routine needs to be able to find the parameters no matter how many parenthesis there are.  For example, look
-    # at this VB function declaration:
-    #
-    # <WebMethod()> Public Function RetrieveTable(ByRef Msg As Integer, ByVal Key As String) As String()
-
-    my @segments = split(/([\(\)])/, $prototype);
-    my ($pre, $paramString, $post);
-    my $nest = 0;
-
-    while (scalar @segments)
-        {
-        my $segment = shift @segments;
-
-        if ($nest == 0)
-            {  $pre .= $segment;  }
-
-        elsif ($nest == 1 && $segment eq ')')
-            {
-            if ($paramString =~ /,/)
-                {
-                $post = join('', $segment, @segments);
-                last;
-                }
-            else
-                {
-                $pre .= $paramString . $segment;
-                $paramString = undef;
-                };
-            }
-
-        else
-            {  $paramString .= $segment;  };
-
-        if ($segment eq '(')
-            {  $nest++;  }
-        elsif ($segment eq ')' && $nest > 0)
-            {  $nest--;  };
-        };
-
-    if ($paramString && !$post)
-        {
-        $pre .= $paramString;
-        $paramString = undef;
-        };
-
+    my $language = NaturalDocs::Languages::LanguageOf($file);
+    my ($pre, $open, $params, $close, $post) = $language->FormatPrototype($prototype);
 
     my $output;
 
-    if ($paramString)
+    if (defined $params)
         {
-       $pre =~ /( ?\()$/;
-       my $openParen = $1;
-       $openParen =~ s/ /&nbsp;/;
-       $pre =~ s/ ?\($//;
+        if (defined $open)
+            {
+            $open = $self->ConvertAmpChars($open);
+            $open =~ s/ /&nbsp;/g;
+            };
+        if (defined $close)
+            {
+            $close = $self->ConvertAmpChars($close);
+            $close =~ s/ /&nbsp;/g;
+            };
 
-       $post=~ /^(\) ?)/;
-       my $closeParen = $1;
-       $closeParen =~  s/ /&nbsp;/;
-       $post =~ s/^\) ?//;
+        my $firstParam = shift @$params;
+        my $lastParam = pop @$params;
 
-       my @params = split(/\, ?/, $paramString);
+        $output =
+        # Crappy hacky extra div and table because browsers interpret padding on tables differently.
+        '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
+        . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
-       my $firstParam = shift @params;
-       my $lastParam = pop @params;
+            . '<td style="vertical-align: bottom; text-align: right">' . $self->ConvertAmpChars($pre) . '</td>'
+            . '<td style="vertical-align: bottom">' . $open . '</td>'
+            . '<td style="vertical-align: bottom" nowrap>' . $self->ConvertAmpChars($firstParam) . '</td>';
 
-       $output =
-       # Crappy hacky extra div and table because browsers interpret padding on tables differently.
-       '<table border=0 cellspacing=0 cellpadding=0><tr><td><div class=CPrototype>'
-       . '<table border=0 cellspacing=0 cellpadding=0><tr>'
-
-           . '<td style="vertical-align: bottom; text-align: right">' . $pre . '</td>'
-           . '<td style="vertical-align: bottom">' . $openParen . '</td>'
-           . '<td style="vertical-align: bottom" nowrap>' . $firstParam . (defined $lastParam ? ',' : '') . '</td>';
-
-           if (scalar @params)
-               {
-               $output .=
+            if (scalar @$params)
+                {
+                $output .=
                    '<td colspan=2></td>'
                . '</tr><tr>'
                    . '<td colspan=2></td>'
-                   . '<td nowrap>' . join(',<br>', @params) . ',</td>';
-               };
+                   . '<td nowrap>';
 
-           if (defined $lastParam)
-               {
-               $output .=
-                   '<td colspan=2></td>'
-               . '</tr><tr>'
-                   . '<td colspan=2></td>'
-                   . '<td style="vertical-align: top" nowrap>' . $lastParam . '</td>';
-               };
+                for (my $i = 0; $i < scalar @$params; $i++)
+                    {
+                    if ($i > 0)
+                        {  $output .= '<br>';  };
 
-           $output .=
-           '<td style="vertical-align: top">' . $closeParen . '</td>'
-           . '<td style="vertical-align: top">' . $post . '</td>'
+                    $output .= $self->ConvertAmpChars($params->[$i]);
+                    };
+
+                $output .= '</td>';
+                };
+
+            if (defined $lastParam)
+                {
+                $output .=
+                    '<td colspan=2></td>'
+                . '</tr><tr>'
+                    . '<td colspan=2></td>'
+                    . '<td style="vertical-align: top" nowrap>' . $self->ConvertAmpChars($lastParam) . '</td>';
+                };
+
+            $output .=
+            '<td style="vertical-align: top">' . $close . '</td>'
+            . '<td style="vertical-align: top">' . $self->ConvertAmpChars($post) . '</td>'
        . '</tr></table>'
        . '</div></td></tr></table>';
         }
 
-    else # (!$paramString)
+    else # (!defined $params)
         {
+        my $string = $pre . $open . $close . $post;
+
         $output =
         # A surrounding table as a hack to make the div form-fit.
         '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
             . '<div class=CPrototype>'
-                . $prototype
+                . $self->ConvertAmpChars($string)
             . '</div>'
         . '</tr></td></table>';
         };
@@ -1212,7 +1184,7 @@ sub BuildIndexLink #(name, tag, class, showClass, symbol, file, type, prototype,
             . '#' . $self->SymbolToHTMLSymbol($class, $symbol) . '" '
             . 'class=' . $tag . ' ';
 
-    my $tooltipID = $self->BuildToolTip($class, $symbol, $type, $prototype, $summary);
+    my $tooltipID = $self->BuildToolTip($class, $symbol, $file, $type, $prototype, $summary);
     my $tooltipProperties = $self->BuildToolTipLinkProperties($tooltipID);
 
     $output .= $tooltipProperties . '>' . $self->AddHiddenBreaks($self->StringToHTML($name)) . '</a>';
@@ -1405,6 +1377,7 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #
 #       class - The target's class, or undef for global.
 #       symbol - The target symbol.
+#       file - The file the target's defined in.
 #       type - The symbol type.  Should be one of the <Topic Types>.
 #       prototype - The target prototype, or undef for none.
 #       summary - The target summary, or undef for none.
@@ -1413,9 +1386,9 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #
 #       If a tooltip is necessary for the link, returns the tooltip ID.  If not, returns undef.
 #
-sub BuildToolTip #(class, symbol, type, prototype, summary)
+sub BuildToolTip #(class, symbol, file, type, prototype, summary)
     {
-    my ($self, $class, $symbol, $type, $prototype, $summary) = @_;
+    my ($self, $class, $symbol, $file, $type, $prototype, $summary) = @_;
 
     if (defined $prototype || defined $summary)
         {
@@ -1435,7 +1408,7 @@ sub BuildToolTip #(class, symbol, type, prototype, summary)
 
             if (defined $prototype)
                 {
-                $tooltipHTML .= $self->BuildPrototype($prototype);
+                $tooltipHTML .= $self->BuildPrototype($prototype, $file);
                 };
 
             if (defined $summary)
@@ -2087,7 +2060,7 @@ sub BuildLink #(scope, text, sourceFile)
             {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()) );  };
         # else leave it undef
 
-        my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $target->Type(),
+        my $targetTooltipID = $self->BuildToolTip($target->Class(), $target->Symbol(), $sourceFile, $target->Type(),
                                                                       $target->Prototype(), $target->Summary());
 
         my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
