@@ -212,7 +212,7 @@ my @mainTopicNames;
 #
 #       > Index: [yes|no]
 #
-#       Whether the topic type gets an index.  Defaults to no.
+#       Whether the topic type gets an index.  Defaults to yes.
 #
 #       > Scope: [normal|start|end|always global]
 #
@@ -389,12 +389,14 @@ sub LoadFile #(isMain)
                         }
                     else
                         {
-                        $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, undef,
-                                                                                                      ::AUTO_GROUP_NO(), ::SCOPE_NORMAL(), undef);
+                        $topicTypeObject = NaturalDocs::Topics::Type->New($topicTypeName, $topicTypeName, 1,
+                                                                                                      ::AUTO_GROUP_NO(), ::SCOPE_NORMAL(), 0, 0);
 
                         $types{$topicType} = $topicTypeObject;
                         $names{$lcTopicTypeName} = $topicType;
                         $names{$lcTopicTypeAName} = $topicType;
+
+                        $indexable{$topicType} = 1;
 
                         if ($isMain)
                             {  push @mainTopicNames, $topicTypeName;  };
@@ -472,7 +474,7 @@ sub LoadFile #(isMain)
                             {
                             if (defined $topicTypeObject)
                                 {
-                                $topicTypeObject->SetIndex(undef);
+                                $topicTypeObject->SetIndex(0);
                                 delete $indexable{$topicType};
                                 };
                             }
@@ -876,7 +878,8 @@ sub SaveFile #(isMain)
     . "#\n"
     . "#   Index: [yes|no]\n"
     . "#\n"
-    . "#   Whether the topics are indexed.  Defaults to no.\n"
+    . "#   Whether the topics get their own index.  Defaults to yes.  Everything is\n"
+    . "#   included in the general index regardless of this setting.\n"
     . "#\n"
     . "#\n"
     . "#   Scope: [normal|start|end|always global]\n"
