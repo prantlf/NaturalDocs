@@ -299,7 +299,10 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
         # The format hasn't changed since the file was introduced.
 
         if ($status == ::FILE_CHANGED())
-            {  NaturalDocs::Project->ReparseEverything();  };
+            {
+            NaturalDocs::Project->ReparseEverything();
+            NaturalDocs::SymbolTable->RebuildAllIndexes();  # Because the ignored prefixes could change.
+            };
 
         my ($keyword, $value, $comment);
 
