@@ -1,8 +1,8 @@
 # Do not change or remove this line.
-Format: 1.02
+Format: 1.1
 
 Title: Natural Docs
-SubTitle: Version 1.02
+SubTitle: Version 1.1
 
 Footer: Copyright (c) 2003 Greg Valure
 
@@ -85,7 +85,6 @@ Group: Objects  {
       }  # Group: SymbolTable
 
    File: Parser::ParsedTopic  (Modules\NaturalDocs\Parser\ParsedTopic.pm)
-   File: Support::Enumerator  (Modules\NaturalDocs\Support\Enumerator.pm)
    }  # Group: Objects
 
 
