@@ -84,14 +84,6 @@ my $tabLength;
 # Whether auto-grouping is turned off.
 my $noAutoGroup;
 
-# bool: rebuildData
-# Whether the script should rebuild all data files from scratch.
-my $rebuildData;
-
-# bool: rebuildOutput
-# Whether the script should rebuild all output files from scratch.
-my $rebuildOutput;
-
 # bool: isQuiet
 # Whether the script should be run in quiet mode or not.
 my $isQuiet;
@@ -501,16 +493,6 @@ sub TabLength
 sub NoAutoGroup
     {  return $noAutoGroup;  };
 
-# Function: RebuildData
-# Returns whether the script should rebuild all data files from scratch.
-sub RebuildData
-    {  return $rebuildData;  };
-
-# Function: RebuildOutput
-# Returns whether the script should rebuild all output files from scratch.
-sub RebuildOutput
-    {  return $rebuildOutput;  };
-
 # Function: IsQuiet
 # Returns whether the script should be run in quiet mode or not.
 sub IsQuiet
@@ -670,11 +652,13 @@ sub ParseCommandLine
 
                 if ($option eq '-r')
                     {
-                    $rebuildData = 1;
-                    $rebuildOutput = 1;
+                    NaturalDocs::Project->ReparseEverything();
+                    NaturalDocs::Project->RebuildEverything();
                     }
                 elsif ($option eq '-ro')
-                    {  $rebuildOutput = 1;  }
+                    {
+                    NaturalDocs::Project->RebuildEverything();
+                    }
                 elsif ($option eq '-do')
                     {  $documentedOnly = 1;  }
                 elsif ($option eq '-q')
@@ -1073,9 +1057,10 @@ sub LoadAndComparePreviousSettings
 
     if (!$fileIsOkay)
         {
-        # Rebuild everything.
-        $rebuildData = 1;
-        $rebuildOutput = 1;
+        # We need to reparse everything because --documented-only may have changed.
+        # We need to rebuild everything because --tab-length may have changed.
+        NaturalDocs::Project->ReparseEverything();
+        NaturalDocs::Project->RebuildEverything();
         }
     else
         {
@@ -1093,7 +1078,7 @@ sub LoadAndComparePreviousSettings
         if ($prevTabLength != $self->TabLength())
             {
             # We need to rebuild all output because this affects all text diagrams.
-            $rebuildOutput = 1;
+            NaturalDocs::Project->RebuildEverything();
             };
 
         if ($prevDocumentedOnly == 0)
@@ -1104,9 +1089,7 @@ sub LoadAndComparePreviousSettings
         if ($prevDocumentedOnly != $self->DocumentedOnly() ||
             $prevNoAutoGroup != $self->NoAutoGroup())
             {
-            # These are biggies, since they affects the symbol table as well.  Nuke everything.
-            $rebuildData = 1;
-            $rebuildOutput = 1;
+            NaturalDocs::Project->ReparseEverything();
             };
 
 
@@ -1170,7 +1153,7 @@ sub LoadAndComparePreviousSettings
             if (!exists $previousOutputDirectories{$buildTarget->Directory()} ||
                 $buildTarget->Builder()->CommandLineOption() ne $previousOutputDirectories{$buildTarget->Directory()})
                 {
-                $rebuildOutput = 1;
+                NaturalDocs::Project->RebuildEverything();
                 last;
                 };
             };
