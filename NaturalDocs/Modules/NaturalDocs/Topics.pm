@@ -240,6 +240,10 @@ my @mainTopicNames;
 #
 #       Whether the topic is part of the class hierarchy.  Defaults to no.
 #
+#       > Variable Type: [yes|no]
+#
+#       Whether the topic can be used as a variable type.  Defaults to no.
+#
 #       > Page Title if First: [yes|no]
 #
 #       Whether the title of this topic becomes the page title if it is the first topic in a file.  Defaults to no.
@@ -267,6 +271,10 @@ my @mainTopicNames;
 #
 #
 #   Revisions:
+#
+#       1.4:
+#
+#           Added Variable Type.
 #
 #       1.3:
 #
@@ -537,6 +545,26 @@ sub LoadFile #(isMain)
                     };
                 }
 
+            elsif ($keyword eq 'variable type')
+                {
+                $value = lc($value);
+
+                if ($value eq 'yes')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetVariableType(1);  };
+                    }
+                elsif ($value eq 'no')
+                    {
+                    if (defined $topicTypeObject)
+                        {  $topicTypeObject->SetVariableType(0);  };
+                    }
+                else
+                    {
+                    NaturalDocs::ConfigFile->AddError('Variable Type lines can only be "yes" or "no".');
+                    };
+                }
+
             elsif ($keyword eq 'scope')
                 {
                 $value = lc($value);
@@ -796,6 +824,7 @@ sub SaveFile #(isMain)
                     $keyword eq 'scope' ||
                     $keyword eq 'page title if first' ||
                     $keyword eq 'class hierarchy' ||
+                    $keyword eq 'variable type' ||
                     $keyword eq 'break lists' ||
                     $keyword eq 'can group with')
                 {
@@ -969,6 +998,9 @@ sub SaveFile #(isMain)
     . "# Class Hierarchy: [yes|no]\n"
     . "#    Whether the topics are part of the class hierarchy.  Defaults to no.\n"
     . "#\n"
+    . "# Variable Type: [yes|no]\n"
+    . "#    Whether the topics can be a variable type.  Defaults to no.\n"
+    . "#\n"
     . "# Page Title If First: [yes|no]\n"
     . "#    Whether the topic's title becomes the page title if it's the first one in\n"
     . "#    a file.  Defaults to no.\n"
@@ -1015,7 +1047,7 @@ sub SaveFile #(isMain)
     if ($isMain)
         {  unshift @topicTypeOrder, @requiredTypeNames;  };
 
-    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Class Hierarchy', 'Page Title If First', 'Break Lists');
+    my @propertyOrder = ('Plural', 'Index', 'Scope', 'Class Hierarchy', 'Variable Type', 'Page Title If First', 'Break Lists');
 
     foreach my $topicType (@topicTypeOrder)
         {
