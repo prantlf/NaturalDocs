@@ -41,6 +41,18 @@
 #       - No constant will ever be zero or undef.  Those are reserved so any piece of code can allow a "none of the above" option
 #         and not worry about conflicts with an existing value.
 #
+#
+#   Topic: File Format Conventions
+#
+#       - All integers appear in big-endian format.  So a UInt16 should be handled with a 'n' in pack and unpack, not with a 'S'.
+#
+#       - AString16's are a big-endian UInt16 followed by that many ASCII characters.  A null-terminator is not stored.
+#
+#       - If a higher-level type is described in a file format, that means the loading and saving format is handled by that package.
+#         For example, if you see <SymbolString> in the format, that means <NaturalDocs::SymbolString->ToBinaryFile()> and
+#         <NaturalDocs::SymbolString->FromBinaryFile()> are used to manipulate it, and the underlying format should be treated
+#         as opaque.
+#
 
 use strict;
 use integer;
@@ -92,6 +104,12 @@ use NaturalDocs::Extensions;
 #   program.  All path manipulation should be done through <NaturalDocs::File>.
 #
 #
+#   Type: VersionInt
+#
+#   A comparable integer representing a version number.  Converting them to and from text and binary should be handled by
+#   <NaturalDocs::Version>.
+#
+#
 #   Type: SymbolString
 #
 #   A scalar which encodes a normalized array of identifier strings representing a full or partially-resolved symbol.  All symbols
@@ -102,7 +120,7 @@ use NaturalDocs::Extensions;
 #   Type: ReferenceString
 #
 #   All the information about a reference that makes it unique encoded into a string.  This includes the <SymbolString> of the
-#   reference, the scope <SymbolString> it appears in, the scope <Symbols> it has access to via "using", and the
+#   reference, the scope <SymbolString> it appears in, the scope <SymbolStrings> it has access to via "using", and the
 #   <ReferenceType>.  This is done because if any of those parameters change, it needs to be treated as a completely separate
 #   reference.
 #

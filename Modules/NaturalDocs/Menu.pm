@@ -263,14 +263,13 @@ my %bannedIndexes;
 #
 #   The file used to store the previous state of the menu so as to detect changes.
 #
+#
+#   Format:
+#
 #   > [BINARY_FORMAT]
+#   > [VersionInt: app version]
 #
-#   The file is binary, so the first byte is the <BINARY_FORMAT> token.
-#
-#   > [app version]
-#
-#   Immediately after is the application version it was generated with.  Manage with the binary functions in
-#   <NaturalDocs::Version>.
+#   First is the standard <BINARY_FORMAT> <VersionInt> header.
 #
 #   > [UInt8: 0 (end group)]
 #   > [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
@@ -279,10 +278,13 @@ my %bannedIndexes;
 #   > [UInt8: MENU_LINK] [AString16: title] [AString16: url]
 #   > [UInt8: MENU_TEXT] [AString16: text]
 #
-#   The first UInt8 of each following line is either zero or one of the <Menu Entry Types>.  What follows is contextual.  AString16s
-#   are big-endian UInt16's followed by that many ASCII characters.
+#   The first UInt8 of each following line is either zero or one of the <Menu Entry Types>.  What follows is contextual.
 #
 #   There are no entries for title, subtitle, or footer.  Only the entries present in <menu>.
+#
+#   See Also:
+#
+#       <File Format Conventions>
 #
 #   Dependencies:
 #

@@ -161,13 +161,9 @@ my $defaultStyle;
 #   Format:
 #
 #       > [BINARY_FORMAT]
+#       > [VersionInt: app version]
 #
-#       The file is binary, so the first byte is the <BINARY_FORMAT> token.
-#
-#       > [app version]
-#
-#       Immediately after this is the application version it was generated with.  Manage with the binary functions in
-#       <NaturalDocs::Version>.
+#       The file starts with the standard <BINARY_FORMAT> <VersionInt> header.
 #
 #       > [UInt8: tab length]
 #       > [UInt8: headers only (0 or 1)]
@@ -184,6 +180,9 @@ my $defaultStyle;
 #
 #       A count of output targets, then that number of directory/format pairs.
 #
+#   See Also:
+#
+#       <File Format Conventions>
 #
 #   Dependencies:
 #
