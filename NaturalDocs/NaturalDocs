@@ -69,6 +69,8 @@
 #                                   with one from Natural Docs' style directory.  If not specified, the style is "Default".  See
 #                                   <HTML Styles> for options.  Also --style.
 #
+#           -do                - Prevents undocumented code aspects from being included in the output.  Also --documentedonly.
+#
 #           -t [len]           - Sets the number of spaces tabs should be expanded to.  This only needs to be set if you use tabs
 #                                  in example code and text diagrams.  The default is 4.  Also --tablength.
 #
