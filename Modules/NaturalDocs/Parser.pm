@@ -19,7 +19,6 @@
 # This file is part of Natural Docs, which is Copyright © 2003-2004 Greg Valure
 # Natural Docs is licensed under the GPL
 
-
 use NaturalDocs::Parser::ParsedTopic;
 use NaturalDocs::Parser::Native;
 
