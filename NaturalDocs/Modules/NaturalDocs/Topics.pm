@@ -348,6 +348,40 @@ my %fullAutoGroupable = ( TOPIC_FILE() => 1,
                                         TOPIC_CONSTANT() => 1 );
 
 
+#
+#   hash: isAlwaysGlobal
+#
+#   An existence hash of the <TopicTypes> that are always global, even when they appear in a class.
+#
+my %isAlwaysGlobal = ( TOPIC_FILE() => 1 );
+
+
+#
+#   hash: hasScope
+#
+#   An existence hash of the <TopicTypes> that create a scope after them, like classes do.
+#
+my %hasScope = ( TOPIC_CLASS() => 1 );
+
+
+#
+#   hash: endsScope
+#
+#   An existence hash of the <TopicTypes> that end a scope, like sections do.
+#
+my %endsScope = ( TOPIC_SECTION() => 1,
+                               TOPIC_CLASS_LIST() => 1 );
+
+
+#
+#   hash: canBePageTitle
+#
+#   An existence hash of the <TopicTypes> that can be the page title if they are the first topic in the file.
+#
+my %canBePageTitle = ( TOPIC_CLASS() => 1,
+                                     TOPIC_FILE() => 1,
+                                     TOPIC_SECTION() => 1 );
+
 
 ###############################################################################
 # Group: Functions
@@ -485,5 +519,48 @@ sub BaseConstantOf #(string)
         {  return $topic;  };
     };
 
+#
+#   Function: IsAlwaysGlobal
+#
+#   Returns whether the <TopicType> is always global, even when it appears in a class.
+#
+sub IsAlwaysGlobal #(topic)
+    {
+    my ($self, $topic) = @_;
+    return exists $isAlwaysGlobal{$topic};
+    };
+
+#
+#   Function: HasScope
+#
+#   Returns whether the <TopicType> creates a scope after it.
+#
+sub HasScope #(topic)
+    {
+    my ($self, $topic) = @_;
+    return exists $hasScope{$topic};
+    };
+
+#
+#   Function: EndsScope
+#
+#   Returns whether the <TopicType> ends a scope.
+#
+sub EndsScope #(topic)
+    {
+    my ($self, $topic) = @_;
+    return exists $endsScope{$topic};
+    };
+
+#
+#   Function: CanBePageTitle
+#
+#   Returns whether the <TopicType> can be the page title if it's the first topic in a file.
+#
+sub CanBePageTitle #(topic)
+    {
+    my ($self, $topic) = @_;
+    return exists $canBePageTitle{$topic};
+    };
 
 1;
