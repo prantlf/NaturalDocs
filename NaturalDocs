@@ -12,6 +12,7 @@ sub INIT
     };
 
 use NaturalDocs::Constants;
+use NaturalDocs::Version;
 use NaturalDocs::File;
 use NaturalDocs::NDMarkup;
 use NaturalDocs::Languages;
@@ -28,7 +29,7 @@ use integer;
 #
 #   Script: Natural Docs
 #
-#       Version 0.95
+#       Version 1.0
 #
 #       Copyright © 2003 Greg Valure
 #
@@ -143,7 +144,7 @@ use integer;
 #
 #   Topic: HTML Compatibility
 #
-#       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.3, my browser of choice.  Therefore it should be
+#       Mozilla (Gecko)         - *Works on 1.0+.*  Tested on Mozilla 1.0.2 and 1.4, my browser of choice.  Therefore it should be
 #                                        okay with Netscape 7, etc.
 #       Internet Explorer      - *Works on 4+.*  Tested on 4.0, 5.0 and 6.0.  I don't have a partition for 5.5 so I'm assuming it
 #                                        works.  4 can't collapse the menu and has minor layout issues.
@@ -284,6 +285,30 @@ sub StringCompare #(a, b)
         {  return $result;  };
     };
 
+
+#
+#   Function: ShortenToMatchStrings
+#
+#   Compares two arrayrefs and shortens the first array to only contain shared entries.  Assumes all entries are strings.
+#
+#   Parameters:
+#
+#       sharedArrayRef - The arrayref that will be shortened to only contain common elements.
+#       compareArrayRef - The arrayref to match.
+#
+sub ShortenToMatchStrings #(sharedArrayRef, compareArrayRef)
+    {
+    my ($sharedArrayRef, $compareArrayRef) = @_;
+
+    my $index = 0;
+
+    while ($index < scalar @$sharedArrayRef && $index < scalar @$compareArrayRef &&
+             $sharedArrayRef->[$index] eq $compareArrayRef->[$index])
+        {  $index++;  };
+
+    if ($index < scalar @$sharedArrayRef)
+        {  splice(@$sharedArrayRef, $index);  };
+    };
 
 
 ###############################################################################
