@@ -99,7 +99,7 @@ use integer;
 #           -h, --help                   - Prints the syntax reference.
 #
 #
-#   About: Supported Code Formats
+#   About: Supported Languages
 #
 #       Adding additional languages is very easy, so don't worry if yours isn't here.  See <How to Add Output Formats>.
 #
