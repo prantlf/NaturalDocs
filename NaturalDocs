@@ -168,7 +168,7 @@ use integer;
 #
 #   Topic: How to Add Source Formats
 #
-#       In the main script (NaturalDocs.pl) add a call to <NaturalDocs::Languages::Add()> after all the rest.  See
+#       In the main script add a call to <NaturalDocs::Languages::Add()> after all the rest.  See
 #       <NaturalDocs::Languages::Add()>'s documentation for an explanation of the parameters.
 #
 #
@@ -177,7 +177,7 @@ use integer;
 #       - Create a new <NaturalDocs::Builder> sub-package derived from <NaturalDocs::Builder::Base>.
 #       - See <NaturalDocs::Builder::Base>'s documentation for a list of the interface functions that should be implemented and
 #         examples of how to do so.
-#       - Add a 'use' statement for your package after the others in the main script (NaturalDocs.pl).
+#       - Add a 'use' statement for your package after the others in the main script.
 #       - Document the additional option in <Supported Output Formats>.
 #
 #
@@ -223,6 +223,7 @@ use integer;
 # Output packages are added to NaturalDocs::Builder just by including them.
 
 use NaturalDocs::Builder::HTML;
+use NaturalDocs::Builder::FramedHTML;
 
 
 eval {
