@@ -394,7 +394,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                     $topLevelTag = TAG_DESCRIPTIONLIST;
                     };
 
-                if ($isList && !$ignoreListSymbols)
+                if (($isList && !$ignoreListSymbols) || $type eq ::TOPIC_ENUMERATION())
                     {
                     $output .= '<ds>' . NaturalDocs::NDMarkup->ConvertAmpChars($entry) . '</ds><dd>';
                     }
