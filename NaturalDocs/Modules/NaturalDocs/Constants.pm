@@ -22,7 +22,8 @@ require Exporter;
 
 @EXPORT = ('TOPIC_CLASS', 'TOPIC_SECTION', 'TOPIC_FILE', 'TOPIC_GROUP', 'TOPIC_FUNCTION', 'TOPIC_VARIABLE',
                    'TOPIC_GENERIC', 'TOPIC_CLASS_LIST', 'TOPIC_FILE_LIST', 'TOPIC_FUNCTION_LIST', 'TOPIC_VARIABLE_LIST',
-                   'TOPIC_GENERIC_LIST', 'TopicIsList', 'TopicIsListOf',
+                   'TOPIC_GENERIC_LIST', 'TopicIsList', 'TopicIsListOf', 'TOPIC_TYPE', 'TOPIC_TYPE_LIST', 'TOPIC_CONSTANT',
+                   'TOPIC_CONSTANT_LIST',
 
                    'MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
                    'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL',
@@ -31,6 +32,7 @@ require Exporter;
                    'MENU_GROUP_UPDATEORDER', 'MENU_GROUP_HASENDOFORIGINAL',
                    'MENU_GROUP_UNSORTED', 'MENU_GROUP_FILESSORTED',
                    'MENU_GROUP_FILESANDGROUPSSORTED', 'MENU_GROUP_EVERYTHINGSORTED',
+                   'MENU_GROUP_ISINDEXGROUP',
 
                    'FILE_NEW', 'FILE_CHANGED', 'FILE_SAME', 'FILE_DOESNTEXIST',
 
@@ -56,11 +58,17 @@ require Exporter;
 #       TOPIC_VARIABLE  - A variable.  The code immediately afterwards will be used as the prototype if it matches the name.
 #       TOPIC_GENERIC   - A generic topic.
 #
-#       TOPIC_CLASS_LIST        - A list of classes where it's not worth giving each its own entry.  Will not have scope.
-#       TOPIC_FILE_LIST            - A list of files where it's not worth giving each its own entry.
-#       TOPIC_FUNCTION_LIST  - A list of functions where it's not worth giving each its own entry.  Will not have prototypes.
-#       TOPIC_VARIABLE_LIST   - A list of variables where it's not worth giving each its own entry.  Will not have prototypes.
-#       TOPIC_GENERIC_LIST    - A list of generic topics where it's not worth giving each its own entry, such as constants.
+#       TOPIC_CONSTANT - A constant.  Same as generic, but distinguished for indexing.
+#       TOPIC_TYPE          - A type.  Same as generic, but distinguished for indexing.
+#
+#       TOPIC_CLASS_LIST        - A list of classes.  Will not have scope.
+#       TOPIC_FILE_LIST            - A list of files.
+#       TOPIC_FUNCTION_LIST  - A list of functions.  Will not have prototypes.
+#       TOPIC_VARIABLE_LIST   - A list of variables.  Will not have prototypes.
+#       TOPIC_GENERIC_LIST    - A list of generic topics.
+#
+#       TOPIC_CONSTANT_LIST - A list of constants.
+#       TOPIC_TYPE_LIST - A list of types.
 #
 #   Dependency:
 #
@@ -73,6 +81,8 @@ use constant TOPIC_GROUP => 4;
 use constant TOPIC_FUNCTION => 5;
 use constant TOPIC_VARIABLE => 6;
 use constant TOPIC_GENERIC => 7;
+use constant TOPIC_TYPE => 8;
+use constant TOPIC_CONSTANT => 9;
 
 use constant TOPIC_LIST_BASE => 100;  # To accomodate for future expansion without changing the actual values.
 
@@ -81,6 +91,8 @@ use constant TOPIC_FILE_LIST => (TOPIC_FILE + TOPIC_LIST_BASE);
 use constant TOPIC_FUNCTION_LIST => (TOPIC_FUNCTION + TOPIC_LIST_BASE);
 use constant TOPIC_VARIABLE_LIST => (TOPIC_VARIABLE + TOPIC_LIST_BASE);
 use constant TOPIC_GENERIC_LIST => (TOPIC_GENERIC + TOPIC_LIST_BASE);
+use constant TOPIC_TYPE_LIST => (TOPIC_TYPE + TOPIC_LIST_BASE);
+use constant TOPIC_CONSTANT_LIST => (TOPIC_CONSTANT + TOPIC_LIST_BASE);
 
 
 #
@@ -156,6 +168,8 @@ use constant MENU_ENDOFORIGINAL => 10;
 #       MENU_GROUP_UPDATEORDER - The group should be resorted.
 #
 #       MENU_GROUP_HASENDOFORIGINAL - Whether the group contains a dummy <MENU_ENDOFORIGINAL> entry.
+#       MENU_GROUP_ISINDEXGROUP - Whether the group is used primarily for <MENU_INDEX> entries.  <MENU_TEXT> entries
+#                                                       are tolerated.
 #
 #       MENU_GROUP_UNSORTED - The group's contents are not sorted.
 #       MENU_GROUP_FILESSORTED - The group's files are sorted alphabetically.
@@ -174,6 +188,8 @@ use constant MENU_GROUP_UNSORTED => 0x0010;
 use constant MENU_GROUP_FILESSORTED => 0x0020;
 use constant MENU_GROUP_FILESANDGROUPSSORTED => 0x0040;
 use constant MENU_GROUP_EVERYTHINGSORTED => 0x0080;
+
+use constant MENU_GROUP_ISINDEXGROUP => 0x0100;
 
 
 #
