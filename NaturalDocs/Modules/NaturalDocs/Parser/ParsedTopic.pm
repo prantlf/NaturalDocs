@@ -81,6 +81,11 @@ sub New #(type, name, class, scope, prototype, summary, body, lineNumber)
 sub Type
     {  return $_[0]->[TYPE];  };
 
+# Function: SetType
+# Replaces the topic's type.
+sub SetType #(type)
+    {  $_[0]->[TYPE] = $_[1];  };
+
 # Function: Name
 # Returns the name of the topic.
 sub Name
