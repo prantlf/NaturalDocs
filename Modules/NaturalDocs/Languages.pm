@@ -25,6 +25,7 @@ use NaturalDocs::Languages::Advanced;
 
 use NaturalDocs::Languages::Perl;
 use NaturalDocs::Languages::CSharp;
+use NaturalDocs::Languages::ActionScript;
 
 use NaturalDocs::Languages::Ada;
 use NaturalDocs::Languages::PLSQL;
