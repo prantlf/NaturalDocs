@@ -265,17 +265,28 @@ sub ExtractComments
         my $prototype;
         my $prototypeType;
 
+        # If set, it means a line started with an opening comment symbol, but the comment closed on the same line so it may be
+        # part of the prototype, such as with this splint annotated function:
+        #
+        # int get_array(integer_t id,
+        #                    /*@out@*/ array_t array);
+        #
+        # It will contain the original line and will be added to the prototype if the comment doesn't contain Natural Docs content.
+        my $possiblePrototypeLine;
+
         while (defined $line)
             {
             chomp $line;
+            my $originalLine = $line;
 
             # Retrieve single line comments.  This leaves $line at the next line.
 
             if ($language->StripLineCommentSymbol(\$line))
                 {
-                # If we couldn't find a prototype ender, we couldn't find a prototype.
+                # If we couldn't find a prototype ender by now, we couldn't find a prototype.
                 $prototype = undef;
                 $prototypeType = undef;
+                $possiblePrototypeLine = undef;
 
                 do
                     {
@@ -294,11 +305,7 @@ sub ExtractComments
 
             elsif ($language->StripOpeningCommentSymbol(\$line))
                 {
-                # If we couldn't find a prototype ender, we couldn't find a prototype.
-                $prototype = undef;
-                $prototypeType = undef;
-
-                my ($symbol, $lineRemainder);
+                my ($symbol, $lineRemainder, $multiline);
 
                 for (;;)
                     {
@@ -314,11 +321,25 @@ sub ExtractComments
                         };
 
                     $line = <SOURCEFILEHANDLE>;
+                    $multiline = 1;
 
                     if (!defined $line)
                         {  last;  };
 
                     chomp($line);
+                    };
+
+                if ($multiline)
+                    {
+                    # A comment spanning multiple lines stops the prototype search.
+                    $prototype = undef;
+                    $prototypeType = undef;
+                    $possiblePrototypeLine = undef;
+                    }
+                else
+                    {
+                    # If it's on a single line, it has the potential to be included.
+                    $possiblePrototypeLine = substr($originalLine, 0, -length($lineRemainder));
                     };
                 }
 
@@ -345,6 +366,7 @@ sub ExtractComments
 
                     $prototype = undef;
                     $prototypeType = undef;
+                    $possiblePrototypeLine = undef;
                     };
 
                 $line = <SOURCEFILEHANDLE>;
@@ -354,7 +376,6 @@ sub ExtractComments
 
             else
                 {  $line = <SOURCEFILEHANDLE>;  };
-
 
 
             # If there were comments, send them to CleanComment() and determine if we need to find a prototype.
@@ -371,7 +392,9 @@ sub ExtractComments
                     {
                     # Start searching for a prototype if necessary.
 
+                    $prototype = undef;
                     $prototypeType = $parsedFile[-1]->Type();
+                    $possiblePrototypeLine = undef;
 
                     if (!$language->HasPrototype($prototypeType))
                         {  $prototypeType = undef;  }
@@ -383,6 +406,12 @@ sub ExtractComments
                         while (defined $line && $line =~ /^[ \t\n]*$/)
                             {  $line = <SOURCEFILEHANDLE>;  };
                         };
+                    }
+
+                # If there weren't topics...
+                elsif (defined $possiblePrototypeLine)
+                    {
+                    $prototype .= $possiblePrototypeLine . "\n";
                     };
                 };
 
