@@ -829,7 +829,15 @@ sub SaveFile #(isMain)
         };
 
 
-    open(FH_TOPICS, '>' . $file) or die "Couldn't save " . $file;
+    if (!open(FH_TOPICS, '>' . $file))
+        {
+        # The main file may be on a shared volume or some other place the user doesn't have write access to.  Since this is only to
+        # reformat the file, we can ignore the failure.
+        if ($isMain)
+            {  return;  }
+        else
+            {  die "Couldn't save " . $file;  };
+        };
 
     print FH_TOPICS 'Format: ' . NaturalDocs::Settings->TextAppVersion() . "\n\n";
 
