@@ -114,16 +114,15 @@ sub LoadAndDetectChanges
     {
     GetAllSupportedFiles();
 
-    my $indexFile;
     my $fileIsOkay;
     my $rebuildOutput = NaturalDocs::Settings::RebuildOutput();
 
     my $hasChanged = $rebuildOutput;
 
-    if (!NaturalDocs::Settings::RebuildData() && open($indexFile, '<' . ProjectFile()))
+    if (!NaturalDocs::Settings::RebuildData() && open(PROJECTFILEHANDLE, '<' . ProjectFile()))
         {
         # Check if the file is in the right format.
-        my $version = NaturalDocs::Version::FromTextFile($indexFile);
+        my $version = NaturalDocs::Version::FromTextFile(\*PROJECTFILEHANDLE);
 
         # The output needs to be rebuilt for 1.01, but the data format hasn't changed.
 
@@ -138,7 +137,7 @@ sub LoadAndDetectChanges
             }
         else
             {
-            close($indexFile);
+            close(PROJECTFILEHANDLE);
             $hasChanged = 1;
             };
         };
@@ -152,7 +151,7 @@ sub LoadAndDetectChanges
 
         # Check if NaturalDocs_Menu.txt changed.
 
-        $line = <$indexFile>;
+        $line = <PROJECTFILEHANDLE>;
 
         if (! -e MenuFile())
             {
@@ -173,7 +172,7 @@ sub LoadAndDetectChanges
 
         # Parse the rest of the file.
 
-        while ($line = <$indexFile>)
+        while ($line = <PROJECTFILEHANDLE>)
             {
             chomp($line);
             my ($file, $modification, $hasContent, $menuTitle) = split(/\t/, $line, 4);
@@ -227,7 +226,7 @@ sub LoadAndDetectChanges
                 };
             };
 
-        close($indexFile);
+        close(PROJECTFILEHANDLE);
 
 
         # Check for added files.
@@ -278,23 +277,22 @@ sub LoadAndDetectChanges
 #
 sub Save
     {
-    my $indexFile;
-    open($indexFile, '>' . ProjectFile())
+    open(PROJECTFILEHANDLE, '>' . ProjectFile())
         or die "Couldn't save project file " . ProjectFile() . "\n";
 
-    NaturalDocs::Version::ToTextFile($indexFile, NaturalDocs::Settings::AppVersion());
+    NaturalDocs::Version::ToTextFile(\*PROJECTFILEHANDLE, NaturalDocs::Settings::AppVersion());
 
-    print $indexFile '' . (stat(MenuFile()))[9] . "\n";
+    print PROJECTFILEHANDLE '' . (stat(MenuFile()))[9] . "\n";
 
     while (my ($fileName, $file) = each %supportedFiles)
         {
-        print $indexFile $fileName . "\t"
+        print PROJECTFILEHANDLE $fileName . "\t"
                               . $file->LastModified() . "\t"
                               . ($file->HasContent() || '0') . "\t"
                               . $file->DefaultMenuTitle() . "\n";
         };
 
-    close($indexFile);
+    close(PROJECTFILEHANDLE);
     };
 
 
@@ -542,11 +540,9 @@ sub GetAllSupportedFiles #(directory)
         {  $menuFile = MenuFile();  };
 
 
-    my $directoryHandle;
-
-    opendir $directoryHandle, $directory;
-    my @entries = readdir $directoryHandle;
-    closedir $directoryHandle;
+    opendir DIRECTORYHANDLE, $directory;
+    my @entries = readdir DIRECTORYHANDLE;
+    closedir DIRECTORYHANDLE;
 
     @entries = NaturalDocs::File::NoUpwards(@entries);
 

@@ -77,19 +77,17 @@ sub BuildFile #(sourceFile, parsedFile)
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
 
 
-    my $outputFileHandle;
-
     # 99.99% of the time the output directory will already exist, so this will actually be more efficient.  It only won't exist
     # if a new file was added in a new subdirectory and this is the first time that file was ever parsed.
-    if (!open($outputFileHandle, '>' . $fullOutputFile))
+    if (!open(OUTPUTFILEHANDLE, '>' . $fullOutputFile))
         {
         NaturalDocs::File::CreatePath( NaturalDocs::File::NoFileName($fullOutputFile) );
 
-        open($outputFileHandle, '>' . $fullOutputFile)
+        open(OUTPUTFILEHANDLE, '>' . $fullOutputFile)
             or die "Couldn't create output file " . $fullOutputFile . "\n";
         };
 
-    print $outputFileHandle
+    print OUTPUTFILEHANDLE
 
 
 
@@ -121,7 +119,7 @@ sub BuildFile #(sourceFile, parsedFile)
         . '</body></html>';
 
 
-    close($outputFileHandle);
+    close(OUTPUTFILEHANDLE);
     };
 
 
@@ -195,9 +193,7 @@ sub UpdateMenu
     my $outputFile = NaturalDocs::File::JoinPath($outputDirectory, 'menu.html');
 
 
-    my $outputFileHandle;
-
-    open($outputFileHandle, '>' . $outputFile)
+    open(OUTPUTFILEHANDLE, '>' . $outputFile)
         or die "Couldn't create output file " . $outputFile . "\n";
 
     my $title = NaturalDocs::Menu::Title();
@@ -209,7 +205,7 @@ sub UpdateMenu
     $title = $self->StringToHTML($title);
 
 
-    print $outputFileHandle
+    print OUTPUTFILEHANDLE
 
 
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" '
@@ -244,7 +240,7 @@ sub UpdateMenu
         . '</body></html>';
 
 
-    close($outputFileHandle);
+    close(OUTPUTFILEHANDLE);
 
 
     # Update index.html
@@ -252,12 +248,11 @@ sub UpdateMenu
     my $firstMenuEntry = $self->FindFirstFile(NaturalDocs::Menu::Content());
 
     my $indexFile = NaturalDocs::File::JoinPath( NaturalDocs::Settings::OutputDirectory($self), 'index.html' );
-    my $indexFileHandle;
 
-    open($indexFileHandle, '>' . $indexFile)
+    open(INDEXFILEHANDLE, '>' . $indexFile)
         or die "Couldn't create output file " . $indexFile . ".\n";
 
-    print $indexFileHandle
+    print INDEXFILEHANDLE
 
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Frameset//EN" '
             . '"http://www.w3.org/TR/REC-html40/frameset.dtd">'
@@ -288,7 +283,7 @@ sub UpdateMenu
 
         . '</html>';
 
-    close $indexFileHandle;
+    close INDEXFILEHANDLE;
     };
 
 

@@ -360,15 +360,13 @@ sub Parse
 
     # Read the entire file into memory.
 
-    my $fileHandle;
+    my $fileName = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $file );
     my $fileContent;
 
-    my $fileName = NaturalDocs::File::JoinPath( NaturalDocs::Settings::InputDirectory(), $file );
-
-    open($fileHandle, '<' . $fileName)
+    open(SOURCEFILEHANDLE, '<' . $fileName)
         or die "Couldn't open input file " . $fileName . "\n";
-    read($fileHandle, $fileContent, -s $fileHandle);
-    close($fileHandle);
+    read(SOURCEFILEHANDLE, $fileContent, -s SOURCEFILEHANDLE);
+    close(SOURCEFILEHANDLE);
 
 
     # Parse the content for comments.

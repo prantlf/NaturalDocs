@@ -164,23 +164,21 @@ my %indexChanges;
 #
 sub LoadAndPurge
     {
-    my $fileHandle;
     my $line;
-
     my $fileIsOkay;
 
-    if (!NaturalDocs::Settings::RebuildData() && open($fileHandle, '<' . NaturalDocs::Project::SymbolTableFile()))
+    if (!NaturalDocs::Settings::RebuildData() && open(SYMBOLTABLEFILEHANDLE, '<' . NaturalDocs::Project::SymbolTableFile()))
         {
         # Check if the version is okay.
 
-        my $version = NaturalDocs::Version::FromTextFile($fileHandle);
+        my $version = NaturalDocs::Version::FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
         # Currently, the file format hasn't changed between public versions, so any version <= our own is okay.
 
         if ($version <= NaturalDocs::Settings::AppVersion())
             {  $fileIsOkay = 1;  }
         else
-            {  close($fileHandle);  };
+            {  close(SYMBOLTABLEFILEHANDLE);  };
         };
 
 
@@ -194,7 +192,7 @@ sub LoadAndPurge
 
     # Symbol definitions
 
-    while ($line = <$fileHandle>)
+    while ($line = <SYMBOLTABLEFILEHANDLE>)
         {
         chomp($line);
 
@@ -207,7 +205,7 @@ sub LoadAndPurge
         my $symbolString = $line;
         my $symbolObject = NaturalDocs::SymbolTable::Symbol::New();
 
-        $line = <$fileHandle>;
+        $line = <SYMBOLTABLEFILEHANDLE>;
         chomp($line);
 
         while (length $line)
@@ -222,7 +220,7 @@ sub LoadAndPurge
 
             $files{$file}->AddSymbol($symbolString);
 
-            $line = <$fileHandle>;
+            $line = <SYMBOLTABLEFILEHANDLE>;
             chomp($line);
             };
 
@@ -232,7 +230,7 @@ sub LoadAndPurge
 
     # References
 
-    while ($line = <$fileHandle>)
+    while ($line = <SYMBOLTABLEFILEHANDLE>)
         {
         chomp($line);
 
@@ -241,7 +239,7 @@ sub LoadAndPurge
         my $referenceString = $line;
         my $referenceObject = NaturalDocs::SymbolTable::Reference::New();
 
-        $line = <$fileHandle>;
+        $line = <SYMBOLTABLEFILEHANDLE>;
         chomp($line);
 
         # [definition] tab [definition] tab [definition] ...
@@ -270,7 +268,7 @@ sub LoadAndPurge
         };
 
 
-    close($fileHandle);
+    close(SYMBOLTABLEFILEHANDLE);
 
     Purge();
     };
@@ -282,12 +280,11 @@ sub LoadAndPurge
 #
 sub Save
     {
-    my $fileHandle;
-    open($fileHandle, '>' . NaturalDocs::Project::SymbolTableFile())
+    open(SYMBOLTABLEFILEHANDLE, '>' . NaturalDocs::Project::SymbolTableFile())
         or die "Couldn't save project file " . NaturalDocs::Project::SymbolTableFile() . "\n";
 
 
-    NaturalDocs::Version::ToTextFile($fileHandle, NaturalDocs::Settings::AppVersion());
+    NaturalDocs::Version::ToTextFile(\*SYMBOLTABLEFILEHANDLE, NaturalDocs::Settings::AppVersion());
 
 
     # Symbols
@@ -297,7 +294,7 @@ sub Save
         # Only existing symbols.
         if ($symbolObject->IsDefined())
             {
-            print $fileHandle $symbol . "\n"
+            print SYMBOLTABLEFILEHANDLE $symbol . "\n"
                                   . $symbolObject->GlobalDefinition() . "\t"
                                   . $symbolObject->GlobalType() . "\t"
                                   . $symbolObject->GlobalPrototype() . "\n";
@@ -308,34 +305,34 @@ sub Save
                 {
                 if ($definition ne $symbolObject->GlobalDefinition())
                     {
-                    print $fileHandle $definition . "\t"
+                    print SYMBOLTABLEFILEHANDLE $definition . "\t"
                                           . $symbolObject->TypeDefinedIn($definition) . "\t"
                                           . $symbolObject->PrototypeDefinedIn($definition) . "\n";
                     };
                 };
 
-            print $fileHandle "\n";
+            print SYMBOLTABLEFILEHANDLE "\n";
             };
         };
 
 
     # Separator
 
-    print $fileHandle "\n";
+    print SYMBOLTABLEFILEHANDLE "\n";
 
 
     # References
 
     while (my ($reference, $referenceObject) = each %references)
         {
-        print $fileHandle $reference . "\n";
+        print SYMBOLTABLEFILEHANDLE $reference . "\n";
 
         my @definitions = $referenceObject->Definitions();
-        print $fileHandle join("\t", @definitions) . "\n";
+        print SYMBOLTABLEFILEHANDLE join("\t", @definitions) . "\n";
         };
 
 
-    close($fileHandle);
+    close(SYMBOLTABLEFILEHANDLE);
     };
 
 
