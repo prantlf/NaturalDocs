@@ -358,6 +358,7 @@ List: Class Hierarchy Styles
     CHParent - The style for a parent class.
     CHCurrent - The style for the current class, which is the one the hierarchy is generated for.
     CHChild - The style for a child class.
+    CHChildNote - The style for when a child is added that just shows how many other children were omitted.
 
     CHIndent - A style used to indent a level.
 
@@ -668,3 +669,4 @@ Topic: Revisions
     0.9:
 
         - Added <Index Styles>, since 0.9 added indexes.
+
