@@ -130,7 +130,7 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 
         # If the line has a recognized header and the previous line is blank...
         elsif ($prevLineBlank &&
-                $commentLines->[$index] =~ /^ *([a-z0-9]+): +(.*)$/i &&
+                $commentLines->[$index] =~ /^ *([a-z0-9 ]*[a-z0-9]): +(.*)$/i &&
                 (my ($newType, $newTypeInfo, $newIsPlural) = NaturalDocs::Topics->KeywordInfo($1)) )
             {
             my $newTitle = $2;
