@@ -144,8 +144,8 @@ Topic: Content Structure
 
     Each piece of content is a <CTopic> surrounded by its type; for example, <CFunction> for a function.  Inside
     that are the <CTitle> and if necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags:
-    <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so
-    that you only style explicit <NDMarkup> paragraphs, not any p that appears.
+    <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so that you only style explicit <NDMarkup> paragraphs,
+    not any p that appears.
 
     In addition to the top-level <NDMarkup> tags, you also have <CPrototype>, <CTitle>, and <Summaries>.  <Summaries> are
     described in their own section.
@@ -154,7 +154,7 @@ Topic: Content Structure
 
     <Content>
 
-        <CType (CFunction, CItem, etc.)>
+        <CType (CFunction, CVariable, etc.)>
             <CTopic>
 
                 <CTitle>
@@ -203,7 +203,7 @@ Topic: Content Structure
                </CBody>
 
            </CTopic>
-        </CType (CFunction, CItem, etc.)>
+        </CType (CFunction, CVariable, etc.)>
 
     </Content>
 
@@ -232,24 +232,8 @@ List: Content Styles
     #MainTopic - The ID given to the main topic, which is the first in the file.  It is applied to the topic type tag, such as <CClass>
                         and <CFunction>.
 
-    CClass - A class topic.
-    CSection - A section topic.
-    CFile - A file topic.
-    CGroup - A group topic.
-    CFunction - A function topic.
-    CVariable - A variable topic.
-    CProperty - A property topic.
-    CConstant - A constant topic.
-    CType - A type topic.
-    CGeneric - A generic topic.
-    CClassList - A class list topic.
-    CFileList - A file list topic.
-    CFunctionList - A function list topic.
-    CVariableList - A variable list topic.
-    CPropertyList - A property list topic.
-    CConstantList - A constant list topic.
-    CTypeList - A type list topic.
-    CGenericList - A generic list topic.
+    CType - A placeholder for all type-specific styles.  The actual styles will be C followed by their spaceless name, as specified
+                by <NaturalDocs::Topics->NameOf()>.  So the CType of a <TOPIC_FUNCTION> topic will actually be CFunction.
 
 
 Topic: Menu Structure
@@ -450,19 +434,8 @@ List: Summary Styles
     SInClass - Surrounding entries and descriptions that are part of a class.
     SInSection - Surrounds entries and descriptions that are part of a section.
 
-    SMain - The main summary.
-    SClass - For class summaries.
-    SSection - For section summaries.
-    SFile - For file summaries.
-    SGroup - For group summaries.
-    SFunction - For function summaries.
-    SVariable - For item summaries.
-    SGeneric - For generic summaries.
-    SClassList - For class list summaries.
-    SFileList - For file list summaries.
-    SFunctionList - For function list summaries.
-    SVariableList - For variable list summaries.
-    SGenericList - For generic list summaries.
+    SType - A placeholder for all topic-specific styles.  The actual styles will be S followed by their spaceless name, as specified
+                by <NaturalDocs::Topics->NameOf()>.  So the SType of a <TOPIC_FUNCTION> topic will actually be SFunction.
 
 
 
@@ -481,20 +454,8 @@ Topic: Link Structure
 
 List: Link Styles
 
-    LClass - Link to a class.
-    LSection - Link to a section.
-    LFile - Link to a file.
-    LGroup - Link to a group.
-    LFunction - Link to a function.
-    LVariable - Link to a item.
-    LGeneric - Link to a generic.
-    LClassList - Link to a class list.
-    LFileList - Link to a file list.
-    LFunctionList - Link to a function list.
-    LVariableList - Link to a variable list.
-    LGenericList - Link to a generic list.
-    LURL - Link to an external URL.
-    LEMail - Link to an e-mail address.
+    LType - A placeholder for all topic-specific styles.  The actual styles will be L followed by their spaceless name, as specified
+                by <NaturalDocs::Topics->NameOf()>.  So the LType of a <TOPIC_FUNCTION> topic will actually be LFunction.
 
 
 
@@ -631,9 +592,15 @@ Topic: Revisions
 
     How the page structure has changed throughout the various releases.
 
+    1.23:
+
+        - Added <TOPIC_DATABASE>, <TOPIC_DATABASE_LIST>, <TOPIC_DATABASE_TABLE>, <TOPIC_DATABASE_TABLE_LIST>,
+          <TOPIC_COOKIE>, and <TOPIC_COOKIE_LIST> styles, so they get corresponding <CTypes>, <STypes>, and <LTypes>.
+
     1.21:
 
-        - Added <CProperty> and <CPropertyList> styles.
+        - Added <TOPIC_PROPERTY> and <TOPIC_PROPERTY_LIST> styles, so they get corresponding <CTypes>, <STypes>, and
+          <LTypes>.
 
     1.2:
 
@@ -647,11 +614,12 @@ Topic: Revisions
 
         - Added <Tool Tip Styles>.
         - Renamed HiddenBreak to <HB>.
-        - Added types <CConstant>, <CConstantList>, <CType>, <CTypeList>.
+        - Added <TOPIC_CONSTANT>, <TOPIC_CONSTANT_LIST>, <TOPIC_TYPE>, and <TOPIC_TYPE_LIST> types, so they get
+          corresponding <CTypes>, <STypes>, and <LTypes>.
 
     1.0:
 
-        - The type tags now appear arround the <CTopic> tags instead of vice versa.
+        - The <CType> tags now appear arround the <CTopic> tags instead of vice versa.
         - Added a <CBody> tag to surround non-<CTitle> elements.
         - <SMarked> now appears in tr's instead of td's, where it belonged in the first place.
 
