@@ -118,7 +118,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<td class=MenuSection valign=top>'
 
-                . $self->BuildMenu($outputFile)
+                . $self->BuildMenu($outputFile, undef)
 
             . '</td>' . "\n\n"
 
@@ -191,7 +191,7 @@ sub BuildIndex #(type)
 
             . '<td class=MenuSection valign=top>'
 
-                . $self->BuildMenu($indexFile)
+                . $self->BuildMenu($indexFile, undef)
 
             . '</td>'
 
@@ -310,7 +310,7 @@ sub UpdateFile #(sourceFile)
 
         $content =~ s{<title>[^<]*<\/title>}{'<title>' . $self->BuildTitle($sourceFile) . '</title>'}e;
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($outputFile)/es;
+        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($outputFile, undef)/es;
 
         $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $self->BuildFooter() . "<\/div>"/e;
 
@@ -342,7 +342,7 @@ sub UpdateIndex #(type)
     my $outputFile = $self->IndexFileOf($type, $page);
     my $fullOutputFile = NaturalDocs::File::JoinPath($outputDirectory, $outputFile);
 
-    my $newMenu = $self->BuildMenu($outputFile);
+    my $newMenu = $self->BuildMenu($outputFile, undef);
     my $newFooter = $self->BuildFooter();
 
     while (-e $fullOutputFile)
