@@ -1,9 +1,10 @@
 /*
    IMPORTANT: If you're editing this file in the output directory of one of
-   your projects, you must use the "-s Custom" option when you run Natural
-   Docs on this project.  Otherwise the changes will be overwritten by the
-   master CSS file (the one in the Natural Docs styles directory) the next
-   time it is run.
+   your projects, your changes will be overwritten the next time you run
+   Natural Docs.  Instead, copy this file to your project directory, make your
+   changes, and you can use it with -s.  Even better would be to make a CSS
+   file in your project directory with only your changes, which you can then
+   use with -s [original style] [your changes].
 
    On the other hand, if you're editing this file in the Natural Docs styles
    directory, the changes will automatically be applied to all your projects
