@@ -19,8 +19,9 @@ package NaturalDocs::Languages::Base;
 use NaturalDocs::DefineMembers 'NAME', 'Name()',
                                                  'EXTENSIONS', 'Extensions()', 'SetExtensions() duparrayref',
                                                  'SHEBANG_STRINGS', 'ShebangStrings()', 'SetShebangStrings() duparrayref',
-                                                 'PACKAGE_SEPARATOR', 'PackageSeparator()', 'SetPackageSeparator()',
-                                                 'IGNORED_PREFIXES';
+                                                 'PACKAGE_SEPARATOR', 'PackageSeparator()',
+                                                 'IGNORED_PREFIXES',
+                                                 'PACKAGE_SEPARATOR_WAS_SET', 'PackageSeparatorWasSet()';
 
 
 #
@@ -62,8 +63,20 @@ sub New #(name)
 #   ShebangStrings - Returns an arrayref of the language's shebang strings, or undef if none.
 #   SetShebangStrings - Replaces the arrayref of the language's shebang strings.
 #   PackageSeparator - Returns the language's package separator string.
-#   SetPackageSeparator - Replaces the language's package separator string.
+#   PackageSeparatorWasSet - Returns whether the language's package separator string was ever changed from the default.
 #
+
+
+#
+#   Function: SetPackageSeparator
+#   Replaces the language's package separator string.
+#
+sub SetPackageSeparator #(separator)
+    {
+    my ($self, $separator) = @_;
+    $self->[PACKAGE_SEPARATOR] = $separator;
+    $self->[PACKAGE_SEPARATOR_WAS_SET] = 1;
+    };
 
 
 #
@@ -105,6 +118,36 @@ sub SetIgnoredPrefixesFor #(type, prefixes)
         @$prefixes = sort { length $b <=> length $a } @$prefixes;
 
         $self->[IGNORED_PREFIXES]->{$type} = $prefixes;
+        };
+    };
+
+
+#
+#   Function: HasIgnoredPrefixes
+#
+#   Returns whether the language has any ignored prefixes at all.
+#
+sub HasIgnoredPrefixes
+    {  return defined $_[0]->[IGNORED_PREFIXES];  };
+
+
+#
+#   Function: CopyIgnoredPrefixesOf
+#
+#   Copies all the ignored prefix settings of the passed <NaturalDocs::Languages::Base> object.
+#
+sub CopyIgnoredPrefixesOf #(language)
+    {
+    my ($self, $language) = @_;
+
+    if ($language->HasIgnoredPrefixes())
+        {
+        $self->[IGNORED_PREFIXES] = { };
+
+        while (my ($topicType, $prefixes) = each %{$language->[IGNORED_PREFIXES]})
+            {
+            $self->[IGNORED_PREFIXES]->{$topicType} = [ @$prefixes ];
+            };
         };
     };
 
