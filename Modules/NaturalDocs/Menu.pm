@@ -25,7 +25,6 @@
 use Tie::RefHash;
 
 use NaturalDocs::Menu::Entry;
-use NaturalDocs::Menu::Error;
 
 use strict;
 use integer;
@@ -300,10 +299,18 @@ sub LoadAndUpdate
     {
     my ($self) = @_;
 
-    my ($errors, $filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
+    my ($filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
 
-    if (defined $errors)
-        {  $self->HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
+    my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
+    if ($errorCount)
+        {
+        NaturalDocs::ConfigFile->HandleErrors();
+
+        if ($errorCount == 1)
+            {  die "There is an error in the menu file.\n";  }
+        else
+            {  die "There are " . $errorCount . " errors in the menu file.\n";  };
+        };
 
     my ($previousMenu, $previousIndexes, $previousFiles) = $self->LoadPreviousMenuStateFile();
 
@@ -400,10 +407,18 @@ sub LoadUnchanged
     {
     my ($self) = @_;
 
-    my ($errors, $filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
+    my ($filesInMenu, $oldLockedTitles) = $self->LoadMenuFile();
 
-    if (defined $errors)
-        {  $self->HandleErrors($errors);  };  # HandleErrors will end execution if necessary.
+    my $errorCount = NaturalDocs::ConfigFile->ErrorCount();
+    if ($errorCount)
+        {
+        NaturalDocs::ConfigFile->HandleErrors();
+
+        if ($errorCount == 1)
+            {  die "There is an error in the menu file.\n";  }
+        else
+            {  die "There are " . $errorCount . " errors in the menu file.\n";  };
+        };
 
     my ($previousMenu, $previousIndexes, $previousFiles) = $self->LoadPreviousMenuStateFile();
 
@@ -543,13 +558,12 @@ sub OnDefaultTitleChange #(file)
 #   Function: LoadMenuFile
 #
 #   Loads and parses the menu file <Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, <indexes>, and
-#   <bannedIndexes>.
+#   <bannedIndexes>.  If there are any errors in the file, they will be recorded with <NaturalDocs::ConfigFile->AddError()>.
 #
 #   Returns:
 #
-#       The array ( errors, filesInMenu, oldLockedTitles ).
+#       The array ( filesInMenu, oldLockedTitles ).
 #
-#       errors - An arrayref of errors appearing in the file, each one being an <NaturalDocs::Menu::Error> object.  Undef if none.
 #       filesInMenu - A hashref of all the source files that appear in the menu.  The keys are the file names, and the values are
 #                          references to their entries in <menu>.  Will be an empty hashref if none.
 #       oldLockedTitles - A hashref of all the locked titles in pre-1.0 menu files.  The keys are the file names, and the values are
@@ -561,7 +575,6 @@ sub LoadMenuFile
     {
     my ($self) = @_;
 
-    my $errors = [ ];
     my $filesInMenu = { };
     my $oldLockedTitles = { };
 
@@ -585,6 +598,8 @@ sub LoadMenuFile
         read(MENUFILEHANDLE, $menuFileContent, -s MENUFILEHANDLE);
         close(MENUFILEHANDLE);
 
+        NaturalDocs::ConfigFile->StartingParseOf(NaturalDocs::Project->MenuFile());
+
         # We don't check if the menu file is from a future version because we can't just throw it out and regenerate it like we can
         # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
 
@@ -599,7 +614,7 @@ sub LoadMenuFile
             };
 
         # Strip tabs.
-        $menuFileContent =~ tr/\t/ /s;
+        $menuFileContent =~ tr/\t/ /;
 
         my @segments = split(/([\n{}\#])/, $menuFileContent);
         my $segment;
@@ -650,7 +665,7 @@ sub LoadMenuFile
 
             if ($segment eq '{')
                 {
-                push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Opening braces are only allowed after Group tags.');
+                NaturalDocs::ConfigFile->AddError($lineNumber, 'Opening braces are only allowed after Group tags.');
                 }
             elsif ($segment eq '}')
                 {
@@ -665,7 +680,7 @@ sub LoadMenuFile
                 if (scalar @groupStack)
                     {  $currentGroup = pop @groupStack;  }
                 else
-                    {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Unmatched closing brace.');  };
+                    {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Unmatched closing brace.');  };
                 }
 
             # If the segment is a segment of text...
@@ -708,9 +723,8 @@ sub LoadMenuFile
                         # Currently index is the only type allowed modifiers.
                         if (defined $modifier && $type != ::MENU_INDEX())
                             {
-                            push @$errors, NaturalDocs::Menu::Error->New($lineNumber,
-                                                                                                 $modifier . ' ' . $menuSynonyms{$type}
-                                                                                                 . ' is not a valid keyword.');
+                            NaturalDocs::ConfigFile->AddError($lineNumber,
+                                                                               $modifier . ' ' . $menuSynonyms{$type} . ' is not a valid keyword.');
                             next;
                             };
 
@@ -768,9 +782,8 @@ sub LoadMenuFile
 
                             if (!scalar @extras)
                                 {
-                                push @$errors, NaturalDocs::Menu::Error->New($lineNumber,
-                                                                                                     'File entries need to be in format '
-                                                                                                     . '"File: [title] ([location])"');
+                                NaturalDocs::ConfigFile->AddError($lineNumber,
+                                                                                   'File entries need to be in format "File: [title] ([location])"');
                                 next;
                                 };
 
@@ -787,7 +800,7 @@ sub LoadMenuFile
                             if (!defined $title)
                                 {  $title = $name;  }
                             else
-                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Title can only be defined once.');  };
+                                {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Title can only be defined once.');  };
                             }
                         elsif ($type == ::MENU_SUBTITLE())
                             {
@@ -796,17 +809,17 @@ sub LoadMenuFile
                                 if (!defined $subTitle)
                                     {  $subTitle = $name;  }
                                 else
-                                    {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'SubTitle can only be defined once.');  };
+                                    {  NaturalDocs::ConfigFile->AddError($lineNumber, 'SubTitle can only be defined once.');  };
                                 }
                             else
-                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Title must be defined before SubTitle.');  };
+                                {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Title must be defined before SubTitle.');  };
                             }
                         elsif ($type == ::MENU_FOOTER())
                             {
                             if (!defined $footer)
                                 {  $footer = $name;  }
                             else
-                                {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Copyright can only be defined once.');  };
+                                {  NaturalDocs::ConfigFile->AddError($lineNumber, 'Copyright can only be defined once.');  };
                             }
 
                         elsif ($type == ::MENU_TEXT())
@@ -887,7 +900,7 @@ sub LoadMenuFile
                                     }
                                 else
                                     {
-                                    push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $modifier . ' is not a valid index type.');
+                                    NaturalDocs::ConfigFile->AddError($lineNumber, $modifier . ' is not a valid index type.');
                                     };
                                 };
                             }
@@ -900,18 +913,18 @@ sub LoadMenuFile
                     # If the keyword doesn't exist...
                     else
                         {
-                        push @$errors, NaturalDocs::Menu::Error->New($lineNumber, $1 . ' is not a valid keyword.');
+                        NaturalDocs::ConfigFile->AddError($lineNumber, $type . ' is not a valid keyword.');
                         };
 
                     }
 
                 # If the text is not keyword: name or whitespace...
-                 elsif (length $segment)
+                elsif (length $segment)
                     {
                     # We check the length because the segment may just have been whitespace between symbols (i.e. "\n  {" or
                     # "} #")  If that's the case, the segment content would have been erased when we clipped the leading and trailing
                     # whitespace from the line.
-                    push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'Every line must start with a keyword.');
+                    NaturalDocs::ConfigFile->AddError($lineNumber, 'Every line must start with a keyword.');
                     };
 
                 }; # segment of text
@@ -934,9 +947,9 @@ sub LoadMenuFile
             };
 
         if ($openGroups == 1)
-            {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'There is an unclosed group.');  }
+            {  NaturalDocs::ConfigFile->AddError($lineNumber, 'There is an unclosed group.');  }
         elsif ($openGroups > 1)
-            {  push @$errors, NaturalDocs::Menu::Error->New($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
+            {  NaturalDocs::ConfigFile->AddError($lineNumber, 'There are ' . $openGroups . ' unclosed groups.');  };
 
 
         no integer;
@@ -983,12 +996,10 @@ sub LoadMenuFile
         };
 
 
-    if (!scalar @$errors)
-        {  $errors = undef;  };
     if (!scalar keys %$oldLockedTitles)
         {  $oldLockedTitles = undef;  };
 
-    return ($errors, $filesInMenu, $oldLockedTitles);
+    return ($filesInMenu, $oldLockedTitles);
     };
 
 
@@ -1439,97 +1450,6 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
             };
         };
 
-    };
-
-
-#
-#   Function: HandleErrors
-#
-#   Handles errors appearing in the menu file.
-#
-#   Parameters:
-#
-#       errors - An arrayref of the errors as <NaturalDocs::Menu::Error> objects.
-#
-sub HandleErrors #(errors)
-    {
-    my ($self, $errors) = @_;
-
-    my $menuFile = NaturalDocs::Project->MenuFile();
-    my $menuFileContent;
-
-    open(MENUFILEHANDLE, '<' . $menuFile);
-    read(MENUFILEHANDLE, $menuFileContent, -s MENUFILEHANDLE);
-    close(MENUFILEHANDLE);
-
-    my @lines = split(/\n/, $menuFileContent);
-    $menuFileContent = undef;
-
-    # We need to keep track of both the real and the original line numbers.  The original line numbers are for matching errors in the
-    # errors array, and don't include any comment lines added or deleted.  Line number is the current line number including those
-    # comment lines for sending to the display.
-    my $lineNumber = 1;
-    my $originalLineNumber = 1;
-
-    my $error = 0;
-
-
-    open(MENUFILEHANDLE, '>' . $menuFile);
-
-    if ($lines[0] =~ /^\# There (?:is an error|are \d+ errors) in this file\./)
-        {
-        shift @lines;
-        $originalLineNumber++;
-
-        if (!length $lines[0])
-            {
-            shift @lines;
-            $originalLineNumber++;
-            };
-        };
-
-    if (scalar @$errors == 1)
-        {  print MENUFILEHANDLE "# There is an error in this file.  Search for ERROR to find it.\n\n";  }
-    else
-        {  print MENUFILEHANDLE "# There are " . (scalar @$errors) . " errors in this file.  Search for ERROR to find them.\n\n";  };
-
-    $lineNumber += 2;
-
-
-    foreach my $line (@lines)
-        {
-        while ($error < scalar @$errors && $originalLineNumber == $errors->[$error]->Line())
-            {
-            print MENUFILEHANDLE "# ERROR: " . $errors->[$error]->Description() . "\n";
-
-            # Use the GNU error format, which should make it easier to handle errors when Natural Docs is part of a build process.
-            # See http://www.gnu.org/prep/standards_15.html
-
-            my $gnuError = lcfirst($errors->[$error]->Description());
-            $gnuError =~ s/\.$//;
-
-            print STDERR 'NaturalDocs:' . $menuFile . ':' . $lineNumber . ': ' . $gnuError . "\n";
-
-            $lineNumber++;
-            $error++;
-            };
-
-        # We want to remove error lines from previous runs.
-        if (substr($line, 0, 9) ne '# ERROR: ')
-            {
-            print MENUFILEHANDLE $line . "\n";
-            $lineNumber++;
-            };
-
-        $originalLineNumber++;
-        };
-
-    close(MENUFILEHANDLE);
-
-    if (scalar @$errors == 1)
-        {  die "There is an error in the menu file.\n";  }
-    else
-        {  die "There are " . (scalar @$errors) . " errors in the menu file.\n";  };
     };
 
 
