@@ -111,7 +111,7 @@ sub ParseFile #(sourceFile, topicsList)
     # Don't need to keep these around.
     $self->ClearTokens();
 
-    $self->HandleAutoTopics($topicsList);
+    $self->OnEndParse($topicsList);
     };
 
 
