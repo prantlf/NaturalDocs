@@ -446,13 +446,13 @@ eval {
     NaturalDocs::Languages::Language->New( 'C#', 'cs', undef, '//', '/*', '*/', [ ';', '{' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Java', 'java', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'JavaScript', 'js', undef, '//', '/*', '*/', '{', [ ';', '=' ], undef );
-    NaturalDocs::Languages::Language->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
+    NaturalDocs::Languages::Perl->New( 'Perl', [ 'pl', 'pm' ], 'perl', '#', undef, undef, [ '{', ';' ], [ ';', '=' ], undef );
     NaturalDocs::Languages::Language->New( 'Python', 'py', 'python', '#', undef, undef, ':', '=', "\\" );
 
     # Doesn't detect escapement yet.
     NaturalDocs::Languages::Language->New( 'PHP', [ 'inc', 'php', 'php3', 'php4', 'phtml' ], 'php',
                                                                     [ '//', '#' ], '/*', '*/', [ '{', ';' ], [ ';', '=' ], undef );
-                                                                    
+
     NaturalDocs::Languages::PLSQL->New( 'PL/SQL', 'sql', undef, '--', '/*', '*/', [ ';', 'as', 'AS', 'is', 'IS' ],
                                                               [ ';', ':=', 'default', 'DEFAULT' ], undef );
     NaturalDocs::Languages::Language->New( 'VB', [ 'vb', 'bas', 'cls', 'frm' ], undef, '\'', undef, undef, "\n", [ "\n", '=' ], '_' );
