@@ -175,9 +175,9 @@ sub LoadAndPurge
 
         my $version = NaturalDocs::Version::FromTextFile(\*SYMBOLTABLEFILEHANDLE);
 
-        # The file format was updated for 1.1 to include summaries.
+        # There was a bug in variable prototype detection until 1.11.  Need to regenerate the symbol table.
 
-        if ($version >= NaturalDocs::Version::FromString('1.1') && $version <= NaturalDocs::Settings::AppVersion())
+        if ($version >= NaturalDocs::Version::FromString('1.11') && $version <= NaturalDocs::Settings::AppVersion())
             {  $fileIsOkay = 1;  }
         else
             {  close(SYMBOLTABLEFILEHANDLE);  };
