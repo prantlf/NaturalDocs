@@ -286,7 +286,13 @@ sub TryToGetNamespace #(indexRef, lineNumberRef)
 #   Function: TryToGetClass
 #
 #   Determines whether the position is at a class declaration statement, and if so, generates a topic for it, skips it, and
-#   returns true.  Works for structs as well.
+#   returns true.
+#
+#   Supported Syntaxes:
+#
+#       - Classes
+#       - Structs
+#       - Interfaces
 #
 sub TryToGetClass #(indexRef, lineNumberRef)
     {
@@ -313,6 +319,8 @@ sub TryToGetClass #(indexRef, lineNumberRef)
 
     if (!exists $classKeywords{lc($tokens->[$index])})
         {  return undef;  };
+
+    my $lcClassKeyword = lc($tokens->[$index]);
 
     $index++;
 
@@ -371,7 +379,14 @@ sub TryToGetClass #(indexRef, lineNumberRef)
     my @scopeIdentifiers = NaturalDocs::SymbolString->IdentifiersOf($self->CurrentScope());
     $name = join('.', @scopeIdentifiers, $name);
 
-    my $autoTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $name,
+    my $topicType;
+
+    if ($lcClassKeyword eq 'interface')
+        {  $topicType = ::TOPIC_INTERFACE();  }
+    else
+        {  $topicType = ::TOPIC_CLASS();  };
+
+    my $autoTopic = NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                          undef, undef,
                                                                                          undef,
                                                                                          undef, undef, $$lineNumberRef);
@@ -552,29 +567,26 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 
         $prototype = $self->NormalizePrototype($prototype);
 
-        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_PROPERTY(), $name,
+        my $topicType = ( $isEvent ? ::TOPIC_EVENT() : ::TOPIC_PROPERTY() );
+
+        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                                   $self->CurrentScope(), undef,
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
         }
 
 
-    # Functions, constructors, destructors.
+    # Functions, constructors, destructors, delegates.
 
     elsif ($tokens->[$index] eq '(')
         {
         # This should jump the parenthesis completely.
         $self->GenericSkip(\$index, \$lineNumber);
 
-        my $type;
-        if ($isDelegate)
-            {  $type = ::TOPIC_TYPE();  }
-        else
-            {  $type = ::TOPIC_FUNCTION();  };
-
+        my $topicType = ( $isDelegate ? ::TOPIC_DELEGATE() : ::TOPIC_FUNCTION() );
         my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
 
-        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
+        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                                   $self->CurrentScope(), undef,
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
@@ -589,7 +601,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         {
         my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
 
-        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_PROPERTY(), $name,
+        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_EVENT(), $name,
                                                                                                   $self->CurrentScope(), undef,
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
