@@ -72,7 +72,7 @@ sub BuildFile #(sourceFile, parsedFile)
     {
     my ($self, $sourceFile, $parsedFile) = @_;
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectory($self);
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
     my $outputFile = $self->OutputFileOf($sourceFile);
     my $fullOutputFile = NaturalDocs::File->JoinPath($outputDirectory, $outputFile);
 
@@ -193,7 +193,7 @@ sub UpdateMenu
     {
     my $self = shift;
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectory($self);
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
     my $outputFile = NaturalDocs::File->JoinPath($outputDirectory, 'menu.html');
 
 
@@ -250,7 +250,7 @@ sub UpdateMenu
     # Update index.html
 
     my $firstMenuEntry = $self->FindFirstFile();
-    my $indexFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectory($self), 'index.html' );
+    my $indexFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectoryOf($self), 'index.html' );
 
     # We have to check because it's possible that there may be no files with Natural Docs content and thus no files on the menu.
     if (defined $firstMenuEntry)

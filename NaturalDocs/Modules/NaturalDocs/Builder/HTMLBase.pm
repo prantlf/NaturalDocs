@@ -7,8 +7,6 @@
 #   A base package for all the shared functionality in <NaturalDocs::Builder::HTML> and
 #   <NaturalDocs::Builder::FramedHTML>.
 #
-#   All functions are called with Package->Function() notation.
-#
 ###############################################################################
 
 # This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
@@ -26,7 +24,8 @@ use base 'NaturalDocs::Builder::Base';
 
 
 ###############################################################################
-# Group: Variables
+# Group: Package Variables
+# These variables are shared by all instances of the package so don't change them.
 
 #
 #   Hash: abbreviations
@@ -55,10 +54,11 @@ my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
 
 
 ###############################################################################
-# Group: ToolTip Variables
+# Group: ToolTip Package Variables
 #
-#   These variables are for the tooltip generation functions only.
-#
+#   These variables are for the tooltip generation functions only.  Since they're reset on every call to <BuildContent()> and
+#   <BuildIndexContent()>, and are only used by them and their support functions, they can be shared by all instances of the
+#   package.
 
 #
 #   int: tooltipLinkNumber
@@ -90,10 +90,11 @@ my $tooltipHTML;
 
 
 ###############################################################################
-# Group: Menu Variables
+# Group: Menu Package Variables
 #
-# These variables are for the menu generation functions only.  Since they're needed in recursion, passing around references
-# instead would just be a pain.
+#   These variables are for the menu generation functions only.  Since they're reset on every call to <BuildMenu()> and are
+#   only used by it and its support functions, they can be shared by all instances of the package.
+#
 
 
 #
@@ -183,7 +184,7 @@ sub PurgeFiles
     my $self = shift;
 
     my $filesToPurge = NaturalDocs::Project->FilesToPurge();
-    my $outputPath = NaturalDocs::Settings->OutputDirectory($self);
+    my $outputPath = NaturalDocs::Settings->OutputDirectoryOf($self);
 
     foreach my $file (keys %$filesToPurge)
         {  unlink( NaturalDocs::File->JoinPath($outputPath, $self->OutputFileOf($file)) );  };
@@ -203,7 +204,7 @@ sub PurgeIndexes #(indexes)
     {
     my ($self, $indexes) = @_;
 
-    my $outputPath = NaturalDocs::Settings->OutputDirectory($self);
+    my $outputPath = NaturalDocs::Settings->OutputDirectoryOf($self);
 
     foreach my $index (keys %$indexes)
         {
@@ -221,12 +222,12 @@ sub EndBuild #(hasChanged)
     {
     my ($self, $hasChanged) = @_;
 
-    my $style = NaturalDocs::Settings->OutputStyle($self);
+    my $style = NaturalDocs::Settings->OutputStyleOf($self);
 
     if (lc($style) ne 'custom')
         {
         my $masterCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->StyleDirectory(), $style . '.css' );
-        my $localCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectory($self), 'NaturalDocs.css' );
+        my $localCSSFile = NaturalDocs::File->JoinPath( NaturalDocs::Settings->OutputDirectoryOf($self), 'NaturalDocs.css' );
 
         # We check both the date and the size in case the user switches between two styles which just happen to have the same
         # date.  Should rarely happen, but it might.
@@ -1247,7 +1248,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
                 close(INDEXFILEHANDLE);
                 };
 
-            $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectory($self),
+            $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectoryOf($self),
                                                                                $self->IndexFileOf($type, $page));
 
             open(INDEXFILEHANDLE, '>' . $indexFileName)
@@ -1282,7 +1283,7 @@ sub BuildIndexFiles #(type, indexContent, beginPage, endPage)
     # Build a dummy page so there's something at least.
     else
         {
-        $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectory($self),
+        $indexFileName = NaturalDocs::File->JoinPath(NaturalDocs::Settings->OutputDirectoryOf($self),
                                                                            $self->IndexFileOf($type, 1));
 
         open(INDEXFILEHANDLE, '>' . $indexFileName)
@@ -1729,7 +1730,7 @@ sub PurgeIndexFiles #(type, startingPage)
     if (!defined $page)
         {  $page = 1;  };
 
-    my $outputDirectory = NaturalDocs::Settings->OutputDirectory($self);
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
 
     for (;;)
         {
