@@ -666,7 +666,7 @@ sub MergeAutoTopics #(language, autoTopics)
         # Transfer information if we have a match.
         elsif ($topic->Type() == $autoTopic->Type() &&
                 index( $topic->Title(), substr($autoTopic->Title(),
-                                                           $language->IgnoredPrefixLength( $autoTopic->Title(), $autoTopic->Type() )) != -1))
+                                                           $language->IgnoredPrefixLength( $autoTopic->Title(), $autoTopic->Type() ))) != -1)
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
