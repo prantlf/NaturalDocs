@@ -1050,8 +1050,14 @@ sub BuildPrototype #(type, prototype, file)
                         };
                     };
 
+                my $orientation;
+                if ($language->TypeBeforeParameter() || !$hasType)
+                    {  $orientation = 'Right';  }
+                else
+                    {  $orientation = 'Left';  };
+
                 $output .=
-                '<td class=P' . ($language->TypeBeforeParameter() ? 'Right' : 'Left') . 'Parameter>'
+                '<td class=P' . $orientation . 'Parameter>'
                     . $self->ConvertAmpChars($params->[$i]->Name())
                 . '</td>';
 
