@@ -337,10 +337,14 @@ body.FramedContentPage,
 
     .CHEntry {
         border-width: 1px 2px 2px 1px; border-style: solid; border-color: #A0A0A0;
-        -moz-border-radius: 4px;
         margin-bottom: 3px;
         padding: 2px 2ex;
+        font-size: 8pt;
         background-color: #F4F4F4; color: #606060;
+        }
+
+    .Gecko .CHEntry {
+        -moz-border-radius: 4px;
         }
 
     .CHCurrent .CHEntry {
