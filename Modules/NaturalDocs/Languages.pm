@@ -66,9 +66,9 @@ my %shebangs;
 #       extensions              - An arrayref of the extensions of the language's files.
 #       shebangStrings       - An arrayref of the strings to search for in the #! line of the language's files.  Only used when the file
 #                                       has a .cgi extension or no extension at all.  Undef if not applicable.
-#       lineComment          - The symbol that starts a single line comment.  Undef if none.
-#       startComment         - The symbol that starts a multi-line comment.  Undef if none.
-#       endComment          - The symbol that ends a multi-line comment.  Undef if none.
+#       lineComment          - The symbol or arrayref of symbols that start a single line comment.  Undef if none.
+#       startComment         - The symbol or arrayref of symbols that start a multi-line comment.  Undef if none.
+#       endComment          - The symbol or arrayref of symbols that end a multi-line comment.  Undef if none.
 #       functionEnders         - An arrayref of symbols that end a function prototype.  Include "\n" if necessary.  Undef if the language
 #                                       doesn't have functions.
 #       variableEnders        - An arrayref of symbols that end a variable declaration.  Include "\n" if necessary.  Undef if the
@@ -77,26 +77,41 @@ my %shebangs;
 #
 #       Note that if neither of the comment styles are specified, it is assumed that the entire file should be treated as a comment.
 #
+#   Revisions:
+#
+#       Starting with 1.1, the comment parameters accept arrayrefs in addition to single symbols.  We don't force arrayrefs so
+#       that custom lines added beforehand don't break.
+#
+#       1.1 also added the lineExtender parameter.  Since it accepts undef, it doesn't matter if it's not specified by older lines.
+#
 sub Add #(name, extensions, shebangStrings, lineComment, startComment, endComment, functionEnders, variableEnders, lineEnder)
     {
-    my $name = shift;
-    my $languageExtensions = shift;
-    my $languageShebangStrings = shift;
+    my ($name, $extensions, $shebangStrings, $lineComment, $startComment, $endComment, $functionEnders,
+           $variableEnders, $lineExtender) = @_;
 
-    # This depends on New() having the same parameter order as this function after the first three parameters.
-    my $language = NaturalDocs::Languages::Language::New(@_);
+    # Convert old parameter styles.
+
+    if (defined $lineComment && !ref $lineComment)
+        {  $lineComment = [ $lineComment ];  };
+    if (defined $startComment && !ref $startComment)
+        {  $startComment = [ $startComment ];  };
+    if (defined $endComment && !ref $endComment)
+        {  $endComment = [ $endComment ];  };
+
+    my $language = NaturalDocs::Languages::Language::New($lineComment, $startComment, $endComment,
+                                                                                          $functionEnders, $variableEnders, $lineExtender);
 
     my $languageIndex = scalar @languages;
     push @languages, $language;
 
-    foreach my $extension (@$languageExtensions)
+    foreach my $extension (@$extensions)
         {
         $extensions{ lc($extension) } = $languageIndex;
         };
 
-    if (defined $languageShebangStrings)
+    if (defined $shebangStrings)
         {
-        foreach my $shebangString (@$languageShebangStrings)
+        foreach my $shebangString (@$shebangStrings)
             {
             $shebangs{ lc($shebangString) } = $languageIndex;
             };
