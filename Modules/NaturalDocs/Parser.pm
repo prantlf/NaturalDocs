@@ -288,6 +288,26 @@ sub Parse
     my ($autoTopics, $scopeRecord, $exportedSymbols) = $language->ParseFile($sourceFile, \@parsedFile);
 
 
+    $self->AddToClassHierarchy();
+
+    if (defined $autoTopics)
+        {
+        if (defined $scopeRecord)
+            {  $self->RepairPackages($autoTopics, $scopeRecord);  };
+
+        $self->MergeAutoTopics($language, $autoTopics);
+        };
+
+    # We don't need to do this if there aren't any auto-topics because the only package changes would be implied by the comments.
+    if (defined $autoTopics)
+        {  $self->AddPackageDelineators();  };
+
+    if (defined $exportedSymbols)
+        {  $self->MatchExportedSymbols($exportedSymbols);  };
+
+    $self->MakeAutoGroups($autoTopics);
+
+
     # Set the menu title.
 
     my $defaultMenuTitle = $sourceFile;
@@ -330,25 +350,6 @@ sub Parse
         # We only want to call the hook if it has content.
         NaturalDocs::Extensions->AfterFileParsed($sourceFile, \@parsedFile);
         };
-
-    $self->AddToClassHierarchy();
-
-    if (defined $autoTopics)
-        {
-        if (defined $scopeRecord)
-            {  $self->RepairPackages($autoTopics, $scopeRecord);  };
-
-        $self->MergeAutoTopics($language, $autoTopics);
-        };
-
-    # We don't need to do this if there aren't any auto-topics because the only package changes would be implied by the comments.
-    if (defined $autoTopics)
-        {  $self->AddPackageDelineators();  };
-
-    if (defined $exportedSymbols)
-        {  $self->MatchExportedSymbols($exportedSymbols);  };
-
-    $self->MakeAutoGroups($autoTopics);
 
     return $defaultMenuTitle;
     };
@@ -920,6 +921,7 @@ sub AddPackageDelineators
     my $index = 0;
     my $currentPackage;
 
+    # Values are the titles.
     my %usedPackages;
 
     while ($index < scalar @parsedFile)
@@ -930,8 +932,11 @@ sub AddPackageDelineators
             {
             $currentPackage = $topic->Package();
 
-            if ($topic->Type() != ::TOPIC_CLASS() && $topic->Type() != ::TOPIC_CLASS_LIST() &&
-                $topic->Type() != ::TOPIC_SECTION())
+            if ($topic->Type() == ::TOPIC_CLASS())
+                {
+                $usedPackages{$currentPackage} = $topic->Title();
+                }
+            elsif  ($topic->Type() != ::TOPIC_CLASS_LIST() && $topic->Type() != ::TOPIC_SECTION())
                 {
                 my $newTopic;
 
@@ -944,28 +949,37 @@ sub AddPackageDelineators
                     }
                 else
                     {
-                    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($currentPackage);
-                    my $title = join($language->PackageSeparator(), @identifiers);
+                    my ($title, $body, $summary);
+                    my @packageIdentifiers = NaturalDocs::SymbolString->IdentifiersOf($currentPackage);
 
-                    my ($body, $summary);
                     if (exists $usedPackages{$currentPackage})
                         {
+                        $title = $usedPackages{$currentPackage};
                         $body = '<p>(continued)</p>';
                         $summary = '(continued)';
+                        }
+                    else
+                        {
+                        $title = join($language->PackageSeparator(), @packageIdentifiers);
+
+                        # Body and summary stay undef.
+
+                        $usedPackages{$currentPackage} = $title;
                         };
 
+                    my @titleIdentifiers = NaturalDocs::SymbolString->IdentifiersOf( NaturalDocs::SymbolString->FromText($title) );
+                    for (my $i = 0; $i < scalar @titleIdentifiers; $i++)
+                        {  pop @packageIdentifiers;  };
+
                     $newTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $title,
-                                                                                                   undef, undef,
+                                                                                                   NaturalDocs::SymbolString->Join(@packageIdentifiers), undef,
                                                                                                    undef, $summary, $body,
                                                                                                    $topic->LineNumber());
                     }
 
                 splice(@parsedFile, $index, 0, $newTopic);
                 $index++;
-                };
-
-            if (defined $currentPackage)
-                {  $usedPackages{$currentPackage} = 1;  };
+                }
             };
 
         $index++;
