@@ -20,60 +20,68 @@ use base 'NaturalDocs::Languages::Simple';
 
 
 #
-#   Function: EndOfPrototype
+#   bool: pastFirstBrace
+#
+#   Whether we've past the first brace in a function prototype or not.
+#
+my $pastFirstBrace;
+
+
+#
+#   Function: OnCode
+#
+#   This is just overridden to reset <pastFirstBrace>.
+#
+sub OnCode #(...)
+    {
+    my ($self, @params) = @_;
+
+    $pastFirstBrace = 0;
+
+    return $self->SUPER::OnCode(@params);
+    };
+
+
+#
+#   Function: OnPrototypeEnd
 #
 #   Tcl's function syntax is shown below.
 #
 #   > proc [name] { [params] } { [code] }
 #
-#   This function creates a false positive to skip the first opening brace.  If there are no parameters, empty braces are usually
-#   used, although I don't know if that's a hard requirement.
+#   The opening brace is one of the prototype enders.  We need to allow the first opening brace because it contains the
+#   parameters.
 #
 #   Also, the parameters may have braces within them.  I've seen one that used { seconds 20 } as a parameter.
 #
-sub EndOfPrototype #(type, stringRef, falsePositives)
+#   Parameters:
+#
+#       type - The <TopicType> of the prototype.
+#       prototypeRef - A reference to the prototype so far, minus the ender in dispute.
+#       ender - The ender symbol.
+#
+#   Returns:
+#
+#       ENDER_ACCEPT - The ender is accepted and the prototype is finished.
+#       ENDER_IGNORE - The ender is rejected and parsing should continue.  Note that the prototype will be rejected as a whole
+#                                  if all enders are ignored before reaching the end of the code.
+#       ENDER_ACCEPT_AND_CONTINUE - The ender is accepted so the prototype may stand as is.  However, the prototype might
+#                                                          also continue on so continue parsing.  If there is no accepted ender between here and
+#                                                          the end of the code this version will be accepted instead.
+#       ENDER_REVERT_TO_ACCEPTED - The expedition from ENDER_ACCEPT_AND_CONTINUE failed.  Use the last accepted
+#                                                        version and end parsing.
+#
+sub OnPrototypeEnd #(type, prototypeRef, ender)
     {
-    my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
+    my ($self, $type, $prototypeRef, $ender) = @_;
 
-    my $falsePositives;
-
-    if ($type eq ::TOPIC_FUNCTION())
+    if ($type eq ::TOPIC_FUNCTION() && $ender eq '{' && !$pastFirstBrace)
         {
-        $falsePositives = { };
-
-        my $level = 0;
-        my $stringIndex = 0;
-
-        while ($$stringRef =~ /(\{|\}|[^\{\}]+)/g)
-            {
-            my $segment = $1;
-
-            if ($segment eq '{')
-                {
-                $level++;
-                $falsePositives->{$stringIndex} = 1;
-                $stringIndex++;
-                }
-            elsif ($segment eq '}')
-                {
-                # End if we got out of the first top level brace group we were in.
-                if ($level == 1)
-                    {  last;  };
-
-                $level--;;
-                $stringIndex--;
-                }
-            else
-                {
-                $stringIndex += length($segment);
-                };
-            };
-
-        if (!scalar keys %$falsePositives)
-            {  $falsePositives = undef;  };
-        };
-
-    return $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
+        $pastFirstBrace = 1;
+        return ::ENDER_IGNORE();
+        }
+    else
+        {  return ::ENDER_ACCEPT();  };
     };
 
 

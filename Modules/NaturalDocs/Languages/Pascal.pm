@@ -52,79 +52,79 @@ my %longPrototypeDirectives = ( 'alias' => 1,
                                                  'external' => 1 );
 
 #
-#   Function: EndOfPrototype
+#   bool: checkingForDirectives
 #
-#   Pascal's syntax uses the semicolons and commas parameter style shown below, yet also uses semicolons to end
-#   function prototypes.
+#   Set after the first function semicolon, which means we're in directives mode.
 #
-#   > function MyFunction( param1: type; param2, param3: type; param4: type);
+my $checkingForDirectives;
+
+
 #
-#   There are also directives after the prototype that should be included.
+#   Function: OnCode
+#
+#   Just overridden to reset <checkingForDirectives>.
+#
+sub OnCode #(...)
+    {
+    my ($self, @parameters) = @_;
+
+    $checkingForDirectives = 0;
+
+    return $self->SUPER::OnCode(@parameters);
+    };
+
+
+#
+#   Function: OnPrototypeEnd
+#
+#   Pascal's syntax has directives after the prototype that should be included.
 #
 #   > function MyFunction ( param1: type ); virtual; abstract;
 #
-#   This function accounts for all of this.
+#   Parameters:
 #
-sub EndOfPrototype #(type, stringRef, falsePositives)
+#       type - The <TopicType> of the prototype.
+#       prototypeRef - A reference to the prototype so far, minus the ender in dispute.
+#       ender - The ender symbol.
+#
+#   Returns:
+#
+#       ENDER_ACCEPT - The ender is accepted and the prototype is finished.
+#       ENDER_IGNORE - The ender is rejected and parsing should continue.  Note that the prototype will be rejected as a whole
+#                                  if all enders are ignored before reaching the end of the code.
+#       ENDER_ACCEPT_AND_CONTINUE - The ender is accepted so the prototype may stand as is.  However, the prototype might
+#                                                          also continue on so continue parsing.  If there is no accepted ender between here and
+#                                                          the end of the code this version will be accepted instead.
+#       ENDER_REVERT_TO_ACCEPTED - The expedition from ENDER_ACCEPT_AND_CONTINUE failed.  Use the last accepted
+#                                                        version and end parsing.
+#
+sub OnPrototypeEnd #(type, prototypeRef, ender)
     {
-    my ($self, $type, $stringRef) = @_;  # Passed falsePositives is ignored.
+    my ($self, $type, $prototypeRef, $ender) = @_;
 
-    my $falsePositives;
-    if ($type eq ::TOPIC_FUNCTION())
-        {  $falsePositives = $self->FalsePositivesForSemicolonsInParenthesis($stringRef);  };
-
-    my $endOfPrototype = $self->SUPER::EndOfPrototype($type, $stringRef, $falsePositives);
-
-    if ($type eq ::TOPIC_FUNCTION() && $endOfPrototype != -1)
+    if ($type eq ::TOPIC_FUNCTION() && $ender eq ';')
         {
-        my $pastPrototype = substr($$stringRef, $endOfPrototype);
-
-        use constant NEEDSEMICOLON => 1;
-        use constant TRYKEYWORD => 2;
-        use constant ACCEPTUNTILSEMICOLON => 3;
-        use constant FINISHED => 4;
-
-        my $state = NEEDSEMICOLON;
-        my $endOfDirectives;
-
-        while ($state != FINISHED && $pastPrototype =~ /(;|[a-z]+|.)[ \t\n]*/ig)
+        if (!$checkingForDirectives)
             {
-            if ($state == NEEDSEMICOLON)
-                {
-                if ($1 eq ';')
-                    {
-                    $endOfDirectives = $::LAST_MATCH_START[1];
-                    $state = TRYKEYWORD;
-                    }
-                else
-                    {  $state = FINISHED;  };
-                }
-            elsif ($state == TRYKEYWORD)
-                {
-                if (exists $prototypeDirectives{lc($1)})
-                    {  $state = NEEDSEMICOLON;  }
-                elsif (exists $longPrototypeDirectives{lc($1)})
-                    {  $state = ACCEPTUNTILSEMICOLON;  }
-                else
-                    {  $state = FINISHED;  };
-                }
-            elsif ($state == ACCEPTUNTILSEMICOLON)
-                {
-                if ($1 eq ';')
-                    {
-                    $endOfDirectives = $::LAST_MATCH_START[1];
-                    $state = TRYKEYWORD;
-                    };
-                };
-            };
+            $checkingForDirectives = 1;
+            return ::ENDER_ACCEPT_AND_CONTINUE();
+            }
+        elsif ($$prototypeRef =~ /;[ \t]*([a-z]+)([^;]*)$/i)
+            {
+            my ($lastDirective, $extra) = (lc($1), $2);
 
-        if ($state == FINISHED || $state == TRYKEYWORD)
-            {  $endOfPrototype += $endOfDirectives;  }
+            if (exists $prototypeDirectives{$lastDirective} && $extra =~ /^[ \t]*$/)
+                {  return ::ENDER_ACCEPT_AND_CONTINUE();  }
+            elsif (exists $longPrototypeDirectives{$lastDirective})
+                {  return ::ENDER_ACCEPT_AND_CONTINUE();  }
+            else
+                {  return ::ENDER_REVERT_TO_ACCEPTED();  };
+            }
         else
-            {  $endOfPrototype = -1;  };
-        };
-
-    return $endOfPrototype;
+            {  return ::ENDER_REVERT_TO_ACCEPTED();  };
+        }
+    else
+        {  return ::ENDER_ACCEPT();  };
     };
 
 
