@@ -126,6 +126,7 @@ use integer;
 #       - Assembly
 #       - Tcl
 #       - Ada
+#       - Ruby
 #       - Text files (.txt files only)
 #
 #
