@@ -25,9 +25,9 @@ package NaturalDocs::Languages::Language;
 #
 #   The class is implemented as a blessed arrayref.  The following constants are used as indexes.
 #
-#   LINE_COMMENT              - The symbol that starts a single line comment.  Undef if none.
-#   START_COMMENT           - The symbol that starts a multi-line comment.  Undef if none.
-#   END_COMMENT              - The symbol that ends a multi-line comment.  Undef if none.
+#   LINE_COMMENT              - An arrayref of symbols that start a single line comment.  Undef if none.
+#   START_COMMENT           - An arrayref of symbols that start a multi-line comment.  Undef if none.
+#   END_COMMENT              - An arrayref of symbols that ends a multi-line comment.  Undef if none.
 #   FUNCTION_ENDERS        - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #   VARIABLE_ENDERS         - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #   LINE_EXTENDER             - The symbol to extend a line of code past a line break.  Undef if not applicable.
@@ -53,9 +53,9 @@ use constant LINE_EXTENDER => 5;
 #
 #   Parameters:
 #
-#       lineComment             - The symbol that starts a single-line comment.  Undef if none.
-#       startComment            - The symbol that starts a multi-line comment.  Undef if none.
-#       endComment             - The symbol that starts a multi-line comment.  Undef if none.
+#       lineComment             - An arrayref of symbols that start a single-line comment.  Undef if none.
+#       startComment            - An arrayref of symbols that start a multi-line comment.  Undef if none.
+#       endComment             - An arrayref of symbols that start a multi-line comment.  Undef if none.
 #       functionEnders           - An arrayref of symbols that can end a function prototype.  Undef if not applicable.
 #       variableEnders           - An arrayref of symbols that can end a variable declaration.  Undef if not applicable.
 #       lineExtender               - The symbel to extend a line of code past a line break.  Undef if not applicable.
@@ -73,17 +73,17 @@ sub New #(lineComment, startComment, endComment, functionEnders, variableEnders,
 
 
 # Function: LineComment
-# Returns the symbol used to start a single line comment, or undef if none.
+# Returns an arrayref of symbols used to start a single line comment, or undef if none.
 sub LineComment
     { return $_[0]->[LINE_COMMENT];  };
 
 # Function: StartComment
-# Returns the symbol used to start a multi-line comment, or undef if none.
+# Returns an arrayref of symbols used to start a multi-line comment, or undef if none.
 sub StartComment
     {  return $_[0]->[START_COMMENT];  };
 
 # Function: EndComment
-# Returns the symbol used to end a multi-line comment, or undef if none.
+# Returns an arrayref of symbols used to end a multi-line comment, or undef if none.
 sub EndComment
     {  return $_[0]->[END_COMMENT];  };
 
@@ -109,6 +109,86 @@ sub VariableEnders
 # Returns the symbol used to extend a line of code past a line break, or undef if not applicable.
 sub LineExtender
     {  return $_[0]->[LINE_EXTENDER];  };
+
+
+#
+#   Function: IsLineComment
+#
+#   Determines whether the passed line begins with a line comment symbol.
+#
+#   Parameters:
+#
+#       line - The line to test.  All whitespace at the beginning of the line must be removed beforehand.
+#
+#   Returns:
+#
+#       The length of the comment symbol if true, undef if false.
+#
+sub IsLineComment #(line)
+    {
+    my ($self, $line) = @_;
+
+    if (!defined $self->LineComment())
+        {  return undef;  }
+    else
+        {
+        foreach my $commentSymbol (@{$self->LineComment()})
+            {
+            if (substr($line, 0, length($commentSymbol)) eq $commentSymbol)
+                {  return length($commentSymbol);  };
+            };
+
+        return undef;
+        };
+    };
+
+#
+#   Function: NextStartComment
+#
+#   Determines the position of the next opening multiline comment symbol.
+#
+#   Parameters:
+#
+#       stringRef - A reference to the string.
+#       startingIndex - Optional.  The index to start looking from.  If not specified, starts at the beginning of the string.
+#
+#   Returns:
+#
+#       The array ( index, symbolLength ).
+#
+#       index - The index where the next opening comment symbol is, or -1 if there is none.
+#       symbolLength - The number of characters in the next opening comment symbol, or undef if there is none.
+#
+sub NextStartComment #(stringRef, startingIndex)
+    {
+    my ($self, $stringRef, $startingIndex) = @_;
+
+    return $self->NextSymbol($stringRef, $startingIndex, $self->StartComment());
+    };
+
+#
+#   Function: NextEndComment
+#
+#   Determines the position of the next closing multiline comment symbol.
+#
+#   Parameters:
+#
+#       stringRef - A reference to the string.
+#       startingIndex - Optional.  The index to start looking from.  If not specified, starts at the beginning of the string.
+#
+#   Returns:
+#
+#       The array ( index, symbolLength ).
+#
+#       index - The index where the next closing comment symbol is, or -1 if there is none.
+#       symbolLength - The number of characters in the next closing comment symbol, or undef if there is none.
+#
+sub NextEndComment #(stringRef, startingIndex)
+    {
+    my ($self, $stringRef, $startingIndex) = @_;
+
+    return $self->NextSymbol($stringRef, $startingIndex, $self->EndComment());
+    };
 
 
 #
@@ -195,6 +275,49 @@ sub RemoveExtenders #(stringRef)
 
 ###############################################################################
 # Group: Support Functions
+
+
+#
+#   Function: NextSymbol
+#
+#   Determines the position of the next symbol in a string out of an arrayref of possible symbols.
+#
+#   Parameters:
+#
+#       stringRef - A reference to the string.
+#       startingIndex - The index to start looking from.  If not specified, starts at the beginning of the string.
+#       symbols - An arrayref of symbols to look for.  Accepts undef.
+#
+#   Returns:
+#
+#       The array ( index, symbolLength ).
+#
+#       index - The index where the next symbol is, or -1 if there is none.
+#       symbolLength - The number of characters in the next symbol, or undef if there is none.
+#
+sub NextSymbol #(stringRef, startingIndex, symbols)
+    {
+    my ($self, $stringRef, $startingIndex, $symbols) = @_;
+
+    if (!defined $symbols)
+        {  return ( -1, undef );  };
+
+    my $result = -1;
+    my $symbolLength;
+
+    foreach my $symbol (@$symbols)
+        {
+        my $symbolResult = index($$stringRef, $symbol, $startingIndex);
+
+        if ($symbolResult != -1 && ( $result == -1 || $symbolResult < $result ) )
+            {
+            $result = $symbolResult;
+            $symbolLength = length($symbol);
+            };
+        };
+
+    return ( $result, $symbolLength );
+    };
 
 
 #
