@@ -245,7 +245,6 @@ sub LoadSourceFileInfo
                 {
                 $rebuildEverything = 1;
                 $hasChanged = 1;
-                $menuFileStatus = ::FILE_CHANGED();
                 };
             }
         else
@@ -381,8 +380,11 @@ sub LoadSourceFileInfo
         $hasChanged = 1;
         };
 
+
+    # There are other side effects, so we need to call this.
     if ($rebuildEverything)
-        {  NaturalDocs::SymbolTable->RebuildAllIndexes();  };
+        {  $self->RebuildEverything();  };
+
 
     return $hasChanged;
     };
@@ -498,6 +500,9 @@ sub LoadConfigFileInfo
                 {  $$fileStatus = ::FILE_DOESNTEXIST();  };
             };
         };
+
+    if ($menuFileStatus == ::FILE_SAME() && $rebuildEverything)
+        {  $menuFileStatus = ::FILE_CHANGED();  };
     };
 
 
@@ -732,18 +737,18 @@ sub RebuildEverything
     {
     my ($self) = @_;
 
-    if (!$rebuildEverything)
+    foreach my $file (keys %unbuiltFilesWithContent)
         {
-        foreach my $file (keys %unbuiltFilesWithContent)
-            {
-            $filesToBuild{$file} = 1;
-            };
-
-        %unbuiltFilesWithContent = ( );
-        $rebuildEverything = 1;
-
-        NaturalDocs::SymbolTable->RebuildAllIndexes();
+        $filesToBuild{$file} = 1;
         };
+
+    %unbuiltFilesWithContent = ( );
+    $rebuildEverything = 1;
+
+    NaturalDocs::SymbolTable->RebuildAllIndexes();
+
+    if ($menuFileStatus == ::FILE_SAME())
+        {  $menuFileStatus = ::FILE_CHANGED();  };
     };
 
 
