@@ -1240,7 +1240,7 @@ sub LoadPreviousMenuStateFile
             if ($version <= NaturalDocs::Version->FromString('0.95'))
                 {
                 my $indexLine = <PREVIOUSSTATEFILEHANDLE>;
-                chomp($indexLine);
+                ::XChomp(\$indexLine);
 
                 $indexes = { };
 

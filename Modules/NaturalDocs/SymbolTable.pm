@@ -200,7 +200,7 @@ sub LoadAndPurge
 
     while ($line = <SYMBOLTABLEFILEHANDLE>)
         {
-        chomp($line);
+        ::XChomp(\$line);
 
         # Putting this in the while condition causes problems.
         if (!length $line)
@@ -212,7 +212,7 @@ sub LoadAndPurge
         my $symbolObject = NaturalDocs::SymbolTable::Symbol->New();
 
         $line = <SYMBOLTABLEFILEHANDLE>;
-        chomp($line);
+        ::XChomp(\$line);
 
         while (length $line)
             {
@@ -233,7 +233,7 @@ sub LoadAndPurge
             $files{$file}->AddSymbol($symbolString);
 
             $line = <SYMBOLTABLEFILEHANDLE>;
-            chomp($line);
+            ::XChomp(\$line);
             };
 
         $symbols{$symbolString} = $symbolObject;
@@ -244,7 +244,7 @@ sub LoadAndPurge
 
     while ($line = <SYMBOLTABLEFILEHANDLE>)
         {
-        chomp($line);
+        ::XChomp(\$line);
 
         # [reference string]
 
@@ -252,7 +252,7 @@ sub LoadAndPurge
         my $referenceObject = NaturalDocs::SymbolTable::Reference->New();
 
         $line = <SYMBOLTABLEFILEHANDLE>;
-        chomp($line);
+        ::XChomp(\$line);
 
         # [definition] tab [definition] tab [definition] ...
 

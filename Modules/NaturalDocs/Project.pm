@@ -171,7 +171,7 @@ sub LoadAndDetectChanges
             }
         else
             {
-            chomp($line);
+            ::XChomp(\$line);
 
             if ((stat($self->MenuFile()))[9] != $line)
                 {
@@ -185,7 +185,7 @@ sub LoadAndDetectChanges
 
         while ($line = <FILEINFOFILEHANDLE>)
             {
-            chomp($line);
+            ::XChomp(\$line);
             my ($file, $modification, $hasContent, $menuTitle) = split(/\t/, $line, 4);
 
             # If the file no longer exists...

@@ -268,7 +268,7 @@ sub ExtractComments
         @commentLines = <SOURCEFILEHANDLE>;
 
         foreach my $commentLine (@commentLines)
-            {  chomp($commentLine);  };
+            {  ::XChomp(\$commentLine);  };
 
         $self->CleanComment(\@commentLines);
         }
@@ -291,7 +291,7 @@ sub ExtractComments
 
         while (defined $line)
             {
-            chomp $line;
+            ::XChomp(\$line);
             my $originalLine = $line;
 
             # Retrieve single line comments.  This leaves $line at the next line.
@@ -311,7 +311,7 @@ sub ExtractComments
                     if (!defined $line)
                         {  goto EndDo;  };
 
-                    chomp($line);
+                    ::XChomp(\$line);
                     }
                 while ($language->StripLineCommentSymbol(\$line));
 
@@ -343,7 +343,7 @@ sub ExtractComments
                     if (!defined $line)
                         {  last;  };
 
-                    chomp($line);
+                    ::XChomp(\$line);
                     };
 
                 if ($multiline)
