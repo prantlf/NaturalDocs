@@ -1,4 +1,4 @@
-Format: 1.3
+Format: 1.31
 
 # This is the main Natural Docs languages file.  If you change anything here,
 # it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
@@ -30,7 +30,8 @@ Format: 1.3
 #    copy those settings from the language that is used most in the source tree.
 #
 # Extensions: [extension] [extension] ...
-#    Defines the file extensions of the language's source files.
+#    Defines the file extensions of the language's source files.  You can use *
+#    to mean any undefined extension.
 #
 # Shebang Strings: [string] [string] ...
 #    Defines a list of strings that can appear in the shebang (#!) line to
