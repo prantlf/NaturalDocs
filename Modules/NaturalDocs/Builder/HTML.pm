@@ -83,6 +83,9 @@ sub BuildFile #(sourceFile, parsedFile)
 
         . '<html><head>'
 
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+
             . '<title>'
                 . $self->BuildTitle($sourceFile)
             . '</title>'
@@ -149,6 +152,9 @@ sub BuildIndex #(type)
             . '"http://www.w3.org/TR/REC-html40/strict.dtd">' . "\n\n"
 
         . '<html><head>'
+
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
 
             . '<title>'
                 . $indexTitle;
