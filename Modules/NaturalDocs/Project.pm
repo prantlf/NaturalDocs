@@ -9,15 +9,18 @@
 #
 #   Usage and Dependencies:
 #
-#       - Prior to initialization, <NaturalDocs::Settings> and <NaturalDocs::Languages> must be initialized and
-#        <NaturalDocs::Menu>'s event handlers must be available.
+#       - All the <Data File Functions> are available immediately, except for the status functions.
 #
-#       - To initialize, call <LoadAndDetectChanges()>.  All other functions will then be available.
+#       - <ReparseEverything()> and <RebuildEverything()> are available immediately, because they may need to be called
+#         after <LoadConfigFileInfo()> but before <LoadSourceFileInfo()>.
 #
-#       - All operations that can change project file information or the files themselves must be performed before saving the
-#         project back to disk.  These include <NaturalDocs::Parser->ParseForInformation()> and <NaturalDocs::Menu->Save()>.
+#       - Prior to <LoadConfigFileInfo()>, <NaturalDocs::Settings> must be initialized.
 #
-#       - To save the changes to disk, call <Save()>.
+#       - After <LoadConfigFileInfo()>, the status <Data File Functions> are available as well.
+#
+#       - Prior to <LoadSourceFileInfo()>, <NaturalDocs::Settings> and <NaturalDocs::Languages> must be initialized.
+#
+#       - After <LoadSourceFileInfo()>, the rest of the <Source File Functions> are available.
 #
 ###############################################################################
 
@@ -36,9 +39,16 @@ package NaturalDocs::Project;
 # Group: Variables
 
 #
-#   handle: FILEINFOFILEHANDLE
+#   handle: FH_FILEINFO
 #
 #   The file handle for the file information file, <FileInfo.nd>.
+#
+
+
+#
+#   handle: FH_CONFIGFILEINFO
+#
+#   The file handle for the config file information file, <ConfigFileInfo.nd>.
 #
 
 
@@ -80,8 +90,30 @@ my %filesToPurge;
 my %unbuiltFilesWithContent;
 
 
+# var: menuFileStatus
+# The <FileStatus> of the project's menu file.
+my $menuFileStatus;
+
+# var: mainTopicsFileStatus
+# The <FileStatus> of the project's main topics file.
+my $mainTopicsFileStatus;
+
+# var: userTopicsFileStatus
+# The <FileStatus> of the project's user topics file.
+my $userTopicsFileStatus;
+
+# bool: reparseEverything
+# Whether all the source files need to be reparsed.
+my $reparseEverything;
+
+# bool: rebuildEverything
+# Whether all the source files need to be rebuilt.
+my $rebuildEverything;
+
+
 ###############################################################################
 # Group: Files
+
 
 #
 #   File: FileInfo.nd
@@ -96,15 +128,15 @@ my %unbuiltFilesWithContent;
 #
 #       The beginning of the file is the <VersionInt> it was generated with.
 #
-#       > [last modification time of menu] \n
-#
-#       The second line is the last modification time of <Menu.txt>.
-#
 #       Each following line is
 #
 #       > [file name] tab [last modification time] tab [has ND content (0 or 1)] tab [default menu title] \n
 #
 #   Revisions:
+#
+#       1.3:
+#
+#           - Removed the line following the <VersionInt>, which was the last modification time of <Menu.txt>.
 #
 #       1.16:
 #
@@ -121,11 +153,40 @@ my %unbuiltFilesWithContent;
 #
 
 
+#
+#   File: ConfigFileInfo.nd
+#
+#   An index of the state of the config files as of the last parse.
+#
+#   Format:
+#
+#       > [BINARY_FORMAT]
+#       > [VersionInt: app version]
+#
+#       First is the standard <BINARY_FORMAT> <VersionInt> header.
+#
+#       > [UInt32: last modification time of menu]
+#       > [UInt32: last modification of main topics file]
+#       > [UInt32: last modification of user topics file]
+#
+#       Next are the last modification times of various configuration files as UInt32s in the standard Unix format.
+#
+#
+#   Revisions:
+#
+#       1.3:
+#
+#           - The file was added to Natural Docs.  Previously the last modification of <Menu.txt> was stored in <FileInfo.nd>, and
+#             <Topics.txt> didn't exist.
+#
+
+
+
 ###############################################################################
-# Group: Action Functions
+# Group: File Functions
 
 #
-#   Function: LoadAndDetectChanges
+#   Function: LoadSourceFileInfo
 #
 #   Loads the project file from disk and compares it against the files in the input directory.  Project is loaded from
 #   <FileInfo.nd>.  New and changed files will be added to <FilesToParse()>, and if they have content,
@@ -135,34 +196,44 @@ my %unbuiltFilesWithContent;
 #
 #       Returns whether the project was changed in any way.
 #
-sub LoadAndDetectChanges
+sub LoadSourceFileInfo
     {
     my ($self) = @_;
 
     $self->GetAllSupportedFiles();
 
     my $fileIsOkay;
-    my $rebuildOutput = NaturalDocs::Settings->RebuildOutput();
+    my $version;
+    my $hasChanged;
 
-    my $hasChanged = $rebuildOutput;
+    if (NaturalDocs::Settings->RebuildOutput())
+        {
+        $rebuildEverything = 1;
+        $hasChanged = 1;
+        };
 
-    if (!NaturalDocs::Settings->RebuildData() && open(FILEINFOFILEHANDLE, '<' . $self->FileInfoFile()))
+
+    if (!NaturalDocs::Settings->RebuildData() && open(FH_FILEINFO, '<' . $self->FileInfoFile()))
         {
         # Check if the file is in the right format.
-        my $version = NaturalDocs::Version->FromTextFile(\*FILEINFOFILEHANDLE);
+        $version = NaturalDocs::Version->FromTextFile(\*FH_FILEINFO);
 
         # The project file need to be rebuilt for 1.16.  The output files need to be rebuilt for 1.21.
+        # We'll tolerate the difference between 1.16 and 1.3 in the loader.
 
         if ($version >= NaturalDocs::Version->FromString('1.16') && $version <= NaturalDocs::Settings->AppVersion())
             {
             $fileIsOkay = 1;
 
             if ($version < NaturalDocs::Version->FromString('1.21'))
-                {  $rebuildOutput = 1;  };
+                {
+                $rebuildEverything = 1;
+                $hasChanged = 1;
+                };
             }
         else
             {
-            close(FILEINFOFILEHANDLE);
+            close(FH_FILEINFO);
             $hasChanged = 1;
             };
         };
@@ -174,30 +245,15 @@ sub LoadAndDetectChanges
         my %indexedFiles;
 
 
-        # Check if Menu.txt changed.
+        # Skip the Menu.txt line.
 
-        $line = <FILEINFOFILEHANDLE>;
-
-        if (! -e $self->MenuFile())
-            {
-            NaturalDocs::Menu->OnFileChange();
-            $hasChanged = 1;
-            }
-        else
-            {
-            ::XChomp(\$line);
-
-            if ((stat($self->MenuFile()))[9] != $line)
-                {
-                NaturalDocs::Menu->OnFileChange();
-                $hasChanged = 1;
-                };
-            };
+        if ($version < NaturalDocs::Version->FromString('1.3'))
+            {  $line = <FH_FILEINFO>;  };
 
 
         # Parse the rest of the file.
 
-        while ($line = <FILEINFOFILEHANDLE>)
+        while ($line = <FH_FILEINFO>)
             {
             ::XChomp(\$line);
             my ($file, $modification, $hasContent, $menuTitle) = split(/\t/, $line, 4);
@@ -229,23 +285,36 @@ sub LoadAndDetectChanges
                     $hasChanged = 1;
                     }
 
-                # If the file hasn't changed but we want to rebuild its output...
-                elsif ($rebuildOutput && $hasContent)
-                    {
-                    $supportedFiles{$file}->SetStatus(::FILE_CHANGED());
-
-                    # If the file loses its content, this will be removed by SetHasContent().
-                    $filesToBuild{$file} = 1;
-                    $hasChanged = 1;
-                    }
-
-                # If the file hasn't changed and we don't want to rebuild its output...
+                # If the file has not changed...
                 else
                     {
-                    $supportedFiles{$file}->SetStatus(::FILE_SAME());
+                    my $status;
 
-                    if ($hasContent)
-                        {  $unbuiltFilesWithContent{$file} = 1;  };
+                    if ($rebuildEverything && $hasContent)
+                        {
+                        $status = ::FILE_CHANGED();
+
+                        # If the file loses its content, this will be removed by SetHasContent().
+                        $filesToBuild{$file} = 1;
+                        $hasChanged = 1;
+                        }
+                    else
+                        {
+                        $status = ::FILE_SAME();
+
+                        if ($hasContent)
+                            {  $unbuiltFilesWithContent{$file} = 1;  };
+                        };
+
+                    if ($reparseEverything)
+                        {
+                        $status = ::FILE_CHANGED();
+
+                        $filesToParse{$file} = 1;
+                        $hasChanged = 1;
+                        };
+
+                    $supportedFiles{$file}->SetStatus($status);
                     };
 
                 $supportedFiles{$file}->SetHasContent($hasContent);
@@ -253,7 +322,7 @@ sub LoadAndDetectChanges
                 };
             };
 
-        close(FILEINFOFILEHANDLE);
+        close(FH_FILEINFO);
 
 
         # Check for added files.
@@ -278,8 +347,6 @@ sub LoadAndDetectChanges
     # If something's wrong with FileInfo.nd, everything is new.
     else
         {
-        NaturalDocs::Menu->OnFileChange();
-
         foreach my $file (keys %supportedFiles)
             {
             $supportedFiles{$file}->SetStatus(::FILE_NEW());
@@ -297,91 +364,115 @@ sub LoadAndDetectChanges
 
 
 #
-#   Function: Save
+#   Function: SaveSourceFileInfo
 #
-#   Saves the project file to disk.  Everything is saved in <FileInfo.nd>.  <NaturalDocs::Menu->Save()> should
-#   be called prior to this function because its last modification time is saved here.
+#   Saves the source file info to disk.  Everything is saved in <FileInfo.nd>.
 #
-sub Save
+sub SaveSourceFileInfo
     {
     my ($self) = @_;
 
-    open(FILEINFOFILEHANDLE, '>' . $self->FileInfoFile())
+    open(FH_FILEINFO, '>' . $self->FileInfoFile())
         or die "Couldn't save project file " . $self->FileInfoFile() . "\n";
 
-    NaturalDocs::Version->ToTextFile(\*FILEINFOFILEHANDLE, NaturalDocs::Settings->AppVersion());
-
-    print FILEINFOFILEHANDLE '' . (stat($self->MenuFile()))[9] . "\n";
+    NaturalDocs::Version->ToTextFile(\*FH_FILEINFO, NaturalDocs::Settings->AppVersion());
 
     while (my ($fileName, $file) = each %supportedFiles)
         {
-        print FILEINFOFILEHANDLE $fileName . "\t"
+        print FH_FILEINFO $fileName . "\t"
                               . $file->LastModified() . "\t"
                               . ($file->HasContent() || '0') . "\t"
                               . $file->DefaultMenuTitle() . "\n";
         };
 
-    close(FILEINFOFILEHANDLE);
+    close(FH_FILEINFO);
     };
 
 
 #
-#   Function: RebuildFile
+#   Function: LoadConfigFileInfo
 #
-#   Adds the file to the list of files to build.  This function will automatically filter out files that don't have Natural Docs content and
-#   files that are part of <FilesToPurge()>.  If this gets called on a file and that file later gets Natural Docs content, it will be added.
+#   Loads the config file info to disk.
 #
-#   Parameters:
-#
-#       file - The <FileName> to build or rebuild.
-#
-sub RebuildFile #(file)
-    {
-    my ($self, $file) = @_;
-
-    # We don't want to add it to the build list if it doesn't exist, doesn't have Natural Docs content, or it's going to be purged.
-    # If it wasn't parsed yet and will later be found to have ND content, it will be added by SetHasContent().
-    if (exists $supportedFiles{$file} && !exists $filesToPurge{$file} && $supportedFiles{$file}->HasContent())
-        {
-        $filesToBuild{$file} = 1;
-
-        if (exists $unbuiltFilesWithContent{$file})
-            {  delete $unbuiltFilesWithContent{$file};  };
-        };
-    };
-
-
-#
-#   Function: ReparseEverything
-#
-#   Adds all supported files to the list of files to parse.  This does not necessarily mean these files are going to be rebuilt.
-#
-sub ReparseEverything
+sub LoadConfigFileInfo
     {
     my ($self) = @_;
 
-    foreach my $file (keys %supportedFiles)
+    my $fileIsOkay;
+    my $version;
+    my $fileName = NaturalDocs::Project->ConfigFileInfoFile();
+
+    if (!NaturalDocs::Settings->RebuildData() && open(FH_CONFIGFILEINFO, '<' . $fileName))
         {
-        $filesToParse{$file} = 1;
+        # See if it's binary.
+        binmode(FH_CONFIGFILEINFO);
+
+        my $firstChar;
+        read(FH_CONFIGFILEINFO, $firstChar, 1);
+
+        if ($firstChar == ::BINARY_FORMAT())
+            {
+            $version = NaturalDocs::Version->FromBinaryFile(\*FH_CONFIGFILEINFO);
+
+            # It hasn't changed since being introduced.
+
+            if ($version <= NaturalDocs::Settings->AppVersion())
+                {  $fileIsOkay = 1;  }
+            else
+                {  close(FH_CONFIGFILEINFO);  };
+            }
+
+        else # it's not in binary
+            {  close(FH_CONFIGFILEINFO);  };
+        };
+
+    if ($fileIsOkay)
+        {
+        my $raw;
+
+        read(FH_CONFIGFILEINFO, $raw, 12);
+        my ($menuDate, $mainTopicsDate, $userTopicsDate) = unpack('NNN', $raw);
+
+        $menuFileStatus         = ($menuDate         == (stat($self->MenuFile()         ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
+        $mainTopicsFileStatus = ($mainTopicsDate == (stat($self->MainTopicsFile() ))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
+        $userTopicsFileStatus  = ($userTopicsDate  == (stat($self->UserTopicsFile()))[9] ? ::FILE_SAME() : ::FILE_CHANGED());
+
+        close(FH_CONFIGFILEINFO);
+        }
+    else
+        {
+        $menuFileStatus = ::FILE_CHANGED();
+        $mainTopicsFileStatus = ::FILE_CHANGED();
+        $userTopicsFileStatus = ::FILE_CHANGED();
         };
     };
 
+
 #
-#   Function: RebuildEverything
+#   Function: SaveConfigFileInfo
 #
-#   Adds all supported files to the list of files to build.  This does not necessarily mean these files are going to be reparsed.
+#   Saves the config file info to disk.  You *must* save all other config files first, such as <Menu.txt> and <Topics.txt>.
 #
-sub RebuildEverything
+sub SaveConfigFileInfo
     {
     my ($self) = @_;
 
-    foreach my $file (keys %unbuiltFilesWithContent)
-        {
-        $filesToBuild{$file} = 1;
-        };
+    open (FH_CONFIGFILEINFO, '>' . NaturalDocs::Project->ConfigFileInfoFile())
+        or die "Couldn't save " . NaturalDocs::Project->ConfigFileInfoFile() . ".\n";
 
-    %unbuiltFilesWithContent = ( );
+    binmode(FH_CONFIGFILEINFO);
+
+    print FH_CONFIGFILEINFO '' . ::BINARY_FORMAT();
+
+    NaturalDocs::Version->ToBinaryFile(\*FH_CONFIGFILEINFO, NaturalDocs::Settings->AppVersion());
+
+    print FH_CONFIGFILEINFO pack('NNN', (stat($self->MenuFile()))[9],
+                                                               (stat($self->MainTopicsFile()))[9],
+                                                               (stat($self->UserTopicsFile()))[9] );
+
+    close(FH_CONFIGFILEINFO);
     };
+
 
 #
 #   Function: MigrateOldFiles
@@ -423,6 +514,11 @@ sub MigrateOldFiles
 sub FileInfoFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'FileInfo.nd' );  };
 
+# Function: ConfigFileInfoFile
+# Returns the full path to the config file information file.
+sub ConfigFileInfoFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'ConfigFileInfo.nd' );  };
+
 # Function: SymbolTableFile
 # Returns the full path to the symbol table's data file.
 sub SymbolTableFile
@@ -437,6 +533,31 @@ sub ClassHierarchyFile
 # Returns the full path to the project's menu file.
 sub MenuFile
     {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
+
+# Function: MenuFileStatus
+# Returns the <FileStatus> of the project's menu file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+sub MenuFileStatus
+    {  return $menuFileStatus;  };
+
+# Function: MainTopicsFile
+# Returns the full path to the main topics file.
+sub MainTopicsFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), 'Topics.txt' );  };
+
+# Function: MainTopicsFileStatus
+# Returns the <FileStatus> of the project's main topics file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+sub MainTopicsFileStatus
+    {  return $mainTopicsFileStatus;  };
+
+# Function: UserTopicsFile
+# Returns the full path to the user's topics file.
+sub UserTopicsFile
+    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Topics.txt' );  };
+
+# Function: UserTopicsFileStatus
+# Returns the <FileStatus> of the project's user topics file.  It will only be <FILE_CHANGED> or <FILE_SAME>.
+sub UserTopicsFileStatus
+    {  return $userTopicsFileStatus;  };
 
 # Function: SettingsFile
 # Returns the full path to the project's settings file.
@@ -479,6 +600,75 @@ sub FilesToBuild
 # This is not a copy of the data, so don't change it.
 sub FilesToPurge
     {  return \%filesToPurge;  };
+
+#
+#   Function: RebuildFile
+#
+#   Adds the file to the list of files to build.  This function will automatically filter out files that don't have Natural Docs content and
+#   files that are part of <FilesToPurge()>.  If this gets called on a file and that file later gets Natural Docs content, it will be added.
+#
+#   Parameters:
+#
+#       file - The <FileName> to build or rebuild.
+#
+sub RebuildFile #(file)
+    {
+    my ($self, $file) = @_;
+
+    # We don't want to add it to the build list if it doesn't exist, doesn't have Natural Docs content, or it's going to be purged.
+    # If it wasn't parsed yet and will later be found to have ND content, it will be added by SetHasContent().
+    if (exists $supportedFiles{$file} && !exists $filesToPurge{$file} && $supportedFiles{$file}->HasContent())
+        {
+        $filesToBuild{$file} = 1;
+
+        if (exists $unbuiltFilesWithContent{$file})
+            {  delete $unbuiltFilesWithContent{$file};  };
+        };
+    };
+
+
+#
+#   Function: ReparseEverything
+#
+#   Adds all supported files to the list of files to parse.  This does not necessarily mean these files are going to be rebuilt.
+#
+sub ReparseEverything
+    {
+    my ($self) = @_;
+
+    if (!$reparseEverything)
+        {
+        foreach my $file (keys %supportedFiles)
+            {
+            $filesToParse{$file} = 1;
+            };
+
+        $reparseEverything = 1;
+        };
+    };
+
+
+#
+#   Function: RebuildEverything
+#
+#   Adds all supported files to the list of files to build.  This does not necessarily mean these files are going to be reparsed.
+#
+sub RebuildEverything
+    {
+    my ($self) = @_;
+
+    if (!$rebuildEverything)
+        {
+        foreach my $file (keys %unbuiltFilesWithContent)
+            {
+            $filesToBuild{$file} = 1;
+            };
+
+        %unbuiltFilesWithContent = ( );
+        $rebuildEverything = 1;
+        };
+    };
+
 
 # Function: UnbuiltFilesWithContent
 # Returns an existence hashref of the <FileNames> that have Natural Docs content but are not part of <FilesToBuild()>.  This is
@@ -587,6 +777,7 @@ sub SetDefaultMenuTitle #(file, menuTitle)
         NaturalDocs::Menu->OnDefaultTitleChange($file);
         };
     };
+
 
 
 ###############################################################################
