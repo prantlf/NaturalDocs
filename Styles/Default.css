@@ -42,7 +42,19 @@ p {
 
 /*  Can't use something like display: none or it won't break.  */
 .HB {
-    font-size: 1px }
+    font-size: 1px;
+    visibility: hidden;
+    }
+
+/*  Blockquotes are used as containers for things that may need to scroll.  */
+blockquote {
+    padding: 0;
+    margin: 0;
+    overflow: auto;
+    }
+/*  This will be fixed in JavaScript.  We just need a default if it's turned off.  */
+.IE blockquote {
+    width: 400px;  }
 
 
 
@@ -187,13 +199,17 @@ body.FramedContentPage,
     .Opera6 .CTooltip, .Opera5 .CTooltip {
         max-width: 100% }
 
+    /*  Scrollbars would be useless.  */
+    .CToolTip blockquote {
+        overflow: hidden;
+        }
+
     .CHeading {
         font-weight: bold; font-size: 10pt;
         margin-top: 1.5em; margin-bottom: .5em }
 
     .CCode {
         font: 10pt "Courier New", Courier, monospace;
-        overflow: auto;
         }
 
     .CBulletList {
