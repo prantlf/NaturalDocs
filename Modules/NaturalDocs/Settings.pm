@@ -19,6 +19,7 @@
 # This file is part of Natural Docs, which is Copyright © 2003 Greg Valure
 # Natural Docs is licensed under the GPL
 
+use Cwd ();
 
 use NaturalDocs::Settings::BuildTarget;
 
@@ -34,9 +35,9 @@ package NaturalDocs::Settings;
 # handle: SETTINGSFILEHANDLE
 # The file handle used with <Settings.txt>.
 
-# var: inputDirectory
-# The input directory.
-my $inputDirectory;
+# array: inputDirectories
+# An array of input directories.
+my @inputDirectories;
 
 # var: projectDirectory
 # The project directory.
@@ -169,10 +170,15 @@ sub Save
 # Function: InputDirectory
 # Returns the input directory.
 sub InputDirectory
-    {  return $inputDirectory;  };
+    {  return $inputDirectories[0];  };
+
+# Function: InputDirectories
+# Returns an arrayref of input directories.  Do not change.
+sub InputDirectories
+    {  return \@inputDirectories;  };
 
 # Function: BuildTargets
-# Returns an arrayref of <NaturalDocs::Settings::BuildTarget>s.
+# Returns an arrayref of <NaturalDocs::Settings::BuildTarget>s.  Do not change.
 sub BuildTargets
     {  return \@buildTargets;  };
 
@@ -415,13 +421,8 @@ sub ParseCommandLine
 
             if ($option eq '-i')
                 {
-                if (defined $inputDirectory)
-                    {
-                    push @errorMessages, 'You cannot have more than one input directory.';
-                    $valueRef = \$ignored;
-                    }
-                else
-                    {  $valueRef = \$inputDirectory;  };
+                push @inputDirectories, undef;
+                $valueRef = \$inputDirectories[-1];
                 }
             elsif ($option eq '-p')
                 {
@@ -531,6 +532,9 @@ sub ParseCommandLine
             {  push @errorMessages, 'The -o option needs two parameters: -o [format] [directory]';  }
         else
             {
+            if (!NaturalDocs::File->PathIsAbsolute($directory))
+                {  $directory = NaturalDocs::File->JoinPath(Cwd::cwd(), $directory);  };
+
             $directory = NaturalDocs::File->CanonizePath($directory);
 
             if (! -e $directory || ! -d $directory)
@@ -573,18 +577,27 @@ sub ParseCommandLine
 
     # Make sure the input and project directories are specified, canonized, and exist.
 
-    if (defined $inputDirectory)
+    if (scalar @inputDirectories)
         {
-        $inputDirectory = NaturalDocs::File->CanonizePath($inputDirectory);
+        for (my $i = 0; $i < scalar @inputDirectories; $i++)
+            {
+            if (!NaturalDocs::File->PathIsAbsolute($inputDirectories[$i]))
+                {  $inputDirectories[$i] = NaturalDocs::File->JoinPath(Cwd::cwd(), $inputDirectories[$i]);  };
 
-        if (! -e $inputDirectory || ! -d $inputDirectory)
-            {  push @errorMessages, 'The input directory ' . $inputDirectory . ' does not exist.';  };
+            $inputDirectories[$i] = NaturalDocs::File->CanonizePath($inputDirectories[$i]);
+
+            if (! -e $inputDirectories[$i] || ! -d $inputDirectories[$i])
+                {  push @errorMessages, 'The input directory ' . $inputDirectories[$i] . ' does not exist.';  };
+            };
         }
     else
         {  push @errorMessages, 'You did not specify an input (source) directory.';  };
 
     if (defined $projectDirectory)
         {
+        if (!NaturalDocs::File->PathIsAbsolute($projectDirectory))
+            {  $projectDirectory = NaturalDocs::File->JoinPath(Cwd::cwd(), $projectDirectory);  };
+
         $projectDirectory = NaturalDocs::File->CanonizePath($projectDirectory);
 
         if (! -e $projectDirectory || ! -d $projectDirectory)
@@ -649,10 +662,11 @@ sub PrintSyntax
     . "Syntax:\n"
     . "\n"
     . "    NaturalDocs -i [input (source) directory]\n"
-    . "                 -o [output format] [output directory]\n"
-    . "                 (-o [output format] [output directory] ...)\n"
-    . "                 -p [project directory]\n"
-    . "                 [options]\n"
+    . "               (-i [input (source) directory] ...)\n"
+    . "                -o [output format] [output directory]\n"
+    . "               (-o [output format] [output directory] ...)\n"
+    . "                -p [project directory]\n"
+    . "                [options]\n"
     . "\n"
     . "Examples:\n"
     . "\n"
@@ -665,6 +679,7 @@ sub PrintSyntax
     . "\n"
     . " -i [dir]\n--input [dir]\n--source [dir]\n"
     . "     Specifies the input (source) directory.  Required.\n"
+    . "     Can be specified multiple times.\n"
     . "\n"
     . " -o [fmt] [dir]\n--output [fmt] [dir]\n"
     . "    Specifies the output format and directory.  Required.\n"
