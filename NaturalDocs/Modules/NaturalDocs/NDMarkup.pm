@@ -53,6 +53,9 @@
 #       <link></link>   - Surrounds a potential link to a symbol; potential because the target is not guaranteed to exist.  This
 #                             tag merely designates an attempted link.  No other tags will appear between them.
 #
+#       <url></url>  - Surrounds an external link.  No other tags will appear between them.
+#       <email></email>  - Surrounds an email address.  No other tags will appear between them.
+#
 #   About: Amp Chars
 #
 #       These are the only amp chars supported, and will appear everywhere.  Every other character will appear as is.

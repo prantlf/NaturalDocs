@@ -319,6 +319,8 @@ Styles: Link Styles
     LFunctionList - Link to a function list.
     LVariableList - Link to a variable list.
     LGenericList - Link to a generic list.
+    LURL - Link to an external URL.
+    LEMail - Link to an e-mail address.
 
 _______________________________________________________________________________
 
