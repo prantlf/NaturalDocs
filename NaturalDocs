@@ -424,7 +424,7 @@ eval {
 
     # Almost everything requires Settings to be initialized.
 
-    NaturalDocs::Settings->ParseCommandLine();
+    NaturalDocs::Settings->Load();
 
 
     # Add the supported languages.
@@ -517,6 +517,7 @@ eval {
         NaturalDocs::Menu->Save();
         NaturalDocs::Project->Save();
         NaturalDocs::SymbolTable->Save();
+        #NaturalDocs::Settings->Save();
         }
     else
         {
