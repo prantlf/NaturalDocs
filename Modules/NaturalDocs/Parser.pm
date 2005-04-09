@@ -699,8 +699,25 @@ sub MergeAutoTopics #(language, autoTopics)
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
 
+#            if (NaturalDocs::Topics->TypeInfo($topic->Type())->Scope() != ::SCOPE_START())
+#                {  $topic->SetPackage($autoTopic->Package());  };
+
             if (NaturalDocs::Topics->TypeInfo($topic->Type())->Scope() != ::SCOPE_START())
-                {  $topic->SetPackage($autoTopic->Package());  };
+                {  $topic->SetPackage($autoTopic->Package());  }
+            elsif ($autoTopic->Package() ne $topic->Package())
+                {
+                my @autoPackageIdentifiers = NaturalDocs::SymbolString->IdentifiersOf($autoTopic->Package());
+                my @packageIdentifiers = NaturalDocs::SymbolString->IdentifiersOf($topic->Package());
+
+                while (scalar @autoPackageIdentifiers && $autoPackageIdentifiers[-1] eq $packageIdentifiers[-1])
+                    {
+                    pop @autoPackageIdentifiers;
+                    pop @packageIdentifiers;
+                    };
+
+                if (scalar @autoPackageIdentifiers)
+                    {  $topic->SetPackage( NaturalDocs::SymbolString->Join(@autoPackageIdentifiers) );  };
+                };
 
             $topicIndex++;
             $autoTopicIndex++;
