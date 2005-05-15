@@ -372,7 +372,15 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
 
                             $testPrototype .= substr($tokens[$tokenIndex], $startingIndex, $enderIndex - $startingIndex);
 
-                            my $enderResult = $self->OnPrototypeEnd($topicList->[-1]->Type(), \$testPrototype, $ender);
+                            my $enderResult;
+
+                            # If the ender is all text and the character preceding or following it is as well, ignore it.
+                            if ($ender =~ /^[a-z0-9]+$/i &&
+                                ( ($enderIndex > 0 && substr($tokens[$tokenIndex], $enderIndex - 1, 1) =~ /^[a-z0-9]$/i) ||
+                                   substr($tokens[$tokenIndex], $enderIndex + length($ender), 1) =~ /^[a-z0-9]$/i ) )
+                                {  $enderResult = ENDER_IGNORE();  }
+                            else
+                                {  $enderResult = $self->OnPrototypeEnd($topicList->[-1]->Type(), \$testPrototype, $ender);  }
 
                             if ($enderResult == ENDER_IGNORE())
                                 {
