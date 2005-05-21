@@ -1203,17 +1203,27 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
 
     my $isRegexp;
 
-    if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y|)$/i &&
+    # If it's a supported character sequence that's not a variable (ex $qr)...
+    if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y)$/i &&
          ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*\-]$/) )
         {  $isRegexp = 1;  }
+
     elsif ($tokens->[$$indexRef] eq '/' && !$self->IsStringed($$indexRef))
         {
+        # This is a bit of a hack.  If we find a random slash, it could be a divide operator or a bare regexp.  Find the first previous
+        # non-whitespace token and if it's text, a closing brace, or a string, assume it's a divide operator.  (Strings don't make
+        # much pratical sense there but a regexp would be impossible.)  Otherwise assume it's a regexp.
+
+        # We make a special consideration for split() appearing without parenthesis.  If the previous token is split and it's not a
+        # variable, assume it is a regexp even though it fails the above test.
+
         my $index = $$indexRef - 1;
 
         while ($index >= 0 && $tokens->[$index] =~ /^(?: |\t|\n)/)
             {  $index--;  };
 
-        if ($index < 0 || $tokens->[$index] !~ /^[a-zA-Z0-9_\)\]\}\'\"\`]/)
+        if ($index < 0 || $tokens->[$index] !~ /^[a-zA-Z0-9_\)\]\}\'\"\`]/ ||
+            (lc($tokens->[$index]) eq 'split' && $index > 0 && $tokens->[$index-1] !~ /^[\$\%\@\*]$/) )
             {  $isRegexp = 1;  };
         };
 
