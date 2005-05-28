@@ -1105,9 +1105,9 @@ sub TryToSkipHereDocDeclaration #(indexRef, lineNumberRef)
         my $success;
 
         # No whitespace allowed with the bare word.
-        if ($tokens->[$index] eq 'EOF')
+        if ($tokens->[$index] =~ /^[a-z0-9_]/i)
             {
-            push @hereDocTerminators, [ 'EOF' ];
+            push @hereDocTerminators, [ $tokens->[$index] ];
             $index++;
             $success = 1;
             }
