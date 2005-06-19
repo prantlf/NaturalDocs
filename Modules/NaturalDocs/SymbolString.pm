@@ -43,6 +43,9 @@ sub FromText #(textSymbol)
     # Remove trailing empty parenthesis, so Function and Function() are equivalent.
     $textSymbol =~ s/\(\)$//;
 
+    # Remove trailing dereferences, so <MyStruct> and <MyStruct *> are equivalent
+    $textSymbol =~ s/\*$//;
+
     # Split the string into pieces.
     my @pieces = split(/(\.+|::|->)/, $textSymbol);
     my $symbolString;
