@@ -987,7 +987,7 @@ sub TryToSkipPODComment #(indexRef, lineNumberRef)
         ( $$indexRef == 0 || $tokens->[$$indexRef - 1] eq "\n" ) &&
         $tokens->[$$indexRef + 1] =~ /^[a-z]/i )
         {
-        # Skip until =cut.  Note that it's theoretically possible for =cut to appear without a prior POD directive.
+        # Skip until =cut or (NDPODBREAK).  Note that it's theoretically possible for =cut to appear without a prior POD directive.
 
         do
             {
@@ -1011,6 +1011,16 @@ sub TryToSkipPODComment #(indexRef, lineNumberRef)
 
         return 1;
         }
+
+    # It's also possible that (NDPODBREAK) will appear without any opening pod statement because "=begin nd" and "=cut" will
+    # still result in one.  We need to pick off the stray (NDPODBREAK).
+    elsif ($tokens->[$$indexRef] eq '(' && $$indexRef + 2 < scalar @$tokens &&
+            $tokens->[$$indexRef+1] eq 'NDPODBREAK' && $tokens->[$$indexRef+2] eq ')')
+        {
+        $$indexRef += 3;
+        return 1;
+        }
+
     else
         {  return undef;  };
     };
