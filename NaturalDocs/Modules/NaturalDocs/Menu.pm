@@ -637,9 +637,11 @@ sub LoadMenuFile
                 {
                 my $flags = 0;
 
-                if ($value =~ /^([^\(\)]+?) ?\((.+)\)$/)
+                if ($value =~ /^(.+)\(([^\(]+)\)$/)
                     {
                     my ($title, $file) = ($1, $2);
+
+                    $title =~ s/ +$//;
 
                     # Check for auto-title modifier.
                     if ($file =~ /^((?:no )?auto-title, ?)(.+)$/i)
