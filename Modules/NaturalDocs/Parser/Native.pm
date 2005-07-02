@@ -353,7 +353,8 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                 }
 
             # If the line starts with a bullet...
-            elsif ($commentLines->[$index] =~ /^[-\*o+] +([^ ].*)$/)
+            elsif ($commentLines->[$index] =~ /^[-\*o+] +([^ ].*)$/ &&
+                    substr($1, 0, 2) ne '- ')  # Make sure "o - Something" is a definition, not a bullet.
                 {
                 my $bulletedText = $1;
 
