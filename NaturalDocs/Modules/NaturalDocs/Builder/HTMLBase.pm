@@ -445,8 +445,9 @@ sub BuildTitle #(sourceFile)
 #
 #   Dependencies:
 #
-#       <Builder::HTML::UpdateFile()> and <Builder::HTML::UpdateIndex()> require this section to be surrounded with the exact
-#       strings "<div id=Menu>" and "</div><!--Menu-->".
+#       - <Builder::HTML::UpdateFile()> and <Builder::HTML::UpdateIndex()> require this section to be surrounded with the exact
+#         strings "<div id=Menu>" and "</div><!--Menu-->".
+#       - This function depends on the way <BuildMenuSegment()> formats file and index entries.
 #
 sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> string htmlMenu
     {
@@ -493,7 +494,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
             $menuRootLength += MENU_TITLE_LENGTH;
 
             $titleOutput .=
-            '<div class=MTitle>'
+            '<div id=MTitle>'
                 . $self->StringToHTML($menuTitle);
 
             my $menuSubTitle = NaturalDocs::Menu->SubTitle();
@@ -505,7 +506,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
                 $menuRootLength += MENU_SUBTITLE_LENGTH;
 
                 $titleOutput .=
-                '<div class=MSubTitle>'
+                '<div id=MSubTitle>'
                     . $self->StringToHTML($menuSubTitle)
                 . '</div>';
                 };
@@ -527,7 +528,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
         {
         # Dependency: This depends on how BuildMenuSegment() formats file entries.
         my $outputFile = $self->OutputFileOf($sourceFile);
-        my $tag = '<div class=MFile><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
+        my $tag = '<div class="MFile MEntry"><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
         my $tagIndex = index($output, $tag);
 
         if ($tagIndex != -1)
@@ -535,14 +536,14 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
             my $endIndex = index($output, '</a>', $tagIndex);
 
             substr($output, $endIndex, 4, '');
-            substr($output, $tagIndex, length($tag), '<div class=MFile id=MSelected>');
+            substr($output, $tagIndex, length($tag), '<div class="MFile MEntry" id=MSelected>');
             };
         }
     elsif ($indexType)
         {
         # Dependency: This depends on how BuildMenuSegment() formats index entries.
         my $outputFile = $self->IndexFileOf($indexType);
-        my $tag = '<div class=MIndex><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
+        my $tag = '<div class="MIndex MEntry"><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
         my $tagIndex = index($output, $tag);
 
         if ($tagIndex != -1)
@@ -550,7 +551,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
             my $endIndex = index($output, '</a>', $tagIndex);
 
             substr($output, $endIndex, 4, '');
-            substr($output, $tagIndex, length($tag), '<div class=MIndex id=MSelected>');
+            substr($output, $tagIndex, length($tag), '<div class="MIndex MEntry" id=MSelected>');
             };
         };
 
@@ -633,6 +634,10 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 #       groupLength - The length of the group, *not* including the contents of any subgroups, as computed from the
 #                            <Menu Length Constants>.
 #
+#   Dependencies:
+#
+#       - <BuildMenu()> depends on the way this function formats file and index entries.
+#
 sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
     {
     my ($self, $outputDirectory, $isFramed, $menuSegment) = @_;
@@ -660,19 +665,17 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
                 {  $entryNumber = $menuGroupNumbers{$entry};  };
 
             $output .=
-            '<div class=MEntry>'
-                . '<div class=MGroup>'
+            '<div class="MGroup MEntry">'
 
-                    . '<a href="javascript:ToggleMenu(\'MGroupContent' . $entryNumber . '\')"'
-                         . ($isFramed ? ' target="_self"' : '') . '>'
-                        . $self->StringToHTML($entry->Title())
-                    . '</a>'
+                . '<a href="javascript:ToggleMenu(\'MGroupContent' . $entryNumber . '\')"'
+                     . ($isFramed ? ' target="_self"' : '') . '>'
+                    . $self->StringToHTML($entry->Title())
+                . '</a>'
 
-                    . '<div class=MGroupContent id=MGroupContent' . $entryNumber . '>'
-                        . $entryOutput
-                    . '</div>'
-
+                . '<div class=MGroupContent id=MGroupContent' . $entryNumber . '>'
+                    . $entryOutput
                 . '</div>'
+
             . '</div>';
 
             $groupLength += MENU_GROUP_LENGTH;
@@ -684,12 +687,10 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
 
         # Dependency: BuildMenu() depends on how this formats file entries.
             $output .=
-            '<div class=MEntry>'
-                . '<div class=MFile>'
-                    . '<a href="' . $self->MakeRelativeURL($outputDirectory, $targetOutputFile) . '">'
-                        . $self->StringToHTML( $entry->Title(), ADD_HIDDEN_BREAKS)
-                    . '</a>'
-                . '</div>'
+            '<div class="MFile MEntry">'
+                . '<a href="' . $self->MakeRelativeURL($outputDirectory, $targetOutputFile) . '">'
+                    . $self->StringToHTML( $entry->Title(), ADD_HIDDEN_BREAKS)
+                . '</a>'
             . '</div>';
 
             $groupLength += MENU_FILE_LENGTH;
@@ -698,10 +699,8 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
         elsif ($entry->Type() == ::MENU_TEXT())
             {
             $output .=
-            '<div class=MEntry>'
-                . '<div class=MText>'
-                    . $self->StringToHTML( $entry->Title() )
-                . '</div>'
+            '<div class="MText MEntry">'
+                . $self->StringToHTML( $entry->Title() )
             . '</div>';
 
             $groupLength += MENU_TEXT_LENGTH;
@@ -710,12 +709,10 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
         elsif ($entry->Type() == ::MENU_LINK())
             {
             $output .=
-            '<div class=MEntry>'
-                . '<div class=MLink>'
-                    . '<a href="' . $entry->Target() . '"' . ($isFramed ? ' target="_top"' : '') . '>'
-                        . $self->StringToHTML( $entry->Title() )
-                    . '</a>'
-                . '</div>'
+            '<div class="MLink MEntry">'
+                . '<a href="' . $entry->Target() . '"' . ($isFramed ? ' target="_top"' : '') . '>'
+                    . $self->StringToHTML( $entry->Title() )
+                . '</a>'
             . '</div>';
 
             $groupLength += MENU_LINK_LENGTH;
@@ -727,12 +724,10 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
 
         # Dependency: BuildMenu() depends on how this formats index entries.
             $output .=
-            '<div class=MEntry>'
-                . '<div class=MIndex>'
-                    . '<a href="' . $self->MakeRelativeURL( $outputDirectory, $self->IndexFileOf($entry->Target()) ) . '">'
-                        . $self->StringToHTML( $entry->Title() )
-                    . '</a>'
-                . '</div>'
+            '<div class="MIndex MEntry">'
+                . '<a href="' . $self->MakeRelativeURL( $outputDirectory, $self->IndexFileOf($entry->Target()) ) . '">'
+                    . $self->StringToHTML( $entry->Title() )
+                . '</a>'
             . '</div>';
 
             $groupLength += MENU_INDEX_LENGTH;
@@ -790,10 +785,8 @@ sub BuildContent #(sourceFile, parsedFile)
 
         $output .=
 
-        '<div class=C' . NaturalDocs::Topics->NameOfType($parsedFile->[$i]->Type(), 0, 1)
+        '<div class="C' . NaturalDocs::Topics->NameOfType($parsedFile->[$i]->Type(), 0, 1) . ' CTopic"'
             . ($i == 0 ? ' id=MainTopic' : '') . '>'
-
-            . '<div class=CTopic>'
 
             . '<' . $headerType . ' class=CTitle>'
                 . '<a name="' . $anchor . '"></a>'
@@ -842,8 +835,7 @@ sub BuildContent #(sourceFile, parsedFile)
             {  $output .= '</div>';  };
 
         $output .=
-            '</div>' # CTopic
-        . '</div>' # CType
+        '</div>' # CType CTopic
         . "\n\n";
 
         $i++;
@@ -2761,8 +2753,8 @@ sub RestoreAmpChars #(text)
     my ($self, $text) = @_;
 
     $text = NaturalDocs::NDMarkup->RestoreAmpChars($text);
-    $text =~ s/&[lr]squo;/'/g;
-    $text =~ s/&[lr]dquo;/"/g;
+    $text =~ s/&[lr]squo;/\'/g;
+    $text =~ s/&[lr]dquo;/\"/g;
 
     return $text;
     };

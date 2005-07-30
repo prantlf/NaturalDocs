@@ -5,10 +5,20 @@ _______________________________________________________________________________
 It's important to understand the internal HTML file structure and styles in order to design your own CSS style for Natural Docs.  If
 you're content with the default styles, there's no need to read this document.
 
-The diagrams are designed for clarity.  In the actual HTML, you'd obviously see "<pre class=CCode></pre>" instead of
-"<pre CCode></pre CCode>".  If there's no element in the diagram tag, for example "<CTitle></CTitle>", that means you
-shouldn't rely on what HTML element it is.  Just refer to them as .Style in your CSS file instead of Element.Style.  If there's a #
-prefix on the name, it's an ID, otherwise it's a class.
+Topic: Diagram Conventions
+
+    The diagrams are designed for clarity.  In the actual HTML, you'd obviously see "<pre class=CCode></pre>" instead of
+    "<pre CCode></pre CCode>".
+
+    - A tag with just a style, for example "CTitle", means an unspecified element with that class.  Style with .CTitle.
+    - A tag that includes a #, for example "#Menu", means an unspecified element with that ID.  Style with #Menu.
+    - A tag that includes a HTML element as well, for example "pre CCode", means it will always be that element.  You can style with
+      either .CCode or pre.CCode.
+    - A tag that has an "or" in it, for example "#Content or #Index", is just shorthand for either of those elements.  The diagram
+      applies to both of them but only one will actually appear at a time in the output.
+    - A tag that has an "and" in it, for example "CType and CTopic", means that both styles will apply to the same element.  You can
+      style it with .CType.CTopic, noting that the space between them must be omitted.
+    - A tag or style with a question mark means that tag or style will only be there in certain situations.
 
 
 Topic: Page Structure
@@ -154,10 +164,9 @@ Topic: Content Structure
     All the topics of a given file is contained in a <#Content>.  Combine with <#UnframedPage> or <#FramedContentPage> to
     distinguish between framed and unframed output styles.  All other content styles are prefixed with a C.
 
-    Each piece of content is a <CTopic> surrounded by its type; for example, <CFunction> for a function.  Inside
-    that are the <CTitle> and if necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags:
-    <CHeading>, <CParagraph>, etc.  Styles like <CParagraph> exist so that you only style explicit <NDMarkup> paragraphs,
-    not any p that appears.
+    Each piece of content is a <CTopic> and its type; for example, <CFunction> for a function.  Inside that are the <CTitle> and if
+    necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags: <CHeading>, <CParagraph>, etc.
+    Styles like <CParagraph> exist so that you only style explicit <NDMarkup> paragraphs, not any p that appears.
 
     In addition to the top-level <NDMarkup> tags, you also have <Prototype>, <CTitle>, and <Summaries>.  <Summaries> are
     described in their own section.
@@ -166,61 +175,60 @@ Topic: Content Structure
 
     <#Content>
 
-        <CType (CFunction, CVariable, etc.)>
-            <CTopic>
+        <CType (CFunction, CVariable, etc.) and CTopic>
 
-                <CTitle>
-                    Topic title
-                </CTitle>
+            <CTitle>
+                Topic title
+            </CTitle>
 
-                <CBody>
+            <CBody>
 
-                    <ClassHierarchy> (See it's section)
+                <ClassHierarchy> (See it's section)
 
-                    <Prototype> (See it's section)
+                <Prototype> (See it's section)
 
-                    <p CParagraph>
-                         Paragraph
-                    </p CParagraph>
+                <p CParagraph>
+                     Paragraph
+                </p CParagraph>
 
-                    <CHeading>
-                        Heading
-                    </CHeading>
+                <CHeading>
+                    Heading
+                </CHeading>
 
-                    <pre CCode>
-                    Code
-                    </pre CCode>
+                <pre CCode>
+                Code
+                </pre CCode>
 
-                    <ul CBulletList>
-                        <li>
-                        Bullet item
-                        </li>
-                    </ul CBulletList>
+                <ul CBulletList>
+                    <li>
+                    Bullet item
+                    </li>
+                </ul CBulletList>
 
-                    <table CDescriptionList>
-                        <tr>
-                            <td CDLEntry>
+                <table CDescriptionList>
+                    <tr>
+                        <td CDLEntry>
                             Entry
-                            </td CDLEntry>
-                            <td CDLDescription>
+                        </td CDLEntry>
+                        <td CDLDescription>
                             Description
-                            </td CDLDescription>
-                        </tr>
-                    </table CDescriptionList>
+                        </td CDLDescription>
+                    </tr>
+                </table CDescriptionList>
 
-                    <Summary> (See it's section)
+                <Summary> (See it's section)
 
-               </CBody>
+           </CBody>
 
-           </CTopic>
-        </CType (CFunction, CVariable, etc.)>
+        </CType (CFunction, CVariable, etc.) and CTopic>
 
     </#Content>
 
     (end diagram)
 
     Take advantange of the CSS inheritance model.  For example, you can style all titles via .CTitle, and you can style
-    specific titles with .CType .CTitle.
+    specific titles with .CType .CTitle.  Note that for merged items you must omit the space, so it would be .CType .CTitle but
+    .CType.CTopic.
 
 
 Styles: Content Styles
@@ -252,54 +260,54 @@ Topic: Menu Structure
     Everything is enclosed in a <#Menu>.  Combine with <#UnframedPage> or <#FramedMenuPage> to distinguish between
     framed and unframed output styles.  All other menu styles are prefixed with an M.
 
-    The title is an <MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
-    as an <MSubTitle> inside <MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
-     <MEntry>, inside of which there's the type, such as <MFile> and <MGroup>.  Inside of that is the content.  With <MGroups>,
-    there's also a section inside called <MGroupContent> which can contain more entries.  Here's the diagram:
+    The title is an <#MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
+    as an <#MSubTitle> inside <#MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
+    <MEntry> and type, inside of which is the content.  With <MGroups>, there's also a section inside called <MGroupContent>
+    which can contain more entries.  Here's the diagram:
 
-    >   <#Menu>
-    >
-    >       <MTitle>
-    >           Menu title
-    >
-    >           <MSubTitle>
-    >               Menu sub title
-    >           </MSubTitle>
-    >
-    >       </MTitle>
-    >
-    >       <MEntry>
-    >           <MFile>
-    >               <a href>File</a href>
-    >           </MFile>
-    >       </MEntry>
-    >
-    >       <MEntry>
-    >           <MText>
-    >               Text
-    >           </MText>
-    >       </MEntry>
-    >
-    >       <MEntry>
-    >           <MLink>
-    >               <a href>Link</a href>
-    >           </MLink>
-    >       </MEntry>
-    >
-    >       <MEntry>
-    >           <MGroup>
-    >               <a href>Group</a href>
-    >               <MGroupContent>
-    >
-    >                   (MEntries)
-    >
-    >               </MGroupContent>
-    >          </MGroup>
-    >       </MEntry>
-    >
-    >   </#Menu>
+    (start diagram)
 
-    The <MFile> entry that's currently selected will have the <#MSelected> ID, so you can reference it in CSS via .Menu
+    <#Menu>
+
+        <#MTitle>
+            Menu title
+
+            <#MSubTitle>
+                Menu sub title
+            </#MSubTitle>
+
+        </#MTitle>
+
+        <MFile and MEntry (and #MSelected?)>
+            <a href>File</a href>
+        </MFile and MEntry (and #MSelected?)>
+
+        <MIndex and MEntry (and #MSelected?)>
+            <a href>Index</a href>
+        </MIndex and MEntry (and #MSelected?)>
+
+        <MText and MEntry>
+            Text
+        </MText and MEntry>
+
+        <MLink and MEntry>
+            <a href>Link</a href>
+        </MLink and MEntry>
+
+        <MGroup and MEntry>
+            <a href>Group</a href>
+            <MGroupContent>
+
+                (MEntries)
+
+           </MGroupContent>
+        </MGroup and MEntry>
+
+    </#Menu>
+
+    (end)
+
+    The <MFile> or <MIndex> entry that's currently selected will have the <#MSelected> ID, so you can reference it in CSS via
     .MFile#MSelected.
 
 
@@ -307,8 +315,8 @@ Styles: Menu Styles
 
     #Menu - Parent element containing the entire menu.
 
-    MTitle - The title of the menu.
-    MSubTitle - The subtitle of the menu.  Will appear within <MTitle>.
+    #MTitle - The title of the menu.
+    #MSubTitle - The subtitle of the menu.  Will appear within <#MTitle>.
 
     MEntry - The parent container of <MFile> and <MGroup> entries.
 
@@ -317,8 +325,9 @@ Styles: Menu Styles
     MGroupContent - A container for a <MGroup's> content.
     MText - A plain text entry.
     MLink - An external link entry.
+    MIndex - An index entry.
 
-    #MSelected - The ID of the currently selected <MFile>.
+    #MSelected - The ID of the currently selected <MFile> or <MIndex>.
 
 
 Topic: Class Hierarchy Structure
@@ -742,10 +751,12 @@ Topic: Revisions
 
         - Added <#Menu>, <#Content>, <#Footer>, and <#Index>.  They were previously shown in the diagrams as classes but did
           not actually appear in the generated output.
-        - The following become IDs instead of classes: <#UnframedPage>, <#FramedMenuPage>, <#FramedContentPage>, and
-          <#FramedIndexPage>.
+        - The following become IDs instead of classes: <#UnframedPage>, <#FramedMenuPage>, <#FramedContentPage>,
+          <#FramedIndexPage>, <#MTitle>, <#MSubTitle>.
         - Removed MenuSection, ContentSection, and IndexSection.  Use "<#UnframedPage> <#Menu>" instead.
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
+        - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
+          <CType> and <CTopic>, <MEntry> and <MFile>, <MIndex>, etc.
 
     1.33:
 
@@ -765,6 +776,8 @@ Topic: Revisions
         - ISection was removed.
         - <IEntries> are only used for the entry cell, not for each entry in an <ISubIndex>.
         - Added <ISymbolPrefix>, related IDs, and <#IFirstHeading>.
+        - Merged <CType> and <CTopic> into the same element.  Must now be styled with .CType.CTopic (no space) while all
+          sub-elements will still be .CType .CElement (with space.)
 
     1.21:
 
