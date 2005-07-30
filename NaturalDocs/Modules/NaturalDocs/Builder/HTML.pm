@@ -94,33 +94,20 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=UnframedPage onLoad="NDOnLoad()">'
+        . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
-        . $self->StandardComments()
+            . $self->StandardComments()
 
-        # I originally had this part done in CSS, but there were too many problems.  Back to good old HTML tables.
-        . '<table border=0 cellspacing=0 cellpadding=0 width=100%><tr>'
-
-            . '<td class=MenuSection valign=top>'
-
+            . "\n\n\n"
                 . $self->BuildMenu($sourceFile, undef, undef)
-
-            . '</td>' . "\n\n"
-
-            . '<td class=ContentSection valign=top>'
-
+            . "\n\n\n"
                 . $self->BuildContent($sourceFile, $parsedFile)
-
-            . '</td>' . "\n\n"
-
-        . '</tr></table>'
-
-        . '<div class=Footer>'
-            . $self->BuildFooter()
-        . '</div>'
-
-        . $self->BuildToolTips()
+            . "\n\n\n"
+                . $self->BuildFooter()
+            . "\n\n\n"
+                . $self->BuildToolTips()
+            . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
         . '</body></html>';
@@ -169,34 +156,27 @@ sub BuildIndex #(type)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=UnframedPage onLoad="NDOnLoad()">'
+        . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
 
-        # I originally had this part done in CSS, but there were too many problems.  Back to good old HTML tables.
-        . '<table border=0 cellspacing=0 cellpadding=0 width=100%><tr>'
+        . "\n\n\n"
+            . $self->BuildMenu(undef, $type, undef)
+        . "\n\n\n"
 
-            . '<td class=MenuSection valign=top>'
-
-                . $self->BuildMenu(undef, $type, undef)
-
-            . '</td>'
-
-            . '<td class=IndexSection valign=top>'
-                . '<div class=IPageTitle>'
-                    . $indexTitle
-                . '</div>';
+        . '<div id=Index>'
+            . '<div class=IPageTitle>'
+                . $indexTitle
+            . '</div>';
 
 
     my $endPage =
-            '</td>'
+            '</div><!--Index-->'
 
-        . '</tr></table>'
-
-        . '<div class=Footer>'
-            . $self->BuildFooter()
-        . '</div>'
+            . "\n\n\n"
+                . $self->BuildFooter()
+            . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
         . '</body></html>';
@@ -283,6 +263,12 @@ sub UpdateMenu
 #
 #       sourceFile - The source <FileName>.
 #
+#   Dependencies:
+#
+#       - Requires <Builder::BuildMenu()> to surround its content with the exact strings "<div id=Menu>" and "</div><!--Menu-->".
+#       - Requires <Builder::BuildFooter()> to surround its content with the exact strings "<div id=Footer>" and
+#         "</div><!--Footer-->".
+#
 sub UpdateFile #(sourceFile)
     {
     my ($self, $sourceFile) = @_;
@@ -299,9 +285,9 @@ sub UpdateFile #(sourceFile)
 
         $content =~ s{<title>[^<]*<\/title>}{'<title>' . $self->BuildTitle($sourceFile) . '</title>'}e;
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$self->BuildMenu($sourceFile, undef, undef)/es;
+        $content =~ s/<div id=Menu>.*?<\/div><!--Menu-->/$self->BuildMenu($sourceFile, undef, undef)/es;
 
-        $content =~ s/<!--START_ND_FOOTER-->.*?<!--END_ND_FOOTER-->/$self->BuildFooter()/e;
+        $content =~ s/<div id=Footer-->.*?<\/div><!--Footer-->/$self->BuildFooter()/e;
 
 
         open(OUTPUTFILEHANDLE, '>' . $outputFile);
@@ -343,9 +329,9 @@ sub UpdateIndex #(type)
         close(OUTPUTFILEHANDLE);
 
 
-        $content =~ s/<!--START_ND_MENU-->.*?<!--END_ND_MENU-->/$newMenu/es;
+        $content =~ s/<div id=Menu>.*?<\/div><!--Menu-->/$newMenu/es;
 
-        $content =~ s/<div class=Footer>.*<\/div>/"<div class=Footer>" . $newFooter . "<\/div>"/e;
+        $content =~ s/<div id=Footer>.*<\/div><!--Footer-->/$newFooter/e;
 
 
         open(OUTPUTFILEHANDLE, '>' . $outputFile)

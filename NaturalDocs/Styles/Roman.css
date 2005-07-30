@@ -19,8 +19,14 @@ body {
     color: #000000;
     margin: 0px; padding: 0px }
 
-body.UnframedPage {
-    background-color: #E8E8E8 }
+body#UnframedPage,
+body#FramedMenuPage {
+    background-color: #E8E8E8;
+    }
+body#FramedContentPage,
+body#FramedIndexPage {
+    background-color: #FFFFFF;
+    }
 
 
 a:link,
@@ -73,14 +79,17 @@ blockquote {
 
 
 
-body.FramedMenuPage,
-.MenuSection {
+#Menu {
     font-size: 10pt;
-    background-color: #E8E8E8;
-    padding: 10px 0 0 0 }
-
-.MenuSection {
-    width: 27ex }
+    padding: 10px 0 0 0;
+    }
+#UnframedPage #Menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 27ex;
+    overflow: hidden;
+    }
 
 
     .MTitle {
@@ -153,13 +162,18 @@ body.FramedMenuPage,
 
 
 
-body.FramedContentPage,
-.ContentSection {
-    background-color: #FFFFFF;
-    padding-bottom: 15px }
+#Content {
+    padding-bottom: 15px;
+    }
 
-.ContentSection {
-    border-width: 0 0 1px 1px; border-style: solid; border-color: #000000 }
+#UnframedPage #Content {
+    border-width: 0 0 1px 1px;
+    border-style: solid;
+    border-color: #000000;
+    background-color: #FFFFFF;
+    font-size: 10pt;  /* To make 27ex match the menu's 27ex. */
+    margin-left: 27ex;
+    }
 
 
     .CTopic {
@@ -329,7 +343,7 @@ body.FramedContentPage,
         width: 100% }
     /* IE 6 behaves like 5 when it's in a frame, but without frames it will be correct without a width or slightly too long
         (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
-    body.FramedContentPage .IE6 .SBorder {
+    body#FramedContentPage .IE6 .SBorder {
         width: 100% }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
@@ -451,14 +465,18 @@ body.FramedContentPage,
 
 
 
-body.FramedIndexPage,
-.IndexSection {
+#Index {
     background-color: #FFFFFF;
-    font: 12pt "Times New Roman", serif;
-    padding: 15px }
+    padding: 15px;
+    }
 
-.IndexSection {
-    border-width: 0 0 1px 1px; border-style: solid; border-color: #000000 }
+#UnframedPage #Index {
+    border-width: 0 0 1px 1px;
+    border-style: solid;
+    border-color: #000000;
+    font-size: 10pt;  /* To make 27ex match the menu's 27ex. */
+    margin-left: 27ex;
+    }
 
     .IPageTitle {
         font-size: 24pt; font-weight: bold;
@@ -468,11 +486,13 @@ body.FramedIndexPage,
         margin: -15px -15px 0 -15px }
 
     .INavigationBar {
+        font-size: 10pt;
         text-align: center;
         background-color: #FFFFF0;
         padding: 5px;
         border-bottom: solid 1px black;
-        margin: 0 -15px 15px -15px }
+        margin: 0 -15px 15px -15px;
+        }
 
     .INavigationBar a {
         font-weight: bold }
@@ -488,7 +508,9 @@ body.FramedIndexPage,
         }
 
     .IEntry {
-        padding-left: 1ex;  }
+        font-size: 10pt;
+        padding-left: 1ex;
+        }
 
     .ISubIndex {
         padding-left: 3ex; padding-bottom: .5em }
@@ -499,6 +521,7 @@ body.FramedIndexPage,
         font-weight: bold; color: #900000  }
 
     .ISymbolPrefix {
+        font-size: 8pt;
         text-align: right;
         color: #C47C7C;
         background-color: #F8F8F8;
@@ -524,18 +547,22 @@ body.FramedIndexPage,
 
 
 
-.Footer {
-    font-size: 8pt; color: #909090 }
+#Footer {
+    font-size: 8pt;
+    color: #909090;
+    text align: right;
+    }
 
-body.UnframedPage .Footer {
+body#UnframedPage #Footer {
     text-align: right;
     margin: 2px }
 
-body.FramedMenuPage .Footer {
+body#FramedMenuPage #Footer {
     text-align: center;
-    margin: 5em 10px 0 10px}
+    margin: 5em 10px 10px 10px}
 
-    .Footer a:link,
-    .Footer a:hover,
-    .Footer a:visited { color: #909090 }
-    .Footer a:active { color: #A00000 }
+    #Footer a:link,
+    #Footer a:hover,
+    #Footer a:visited { color: #909090 }
+    #Footer a:active { color: #A00000 }
+
