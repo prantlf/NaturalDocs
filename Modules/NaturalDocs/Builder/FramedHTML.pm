@@ -98,12 +98,14 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=FramedContentPage onLoad="NDOnLoad()">'
+        . '</head><body id=FramedContentPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
 
-            . $self->BuildContent($sourceFile, $parsedFile)
+            . "\n\n\n"
+                . $self->BuildContent($sourceFile, $parsedFile)
+            . "\n\n\n"
 
             . $self->BuildToolTips()
 
@@ -154,17 +156,25 @@ sub BuildIndex #(type)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=FramedIndexPage onLoad="NDOnLoad()">'
+        . '</head><body id=FramedIndexPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
-            . $self->StandardComments()
+            . "\n\n\n"
+                . $self->StandardComments()
+            . "\n\n\n"
+                . '<div id=Index>'
+                    . '<div class=IPageTitle>'
+                        . $indexTitle
+                    . '</div>';
 
-            . '<div class=IPageTitle>'
-                . $indexTitle
-            . '</div>';
 
+    my $endPage =
+                    '</div><!--Index-->'
+                . "\n\n\n"
 
-    my $endPage = $self->ClosingBrowserStyles() . '</body></html>';
+                . $self->ClosingBrowserStyles()
+
+       . '</body></html>';
 
 
     my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startPage, $endPage);
@@ -216,16 +226,16 @@ sub UpdateMenu
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body class=FramedMenuPage onLoad="NDOnLoad()">'
+        . '</head><body id=FramedMenuPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
 
-            . $self->BuildMenu(undef, undef, 1)
-
-            . '<div class=Footer>'
+            . "\n\n\n"
+                . $self->BuildMenu(undef, undef, 1)
+            . "\n\n\n"
                 . $self->BuildFooter()
-            . '</div>'
+            . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
         . '</body></html>';

@@ -7,81 +7,93 @@ you're content with the default styles, there's no need to read this document.
 
 The diagrams are designed for clarity.  In the actual HTML, you'd obviously see "<pre class=CCode></pre>" instead of
 "<pre CCode></pre CCode>".  If there's no element in the diagram tag, for example "<CTitle></CTitle>", that means you
-shouldn't rely on what HTML element it is.  Just refer to them as .Style in your CSS file instead of Element.Style.
+shouldn't rely on what HTML element it is.  Just refer to them as .Style in your CSS file instead of Element.Style.  If there's a #
+prefix on the name, it's an ID, otherwise it's a class.
 
 
 Topic: Page Structure
 
-    The body tag is used to distinguish between the types of pages.  For framed pages, its style will be <FramedMenuPage>,
-    <FramedContentPage>, or <FramedIndexPage> depending on what it is.  Non-framed pages have a body style of
-    <UnframedPage>.
-
-    On unframed pages, the menu will be contained in a <MenuSection> td and the content or index in <ContentSection> or
-    <IndexSection> tds.  Tables are used instead of CSS positioning for better compatibility with older browsers and because they
-    have the ability to stretch when its content is too wide and collapse when the browser window is too small.
+    The body tag is used to distinguish between the types of pages.  For framed pages, its style will be <#FramedMenuPage>,
+    <#FramedContentPage>, or <#FramedIndexPage> depending on what it is.  Non-framed pages have a body style of
+    <#UnframedPage>.
 
     Unframed Page:
 
-    >   <body UnframedPage>
-    >   [browser styles]
-    >
-    >       <table><tr>
-    >
-    >           <td MenuSection>
-    >               Menu
-    >           </td MenuSection>
-    >
-    >           <td ContentSection/IndexSection>
-    >               Content or Index
-    >           </td ContentSection/IndexSection>
-    >
-    >       </tr></table>
-    >
-    >       <Footer>
-    >           Footer
-    >       </Footer>
-    >
-    >   [/browser styles]
-    >   </body UnframedPage>
+        (start diagram)
+
+        <body #UnframedPage>
+        [browser styles]
+
+            <#Menu>
+                Menu
+            </#Menu>
+
+            <#Content or #Index>
+                Content or Index
+            </#Content or #Index>
+
+            <#Footer>
+                Footer
+            </#Footer>
+
+        [/browser styles]
+        </body #UnframedPage>
+
+        (end diagram)
 
     Framed Menu Page:
 
-    >   <body FramedMenuPage>
-    >   [browser styles]
-    >
-    >       Menu
-    >
-    >       <Footer>
-    >           Footer
-    >       </Footer>
-    >
-    >   [/browser styles]
-    >   </body FramedMenuPage>
+        (start diagram)
+
+        <body #FramedMenuPage>
+        [browser styles]
+
+            <#Menu>
+                Menu
+            </#Menu>
+
+            <#Footer>
+                Footer
+            </#Footer>
+
+        [/browser styles]
+        </body #FramedMenuPage>
+
+        (end diagram)
 
     Framed Content/Index Page:
 
-    >   <body FramedContentPage/FramedIndexPage>
-    >   [browser styles]
-    >
-    >       Content or Index
-    >
-    >   [/browser styles]
-    >   </body FramedContentPage/FramedIndexPage>
+        (start diagram)
+
+            <body #FramedContentPage or #FramedIndexPage>
+            [browser styles]
+
+                <#Content or #Index>
+                    Content or Index
+                </#Content or #Index>
+
+            [/browser styles]
+            </body #FramedContentPage or #FramedIndexPage>
+
+        (end diagram)
 
 
 Styles: Page Styles
 
-    UnframedPage - An unframed page.  Will be applied to a body tag.
+    #UnframedPage - An unframed page.  Will be applied to a body tag.
 
-    FramedMenuPage - A framed menu page.  Will be applied to a body tag.
-    FramedContentPage - A framed content page.  Will be applied to a body tag.
-    FramedIndexPage - A framed index page.  Will be applied to a body tag.
+    #FramedMenuPage - A framed menu page.  Will be applied to a body tag.
+    #FramedContentPage - A framed content page.  Will be applied to a body tag.
+    #FramedIndexPage - A framed index page.  Will be applied to a body tag.
 
-    MenuSection - The menu section in a non-framed page.  Will be applied to a td tag.
-    ContentSection - The content section in a non-framed page.  Will be applied to a td tag.
-    IndexSection - The index section in a non-framed page.  Will be applied to a td tag.
+    #Footer - The page footer.  Will be in a framed menu page or on its own in a non-framed page.
 
-    Footer - The page footer.  Will be in a framed menu page or on its own in a non-framed page.
+    See Also:
+
+        - <#Content>
+        - <#Menu>
+        - <#Index>
+        - <#Footer>
 
 
 Styles: Browser Styles
@@ -139,8 +151,8 @@ Styles: Browser Styles
 
 Topic: Content Structure
 
-    All the content of a given file is either contained in a <ContentSection> or a <FramedContentPage>.  All other content styles are
-    prefixed with a C.
+    All the topics of a given file is contained in a <#Content>.  Combine with <#UnframedPage> or <#FramedContentPage> to
+    distinguish between framed and unframed output styles.  All other content styles are prefixed with a C.
 
     Each piece of content is a <CTopic> surrounded by its type; for example, <CFunction> for a function.  Inside
     that are the <CTitle> and if necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags:
@@ -152,7 +164,7 @@ Topic: Content Structure
 
     (start diagram)
 
-    <Content>
+    <#Content>
 
         <CType (CFunction, CVariable, etc.)>
             <CTopic>
@@ -203,7 +215,7 @@ Topic: Content Structure
            </CTopic>
         </CType (CFunction, CVariable, etc.)>
 
-    </Content>
+    </#Content>
 
     (end diagram)
 
@@ -212,6 +224,8 @@ Topic: Content Structure
 
 
 Styles: Content Styles
+
+    #Content - Parent element containing all topics.
 
     CTopic - An individual topic.
 
@@ -235,14 +249,15 @@ Styles: Content Styles
 
 Topic: Menu Structure
 
-    Everything is enclosed in a <MenuSection> or a <FramedMenuPage>.  All other menu styles are prefixed with an M.
+    Everything is enclosed in a <#Menu>.  Combine with <#UnframedPage> or <#FramedMenuPage> to distinguish between
+    framed and unframed output styles.  All other menu styles are prefixed with an M.
 
     The title is an <MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
     as an <MSubTitle> inside <MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
      <MEntry>, inside of which there's the type, such as <MFile> and <MGroup>.  Inside of that is the content.  With <MGroups>,
     there's also a section inside called <MGroupContent> which can contain more entries.  Here's the diagram:
 
-    >   <Menu>
+    >   <#Menu>
     >
     >       <MTitle>
     >           Menu title
@@ -282,13 +297,15 @@ Topic: Menu Structure
     >          </MGroup>
     >       </MEntry>
     >
-    >   </Menu>
+    >   </#Menu>
 
     The <MFile> entry that's currently selected will have the <#MSelected> ID, so you can reference it in CSS via .Menu
     .MFile#MSelected.
 
 
 Styles: Menu Styles
+
+    #Menu - Parent element containing the entire menu.
 
     MTitle - The title of the menu.
     MSubTitle - The subtitle of the menu.  Will appear within <MTitle>.
@@ -568,11 +585,12 @@ Styles: Link Styles
 
 Topic: Index Structure
 
-    Everything is enclosed in a <IndexSection> or an <FramedIndexPage>.  All other index styles are prefixed with an I.
+    Everything is enclosed in an <#Index>.  Combine with <#UnframedPage> or <#FramedIndexPage> to distinguish between
+    framed and unframed output styles.  All other index styles are prefixed with an I.
 
     (start diagram)
 
-    <Index>
+    <#Index>
 
         <IPageTitle>
             Page Title
@@ -600,7 +618,7 @@ Topic: Index Structure
 
         </table>
 
-    </Index>
+    </#Index>
 
     (end diagram)
 
@@ -653,7 +671,7 @@ Topic: Index Structure
 
 Styles: Index Styles
 
-    Index - Surrounds the entire index.
+    #Index - Parent element for the entire index.
 
     IPageTitle - The page title.
     INavigationBar - The navigation bar.
@@ -720,6 +738,15 @@ Topic: Revisions
 
     How the page structure has changed throughout the various releases.
 
+    1.4:
+
+        - Added <#Menu>, <#Content>, <#Footer>, and <#Index>.  They were previously shown in the diagrams as classes but did
+          not actually appear in the generated output.
+        - The following become IDs instead of classes: <#UnframedPage>, <#FramedMenuPage>, <#FramedContentPage>, and
+          <#FramedIndexPage>.
+        - Removed MenuSection, ContentSection, and IndexSection.  Use "<#UnframedPage> <#Menu>" instead.
+        - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
+
     1.33:
 
         - Added <PDefaultValuePrefix>.
@@ -768,8 +795,8 @@ Topic: Revisions
     0.95:
 
         - Added <Browser Styles>.
-        - Redid <Page Structure>, replacing generic styles like Menu with page type styles like <UnframedPage>/<MenuSection>
-          and <FramedMenuPage>.
+        - Redid <Page Structure>, replacing generic styles like Menu with page type styles like UnframedPage/MenuSection and
+          FramedMenuPage.
 
     0.91:
 
