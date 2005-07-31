@@ -114,10 +114,6 @@ blockquote {
         font-variant: small-caps; font-weight: bold;
         margin: 1em 0 1em 10px }
 
-    /*  Konqueror just can't do margins.  */
-    .KHTML .MGroup {
-        margin-bottom: 0; padding-bottom: 1em }
-
     .MGroupContent {
         font-variant: normal; font-weight: normal }
 
@@ -250,11 +246,6 @@ blockquote {
     .CDescriptionList {
         margin: .5em 5ex 0 5ex }
 
-    /* IE 4 and Konqueror always makes it too long.  */
-    .IE4 .CDescriptionList,
-    .KHTML .CDescriptionList {
-        width: 85% }
-
         .CDLEntry {
             font: 10pt "Courier New", Courier, monospace; color: #808080;
             padding-bottom: .25em;
@@ -334,10 +325,6 @@ blockquote {
         padding: 15px;
         border: 1px solid #C0C060 }
 
-    /* Let's observe the evolution of IE's brokeness, shall we?
-        IE 4 always makes them too long, there's no way around it.  */
-    .IE4 .SBorder {
-        width: 85% }
     /* IE 5 will make them too long unless you set the width to 100%.  Isn't this implied for a div?  */
     .IE5 .SBorder {
         width: 100% }
@@ -354,9 +341,9 @@ blockquote {
     .STable {
         font-size: 10pt; width: 100% }
 
-    .SEntrySize {
+    .SEntry {
         width: 30% }
-    .SDescriptionSize {
+    .SDescription {
         width: 70% }
 
 
@@ -364,25 +351,18 @@ blockquote {
         background-color: #F8F8D8 }
 
 
-    .SEntry .SIndent1 {
-        margin-left: 1.5ex }
-    .SEntry .SIndent2 {
-        margin-left: 3ex }
-    .SEntry .SIndent3 {
-        margin-left: 4.5ex }
-    .SEntry .SIndent4 {
-        margin-left: 6ex }
-    .SEntry .SIndent5 {
-        margin-left: 7.5ex }
-
-    .SDescription {
-        padding-left: 3ex }
+    .SDescription { padding-left: 2ex }
+    .SIndent1 .SEntry { padding-left: 1.5ex }   .SIndent1 .SDescription { padding-left: 3.5ex }
+    .SIndent2 .SEntry { padding-left: 3.0ex }   .SIndent2 .SDescription { padding-left: 5.0ex }
+    .SIndent3 .SEntry { padding-left: 4.5ex }   .SIndent3 .SDescription { padding-left: 6.5ex }
+    .SIndent4 .SEntry { padding-left: 6.0ex }   .SIndent4 .SDescription { padding-left: 8.0ex }
+    .SIndent5 .SEntry { padding-left: 7.5ex }   .SIndent5 .SDescription { padding-left: 9.5ex }
 
     .SDescription a { color: #800000}
     .SDescription a:active { color: #A00000 }
 
 
-    .SGroup {
+    .SGroup td {
         margin-top: .5em; margin-bottom: .25em }
 
     .SGroup .SEntry {
@@ -392,19 +372,27 @@ blockquote {
     .SGroup .SEntry a:active { color: #F00000 }
 
 
+    .SMain td,
+    .SClass td,
+    .SDatabase td,
+    .SDatabaseTable td,
+    .SSection td {
+        font-size: 12pt;
+        padding-bottom: .25em }
+
+    .SClass td,
+    .SDatabase td,
+    .SDatabaseTable td,
+    .SSection td {
+        padding-top: 1em }
+
     .SMain .SEntry,
     .SClass .SEntry,
     .SDatabase .SEntry,
     .SDatabaseTable .SEntry,
     .SSection .SEntry {
-        font-weight: bold; font-size: 12pt;
-        margin-bottom: .25em }
-
-    .SClass,
-    .SDatabase,
-    .SDatabaseTable,
-    .SSection {
-        margin-top: 1em }
+        font-weight: bold;
+        }
 
     .SMain .SEntry a,
     .SClass .SEntry a,
@@ -437,13 +425,13 @@ blockquote {
         -moz-border-radius: 4px;
         }
 
-    .CHCurrent .CHEntry {
+    .CHCurrent {
         font-weight: bold;
         border-color: #000000;
         color: #000000;
         }
 
-    .CHChildNote .CHEntry {
+    .CHChildNote {
         font-style: italic;
         font-size: 8pt;
         }
