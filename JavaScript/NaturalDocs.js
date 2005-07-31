@@ -19,6 +19,8 @@ if (agt.indexOf("opera") != -1)
         {  browserVer = "Opera6";  }
     else if (agt.indexOf("opera 7") != -1 || agt.indexOf("opera/7") != -1)
         {  browserVer = "Opera7";  }
+    else if (agt.indexOf("opera 8") != -1 || agt.indexOf("opera/8") != -1)
+        {  browserVer = "Opera8";  }
     }
 
 else if (agt.indexOf("khtml") != -1 || agt.indexOf("konq") != -1 || agt.indexOf("safari") != -1)
@@ -30,9 +32,7 @@ else if (agt.indexOf("msie") != -1)
     {
     browserType = "IE";
 
-    if (agt.indexOf("msie 4") != -1)
-        {  browserVer = "IE4";  }
-    else if (agt.indexOf("msie 5") != -1)
+    if (agt.indexOf("msie 5") != -1)
         {  browserVer = "IE5";  }
     else if (agt.indexOf("msie 6") != -1)
         {  browserVer = "IE6";  }
@@ -43,15 +43,6 @@ else if (agt.indexOf("gecko") != -1)
     browserType = "Gecko";
     }
 
-// Opera already taken care of.
-else if (agt.indexOf("mozilla") != -1 && agt.indexOf("compatible") == -1 && agt.indexOf("spoofer") == -1 &&
-           agt.indexOf("webtv") == -1 && agt.indexOf("hotjava") == -1)
-    {
-    browserType = "Netscape";
-
-    if (agt.indexOf("mozilla/4") != -1)
-        {  browserVer = "Netscape4";  }
-    }
 
 
 //
@@ -92,12 +83,7 @@ function ShowTip(event, tooltipID, linkID)
 
     var showCommand = "ReallyShowTip('" + tooltipID + "', '" + linkID + "', " + docX + ", " + docY + ")";
 
-    // KHTML cant handle showing on a timer right now.
-
-    if (browserType != "KHTML")
-        {  tooltipTimer = setTimeout(showCommand, 1000);  }
-    else
-        {  eval(showCommand);  };
+    tooltipTimer = setTimeout(showCommand, 1000);
     }
 
 function ReallyShowTip(tooltipID, linkID, docX, docY)
@@ -123,9 +109,9 @@ function ReallyShowTip(tooltipID, linkID, docX, docY)
         var left = 0;
         var top = 0;
 
-        // Not everything supports offsetTop/Left/Width, and some, like Konqueror and Opera 5, think they do but do it badly.
+        // Not everything supports offsetTop/Left/Width, and some, like Opera 5, think they do but do it badly.
 
-        if (link && link.offsetWidth != null && browserType != "KHTML" && browserVer != "Opera5")
+        if (link && link.offsetWidth != null && browserVer != "Opera5")
             {
             var item = link;
             while (item != document.body)
