@@ -59,10 +59,10 @@ blockquote {
     overflow: auto;
     }
 /*  This will be fixed in JavaScript.  We just need a default if it's turned off.  */
-.IE blockquote {
+#IE blockquote {
     width: 400px;  }
 
-.Gecko blockquote {
+#Gecko blockquote {
     padding-bottom: .5em;
     }
 
@@ -71,7 +71,7 @@ blockquote {
     blockquote {
         overflow: visible;
         }
-    .IE blockquote {
+    #IE blockquote {
         width: auto;
         }
     }
@@ -87,8 +87,11 @@ blockquote {
     position: absolute;
     top: 0;
     left: 0;
-    width: 27ex;
+    width: 31ex;
     overflow: hidden;
+    }
+#UnframedPage #Gecko #Menu {
+    width: 27ex;
     }
 
 
@@ -148,10 +151,10 @@ blockquote {
         padding-left: 9px; border-left-width: 1px }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    .Gecko #MSelected {
+    #Gecko #MSelected {
         -moz-border-radius-topright: 10px;
         -moz-border-radius-bottomright: 10px }
-    .Gecko .MGroup #MSelected {
+    #Gecko .MGroup #MSelected {
         -moz-border-radius-topleft: 10px;
         -moz-border-radius-bottomleft: 10px }
 
@@ -167,15 +170,18 @@ blockquote {
     border-style: solid;
     border-color: #000000;
     background-color: #FFFFFF;
-    font-size: 10pt;  /* To make 27ex match the menu's 27ex. */
+    font-size: 10pt;  /* To make 31ex match the menu's 31ex. */
+    margin-left: 31ex;
+    }
+#UnframedPage #Gecko #Content {
     margin-left: 27ex;
     }
 
 
     .CTopic {
         font-size: 12pt;
-        /*  This should be a margin but Konq 3.1.1 sucks.  */
-        padding-bottom: 3em }
+        margin-bottom: 3em;
+        }
 
 
     .CTitle {
@@ -220,7 +226,7 @@ blockquote {
         font-size: 10pt }
 
     /*  Opera 6 gives it a huge height otherwise.  */
-    .Opera6 .CTooltip, .Opera5 .CTooltip {
+    #Opera6 .CTooltip, #Opera5 .CTooltip {
         max-width: 100% }
 
     /*  Scrollbars would be useless.  */
@@ -282,7 +288,7 @@ blockquote {
         vertical-align: bottom;
         }
 
-    .IE .Prototype table {
+    #IE .Prototype table {
         padding: 0;
         }
 
@@ -320,21 +326,21 @@ blockquote {
         margin-bottom: .5em }
 
 
-    .SBorder {
+    .SBody {
         background-color: #FFFFF0;
         padding: 15px;
         border: 1px solid #C0C060 }
 
     /* IE 5 will make them too long unless you set the width to 100%.  Isn't this implied for a div?  */
-    .IE5 .SBorder {
+    #IE5 .SBody {
         width: 100% }
     /* IE 6 behaves like 5 when it's in a frame, but without frames it will be correct without a width or slightly too long
         (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
-    body#FramedContentPage .IE6 .SBorder {
+    body#FramedContentPage #IE6 .SBody {
         width: 100% }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    .Gecko .SBorder {
+    #Gecko .SBody {
         -moz-border-radius: 20px }
 
 
@@ -421,9 +427,32 @@ blockquote {
         background-color: #F4F4F4; color: #606060;
         }
 
-    .Gecko .CHEntry {
+    #Gecko .CHEntry {
         -moz-border-radius: 4px;
         }
+
+    .CHIndent0,
+    .CHIndent1,
+    .CHIndent2 {
+        float: left;
+        clear: both;
+        }
+
+    /*  Clear the float  */
+    .ClassHierarchy:after {
+        content: '.';
+        clear: both;
+        display: block;
+        height: 0;
+        visibility: hidden;
+        }
+    /*  IE doesn't support :after.  Take advantage of a bug to get the same effect.  */
+    #IE .ClassHierarchy {
+        height: 1%;
+        }
+
+    .CHIndent1 { margin-left: 3ex }
+    .CHIndent2 { margin-left: 6ex }
 
     .CHCurrent {
         font-weight: bold;
@@ -434,10 +463,6 @@ blockquote {
     .CHChildNote {
         font-style: italic;
         font-size: 8pt;
-        }
-
-    .CHIndent {
-        margin-left: 3ex;
         }
 
     .CHEntry a:link,
