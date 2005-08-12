@@ -236,9 +236,9 @@ Styles: Browser Styles
 
     >
 
-    >       <Browser Type>?
+    >       <#Browser Type>?
 
-    >           <Browser Version>?
+    >           <#Browser Version>?
 
     >
 
@@ -246,9 +246,9 @@ Styles: Browser Styles
 
     >
 
-    >           <Browser Version>?
+    >           </#Browser Version>?
 
-    >       </BrowserType>?
+    >       </#BrowserType>?
 
     >
 
@@ -256,9 +256,9 @@ Styles: Browser Styles
 
 
 
-    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 5, override it with .IE5 .CTopic.  If a <MTitle>'s
+    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 5, override it with #IE5 .CTopic.  If a <MTitle>'s
 
-    style gives you a problem in Opera 5 but only in frames, override it with #FramedMenuPage .Opera5 .MTitle.
+    style gives you a problem in Opera 5 but only in frames, override it with #FramedMenuPage #Opera5 .MTitle.
 
 
 
@@ -274,13 +274,13 @@ Styles: Browser Styles
 
 
 
-        .IE - Internet Explorer
+        #IE - Internet Explorer
 
-        .Gecko - The Gecko rendering engine, which includes Firefox, Mozilla, etc.
+        #Gecko - The Gecko rendering engine, which includes Firefox, Mozilla, etc.
 
-        .Opera - Opera
+        #Opera - Opera
 
-        .KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
+        #KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
 
 
 
@@ -294,19 +294,19 @@ Styles: Browser Styles
 
 
 
-        .IE5 - Internet Explorer 5.x.
+        #IE5 - Internet Explorer 5.x.
 
-        .IE6 - Internet Explorer 6.x.
+        #IE6 - Internet Explorer 6.x.
 
 
 
-        .Opera5 - Opera 5.x.
+        #Opera5 - Opera 5.x.
 
-        .Opera6 - Opera 6.x.
+        #Opera6 - Opera 6.x.
 
-        .Opera7 - Opera 7.x.
+        #Opera7 - Opera 7.x.
 
-        .Opera8 - Opera 8.x.
+        #Opera8 - Opera 8.x.
 
 
 
@@ -666,7 +666,7 @@ Topic: Class Hierarchy Structure
 
     Everything is contained in a single <ClassHierarchy>.  Each entry is surrounded by its type, such as <CHParent>, and the
 
-    generic <CHEntry>.  Depending on the context, entries may be surrounded by one or more <CHIndents>.
+    generic <CHEntry>.  Entries are also surrounded by <CHIndent#s> to provide the level, even if that level is zero.
 
 
 
@@ -678,15 +678,19 @@ Topic: Class Hierarchy Structure
 
 
 
-        <CHIndent>?
+        <CHIndent#>
 
 
 
-            <CHType CHEntry>
+            <CHType and CHEntry>
 
 
 
-                Entry
+                <a href>?
+
+                    Entry
+
+                </a href>
 
 
 
@@ -694,7 +698,7 @@ Topic: Class Hierarchy Structure
 
 
 
-        </CHIndent>?
+        </CHIndent#>
 
 
 
@@ -730,7 +734,7 @@ Styles: Class Hierarchy Styles
 
 
 
-    CHIndent - A style used to indent a level.
+    CHIndent# - A style used to indent a level.  Will actually be CHIndent0, CHIndent1, CHIndent2, etc.
 
 
 
@@ -748,7 +752,7 @@ Topic: Summary Structure
 
 
 
-    <STitle> holds the actual word "Summary" and <SBorder> and <STable> hold the content.  <SBorder> exists because different
+    <STitle> holds the actual word "Summary" and <SBody> and <STable> hold the content.  <SBody> exists because different
 
     browsers apply table padding attributes in different ways.  <STable> exists as a class to separate the main table from any other
 
@@ -768,7 +772,7 @@ Topic: Summary Structure
 
     >
 
-    >       <SBorder>
+    >       <SBody>
 
     >           <table STable>
 
@@ -776,7 +780,7 @@ Topic: Summary Structure
 
     >           </table STable>
 
-    >       </SBorder>
+    >       </SBody>
 
     >
 
@@ -844,7 +848,7 @@ Styles: Summary Styles
 
 
 
-    SBorder - Surrounds <STable>, since some browsers can't do table padding right.  A hack, I know.
+    SBody - Surrounds <STable>, since some browsers can't do table padding right.  A hack, I know.
 
     STable - The actual summary table.  This class separates it from other layout tables that may appear.
 
@@ -1462,7 +1466,7 @@ Topic: Revisions
 
         - The following become IDs instead of classes: <#UnframedPage>, <#FramedMenuPage>, <#FramedContentPage>,
 
-          <#FramedIndexPage>, <#MTitle>, <#MSubTitle>.
+          <#FramedIndexPage>, <#MTitle>, <#MSubTitle>, all <Browser Styles>.
 
         - Removed MenuSection, ContentSection, and IndexSection.  Use "<#UnframedPage> <#Menu>" instead.
 
@@ -1470,13 +1474,17 @@ Topic: Revisions
 
         - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
 
-          <CType> and <CTopic>, <MType> and <MEntry>.
+          <CType> and <CTopic>, <MType> and <MEntry>, <CHType> and <CHEntry>
 
         - The IE4, Netscape, and Netscape4 styles have been removed.  <Opera8> has been added.
 
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
 
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
+
+        - CHIndent was replaced by <CHIndent#>.
+
+        - SBorder becomes <SBody>.
 
 
 
