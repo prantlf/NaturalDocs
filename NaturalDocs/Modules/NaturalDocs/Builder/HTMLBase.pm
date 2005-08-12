@@ -1806,7 +1806,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
         # Not all browsers get table padding right, so we need a div to apply the border.
 
-        . '<div class=SBorder>'
+        . '<div class=SBody>'
 
         . '<table border=0 cellspacing=0 cellpadding=0 class=STable>';
 
@@ -1988,7 +1988,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
 
         '</table>'
 
-    . '</div>' # Border
+    . '</div>' # Body
 
     . '</div>' # Summary
 
@@ -2728,6 +2728,10 @@ sub BuildClassHierarchy #(file, symbol)
 
 
 
+    my $indent = 0;
+
+
+
     my $output =
 
     '<div class=ClassHierarchy>';
@@ -2738,7 +2742,9 @@ sub BuildClassHierarchy #(file, symbol)
 
         {
 
-        $output .='<table border=0 cellspacing=0 cellpadding=0><tr><td>';
+        $output .='<div class=CHIndent' . $indent . '>';
+
+        $indent++;
 
 
 
@@ -2752,7 +2758,7 @@ sub BuildClassHierarchy #(file, symbol)
 
 
 
-        $output .= '</td></tr></table><div class=CHIndent>';
+        $output .= '</div>';
 
         };
 
@@ -2760,11 +2766,15 @@ sub BuildClassHierarchy #(file, symbol)
 
     $output .=
 
-    '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
+    '<div class=CHIndent' . $indent . '>'
 
         . $self->BuildClassHierarchyEntry($file, $symbol, 'CHCurrent', undef)
 
-    . '</td></tr></table>';
+    . '</div>';
+
+
+
+    $indent++;
 
 
 
@@ -2772,11 +2782,9 @@ sub BuildClassHierarchy #(file, symbol)
 
         {
 
-        $output .=
+        $output .= '<div class=CHIndent' . $indent . '>';
 
-        '<div class=CHIndent>'
-
-            . '<table border=0 cellspacing=0 cellpadding=0><tr><td>';
+        $indent++;
 
 
 
@@ -2806,19 +2814,9 @@ sub BuildClassHierarchy #(file, symbol)
 
 
 
-        $output .=
-
-        '</td></tr></table>'
-
-        . '</div>';
+        $output .= '</div>';
 
         };
-
-
-
-    if (scalar @parents)
-
-        {  $output .= '</div>';  };
 
 
 
@@ -2976,11 +2974,11 @@ sub OpeningBrowserStyles
 
         . 'if (browserType) {'
 
-            . 'document.write("<div class=" + browserType + ">");'
+            . 'document.write("<div id=" + browserType + ">");'
 
             . 'if (browserVer) {'
 
-                . 'document.write("<div class=" + browserVer + ">"); }'
+                . 'document.write("<div id=" + browserVer + ">"); }'
 
             . '}'
 
@@ -5480,6 +5478,8 @@ sub AddHiddenBreaks #(string)
 
 
 
+
+
 #
 
 #   Function: FindFirstFile
@@ -6053,8 +6053,6 @@ sub ResetToolTips #(samePage)
     %tooltipSymbolsToNumbers = ( );
 
     };
-
-
 
 
 
