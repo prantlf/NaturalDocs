@@ -95,12 +95,9 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     my $prevLineBlank = 1;
     my $inCodeSection;
 
-    my $type;
-    my $typeInfo;
-    my $isPlural;
-    my $title;
-    my $symbol;
+    my ($type, $scope, $isPlural, $title, $symbol);
     #my $package;  # package variable.
+    my ($newKeyword, $newTitle);
 
     my $index = 0;
 
@@ -128,18 +125,31 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
             $bodyEnd++;
             }
 
-        # If the line has a recognized header and the previous line is blank...
-        elsif ($prevLineBlank &&
-                $commentLines->[$index] =~ /^ *([a-z0-9 ]*[a-z0-9]): +(.*)$/i &&
-                (my ($newType, $newTypeInfo, $newIsPlural) = NaturalDocs::Topics->KeywordInfo($1)) )
+        # If the line is <format:headerless>...
+        elsif ($index == 0 && $commentLines->[0] eq '<format:headerless>')
             {
-            my $newTitle = $2;
+            $type = undef;
+            $scope = ::SCOPE_NORMAL();  # The scope repair and topic merging processes will handle if this is a class topic.
+            $isPlural = undef;
+            $title = undef;
+            $symbol = undef;
+
+            $bodyStart = $index + 1;
+            $bodyEnd = $index + 1;
+
+            $prevLineBlank = undef;
+            }
+
+        # If the line has a recognized header and the previous line is blank...
+        elsif ($prevLineBlank && (($newKeyword, $newTitle) = $self->ParseHeaderLine($commentLines->[$index])) )
+            {
+            my ($newType, $newTypeInfo, $newIsPlural) = NaturalDocs::Topics->KeywordInfo($newKeyword);
 
             # Process the previous one, if any.
 
-            if (defined $type)
+            if ($bodyStart)
                 {
-                if ($typeInfo->Scope() == ::SCOPE_START() || $typeInfo->Scope() == ::SCOPE_END())
+                if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
                     {  $package = undef;  };
 
                 my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type, $isPlural);
@@ -150,7 +160,7 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
                 $package = $newTopic->Package();
                 };
 
-            ($type, $typeInfo, $isPlural, $title) = ($newType, $newTypeInfo, $newIsPlural, $newTitle);
+            ($type, $scope, $isPlural, $title) = ($newType, $newTypeInfo->Scope(), $newIsPlural, $newTitle);
 
             $bodyStart = $index + 1;
             $bodyEnd = $index + 1;
@@ -174,9 +184,9 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 
 
     # Last one, if any.  This is the only one that gets the prototypes.
-    if (defined $type)
+    if ($bodyStart)
         {
-        if ($typeInfo->Scope() == ::SCOPE_START() || $typeInfo->Scope() == ::SCOPE_END())
+        if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
             {  $package = undef;  };
 
         my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type, $isPlural);
@@ -191,6 +201,33 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
     };
 
 
+#
+#   Function: ParseHeaderLine
+#
+#   If the passed line is a topic header, returns the array ( keyword, title ).  Otherwise returns an empty array.
+#
+sub ParseHeaderLine #(line)
+    {
+    my ($self, $line) = @_;
+
+    if ($line =~ /^ *([a-z0-9 ]*[a-z0-9]): +(.*)$/i)
+        {
+        my ($keyword, $title) = ($1, $2);
+
+        # We need to do it this way because if you do "if (ND:T->KeywordInfo($keyword)" and the last element of the array it
+        # returns is false, the statement is false.  That is really retarded, but there it is.
+        my ($type, undef, undef) = NaturalDocs::Topics->KeywordInfo($keyword);
+
+        if ($type)
+            {  return ($keyword, $title);  }
+        else
+            {  return ( );  };
+        }
+    else
+        {  return ( );  };
+    };
+
+
 
 ###############################################################################
 # Group: Support Functions
@@ -200,12 +237,12 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
 #   Function: MakeParsedTopic
 #
 #   Creates a <NaturalDocs::Parser::ParsedTopic> object for the passed parameters.  Scope is gotten from
-#   the package variable <scope> instead of from the parameters.  The summary is generated from the body.
+#   the package variable <package> instead of from the parameters.  The summary is generated from the body.
 #
 #   Parameters:
 #
-#       type         - The <TopicType>.
-#       title          - The title of the topic.
+#       type         - The <TopicType>.  May be undef for headerless topics.
+#       title          - The title of the topic.  May be undef for headerless topics.
 #       package    - The package <SymbolString> the topic appears in.
 #       body        - The topic's body in <NDMarkup>.
 #       lineNumber - The topic's line number.
@@ -239,7 +276,7 @@ sub MakeParsedTopic #(type, title, package, body, lineNumber, isList)
 #       commentLines - The arrayref of comment lines.
 #       startingIndex  - The starting index of the body to format.
 #       endingIndex   - The ending index of the body to format, *not* inclusive.
-#       type               - The type of the section.
+#       type               - The type of the section.  May be undef for headerless comments.
 #       isList              - Whether it's a list topic.
 #
 #    Returns:

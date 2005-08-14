@@ -23,6 +23,7 @@
 
 use NaturalDocs::Parser::ParsedTopic;
 use NaturalDocs::Parser::Native;
+use NaturalDocs::Parser::JavaDoc;
 
 use strict;
 use integer;
@@ -221,16 +222,20 @@ sub ParseForBuild #(file)
 #                               and there should be no line break characters at the end of each line.  *The original memory will be
 #                               changed.*
 #       lineNumber - The line number of the first of the comment lines.
+#       isJavaDoc - Whether the comment is in JavaDoc format.
 #
 #   Returns:
 #
 #       The number of topics created by this comment, or zero if none.
 #
-sub OnComment #(commentLines, lineNumber)
+sub OnComment #(string[] commentLines, int lineNumber, bool isJavaDoc)
     {
-    my ($self, $commentLines, $lineNumber) = @_;
+    my ($self, $commentLines, $lineNumber, $isJavaDoc) = @_;
 
     $self->CleanComment($commentLines);
+
+    if ($isJavaDoc)
+        {  NaturalDocs::Parser::JavaDoc->TranslateComment($commentLines);  };
 
     return NaturalDocs::Parser::Native->ParseComment($commentLines, $lineNumber, \@parsedFile);
     };
@@ -321,6 +326,9 @@ sub Parse
 
         $self->MergeAutoTopics($language, $autoTopics);
         };
+
+    $self->RemoveRemainingHeaderlessTopics();
+
 
     # We don't need to do this if there aren't any auto-topics because the only package changes would be implied by the comments.
     if (defined $autoTopics)
@@ -615,10 +623,15 @@ sub RepairPackages #(autoTopics, scopeRecord)
             }
 
 
-        # Finally try to handle the topic, since it has the lowest line number.
+        # Finally try to handle the topic, since it has the lowest line number.  Check for Type() because headerless topics won't have
+        # one.
         else
             {
-            my $scope = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();
+            my $scope;
+            if ($topic->Type())
+                {  $scope = NaturalDocs::Topics->TypeInfo($topic->Type())->Scope();  }
+            else
+                {  $scope = ::SCOPE_NORMAL();  };
 
             if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
                 {
@@ -650,7 +663,8 @@ sub RepairPackages #(autoTopics, scopeRecord)
 #
 #   Merges the automatically generated topics into the file.  If an auto-topic matches an existing topic, it will have it's prototype
 #   and package transferred.  If it doesn't, the auto-topic will be inserted into the list unless
-#   <NaturalDocs::Settings->DocumentedOnly()> is set.
+#   <NaturalDocs::Settings->DocumentedOnly()> is set.  If an existing topic doesn't have a title, it's assumed to be a headerless
+#   comment and will be merged with the next auto-topic or discarded.
 #
 #   Parameters:
 #
@@ -676,7 +690,7 @@ sub MergeAutoTopics #(language, autoTopics)
         $cleanTitle =~ s/[\t ]*\([^\(]*$//;
 
         # Add the auto-topic if it's higher in the file than the current topic.
-        if ($autoTopic->LineNumber < $topic->LineNumber())
+        if ($autoTopic->LineNumber() < $topic->LineNumber())
             {
             if (exists $topicsInLists{$autoTopic->Type()} &&
                 exists $topicsInLists{$autoTopic->Type()}->{$autoTopic->Title()})
@@ -693,14 +707,21 @@ sub MergeAutoTopics #(language, autoTopics)
             $autoTopicIndex++;
             }
 
-        # Transfer information if we have a match.
-        elsif ($topic->Type() == $autoTopic->Type() && index($autoTopic->Title(), $cleanTitle) != -1)
+        # Remove a headerless topic if there's another topic between it and the next auto-topic.
+        elsif (!$topic->Title() && $topicIndex + 1 < scalar @parsedFile &&
+                $parsedFile[$topicIndex+1]->LineNumber() < $autoTopic->LineNumber())
+            {
+            splice(@parsedFile, $topicIndex, 1);
+            }
+
+        # Transfer information if we have a match or a headerless topic.
+        elsif ( !$topic->Title() || ($topic->Type() == $autoTopic->Type() && index($autoTopic->Title(), $cleanTitle) != -1) )
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
 
-#            if (NaturalDocs::Topics->TypeInfo($topic->Type())->Scope() != ::SCOPE_START())
-#                {  $topic->SetPackage($autoTopic->Package());  };
+            if (!$topic->Title())
+                {  $topic->SetTitle($autoTopic->Title());  };
 
             if (NaturalDocs::Topics->TypeInfo($topic->Type())->Scope() != ::SCOPE_START())
                 {  $topic->SetPackage($autoTopic->Package());  }
@@ -750,6 +771,27 @@ sub MergeAutoTopics #(language, autoTopics)
         push @parsedFile, @$autoTopics[$autoTopicIndex..scalar @$autoTopics-1];
         };
    };
+
+
+#
+#   Function: RemoveRemainingHeaderlessTopics
+#
+#   After <MergeAutoTopics()> is done, this function removes any remaining headerless topics from the file.  If they don't merge
+#   into anything, they're not valid topics.
+#
+sub RemoveRemainingHeaderlessTopics
+    {
+    my ($self) = @_;
+
+    my $index = 0;
+    while ($index < scalar @parsedFile)
+        {
+        if ($parsedFile[$index]->Title())
+            {  $index++;  }
+        else
+            {  splice(@parsedFile, $index, 1);  };
+        };
+    };
 
 
 #
@@ -985,7 +1027,7 @@ sub AddToClassHierarchy
 
     foreach my $topic (@parsedFile)
         {
-        if (NaturalDocs::Topics->TypeInfo( $topic->Type() )->ClassHierarchy())
+        if ($topic->Type() && NaturalDocs::Topics->TypeInfo( $topic->Type() )->ClassHierarchy())
             {
             if ($topic->IsList())
                 {
