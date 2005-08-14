@@ -20,11 +20,7 @@ use vars qw(@EXPORT @ISA);
 require Exporter;
 @ISA = qw(Exporter);
 
-@EXPORT = ('REFERENCE_TEXT', 'REFERENCE_CH_CLASS', 'REFERENCE_CH_PARENT',
-
-                   'RESOLVE_RELATIVE', 'RESOLVE_ABSOLUTE', 'RESOLVE_NOPLURAL', 'RESOLVE_NOUSING',
-
-                   'MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
+@EXPORT = ('MENU_TITLE', 'MENU_SUBTITLE', 'MENU_FILE', 'MENU_GROUP', 'MENU_TEXT', 'MENU_LINK', 'MENU_FOOTER',
                    'MENU_INDEX', 'MENU_FORMAT', 'MENU_ENDOFORIGINAL', 'MENU_DATA',
 
                    'MENU_FILE_NOAUTOTITLE', 'MENU_GROUP_UPDATETITLES', 'MENU_GROUP_UPDATESTRUCTURE',
@@ -49,25 +45,6 @@ require Exporter;
 # Group: Virtual Types
 # These are only groups of constants, but should be treated like typedefs or enums.  Each one represents a distinct type and
 # their values should only be one of their constants or undef.
-
-
-#
-#   Constants: ReferenceType
-#
-#   The type of a reference.
-#
-#       REFERENCE_TEXT - The reference appears in the text of the documentation.
-#       REFERENCE_CH_CLASS - A class reference handled by <NaturalDocs::ClassHierarchy>.
-#       REFERENCE_CH_PARENT - A parent class reference handled by <NaturalDocs::ClassHierarchy>.
-#
-#   Dependencies:
-#
-#       - <NaturalDocs::ReferenceString->ToBinaryFile()> and <NaturalDocs::ReferenceString->FromBinaryFile()> require that
-#         these values fit into a UInt8, i.e. are <= 255.
-#
-use constant REFERENCE_TEXT => 1;
-use constant REFERENCE_CH_CLASS => 2;
-use constant REFERENCE_CH_PARENT => 3;
 
 
 #
@@ -126,31 +103,6 @@ use constant FILE_DOESNTEXIST => 4;
 ###############################################################################
 # Group: Flags
 # These constants can be combined with each other.
-
-
-#
-#   Constants: Resolving Flags
-#
-#   Used to influence the method of resolving references in <NaturalDocs::SymbolTable>.
-#
-#       RESOLVE_RELATIVE - The reference text is truly relative, rather than Natural Docs' semi-relative.
-#       RESOLVE_ABSOLUTE - The reference text is always absolute.  No local or relative references.
-#       RESOLVE_NOPLURAL - The reference text may not be interpreted as a plural, and thus match singular forms as well.
-#       RESOLVE_NOUSING - The reference text may not include "using" statements when being resolved.
-#
-#       If neither <RESOLVE_RELATIVE> or <RESOLVE_ABSOLUTE> is specified, Natural Docs' semi-relative kicks in instead,
-#       which is where links are interpreted as local, then global, then relative.  <RESOLVE_RELATIVE> states that links are
-#       local, then relative, then global.
-#
-#   Dependencies:
-#
-#       - <NaturalDocs::ReferenceString->ToBinaryFile()> and <NaturalDocs::ReferenceString->FromBinaryFile()> require that
-#         these values fit into a UInt8, i.e. are <= 255.
-#
-use constant RESOLVE_RELATIVE => 0x01;
-use constant RESOLVE_ABSOLUTE => 0x02;
-use constant RESOLVE_NOPLURAL => 0x04;
-use constant RESOLVE_NOUSING => 0x08;
 
 
 #
@@ -221,7 +173,7 @@ use constant BINARY_FORMAT => pack('C', 0x06);
 sub IsClassHierarchyReference #(reference)
     {
     my ($self, $reference) = @_;
-    return ($reference == REFERENCE_CH_CLASS || $reference == REFERENCE_CH_PARENT);
+    return ($reference == ::REFERENCE_CH_CLASS() || $reference == ::REFERENCE_CH_PARENT());
     };
 
 
