@@ -108,6 +108,11 @@ sub SetIsList
 sub Title
     {  return $_[0]->[TITLE];  };
 
+# Function: SetTitle
+# Replaces the topic title.
+sub SetTitle #(title)
+    {  $_[0]->[TITLE] = $_[1];  };
+
 #
 #   Function: Symbol
 #
@@ -150,7 +155,8 @@ sub Package
     {
     my ($self) = @_;
 
-    if (NaturalDocs::Topics->TypeInfo($self->Type())->Scope() == ::SCOPE_START())
+    # Headerless topics may not have a type yet.
+    if ($self->Type() && NaturalDocs::Topics->TypeInfo($self->Type())->Scope() == ::SCOPE_START())
         {  return $self->Symbol();  }
     else
         {  return $self->[PACKAGE];  };
