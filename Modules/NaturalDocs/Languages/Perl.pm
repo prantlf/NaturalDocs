@@ -98,7 +98,7 @@ sub ParseFile #(sourceFile, topicsList)
     $mustBreakPOD = 0;
     @hereDocTerminators = ( );
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], [ '=begin nd', '=end nd' ]);
+    $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef, [ '##' ], [ '=begin nd', '=end nd' ]);
 
     my $tokens = $self->Tokens();
     my $index = 0;
@@ -155,9 +155,9 @@ sub ParseFile #(sourceFile, topicsList)
 #
 #   Overridden to support "=begin nd" and similar.
 #
-#   - "=begin [nd|naturaldocs|natural docs]" all translate to "=begin nd".
+#   - "=begin [nd|naturaldocs|natural docs|jd|javadoc]" all translate to "=begin nd".
 #   - "=[nd|naturaldocs|natural docs]" also translate to "=begin nd".
-#   - "=end [nd|naturaldocs|natural docs]" all translate to "=end nd".
+#   - "=end [nd|naturaldocs|natural docs|jd|javadoc]" all translate to "=end nd".
 #   - "=cut" from a ND block translates into "=end nd", but the next line will be altered to begin with "(NDPODBREAK)".  This is
 #     so if there is POD leading into ND which ends with a cut, the parser can still end the original POD because the end ND line
 #     would have been removed.
@@ -168,13 +168,13 @@ sub PreprocessLine #(lineRef)
     {
     my ($self, $lineRef) = @_;
 
-    if ($$lineRef =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+    if ($$lineRef =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|naturaldocs|natural[ \t]+docs|jd|javadoc)[ \t]*$/i)
         {
         $$lineRef = '=begin nd';
         $inNDPOD = 1;
         $mustBreakPOD = 0;
         }
-    elsif ($$lineRef =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|naturaldocs|natural[ \t]+docs)[ \t]*$/i)
+    elsif ($$lineRef =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|naturaldocs|natural[ \t]+docs|jd|javadoc)[ \t]*$/i)
         {
         $$lineRef = '=end nd';
         $inNDPOD = 0;
