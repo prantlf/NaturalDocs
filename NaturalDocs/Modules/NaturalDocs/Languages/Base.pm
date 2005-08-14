@@ -644,6 +644,40 @@ sub StripOpeningSymbols #(lineRef, symbols)
 
 
 #
+#   Function: StripOpeningJavaDocSymbols
+#
+#   Determines if the line starts with any of the passed symbols, and if so, replaces it with spaces.  This only happens
+#   if the only thing before it on the line is whitespace and the next character after it is whitespace or the end of the line.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#       symbols - An arrayref of the symbols to check for.
+#
+#   Returns:
+#
+#       If the line starts with any of the passed comment symbols, it will replace it in the line with spaces and return the symbol.
+#       If the line doesn't, it will leave the line alone and return undef.
+#
+sub StripOpeningJavaDocSymbols #(lineRef, symbols)
+    {
+    my ($self, $lineRef, $symbols) = @_;
+
+    if (!defined $symbols)
+        {  return undef;  };
+
+    my ($index, $symbol) = ::FindFirstSymbol($$lineRef, $symbols);
+
+    if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/ && substr($$lineRef, $index + length($symbol), 1) =~ /^[ \t]?$/)
+        {
+        return substr($$lineRef, $index, length($symbol), ' ' x length($symbol));
+        };
+
+    return undef;
+    };
+
+
+#
 #   Function: StripOpeningBlockSymbols
 #
 #   Determines if the line starts with any of the opening symbols in the passed symbol pairs, and if so, replaces it with spaces.
@@ -672,6 +706,46 @@ sub StripOpeningBlockSymbols #(lineRef, symbolPairs)
         my $index = index($$lineRef, $symbolPairs->[$i]);
 
         if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/)
+            {
+            substr($$lineRef, $index, length($symbolPairs->[$i]), ' ' x length($symbolPairs->[$i]));
+            return $symbolPairs->[$i + 1];
+            };
+        };
+
+    return undef;
+    };
+
+
+#
+#   Function: StripOpeningJavaDocBlockSymbols
+#
+#   Determines if the line starts with any of the opening symbols in the passed symbol pairs, and if so, replaces it with spaces.
+#   This only happens if the only thing before it on the line is whitespace and the next character is whitespace or the end of the line.
+#
+#   Parameters:
+#
+#       lineRef - A reference to the line to check.
+#       symbolPairs - An arrayref of the symbol pairs to check for.  Pairs are specified as two consecutive array entries, with the
+#                            opening symbol first.
+#
+#   Returns:
+#
+#       If the line starts with any of the opening symbols, it will replace it in the line with spaces and return the closing symbol.
+#       If the line doesn't, it will leave the line alone and return undef.
+#
+sub StripOpeningJavaDocBlockSymbols #(lineRef, symbolPairs)
+    {
+    my ($self, $lineRef, $symbolPairs) = @_;
+
+    if (!defined $symbolPairs)
+        {  return undef;  };
+
+    for (my $i = 0; $i < scalar @$symbolPairs; $i += 2)
+        {
+        my $index = index($$lineRef, $symbolPairs->[$i]);
+
+        if ($index != -1 && substr($$lineRef, 0, $index) =~ /^[ \t]*$/ &&
+            substr($$lineRef, $index + length($symbolPairs->[$i]), 1) =~ /^[ \t]?$/)
             {
             substr($$lineRef, $index, length($symbolPairs->[$i]), ' ' x length($symbolPairs->[$i]));
             return $symbolPairs->[$i + 1];

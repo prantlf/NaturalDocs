@@ -138,6 +138,8 @@ sub ScopeRecord
 #       lineCommentSymbols - An arrayref of symbols that designate line comments, or undef if none.
 #       blockCommentSymbols - An arrayref of symbol pairs that designate multiline comments, or undef if none.  Symbol pairs are
 #                                            designated as two consecutive array entries, the opening symbol appearing first.
+#       javadocLineCommentSymbols - An arrayref of symbols that designate the start of a JavaDoc comment, or undef if none.
+#       javadocBlockCommentSymbols - An arrayref of symbol pairs that designate multiline JavaDoc comments, or undef if none.
 #
 #   Notes:
 #
@@ -146,9 +148,10 @@ sub ScopeRecord
 #       - To save parsing time, all comment lines sent to <NaturalDocs::Parser->OnComment()> will be replaced with blank lines
 #         in <Tokens()>.  It's all the same to most languages.
 #
-sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymbols)
+sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols, string[] blockCommentSymbols, string[] javadocLineCommentSymbols, string[] javadocBlockCommentSymbols)
     {
-    my ($self, $sourceFile, $lineCommentSymbols, $blockCommentSymbols) = @_;
+    my ($self, $sourceFile, $lineCommentSymbols, $blockCommentSymbols,
+           $javadocLineCommentSymbols, $javadocBlockCommentSymbols) = @_;
 
     open(SOURCEFILEHANDLE, '<' . $sourceFile)
         or die "Couldn't open input file " . $sourceFile . "\n";
@@ -159,8 +162,6 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
     # For convenience.
     $self->ClearAutoTopics();
     $self->ClearScopeStack();
-
-    my @commentLines;
 
     my $line = <SOURCEFILEHANDLE>;
     my $lineNumber = 1;
@@ -175,12 +176,16 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
         $self->PreprocessLine(\$line);
 
         my $originalLine = $line;
+
+        my @commentLines;
+        my $isJavaDoc;
         my $closingSymbol;
 
 
         # Retrieve single line comments.  This leaves $line at the next line.
 
-        if ($self->StripOpeningSymbols(\$line, $lineCommentSymbols))
+        if ( ($isJavaDoc = $self->StripOpeningJavaDocSymbols(\$line, $javadocLineCommentSymbols)) ||
+              $self->StripOpeningSymbols(\$line, $lineCommentSymbols))
             {
             do
                 {
@@ -202,8 +207,12 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
 
         # Retrieve multiline comments.  This leaves $line at the next line.
 
-        elsif ($closingSymbol = $self->StripOpeningBlockSymbols(\$line, $blockCommentSymbols))
+        elsif ( ($isJavaDoc = $self->StripOpeningJavaDocBlockSymbols(\$line, $javadocBlockCommentSymbols)) ||
+                 ($closingSymbol = $self->StripOpeningBlockSymbols(\$line, $blockCommentSymbols)) )
             {
+            if ($isJavaDoc)
+                {  $closingSymbol = $isJavaDoc;  };
+
             # Note that it is possible for a multiline comment to start correctly but not end so.  We want those comments to stay in
             # the code.  For example, look at this prototype with this splint annotation:
             #
@@ -274,9 +283,10 @@ sub ParseForCommentsAndTokens #(sourceFile, lineCommentSymbols, blockCommentSymb
 
         if (scalar @commentLines)
             {
-            NaturalDocs::Parser->OnComment(\@commentLines, $lineNumber);
+            NaturalDocs::Parser->OnComment(\@commentLines, $lineNumber, $isJavaDoc);
             $lineNumber += scalar @commentLines;
             @commentLines = ( );
+            $isJavaDoc = undef;
             };
 
         };  # while (defined $line)
