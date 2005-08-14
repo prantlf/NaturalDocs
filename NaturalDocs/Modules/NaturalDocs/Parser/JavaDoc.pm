@@ -46,9 +46,4 @@ sub TranslateComment #(string[] commentLines)
     };
 
 
-package poo;
-
-# Function: Yo
-sub Yo { };
-
 1;
