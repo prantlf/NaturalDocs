@@ -234,8 +234,8 @@ sub OnComment #(string[] commentLines, int lineNumber, bool isJavaDoc)
 
     $self->CleanComment($commentLines);
 
-    if ($isJavaDoc)
-        {  NaturalDocs::Parser::JavaDoc->TranslateComment($commentLines);  };
+    if ($isJavaDoc && NaturalDocs::Parser::JavaDoc->TranslateComment($commentLines, $lineNumber, \@parsedFile))
+        {  return 1;  };
 
     return NaturalDocs::Parser::Native->ParseComment($commentLines, $lineNumber, \@parsedFile);
     };
