@@ -100,11 +100,11 @@ sub BuildFile #(sourceFile, parsedFile)
             . $self->StandardComments()
 
             . "\n\n\n"
-                . $self->BuildMenu($sourceFile, undef, undef)
-            . "\n\n\n"
                 . $self->BuildContent($sourceFile, $parsedFile)
             . "\n\n\n"
                 . $self->BuildFooter()
+            . "\n\n\n"
+                . $self->BuildMenu($sourceFile, undef, undef)
             . "\n\n\n"
                 . $self->BuildToolTips()
             . "\n\n\n"
@@ -162,8 +162,6 @@ sub BuildIndex #(type)
         . $self->StandardComments()
 
         . "\n\n\n"
-            . $self->BuildMenu(undef, $type, undef)
-        . "\n\n\n"
 
         . '<div id=Index>'
             . '<div class=IPageTitle>'
@@ -176,6 +174,8 @@ sub BuildIndex #(type)
 
             . "\n\n\n"
                 . $self->BuildFooter()
+            . "\n\n\n"
+                . $self->BuildMenu(undef, $type, undef)
             . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
