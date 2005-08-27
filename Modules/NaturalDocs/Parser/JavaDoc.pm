@@ -6,16 +6,16 @@
 #
 #   A package for translating JavaDoc topics or Natural Docs topics in JavaDoc comments into Natural Docs.
 #
-#   Handled tags:
+#   Supported tags:
 #
 #       - @param
 #       - @author
 #       - @deprecated
 #       - @code, @literal (doesn't change font)
 #       - @exception, @throws (doesn't link to class)
-#       - @link, @linkplain (doesn't combine label and link or change font)
+#       - @link, @linkplain (doesn't change font)
 #       - @return, @returns
-#       - @see (doesn't combine label and link)
+#       - @see
 #       - @since
 #       - @value (shown as link instead of replacement)
 #       - @version
@@ -26,19 +26,20 @@
 #       - @serial, @serialField, @serialData
 #       - All other block level tags.
 #
-#   Not handled tags:
+#   Unsupported tags:
 #
 #       These will appear literally in the output because I cannot handle them easily.
 #
 #       - @docRoot
 #       - Any other tags not mentioned
 #
-#   Handled HTML:
+#   Supported HTML:
 #
 #       - p
 #       - b, i, u
 #       - pre
-#       - a href (doesn't combine label and link)
+#       - a href
+#       - ol, ul, li (ol gets converted to ul)
 #       - gt, lt, amp, quot, nbsp entities
 #
 #   Stripped HTML:
@@ -46,12 +47,16 @@
 #       - code
 #       - HTML comments
 #
-#   Not handled HTML:
+#   Unsupported HTML:
 #
 #       These will appear literally in the output because I cannot handle them easily.
 #
 #       - Any tags with additional properties other than a href.  (ex. <p class=Something>)
 #       - Any other tags not mentioned
+#
+#   Reference:
+#
+#       http://java.sun.com/j2se/1.5.0/docs/tooldocs/windows/javadoc.html
 #
 ###############################################################################
 
@@ -386,6 +391,10 @@ sub FormatText #(string text, bool inParagraph)
 
     $text =~ s/&lt;code&gt;(.*?)&lt;\/code&gt;/$1/gi;
 
+    $text =~ s/&lt;ul.*?&gt;(.*?)&lt;\/ul&gt;/<ul>$1<\/ul>/gi;
+    $text =~ s/&lt;ol.*?&gt;(.*?)&lt;\/ol&gt;/<ul>$1<\/ul>/gi;
+    $text =~ s/&lt;li.*?&gt;(.*?)&lt;\/li&gt;/<li>$1<\/li>/gi;
+
     $text =~ s/&lt;!--.*?--&gt;//gi;
 
     $text =~ s/&lt;\/p&gt;//gi;
@@ -440,10 +449,10 @@ sub ConvertLink #(text)
 
     $label =~ s/ +$//;
 
-    if (!$label)
-        {  return '<link>' . $target . '</link>';  }
+    if (!length $label)
+        {  return '<link original="' . $target . '">' . $target . '</link>';  }
     else
-        {  return $label . ' (<link>' . $target . '</link>)';  };
+        {  return '<link original="' . $label . ' (' . $target . ')" name="' . $label . '">' . $target . '</link>';  };
     };
 
 sub MakeLink #(target, text)
@@ -451,9 +460,9 @@ sub MakeLink #(target, text)
     my ($self, $target, $text) = @_;
 
     if (lc($target) eq lc($text))
-        {  return '<url>' . $text . '</url>';  }
+        {  return '<url>' . $target . '</url>';  }
     else
-        {  return $text . ' (<url>' . $target . '</url>)';  };
+        {  return '<url name="' . $text . '">' . $target . '</url>';  };
     };
 
 sub MakeEMailLink #(target, text)
@@ -461,10 +470,10 @@ sub MakeEMailLink #(target, text)
     my ($self, $target, $text) = @_;
 
     if (lc($target) eq lc($text))
-        {  return '<email>' . $text . '</email>';  }
+        {  return '<email>' . $target . '</email>';  }
     else
-        {  return $text . ' (<email>' . $target . '</email>)';  };
+        {  return '<email name="' . $text . '">' . $target . '</email>';  };
     };
 
-    
+
 1;
