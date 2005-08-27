@@ -4722,11 +4722,13 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
 
             # Resolve and convert links.
 
-            $text =~ s/<link>([^<]+)<\/link>/$self->BuildTextLink($1, $package, $using, $sourceFile)/ge;
+            $text =~ s{<link original=\"([^\"]+)\"(?: name=\"([^\"]+)\")?>([^<]+)<\/link>}
 
-            $text =~ s/<url>([^<]+)<\/url>/$self->BuildURLLink($1)/ge;
+                           {$self->BuildTextLink($3, $2, $1, $package, $using, $sourceFile)}ge;
 
-            $text =~ s/<email>([^<]+)<\/email>/$self->BuildEMailLink($1)/eg;
+            $text =~ s/<url(?: name=\"([^\"]+)\")?>([^<]+)<\/url>/$self->BuildURLLink($2, $1)/ge;
+
+            $text =~ s/<email(?: name=\"([^\"]+)\")?>([^<]+)<\/email>/$self->BuildEMailLink($2, $1)/eg;
 
 
 
@@ -4858,7 +4860,11 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
 
 #
 
-#       text  - The link text
+#       text  - The link text.
+
+#       label - The link label.  If undef, defaults to text.
+
+#       originalText - The original text as it appears in the source.
 
 #       package  - The package <SymbolString> the link appears in, or undef if none.
 
@@ -4876,11 +4882,17 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
 
 #
 
-sub BuildTextLink #(text, package, using, sourceFile)
+sub BuildTextLink #(text, label, originalText, package, using, sourceFile)
 
     {
 
-    my ($self, $text, $package, $using, $sourceFile) = @_;
+    my ($self, $text, $label, $originalText, $package, $using, $sourceFile) = @_;
+
+
+
+    if (!length $label)
+
+        {  $label = $text;  };
 
 
 
@@ -4922,7 +4934,7 @@ sub BuildTextLink #(text, package, using, sourceFile)
 
         return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol($target->Symbol()) . '" '
 
-                    . 'class=L' . NaturalDocs::Topics->NameOfType($target->Type(), 0, 1) . ' ' . $toolTipProperties . '>' . $text . '</a>';
+                    . 'class=L' . NaturalDocs::Topics->NameOfType($target->Type(), 0, 1) . ' ' . $toolTipProperties . '>' . $label . '</a>';
 
         }
 
@@ -4930,7 +4942,7 @@ sub BuildTextLink #(text, package, using, sourceFile)
 
         {
 
-        return '&lt;' . $text . '&gt;';
+        return $originalText;
 
         };
 
@@ -4956,6 +4968,8 @@ sub BuildTextLink #(text, package, using, sourceFile)
 
 #       url - The URL to link to.
 
+#       label - The label of the link, if any.
+
 #
 
 #   Returns:
@@ -4966,11 +4980,17 @@ sub BuildTextLink #(text, package, using, sourceFile)
 
 #
 
-sub BuildURLLink #(url)
+sub BuildURLLink #(url, label)
 
     {
 
-    my ($self, $url) = @_;
+    my ($self, $url, $label) = @_;
+
+
+
+    if (!length $label)
+
+        {  $label = $url;  };
 
 
 
@@ -4978,9 +4998,9 @@ sub BuildURLLink #(url)
 
 
 
-    if (length $url < 50)
+    if (length $label < 50 || $label ne $url)
 
-        {  return '<a href="' . $url . '" class=LURL>' . $self->ConvertAmpChars($url) . '</a>';  };
+        {  return '<a href="' . $url . '" class=LURL>' . $label . '</a>';  };
 
 
 
@@ -5062,6 +5082,8 @@ sub BuildURLLink #(url)
 
 #       address  - The e-mail address.
 
+#       label - The label of the link, if any.
+
 #
 
 #   Returns:
@@ -5072,11 +5094,11 @@ sub BuildURLLink #(url)
 
 #
 
-sub BuildEMailLink #(address)
+sub BuildEMailLink #(address, label)
 
     {
 
-    my ($self, $address) = @_;
+    my ($self, $address, $label) = @_;
 
     my @splitAddress;
 
@@ -5122,17 +5144,35 @@ sub BuildEMailLink #(address)
 
 
 
-    return
+    my $output =
 
-    "<a href=\"#\" onClick=\"location.href='mai' + 'lto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>"
+    "<a href=\"#\" onClick=\"location.href='mai' + 'lto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>";
 
-        . $splitAddress[0] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[1]
+
+
+    if (!length $label)
+
+        {
+
+        $output .=
+
+        $splitAddress[0] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[1]
 
         . '<span>@</span>'
 
-        . $splitAddress[3] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[4]
+        . $splitAddress[3] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[4];
 
-    . '</a>';
+        }
+
+    else
+
+        {  $output .= $label;  };
+
+
+
+    $output .= '</a>';
+
+    return $output;
 
     };
 
