@@ -653,7 +653,10 @@ sub RichFormatTextBlock #(text)
                 elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:/i)
                     {  $output .= '<url>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText) . '</url>';  }
                 else
-                    {  $output .= '<link>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText) . '</link>';  };
+                    {
+                    my $ndLinkText = NaturalDocs::NDMarkup->ConvertAmpChars($linkText);
+                    $output .= '<link original="&lt;' . $ndLinkText . '&gt;">' . $ndLinkText . '</link>';
+                    };
                 }
 
             else # it's not a link.
