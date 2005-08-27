@@ -149,7 +149,7 @@ sub ParseForInformation #(file)
 
         # Add references in the topic.
 
-        while ($body =~ /<link>([^<]+)<\/link>/g)
+        while ($body =~ /<link(?:[^>]*)>([^<]+)<\/link>/g)
             {
             my $linkText = NaturalDocs::NDMarkup->RestoreAmpChars($1);
             my $linkSymbol = NaturalDocs::SymbolString->FromText($linkText);
