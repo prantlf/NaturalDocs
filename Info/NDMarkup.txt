@@ -42,11 +42,19 @@ About: Text Tags
    <i></i>           - Italics
    <u></u>         - Underline
 
-   <link></link>   - Surrounds a potential link to a symbol; potential because the target is not guaranteed to exist.  This
-                             tag merely designates an attempted link.  No other tags will appear between them.
+   <link original=""></link>   - Surrounds a potential link to a symbol; potential because the target is not guaranteed to exist.  This
+                                             tag merely designates an attempted link.  No other tags will appear between them.  The original
+                                             attribute holds the original text as it appears in the source so it can be inserted if the link doesn't
+                                             resolve to anything.
+   <link original="" name=""></link> - A named link.  The same as a regular link only the name attribute is what appears in the
+                                                         output.
 
-   <url></url>          - Surrounds an external link.  No other tags will appear between them.
-   <email></email>  - Surrounds an email address.  No other tags will appear between them.
+   <url></url>               - Surrounds an external link.  No other tags will appear between them.
+   <url name=""></url> - Surrounds an external named link.
+
+   <email></email>               - Surrounds an e-mail address.  No other tags will appear between them.
+   <email name=""></email> - Surrounds a named e-mail address.
+
 
 About: Amp Chars
 
@@ -69,10 +77,11 @@ About: General Tag Properties
    easier.
 
    - Tags and amp chars will always be in all lowercase.
-   - There will be no properties or extraneous whitespace within tags.  They will only appear exactly as documented here.
+   - Properties will appear exactly as documented here.  They will be in all lowercase, in the documented order, and will have no
+     extraneous whitespace.
    - All code is valid, meaning tags will always be closed, <li>s will only appear within <ul>s, etc.
 
-   So, for example, you can match symbol links with /<link>([^<]+)<\/link>/ and $1 will be the symbol.  No surprises or
+   So, for example, you can match symbol links with /<link>(.+?)<\/link>/ and $1 will be the symbol.  No surprises or
    gotchas.  No need for sophisticated parsing routines.
 
    Remember that for symbol definitions, the text should appear as is, but internally (such as for the anchor) they need to
