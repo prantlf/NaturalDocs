@@ -1339,7 +1339,8 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
 #
 #   Function: IsStringed
 #
-#   Returns whether the position is after a string (dollar sign) character.
+#   Returns whether the position is after a string (dollar sign) character.  Returns false if it's preceded by two dollar signs so
+#   "if ($x == $$)" doesn't skip the closing parenthesis as stringed.
 #
 #   Parameters:
 #
@@ -1350,7 +1351,7 @@ sub IsStringed #(index)
     my ($self, $index) = @_;
     my $tokens = $self->Tokens();
 
-    if ($index > 0 && $tokens->[$index - 1] eq '$')
+    if ($index > 0 && $tokens->[$index - 1] eq '$' && !($index > 1 && $tokens->[$index - 2] eq '$'))
         {  return 1;  }
     else
         {  return undef;  };
