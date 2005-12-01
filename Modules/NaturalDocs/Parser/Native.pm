@@ -71,15 +71,46 @@ sub Start
 
 
 #
+#   Function: IsMine
+#
+#   Examines the comment and returns whether it is *definitely* Natural Docs content, i.e. it is owned by this package.  Note
+#   that a comment can fail this function and still be interpreted as a Natural Docs content, for example a JavaDoc-styled comment
+#   that doesn't have header lines but no JavaDoc tags either.
+#
+#   Parameters:
+#
+#       commentLines - An arrayref of the comment lines.  Must have been run through <NaturalDocs::Parser->CleanComment()>.
+#       isJavaDoc - Whether the comment was JavaDoc-styled.
+#
+#   Returns:
+#
+#       Whether the comment is *definitely* Natural Docs content.
+#
+sub IsMine #(string[] commentLines, bool isJavaDoc)
+    {
+    my ($self, $commentLines, $isJavaDoc) = @_;
+
+    # Skip to the first line with content.
+    my $line = 0;
+
+    while ($line < scalar @$commentLines && length $commentLines->[$line])
+        {  $line++;  };
+
+    return $self->ParseHeaderLine($commentLines->[$line]);
+    };
+
+
+
+#
 #   Function: ParseComment
 #
 #   This will be called whenever a comment capable of containing Natural Docs content is found.
 #
 #   Parameters:
 #
-#       commentLines - An arrayref of the comment's lines.  All tabs must be expanded into spaces, and all comment symbols,
-#                               boxes, lines, and trailing whitespace should be removed.  Leading whitespace and multiple blank lines
-#                               should be preserved.
+#       commentLines - An arrayref of the comment lines.  Must have been run through <NaturalDocs::Parser->CleanComment()>.
+#                               *The original memory will be changed.*
+#       isJavaDoc - Whether the comment is JavaDoc styled.
 #       lineNumber - The line number of the first of the comment lines.
 #       parsedTopics - A reference to the array where any new <NaturalDocs::Parser::ParsedTopics> should be placed.
 #
@@ -87,13 +118,13 @@ sub Start
 #
 #       The number of parsed topics added to the array, or zero if none.
 #
-sub ParseComment #(commentLines, lineNumber, parsedTopics)
+sub ParseComment #(commentLines, isJavaDoc, lineNumber, parsedTopics)
     {
-    my ($self, $commentLines, $lineNumber, $parsedTopics) = @_;
+    my ($self, $commentLines, $isJavaDoc, $lineNumber, $parsedTopics) = @_;
 
     my $topicCount = 0;
     my $prevLineBlank = 1;
-    my $inCodeSection;
+    my $inCodeSection = 0;
 
     my ($type, $scope, $isPlural, $title, $symbol);
     #my $package;  # package variable.
@@ -122,32 +153,17 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
         elsif (!length($commentLines->[$index]))
             {
             $prevLineBlank = 1;
-            $bodyEnd++;
-            }
 
-        # If the line is <format:headerless>...
-        elsif ($index == 0 && $commentLines->[0] eq '<format:headerless>')
-            {
-            $type = undef;
-            $scope = ::SCOPE_NORMAL();  # The scope repair and topic merging processes will handle if this is a class topic.
-            $isPlural = undef;
-            $title = undef;
-            $symbol = undef;
-
-            $bodyStart = $index + 1;
-            $bodyEnd = $index + 1;
-
-            $prevLineBlank = undef;
+            if ($topicCount)
+                {  $bodyEnd++;  };
             }
 
         # If the line has a recognized header and the previous line is blank...
         elsif ($prevLineBlank && (($newKeyword, $newTitle) = $self->ParseHeaderLine($commentLines->[$index])) )
             {
-            my ($newType, $newTypeInfo, $newIsPlural) = NaturalDocs::Topics->KeywordInfo($newKeyword);
-
             # Process the previous one, if any.
 
-            if ($bodyStart)
+            if ($topicCount)
                 {
                 if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
                     {  $package = undef;  };
@@ -155,21 +171,43 @@ sub ParseComment #(commentLines, lineNumber, parsedTopics)
                 my $body = $self->FormatBody($commentLines, $bodyStart, $bodyEnd, $type, $isPlural);
                 my $newTopic = $self->MakeParsedTopic($type, $title, $package, $body, $lineNumber + $bodyStart - 1, $isPlural);
                 push @$parsedTopics, $newTopic;
-                $topicCount++;
 
                 $package = $newTopic->Package();
                 };
 
-            ($type, $scope, $isPlural, $title) = ($newType, $newTypeInfo->Scope(), $newIsPlural, $newTitle);
+            $title = $newTitle;
+
+            my $typeInfo;
+            ($type, $typeInfo, $isPlural) = NaturalDocs::Topics->KeywordInfo($newKeyword);
+            $scope = $typeInfo->Scope();
 
             $bodyStart = $index + 1;
             $bodyEnd = $index + 1;
 
+            $topicCount++;
+
             $prevLineBlank = 0;
             }
 
-        # Line without recognized header
-        else
+        # If we're on a non-empty, non-header line of a JavaDoc-styled comment and we haven't started a topic yet...
+        elsif ($isJavaDoc && !$topicCount)
+            {
+            $type = undef;
+            $scope = ::SCOPE_NORMAL();  # The scope repair and topic merging processes will handle if this is a class topic.
+            $isPlural = undef;
+            $title = undef;
+            $symbol = undef;
+
+            $bodyStart = $index;
+            $bodyEnd = $index;
+
+            $topicCount++;
+
+            $prevLineBlank = undef;
+            }
+
+        # If we're on a normal content line within a topic
+        elsif ($topicCount)
             {
             $prevLineBlank = 0;
             $bodyEnd++;
