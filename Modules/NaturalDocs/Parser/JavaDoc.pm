@@ -85,65 +85,58 @@ my %inlineTags = ( 'inheritdoc' => 1, 'docroot' => 1, 'code' => 1, 'literal' => 
 
 
 ##
-#   Examines the JavaDoc-style comment and parses it if the topic is in JavaDoc syntax.  Does not handle it if the topic was in
-#   Natural Docs syntax and was just using a JavaDoc-style comment.  More specifically:
-#
-#   - If the comment starts with a Natural Docs topic line, it leaves it unaltered and returns false.
-#
-#   - If the comment doesn't start with a Natural Docs topic line but has JavaDoc @ tags, it parses it, adds it to parsedTopics, and
-#     returns true.
-#
-#   - If the comment doesn't start with a Natural Docs topic line or have JavaDoc @ tags, it just adds a "<format:headerless>" line
-#   at the beginning and returns false.
+#   Examines the comment and returns whether it is *definitely* JavaDoc content, i.e. is owned by this package.
 #
 #   Parameters:
 #
-#       commentLines - An arrayref of the comment lines.  All tabs should be converted to spaces.  *The original memory will
-#                               be changed.*
+#       commentLines - An arrayref of the comment lines.  Must have been run through <NaturalDocs::Parser->CleanComment()>.
+#       isJavaDoc - Whether the comment is JavaDoc styled.  This doesn't necessarily mean it has JavaDoc content.
+#
+#   Returns:
+#
+#       Whether the comment is *definitely* JavaDoc content.
+#
+sub IsMine #(string[] commentLines, bool isJavaDoc)
+    {
+    my ($self, $commentLines, $isJavaDoc) = @_;
+
+    if (!$isJavaDoc)
+        {  return undef;  };
+
+    for (my $line = 0; $line < scalar @$commentLines; $line++)
+        {
+        if ($commentLines->[$line] =~ /^ *@([a-z]+) /i && exists $blockTags{$1} ||
+            $commentLines->[$line] =~ /\{@([a-z]+) /i && exists $inlineTags{$1})
+            {
+            return 1;
+            };
+        };
+
+    return 0;
+    };
+
+
+##
+#   Parses the JavaDoc-syntax comment and adds it to the parsed topic list.
+#
+#   Parameters:
+#
+#       commentLines - An arrayref of the comment lines.  Must have been run through <NaturalDocs::Parser->CleanComment()>.
+#                               *The original memory will be changed.*
+#       isJavaDoc - Whether the comment is JavaDoc styled.  This doesn't necessarily mean it has JavaDoc content.
 #       lineNumber - The line number of the first of the comment lines.
 #       parsedTopics - A reference to the array where any new <NaturalDocs::Parser::ParsedTopics> should be placed.
 #
 #   Returns:
 #
-#       If true, the topic was in JavaDoc syntax and it was translated and added to the parsed topics.  If false, the topic was in
-#       Natural Docs syntax and was not handled.
+#       The number of parsed topics added to the array, which in this case will always be one.
 #
-sub TranslateComment #(string[] commentLines, int lineNumber, ParsedTopics[]* parsedTopics)
+sub ParseComment #(string[] commentLines, bool isJavaDoc, int lineNumber, ParsedTopics[]* parsedTopics)
     {
-    my ($self, $commentLines, $lineNumber, $parsedTopics) = @_;
+    my ($self, $commentLines, $isJavaDoc, $lineNumber, $parsedTopics) = @_;
 
-    # Skip to the first line with content.
-    while (scalar @$commentLines && $commentLines->[0] =~ /^[ \t]*$/)
-        {  shift @$commentLines;  };
-
-    # Return if the first line is a comment line.
-    if (NaturalDocs::Parser::Native->ParseHeaderLine($commentLines->[0]))
-        {  return undef;  };
-
-    # Check for any JavaDoc tags and return if there aren't any.
-    my $isJavaDoc;
-
-    for (my $i = 0; $i < scalar @$commentLines; $i++)
-        {
-        if ($commentLines->[$i] =~ /^ *@([a-z]+) /i && exists $blockTags{$1} ||
-            $commentLines->[$i] =~ /\{@([a-z]+) /i && exists $inlineTags{$1})
-            {
-            $isJavaDoc = 1;
-            last;
-            };
-        };
-
-    if (!$isJavaDoc)
-        {
-        unshift @$commentLines, '<format:headerless>';
-        return undef;
-        };
-
-
-    # At this point, we're sure it's a JavaDoc comment and we'll treat it as such.  Time to parse.
 
     # Stage one: Before block level tags.
-
 
     my $i = 0;
     my $output;
