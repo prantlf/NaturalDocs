@@ -234,10 +234,17 @@ sub OnComment #(string[] commentLines, int lineNumber, bool isJavaDoc)
 
     $self->CleanComment($commentLines);
 
-    if ($isJavaDoc && NaturalDocs::Parser::JavaDoc->TranslateComment($commentLines, $lineNumber, \@parsedFile))
-        {  return 1;  };
+    # We check if it's definitely Natural Docs content first.  This overrides all else, since it's possible that a comment could start
+    # with a topic line yet have something that looks like a JavaDoc tag.  Natural Docs wins in this case.
+    if (NaturalDocs::Parser::Native->IsMine($commentLines, $isJavaDoc))
+        {  return NaturalDocs::Parser::Native->ParseComment($commentLines, $isJavaDoc, $lineNumber, \@parsedFile);  }
 
-    return NaturalDocs::Parser::Native->ParseComment($commentLines, $lineNumber, \@parsedFile);
+    elsif (NaturalDocs::Parser::JavaDoc->IsMine($commentLines, $isJavaDoc))
+        {  return NaturalDocs::Parser::JavaDoc->ParseComment($commentLines, $isJavaDoc, $lineNumber, \@parsedFile);  }
+
+    # If the content is ambiguous and it's a JavaDoc-styled comment, treat it as Natural Docs content.
+    elsif ($isJavaDoc)
+        {  return NaturalDocs::Parser::Native->ParseComment($commentLines, $isJavaDoc, $lineNumber, \@parsedFile);  }
     };
 
 
@@ -383,9 +390,9 @@ sub Parse
 #
 #   Function: CleanComment
 #
-#   Removes any extraneous formatting and whitespace from the comment.  Eliminates comment boxes, horizontal lines, leading
-#   and trailing line breaks, trailing whitespace from lines, and expands all tab characters.  It keeps leading whitespace, though,
-#   since it may be needed for example code, and multiple blank lines, since the original line numbers are needed.
+#   Removes any extraneous formatting and whitespace from the comment.  Eliminates comment boxes, horizontal lines, trailing
+#   whitespace from lines, and expands all tab characters.  It keeps leading whitespace, though, since it may be needed for
+#   example code, and blank lines, since the original line numbers are needed.
 #
 #   Parameters:
 #
