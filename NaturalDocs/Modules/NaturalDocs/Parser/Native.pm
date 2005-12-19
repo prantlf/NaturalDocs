@@ -93,7 +93,7 @@ sub IsMine #(string[] commentLines, bool isJavaDoc)
     # Skip to the first line with content.
     my $line = 0;
 
-    while ($line < scalar @$commentLines && length $commentLines->[$line])
+    while ($line < scalar @$commentLines && !length $commentLines->[$line])
         {  $line++;  };
 
     return $self->ParseHeaderLine($commentLines->[$line]);
