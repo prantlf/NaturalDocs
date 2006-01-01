@@ -182,7 +182,8 @@ sub Run
 
     if ($numberToBuild)
         {
-        NaturalDocs::StatusMessage->Start('Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') . '...',
+        NaturalDocs::StatusMessage->Start('Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') .
+                                                            (scalar @$buildTargets > 1 ? ' for ' . (scalar @$buildTargets) . ' targets' : '') . '...',
                                                              $numberToBuild * scalar @$buildTargets);
 
         foreach my $file (keys %$filesToBuild)
@@ -204,7 +205,8 @@ sub Run
     if ($numberOfIndexesToBuild)
         {
         NaturalDocs::StatusMessage->Start('Building ' . $numberOfIndexesToBuild .
-                                                             ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') . '...',
+                                                             ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') .
+                                                            (scalar @$buildTargets > 1 ? ' for ' . (scalar @$buildTargets) . ' targets' : '') . '...',
                                                              $numberOfIndexesToBuild * scalar @$buildTargets);
 
         foreach my $index (keys %indexesToBuild)
