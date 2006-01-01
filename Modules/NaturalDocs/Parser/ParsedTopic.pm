@@ -42,6 +42,42 @@ use NaturalDocs::DefineMembers 'TYPE', 'TITLE', 'PACKAGE', 'USING', 'PROTOTYPE',
 # DEPENDENCY: New() depends on the order of these constants, and that this class is not inheriting any members.
 
 
+#
+#   Architecture: Title, Package, and Symbol Behavior
+#
+#   Title, package, and symbol behavior is a little awkward so it deserves some explanation.  Basically you set them according to
+#   certain rules, but you get computed values that try to hide all the different scoping situations.
+#
+#   Normal Topics:
+#
+#       Set them to the title and package as they appear.  "Function" and "PkgA.PkgB" will return "Function" for the title,
+#       "PkgA.PkgB" for the package, and "PkgA.PkgB.Function" for the symbol.
+#
+#       In the rare case that a title has a separator symbol it's treated as inadvertant, so "A vs. B" in "PkgA.PkgB" still returns just
+#       "PkgA.PkgB" for the package even though if you got it from the symbol it can be seen as "PkgA.PkgB.A vs".
+#
+#   Scope Topics:
+#
+#       Set the title normally and leave the package undef.  So "PkgA.PkgB" and undef will return "PkgA.PkgB" for the title as well
+#       as for the package and symbol.
+#
+#       The only time you should set the package is when you have full language support and they only documented the class with
+#       a partial title.  So if you documented "PkgA.PkgB" with just "PkgB", you want to set the package to "PkgA".  This
+#       will return "PkgB" as the title for presentation and will return "PkgA.PkgB" for the package and symbol, which is correct.
+#
+#   Always Global Topics:
+#
+#       Set the title and package normally, do not set the package to undef.  So "Global" and "PkgA.PkgB" will return "Global" as
+#       the title, "PkgA.PkgB" as the package, and "Global" as the symbol.
+#
+#   Um, yeah...:
+#
+#       So does this suck?  Yes, yes it does.  But the suckiness is centralized here instead of having to be handled everywhere these
+#       issues come into play.  Just realize there are a certain set of rules to follow when you *set* these variables, and the results
+#       you see when you *get* them are computed rather than literal.
+#
+
+
 ###############################################################################
 # Group: Functions
 
@@ -55,7 +91,8 @@ use NaturalDocs::DefineMembers 'TYPE', 'TITLE', 'PACKAGE', 'USING', 'PROTOTYPE',
 #       type          - The <TopicType>.
 #       title           - The title of the topic.
 #       package    - The package <SymbolString> the topic appears in, or undef if none.
-#       using         - An arrayref of additional package <SymbolStrings> available to the topic via "using" statements, or undef if none.
+#       using         - An arrayref of additional package <SymbolStrings> available to the topic via "using" statements, or undef if
+#                          none.
 #       prototype   - The prototype, if it exists and is applicable.  Otherwise set to undef.
 #       summary   - The summary of the topic, if any.
 #       body          - The body of the topic, formatted in <NDMarkup>.  May be undef, as some topics may not have bodies.
