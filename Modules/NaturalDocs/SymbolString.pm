@@ -25,7 +25,7 @@ package NaturalDocs::SymbolString;
 #   This should be the only way to get a <SymbolString> from plain text, as the splitting and normalization must be consistent
 #   throughout the application.
 #
-sub FromText #(textSymbol)
+sub FromText #(string textSymbol)
     {
     my ($self, $textSymbol) = @_;
 
@@ -33,6 +33,9 @@ sub FromText #(textSymbol)
 
     # Convert whitespace and reserved characters to spaces, and condense multiple consecutive ones.
     $textSymbol =~ tr/ \t\r\n\x1C\x1D\x1E\x1F/ /s;
+
+    # DEPENDENCY: ReferenceString->MakeFrom() assumes all 0x1E characters were removed.
+    # DEPENDENCY: ReferenceString->MakeFrom() assumes this encoding doesn't use 0x1E characters.
 
     # Remove spaces unless they're separating two alphanumeric/underscore characters.
     $textSymbol =~ s/^ //;
@@ -78,7 +81,7 @@ sub FromText #(textSymbol)
 #
 #   Converts a <SymbolString> to text, using the passed separator.
 #
-sub ToText #(symbolString, separator)
+sub ToText #(SymbolString symbolString, string separator)
     {
     my ($self, $symbolString, $separator) = @_;
 
@@ -104,7 +107,7 @@ sub ToText #(symbolString, separator)
 #
 #       Undef is represented by a zero for the number of identifiers.
 #
-sub ToBinaryFile #(fileHandle, symbol)
+sub ToBinaryFile #(FileHandle fileHandle, SymbolString symbol)
     {
     my ($self, $fileHandle, $symbol) = @_;
 
@@ -138,7 +141,7 @@ sub ToBinaryFile #(fileHandle, symbol)
 #
 #       See <ToBinaryFile()> for format and dependencies.
 #
-sub FromBinaryFile #(fileHandle)
+sub FromBinaryFile #(FileHandle fileHandle)
     {
     my ($self, $fileHandle) = @_;
 
@@ -178,7 +181,7 @@ sub FromBinaryFile #(fileHandle)
 #
 #   Returns the <SymbolString> as an array of identifiers.
 #
-sub IdentifiersOf #(symbol)
+sub IdentifiersOf #(SymbolString symbol)
     {
     my ($self, $symbol) = @_;
     return split(/\x1F/, $symbol);
@@ -190,7 +193,7 @@ sub IdentifiersOf #(symbol)
 #
 #   Takes a list of identifiers and/or <SymbolStrings> and returns it as a new <SymbolString>.
 #
-sub Join #(identifier/symbol, identifier/symbol, ...)
+sub Join #(string/SymbolString identifier/symbol, string/SymolString identifier/symbol, ...)
     {
     my ($self, @pieces) = @_;
 
