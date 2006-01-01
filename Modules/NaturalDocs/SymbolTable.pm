@@ -688,7 +688,9 @@ sub AddReference #(type, symbol, scope, using, file, resolvingFlags) or (referen
         my ($type, $symbol, $scope, $using, $resolvingFlags);
         ($self, $type, $symbol, $scope, $using, $file, $resolvingFlags) = @_;
 
-        $referenceString = NaturalDocs::ReferenceString->MakeFrom($type, $symbol, $scope, $using, $resolvingFlags);
+        $referenceString = NaturalDocs::ReferenceString->MakeFrom($type, $symbol,
+                                                                                                   NaturalDocs::Languages->LanguageOf($file)->Name(),
+                                                                                                   $scope, $using, $resolvingFlags);
         };
 
 
@@ -995,7 +997,9 @@ sub References #(type, symbol, scope, using, file, resolvingFlags) or (reference
         my ($type, $symbol, $scope, $using, $resolvingFlags);
         ($self, $type, $symbol, $scope, $using, $file, $resolvingFlags) = @_;
 
-        $referenceString = NaturalDocs::ReferenceString->MakeFrom($type, $symbol, $scope, $using, $resolvingFlags);
+        $referenceString = NaturalDocs::ReferenceString->MakeFrom($type, $symbol,
+                                                                                                  NaturalDocs::Languages->LanguageOf($file)->Name(),
+                                                                                                  $scope, $using, $resolvingFlags);
         };
 
     if (exists $references{$referenceString} && $references{$referenceString}->HasCurrentInterpretation())
@@ -1378,7 +1382,8 @@ sub GenerateInterpretations #(referenceString)
     {
     my ($self, $referenceString) = @_;
 
-    my ($type, $symbol, $scope, $using, $resolvingFlags) = NaturalDocs::ReferenceString->InformationOf($referenceString);
+    my ($type, $symbol, $languageName, $scope, $using, $resolvingFlags) =
+        NaturalDocs::ReferenceString->InformationOf($referenceString);
 
     # RESOLVE_NOPLURAL is handled by having @singulars be empty.
     my @singulars;
