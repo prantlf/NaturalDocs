@@ -1,5 +1,5 @@
 
-    Title: NDMarkup
+    Architecture: NDMarkup
 _______________________________________________________________________________
 
 A markup format used by the parser, both internally and in <NaturalDocs::Parser::ParsedTopic> objects.  Text formatted in
