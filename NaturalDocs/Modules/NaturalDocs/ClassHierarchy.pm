@@ -168,12 +168,10 @@ sub Load
 
     $dontRebuildFiles = 1;
 
-    my $fileIsOkay = 1;
+    my $fileIsOkay;
     my $fileName = NaturalDocs::Project->ClassHierarchyFile();
 
-    if (!open(CLASS_HIERARCHY_FILEHANDLE, '<' . $fileName))
-        {  $fileIsOkay = undef;  }
-    else
+    if (!NaturalDocs::Settings->RebuildData() && open(CLASS_HIERARCHY_FILEHANDLE, '<' . $fileName))
         {
         # See if it's binary.
         binmode(CLASS_HIERARCHY_FILEHANDLE);
@@ -184,7 +182,6 @@ sub Load
         if ($firstChar != ::BINARY_FORMAT())
             {
             close(CLASS_HIERARCHY_FILEHANDLE);
-            $fileIsOkay = undef;
             }
         else
             {
@@ -193,10 +190,9 @@ sub Load
             # Minor bugs were fixed in 1.33 that may affect the stored data.
 
             if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
-                {
-                close(CLASS_HIERARCHY_FILEHANDLE);
-                $fileIsOkay = undef;
-                };
+                {  close(CLASS_HIERARCHY_FILEHANDLE);  }
+            else
+                {  $fileIsOkay = 1;  };
             };
         };
 
@@ -236,7 +232,7 @@ sub Load
                 read(CLASS_HIERARCHY_FILEHANDLE, $file, $fileLength);
 
                 push @files, $file;
-                $self->AddClass($file, $class);
+                $self->AddClass($file, $class, NaturalDocs::Languages->LanguageOf($file)->Name());
 
                 $numberOfFiles--;
                 };
@@ -477,19 +473,20 @@ sub OnTargetSymbolChange #(reference)
 #
 #       file - The <FileName> the class was defined in.
 #       class - The class <SymbolString>.
+#       languageName - The name of the language this applies to.
 #
 #   Note:
 #
 #       The file parameter must be defined when using this function externally.  It may be undef for internal use only.
 #
-sub AddClass #(file, class)
+sub AddClass #(file, class, languageName)
     {
-    my ($self, $file, $class) = @_;
+    my ($self, $file, $class, $languageName) = @_;
 
     if (!exists $classes{$class})
         {
         $classes{$class} = NaturalDocs::ClassHierarchy::Class->New();
-        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class, $file), $file)
+        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class, $languageName), $file)
         };
 
     if (defined $file)
@@ -796,7 +793,8 @@ sub DeleteParentReference #(file, class, reference)
         if (!$deletedParentObject->HasChildren() && !$deletedParentObject->IsDefined())
             {
             delete $classes{$deletedParent};
-            NaturalDocs::SymbolTable->DeleteReference( $self->ClassReferenceOf($class, $file) );
+            NaturalDocs::SymbolTable->DeleteReference(
+                $self->ClassReferenceOf($class, NaturalDocs::Languages->LanguageOf($file)->Name()) );
             };
 
         return $deletedParent;
@@ -811,12 +809,11 @@ sub DeleteParentReference #(file, class, reference)
 #
 #   Returns the <REFERENCE_CH_CLASS> <ReferenceString> of the passed class <SymbolString>.
 #
-sub ClassReferenceOf #(class, file)
+sub ClassReferenceOf #(class, languageName)
     {
-    my ($self, $class, $file) = @_;
+    my ($self, $class, $languageName) = @_;
 
-    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class,
-                                                                            NaturalDocs::Languages->LanguageOf($file)->Name(), undef, undef,
+    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class, $languageName, undef, undef,
                                                                             ::RESOLVE_ABSOLUTE() | ::RESOLVE_NOPLURAL());
     };
 
