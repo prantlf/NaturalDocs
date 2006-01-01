@@ -88,6 +88,10 @@ my $noAutoGroup;
 # Whether the script should be run in quiet mode or not.
 my $isQuiet;
 
+# bool: rebuildData
+# WHether most data files should be ignored and rebuilt.
+my $rebuildData;
+
 # array: styles
 # An array of style names to use, most important first.
 my @styles;
@@ -507,6 +511,11 @@ sub NoAutoGroup
 sub IsQuiet
     {  return $isQuiet;  };
 
+# Function: RebuildData
+# Returns whether all data files should be ignored and rebuilt.
+sub RebuildData
+    {  return $rebuildData;  };
+
 # Function: CharSet
 # Returns the character set, or undef if none.
 sub CharSet
@@ -674,6 +683,7 @@ sub ParseCommandLine
                     {
                     NaturalDocs::Project->ReparseEverything();
                     NaturalDocs::Project->RebuildEverything();
+                    $rebuildData = 1;
                     }
                 elsif ($option eq '-ro')
                     {
