@@ -456,7 +456,7 @@ sub OnTargetSymbolChange #(reference)
     else # ($type == ::REFERENCE_CH_CLASS())
         {
         # Class references are global absolute, so we can just yank the symbol.
-        (undef, $class, undef, undef, undef) = NaturalDocs::ReferenceString->InformationOf($reference);
+        (undef, $class, undef, undef, undef, undef) = NaturalDocs::ReferenceString->InformationOf($reference);
         };
 
     $self->RebuildFilesFor($class, 1, 0, 1);
@@ -489,7 +489,7 @@ sub AddClass #(file, class)
     if (!exists $classes{$class})
         {
         $classes{$class} = NaturalDocs::ClassHierarchy::Class->New();
-        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class), $file)
+        NaturalDocs::SymbolTable->AddReference($self->ClassReferenceOf($class, $file), $file)
         };
 
     if (defined $file)
@@ -538,8 +538,9 @@ sub AddParentReference #(file, class, symbol, scope, using, resolvingFlags) or (
         my ($scope, $using, $resolvingFlags);
         ($self, $file, $class, $symbol, $scope, $using, $resolvingFlags) = @_;
 
-        $parentReference = NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_PARENT(),
-                                                                                                    $symbol, $scope, $using, $resolvingFlags);
+        $parentReference = NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_PARENT(), $symbol,
+                                                                                                    NaturalDocs::Languages->LanguageOf($file)->Name(),
+                                                                                                    $scope, $using, $resolvingFlags);
         }
     else
         {
@@ -795,7 +796,7 @@ sub DeleteParentReference #(file, class, reference)
         if (!$deletedParentObject->HasChildren() && !$deletedParentObject->IsDefined())
             {
             delete $classes{$deletedParent};
-            NaturalDocs::SymbolTable->DeleteReference( $self->ClassReferenceOf($class) );
+            NaturalDocs::SymbolTable->DeleteReference( $self->ClassReferenceOf($class, $file) );
             };
 
         return $deletedParent;
@@ -810,11 +811,12 @@ sub DeleteParentReference #(file, class, reference)
 #
 #   Returns the <REFERENCE_CH_CLASS> <ReferenceString> of the passed class <SymbolString>.
 #
-sub ClassReferenceOf #(class)
+sub ClassReferenceOf #(class, file)
     {
-    my ($self, $class) = @_;
+    my ($self, $class, $file) = @_;
 
-    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class, undef, undef,
+    return NaturalDocs::ReferenceString->MakeFrom(::REFERENCE_CH_CLASS(), $class,
+                                                                            NaturalDocs::Languages->LanguageOf($file)->Name(), undef, undef,
                                                                             ::RESOLVE_ABSOLUTE() | ::RESOLVE_NOPLURAL());
     };
 
