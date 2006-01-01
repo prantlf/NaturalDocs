@@ -43,11 +43,8 @@ sub FromText #(textSymbol)
     # Remove trailing empty parenthesis, so Function and Function() are equivalent.
     $textSymbol =~ s/\(\)$//;
 
-    # Remove trailing dereferences, so <MyStruct> and <MyStruct *> are equivalent
-    $textSymbol =~ s/\*$//;
-
     # Split the string into pieces.
-    my @pieces = split(/(\.+|::|->)/, $textSymbol);
+    my @pieces = split(/(\.|::|->)/, $textSymbol);
     my $symbolString;
 
     my $lastWasSeparator = 1;
@@ -62,11 +59,12 @@ sub FromText #(textSymbol)
                 $lastWasSeparator = 1;
                 };
             }
-        else
+        elsif (length $piece)
             {
             $symbolString .= $piece;
             $lastWasSeparator = 0;
             };
+        # Ignore empty pieces
         };
 
     $symbolString =~ s/\x1F$//;
