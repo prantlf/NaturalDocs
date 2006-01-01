@@ -36,9 +36,9 @@
 
     If not, OnComment() sends the comment to <NaturalDocs::Parser::JavaDoc->IsMine()> to test if it's definitely JavaDoc content, such as by having JavaDoc tags.  If so, it sends it to <NaturalDocs::Parser::JavaDoc->ParseComment()>.
 
-    If not, the content is ambiguous.  If it's a JavaDoc-styled comment it goes to <NaturalDocs::Parser::Native->ParseComment()>  and is ignored otherwise.  This lets normal comments slip through.  Note that it's only ambiguous if neither parser claims it; there's no test to see if they both do.  Instead Natural Docs always wins.
+    If not, the content is ambiguous.  If it's a JavaDoc-styled comment it goes to <NaturalDocs::Parser::Native->ParseComment()>  to be treated as a headerless Natural Docs comment.  It is ignored otherwise, which lets normal comments slip through.  Note that it's only ambiguous if neither parser claims it; there's no test to see if they both do.  Instead Natural Docs always wins.
 
-    We will not go into the JavaDoc code path for the purposes of this document.  It simply converts the JavaDoc comment into <NDMarkup> as best it can, which will never be perfectly, and adds a <NaturalDocs::Parser::ParsedTopic> to the list for that file.  Each of those ParsedTopics will be headerless as indicated by having an undefined <Title at NaturalDocs::Parser::ParsedTopic->Title()>.
+    We will not go into the JavaDoc code path for the purposes of this document.  It simply converts the JavaDoc comment into <NDMarkup> as best it can, which will never be perfectly, and adds a <NaturalDocs::Parser::ParsedTopic> to the list for that file.  Each of those ParsedTopics will be headerless as indicated by having an undefined <Title() at NaturalDocs::Parser::ParsedTopic->Title()>.
 
 
     Stage: Native Comment Parsing
@@ -46,7 +46,7 @@
 
     At this point, parsing is handed off to <NaturalDocs::Parser::Native->ParseComment()>.  It searches for header lines within the comment and divides the content into individual topics.  It also detects (start code) and (end) sections so that anything that would normally be interpreted as a header line can appear there without breaking the topic.
 
-    The content between the header lines is sent to <NaturalDocs::Parser::Native->FormatBody()> which handles all the block level formatting, such as paragraphs, bullet lists, and code sections.  That function in turn calls <NaturalDocs::Parser::Native->RichFormatTextBlock()> on certain snippets of the text to handle all inline formatting, such as bold, underline, and links, both explicit and automatic.  RichFormatTextBlock() uses functions such as <NaturalDocs::NDMarkup->ConvertAmpChars()>, <NaturalDocs::Parser::Native->TagType()>, and <NaturalDocs::Parser::Native->ClosingTag()>.
+    The content between the header lines is sent to <NaturalDocs::Parser::Native->FormatBody()> which handles all the block level formatting such as paragraphs, bullet lists, and code sections.  That function in turn calls <NaturalDocs::Parser::Native->RichFormatTextBlock()> on certain snippets of the text to handle all inline formatting, such as bold, underline, and links, both explicit and automatic.  RichFormatTextBlock() uses functions such as <NaturalDocs::NDMarkup->ConvertAmpChars()>, <NaturalDocs::Parser::Native->TagType()>, and <NaturalDocs::Parser::Native->ClosingTag()>.
 
     <NaturalDocs::Parser::Native->ParseComment()> then has the body in <NDMarkup> so it makes a <NaturalDocs::Parser::ParsedTopic> to add to the list.  It keeps track of the scoping via topic scoping, regardless of whether we're using full or basic language support.  Headerless topics are given normal scope regardless of whether they might be classes or other scoped types.
 
