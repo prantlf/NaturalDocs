@@ -92,6 +92,7 @@ use constant RESOLVE_NOUSING => 0x08;
 #
 #       type - The <ReferenceType>.
 #       symbol - The <SymbolString> of the reference.
+#       language - The name of the language that defines the file this reference appears in.
 #       scope - The scope <SymbolString> the reference appears in, or undef if none.
 #       using - An arrayref of scope <SymbolStrings> that are also available for checking due to the equivalent a "using" statement,
 #                  or undef if none.
@@ -101,41 +102,31 @@ use constant RESOLVE_NOUSING => 0x08;
 #
 #       The encoded <ReferenceString>.
 #
-sub MakeFrom #(type, symbol, scope, using, resolvingFlags)
+sub MakeFrom #(ReferenceType type, SymbolString symbol, string language, SymbolString scope, SymbolString[]* using, flags resolvingFlags)
     {
-    my ($self, $type, $symbol, $scope, $using, $resolvingFlags) = @_;
+    my ($self, $type, $symbol, $language, $scope, $using, $resolvingFlags) = @_;
 
     if ($type == ::REFERENCE_TEXT() || $resolvingFlags == 0)
        {  $resolvingFlags = undef;  };
 
-    # The format is [type] 0x1E [resolving flags] \x1E [symbol] 0x1E [scope] ( 0x1E [using] )*
-    # The format of the symbol, scope, and usings are the identifiers separated by 0x1F characters.
-    # If scope is undef but using isn't, there will be two 0x1E's to signify the missing scope.
+    # The format is [type] 0x1E [resolving flags] 0x1E [symbol] 0x1E [scope] ( 0x1E [using] )*
+    # If there is no scope and/or using, the separator characters still remain.
 
-    my @identifiers = NaturalDocs::SymbolString->IdentifiersOf($symbol);
+    # DEPENDENCY: SymbolString->FromText() removed all 0x1E characters.
+    # DEPENDENCY: SymbolString->FromText() doesn't use 0x1E characters in its encoding.
 
-    my $string = $type . "\x1E" . $resolvingFlags . "\x1E" . join("\x1F", @identifiers);
+    my $string = $type . "\x1E" . $symbol . "\x1E" . $language . "\x1E" . $resolvingFlags . "\x1E";
 
     if (defined $scope)
         {
-        @identifiers = NaturalDocs::SymbolString->IdentifiersOf($scope);
-        $string .= "\x1E" . join("\x1F", @identifiers);
+        $string .= $scope;
         };
+
+    $string .= "\x1E";
 
     if (defined $using)
         {
-        my @usingStrings;
-
-        foreach my $using (@$using)
-            {
-            @identifiers = NaturalDocs::SymbolString->IdentifiersOf($using);
-            push @usingStrings, join("\x1F", @identifiers);
-            };
-
-        if (!defined $scope)
-            {  $string .= "\x1E";  };
-
-        $string .= "\x1E" . join("\x1E", @usingStrings);
+        $string .= join("\x1E", @$using);
         };
 
     return $string;
@@ -156,6 +147,7 @@ sub MakeFrom #(type, symbol, scope, using, resolvingFlags)
 #   Format:
 #
 #       > [SymbolString: Symbol or undef for an undef reference]
+#       > [AString16: language]
 #       > [SymbolString: Scope or undef for none]
 #       >
 #       > [SymbolString: Using or undef for none]
@@ -170,15 +162,19 @@ sub MakeFrom #(type, symbol, scope, using, resolvingFlags)
 #       - <ReferenceTypes> must fit into a UInt8.  All values must be <= 255.
 #       - All <Resolving Flags> must fit into a UInt8.  All values must be <= 255.
 #
-sub ToBinaryFile #(fileHandle, referenceString, binaryFormatFlags)
+sub ToBinaryFile #(FileHandle fileHandle, ReferenceString referenceString, flags binaryFormatFlags)
     {
     my ($self, $fileHandle, $referenceString, $binaryFormatFlags) = @_;
 
-    my ($type, $symbol, $scope, $using, $resolvingFlags) = $self->InformationOf($referenceString);
+    my ($type, $symbol, $language, $scope, $using, $resolvingFlags) = $self->InformationOf($referenceString);
 
     # [SymbolString: Symbol or undef for an undef reference]
 
     NaturalDocs::SymbolString->ToBinaryFile($fileHandle, $symbol);
+
+    # [AString16: language]
+
+    print $fileHandle pack('nA*', length $language, $language);
 
     # [SymbolString: scope or undef if none]
 
@@ -226,9 +222,10 @@ sub ToBinaryFile #(fileHandle, referenceString, binaryFormatFlags)
 #
 #       See <ToBinaryFile()> for format and dependencies.
 #
-sub FromBinaryFile #(fileHandle, binaryFormatFlags, type, resolvingFlags)
+sub FromBinaryFile #(FileHandle fileHandle, flags binaryFormatFlags, ReferenceType type, flags resolvingFlags)
     {
     my ($self, $fileHandle, $binaryFormatFlags, $type, $resolvingFlags) = @_;
+    my $raw;
 
     # [SymbolString: Symbol or undef for an undef reference]
 
@@ -236,6 +233,16 @@ sub FromBinaryFile #(fileHandle, binaryFormatFlags, type, resolvingFlags)
 
     if (!defined $symbol)
         {  return undef;  };
+
+
+    # [AString16: language]
+
+    read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
+    my $languageLength = unpack('n', $raw);
+
+    my $language;
+    read(SYMBOLTABLE_FILEHANDLE, $language, $languageLength);
+
 
     # [SymbolString: scope or undef if none]
 
@@ -272,7 +279,7 @@ sub FromBinaryFile #(fileHandle, binaryFormatFlags, type, resolvingFlags)
         $resolvingFlags = unpack('C', $raw);
         };
 
-    return $self->MakeFrom($type, $symbol, $scope, $usingSymbol, $resolvingFlags);
+    return $self->MakeFrom($type, $symbol, $language, $scope, $usingSymbol, $resolvingFlags);
     };
 
 
@@ -287,45 +294,25 @@ sub FromBinaryFile #(fileHandle, binaryFormatFlags, type, resolvingFlags)
 #
 #   Returns:
 #
-#       The array ( type, symbol, scope, using, resolvingFlags ).
+#       The array ( type, symbol, language, scope, using, resolvingFlags ).
 #
 #       type - The <ReferenceType>.
 #       symbol - The <SymbolString>.
+#       language - The name of the language that defined the file the reference was defined in.
 #       scope - The scope <SymbolString>, or undef if none.
 #       using - An arrayref of scope <SymbolStrings> that the reference also has access to via "using" statements, or undef if none.
 #       resolvingFlags - The <Resolving Flags> of the reference.
 #
-sub InformationOf #(referenceString)
+sub InformationOf #(ReferenceString referenceString)
     {
     my ($self, $referenceString) = @_;
 
-    my ($type, $resolvingFlags, $symbolString, $scopeString, @usingStrings) = split(/\x1E/, $referenceString);
+    my ($type, $symbolString, $language, $resolvingFlags, $scopeString, @usingStrings) = split(/\x1E/, $referenceString);
 
     if (!length $resolvingFlags)
         {  $resolvingFlags = undef;  };
 
-    my @identifiers = split(/\x1F/, $symbolString);
-    my $symbol = NaturalDocs::SymbolString->Join(@identifiers);
-
-    my $scope;
-    if (defined $scopeString && length($scopeString))
-        {
-        @identifiers = split(/\x1F/, $scopeString);
-        $scope = NaturalDocs::SymbolString->Join(@identifiers);
-        };
-
-    my $using;
-    if (scalar @usingStrings)
-        {
-        $using = [ ];
-        foreach my $usingString (@usingStrings)
-            {
-            @identifiers = split(/\x1F/, $usingString);
-            push @$using, NaturalDocs::SymbolString->Join(@identifiers);
-            };
-        };
-
-    return ( $type, $symbol, $scope, $using, $resolvingFlags );
+    return ( $type, $symbolString, $language, $scopeString, [ @usingStrings ], $resolvingFlags );
     };
 
 
@@ -335,7 +322,7 @@ sub InformationOf #(referenceString)
 #   Returns the <ReferenceType> encoded in the reference string.  This is faster than <InformationOf()> if this is
 #   the only information you need.
 #
-sub TypeOf #(referenceString)
+sub TypeOf #(ReferenceString referenceString)
     {
     my ($self, $referenceString) = @_;
 
