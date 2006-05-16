@@ -237,11 +237,11 @@ sub FromBinaryFile #(FileHandle fileHandle, flags binaryFormatFlags, ReferenceTy
 
     # [AString16: language]
 
-    read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
+    read($fileHandle, $raw, 2);
     my $languageLength = unpack('n', $raw);
 
     my $language;
-    read(SYMBOLTABLE_FILEHANDLE, $language, $languageLength);
+    read($fileHandle, $language, $languageLength);
 
 
     # [SymbolString: scope or undef if none]
