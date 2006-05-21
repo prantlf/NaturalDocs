@@ -287,7 +287,7 @@ sub UpdateFile #(sourceFile)
 
         $content =~ s/<div id=Menu>.*?<\/div><!--Menu-->/$self->BuildMenu($sourceFile, undef, undef)/es;
 
-        $content =~ s/<div id=Footer-->.*?<\/div><!--Footer-->/$self->BuildFooter()/e;
+        $content =~ s/<div id=Footer>.*?<\/div><!--Footer-->/$self->BuildFooter()/e;
 
 
         open(OUTPUTFILEHANDLE, '>' . $outputFile);
