@@ -562,20 +562,29 @@ blockquote {
 
 #Footer {
     font-size: 8pt;
-    color: #909090;
+    color: #989898;
     text align: right;
+    }
+
+#Footer p {
+    text-indent: 0;
+    margin-bottom: .5em;
     }
 
 body#UnframedPage #Footer {
     text-align: right;
-    margin: 2px }
+    margin: 2px;
+    }
 
 body#FramedMenuPage #Footer {
     text-align: center;
-    margin: 5em 10px 10px 10px}
+    margin: 5em 10px 10px 10px;
+    padding-top: 1em;
+    border-top: 1px solid #C8C8C8;
+    }
 
     #Footer a:link,
     #Footer a:hover,
-    #Footer a:visited { color: #909090 }
+    #Footer a:visited { color: #989898 }
     #Footer a:active { color: #A00000 }
 

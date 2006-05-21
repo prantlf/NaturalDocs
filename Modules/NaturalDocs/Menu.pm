@@ -99,6 +99,20 @@ my $subTitle;
 my $footer;
 
 #
+#   String: timestampText
+#
+#   The timestamp for the documentation, stored as the final output text.
+#
+my $timestampText;
+
+#
+#   String: timestampCode
+#
+#   The timestamp for the documentation, storted as the symbolic code.
+#
+my $timestampCode;
+
+#
 #   hash: indexes
 #
 #   An existence hash of all the defined index <TopicTypes> appearing in the menu.
@@ -142,10 +156,26 @@ my %bannedIndexes;
 #       > Title: [title]
 #       > SubTitle: [subtitle]
 #       > Footer: [footer]
+#       > Timestamp: [timestamp code]
 #
-#       The file format version, menu title, subtitle, and footer are specified as above.  Each can only be specified once, with
-#       subsequent ones being ignored.  Subtitle is ignored if Title is not present.  Format must be the first entry in the file.  If it's
-#       not present, it's assumed the menu is from version 0.95 or earlier, since it was added with 1.0.
+#       The file format version, menu title, subtitle, footer, and timestamp are specified as above.  Each can only be specified once,
+#       with subsequent ones being ignored.  Subtitle is ignored if Title is not present.  Format must be the first entry in the file.  If
+#       it's not present, it's assumed the menu is from version 0.95 or earlier, since it was added with 1.0.
+#
+#       The timestamp code is as follows.
+#
+#           m - Single digit month, where applicable.  January is "1".
+#           mm - Always double digit month.  January is "01".
+#           mon - Short month word.  January is "Jan".
+#           month - Long month word.  January is "January".
+#           d - Single digit day, where applicable.  1 is "1".
+#           dd - Always double digit day.  1 is "01".
+#           day - Day with text extension.  1 is "1st".
+#           yy - Double digit year.  2006 is "06".
+#           yyyy - Four digit year.  2006 is "2006".
+#           year - Four digit year.  2006 is "2006".
+#
+#       Anything else is left literal in the output.
 #
 #       > File: [title] ([file name])
 #       > File: [title] (auto-title, [file name])
@@ -203,6 +233,10 @@ my %bannedIndexes;
 #
 #
 #   Revisions:
+#
+#       2.0:
+#
+#           - Added Timestamp property.
 #
 #       1.3:
 #
@@ -343,6 +377,20 @@ sub LoadAndUpdate
         NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
                                                     . ' in ' . NaturalDocs::Project->MenuFile());
         };
+
+    # If the menu has a timestamp and today is a different day than the last time Natural Docs was run, we have to count it as the
+    # menu changing.
+    if (defined $timestampCode)
+        {
+        my (undef, undef, undef, $currentDay, $currentMonth, $currentYear) = localtime();
+        my (undef, undef, undef, $lastDay, $lastMonth, $lastYear) =
+            localtime( (stat( NaturalDocs::Project->PreviousMenuStateFile() ))[9] );
+            # This should be okay if the previous menu state file doesn't exist.
+
+        if ($currentDay != $lastDay || $currentMonth != $lastMonth || $currentYear != $lastYear)
+            {  $hasChanged = 1;  };
+        };
+
 
     if ($relativeFiles)
         {
@@ -490,6 +538,14 @@ sub Footer
     {  return $footer;  };
 
 #
+#   Function: TimeStamp
+#
+#   Returns the timestamp text of the documentation, or undef if none.
+#
+sub TimeStamp
+    {  return $timestampText;  };
+
+#
 #   Function: Indexes
 #
 #   Returns an existence hashref of all the index <TopicTypes> appearing in the menu.  Do not change the arrayref.
@@ -574,8 +630,9 @@ sub OnDefaultTitleChange #(file)
 #
 #   Function: LoadMenuFile
 #
-#   Loads and parses the menu file <Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, <indexes>, and
-#   <bannedIndexes>.  If there are any errors in the file, they will be recorded with <NaturalDocs::ConfigFile->AddError()>.
+#   Loads and parses the menu file <Menu.txt>.  This will fill <menu>, <title>, <subTitle>, <footer>, <timestampText>,
+#   <timestampCode>, <indexes>, and <bannedIndexes>.  If there are any errors in the file, they will be recorded with
+#   <NaturalDocs::ConfigFile->AddError()>.
 #
 #   Returns:
 #
@@ -734,6 +791,18 @@ sub LoadMenuFile
                     {  $footer = $value;  }
                 else
                     {  NaturalDocs::ConfigFile->AddError('Footer can only be defined once.');  };
+                }
+
+
+            elsif ($keyword eq 'timestamp')
+                {
+                if (!defined $timestampCode)
+                    {
+                    $timestampCode = $value;
+                    $self->GenerateTimestampText();
+                    }
+                else
+                    {  NaturalDocs::ConfigFile->AddError('Timestamp can only be defined once.');  };
                 }
 
 
@@ -938,7 +1007,34 @@ sub SaveMenuFile
         . "# If you want to add a copyright notice, this would be the place to do it.\n";
         };
 
-    print MENUFILEHANDLE "\n";
+    if (defined $timestampCode)
+        {
+        print MENUFILEHANDLE 'Timestamp: ' . $timestampCode . "\n";
+        }
+    else
+        {
+        print MENUFILEHANDLE
+        "\n"
+        . "# You can add a timestamp to your documentation like one of these:\n"
+        . "# Timestamp: Generated on month day, year\n"
+        . "# Timestamp: Updated mm/dd/yyyy\n"
+        . "# Timestamp: Last updated mon day\n"
+        . "#\n";
+        };
+
+    print MENUFILEHANDLE
+        qq{#   m     - One or two digit month.  January is "1"\n}
+        . qq{#   mm    - Always two digit month.  January is "01"\n}
+        . qq{#   mon   - Short month word.  January is "Jan"\n}
+        . qq{#   month - Long month word.  January is "January"\n}
+        . qq{#   d     - One or two digit day.  1 is "1"\n}
+        . qq{#   dd    - Always two digit day.  1 is "01"\n}
+        . qq{#   day   - Day with letter extension.  1 is "1st"\n}
+        . qq{#   yy    - Two digit year.  2006 is "06"\n}
+        . qq{#   yyyy  - Four digit year.  2006 is "2006"\n}
+        . qq{#   year  - Four digit year.  2006 is "2006"\n}
+
+        . "\n";
 
     if (scalar keys %bannedIndexes)
         {
@@ -1411,6 +1507,50 @@ sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
         };
 
     use integer;
+    };
+
+
+#
+#   Function: GenerateTimestampText
+#
+#   Generates <timestampText> from <timestampCode> with the current date.
+#
+sub GenerateTimestampText
+    {
+    my $self = shift;
+
+    my @longMonths = ( 'January', 'February', 'March', 'April', 'May', 'June',
+                                   'July', 'August', 'September', 'October', 'November', 'December' );
+    my @shortMonths = ( 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept', 'Oct', 'Nov', 'Dec' );
+
+    my (undef, undef, undef, $day, $month, $year) = localtime();
+    $year += 1900;
+
+    my $longDay;
+    if ($day % 10 == 1 && $day != 11)
+        {  $longDay = $day . 'st';  }
+    elsif ($day % 10 == 2 && $day != 12)
+        {  $longDay = $day . 'nd';  }
+    elsif ($day % 10 == 3 && $day != 13)
+        {  $longDay = $day . 'rd';  }
+    else
+        {  $longDay = $day . 'th';  };
+
+
+    $timestampText = $timestampCode;
+
+    $timestampText =~ s/(?<![a-z])month(?![a-z])/$longMonths[$month]/i;
+    $timestampText =~ s/(?<![a-z])mon(?![a-z])/$shortMonths[$month]/i;
+    $timestampText =~ s/(?<![a-z])mm(?![a-z])/sprintf('%02d', $month + 1)/ie;
+    $timestampText =~ s/(?<![a-z])m(?![a-z])/$month + 1/ie;
+
+    $timestampText =~ s/(?<![a-z])day(?![a-z])/$longDay/i;
+    $timestampText =~ s/(?<![a-z])dd(?![a-z])/sprintf('%02d', $day)/ie;
+    $timestampText =~ s/(?<![a-z])d(?![a-z])/$day/i;
+
+    $timestampText =~ s/(?<![a-z])(?:year|yyyy)(?![a-z])/$year/i;
+    $timestampText =~ s/(?<![a-z])(?:year|yyyy)(?![a-z])/$year/i; #XXX
+    $timestampText =~ s/(?<![a-z])yy(?![a-z])/sprintf('%02d', $year % 100)/ie;
     };
 
 
