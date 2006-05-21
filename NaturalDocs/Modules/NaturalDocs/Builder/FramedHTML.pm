@@ -234,7 +234,7 @@ sub UpdateMenu
             . "\n\n\n"
                 . $self->BuildMenu(undef, undef, 1)
             . "\n\n\n"
-                . $self->BuildFooter()
+                . $self->BuildFooter(1)
             . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
