@@ -487,7 +487,7 @@ sub RemoveLineExtender #(line)
 
     if (defined $self->LineExtender())
         {
-        my $lineExtenderIndex = index($line, $self->LineExtender());
+        my $lineExtenderIndex = rindex($line, $self->LineExtender());
 
         if ($lineExtenderIndex != -1 &&
             substr($line, $lineExtenderIndex + length($self->LineExtender())) =~ /^[ \t]*\n$/)
