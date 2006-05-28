@@ -21,6 +21,46 @@ use integer;
 
 package NaturalDocs::BinaryFile;
 
+use vars qw(@EXPORT @ISA);
+require Exporter;
+@ISA = qw(Exporter);
+
+@EXPORT = ('BINARY_FORMAT');
+
+
+###############################################################################
+# Group: Format
+
+#
+#   Topic: Standard Header
+#
+#   > [UInt8: BINARY_FORMAT]
+#   > [VersionInt: app version]
+#
+#   The first byte is <BINARY_FORMAT>, which distinguishes binary configuration files from text ones, since Natural Docs
+#   used to use text data files with the same name.
+#
+#   The next section is the version of Natural Docs that wrote the file, as defined by <NaturalDocs::Settings->AppVersion>
+#   and written by <NaturalDocs::Version->ToBinaryFile()>.
+#
+
+#
+#   Topic: Data Types
+#
+#   All the integer data types are written most significant byte first, aka big endian.
+#
+#   An AString16 is a UInt16 followed by that many 8-bit ASCII characters.  It doesn't include a null character at the end.  Undef
+#   strings are represented by a zero for the UInt16 and nothing following it.
+#
+
+#
+#   Constant: BINARY_FORMAT
+#
+#   An 8-bit constant that's used as the first byte of binary data files.  This is used so that you can easily distinguish between
+#   binary and old-style text data files.  It's not a character that would appear in plain text files.
+#
+use constant BINARY_FORMAT => pack('C', 0x06);
+# Which is ACK or acknowledge in ASCII.  Is the cool spade character in DOS displays.
 
 
 ###############################################################################
