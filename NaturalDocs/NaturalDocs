@@ -82,6 +82,7 @@ use NaturalDocs::Topics;
 use NaturalDocs::Version;
 use NaturalDocs::File;
 use NaturalDocs::ConfigFile;
+use NaturalDocs::BinaryFile;
 use NaturalDocs::NDMarkup;
 use NaturalDocs::Languages;
 use NaturalDocs::Settings;
