@@ -216,7 +216,7 @@ sub Load
     my $fileIsOkay;
 
     if (!NaturalDocs::Settings->RebuildData() &&
-        open(SYMBOLTABLE_FILEHANDLE, '<' . NaturalDocs::Project->SymbolTableFile()))
+        open(SYMBOLTABLE_FILEHANDLE, '<' . NaturalDocs::Project->DataFile('SymbolTable.nd')) )
         {
         # See if it's binary.
         binmode(SYMBOLTABLE_FILEHANDLE);
@@ -422,8 +422,8 @@ sub Save
     {
     my ($self) = @_;
 
-    open (SYMBOLTABLE_FILEHANDLE, '>' . NaturalDocs::Project->SymbolTableFile())
-        or die "Couldn't save " . NaturalDocs::Project->SymbolTableFile() . ".\n";
+    open (SYMBOLTABLE_FILEHANDLE, '>' . NaturalDocs::Project->DataFile('SymbolTable.nd'))
+        or die "Couldn't save " . NaturalDocs::Project->DataFile('SymbolTable.nd') . ".\n";
 
     binmode(SYMBOLTABLE_FILEHANDLE);
 
