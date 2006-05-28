@@ -1,6 +1,6 @@
 ###############################################################################
 #
-#   Class: NaturalDocs::Project::File
+#   Class: NaturalDocs::Project::SourceFile
 #
 ###############################################################################
 #
@@ -14,7 +14,7 @@
 use strict;
 use integer;
 
-package NaturalDocs::Project::File;
+package NaturalDocs::Project::SourceFile;
 
 
 
