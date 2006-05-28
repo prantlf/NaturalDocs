@@ -19,7 +19,7 @@
 use strict;
 use integer;
 
-package NaturalDocs::ConfigFile;
+package NaturalDocs::BinaryFile;
 
 
 
