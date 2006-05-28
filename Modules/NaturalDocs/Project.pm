@@ -27,7 +27,7 @@
 # This file is part of Natural Docs, which is Copyright (C) 2003-2005 Greg Valure
 # Natural Docs is licensed under the GPL
 
-use NaturalDocs::Project::File;
+use NaturalDocs::Project::SourceFile;
 
 use strict;
 use integer;
@@ -61,7 +61,7 @@ package NaturalDocs::Project;
 #   hash: supportedFiles
 #
 #   A hash of all the supported files in the input directory.  The keys are the <FileNames>, and the values are
-#   <NaturalDocs::Project::File> objects.
+#   <NaturalDocs::Project::SourceFile> objects.
 #
 my %supportedFiles;
 
@@ -853,7 +853,7 @@ sub MostUsedLanguage
 #   Function: GetAllSupportedFiles
 #
 #   Gets all the supported files in the passed directory and its subdirectories and puts them into <supportedFiles>.  The only
-#   attribute that will be set is <NaturalDocs::Project::File->LastModified()>.  Also sets <mostUsedLanguage>.
+#   attribute that will be set is <NaturalDocs::Project::SourceFile->LastModified()>.  Also sets <mostUsedLanguage>.
 #
 sub GetAllSupportedFiles
     {
@@ -916,7 +916,10 @@ sub GetAllSupportedFiles
                 {
                 if (my $language = NaturalDocs::Languages->LanguageOf($fullEntry))
                     {
-                    $supportedFiles{$fullEntry} = NaturalDocs::Project::File->New(undef, (stat($fullEntry))[9], undef, undef);
+                    my $fileObject = NaturalDocs::Project::SourceFile->New();
+                    $fileObject->SetLastModified(( stat($fullEntry))[9] );
+                    $supportedFiles{$fullEntry} = $fileObject;
+
                     $languageCounts{$language->Name()}++;
                     };
                 };
