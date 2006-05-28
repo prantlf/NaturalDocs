@@ -1056,7 +1056,7 @@ sub LoadAndComparePreviousSettings
     my ($self) = @_;
 
     my $fileIsOkay = 1;
-    my $fileName = NaturalDocs::Project->PreviousSettingsFile();
+    my $fileName = NaturalDocs::Project->DataFile('PreviousSettings.nd');
     my $version;
 
     if (!open(PREVIOUS_SETTINGS_FILEHANDLE, '<' . $fileName))
@@ -1217,8 +1217,8 @@ sub SavePreviousSettings
     {
     my ($self) = @_;
 
-    open (PREVIOUS_SETTINGS_FILEHANDLE, '>' . NaturalDocs::Project->PreviousSettingsFile())
-        or die "Couldn't save " . NaturalDocs::Project->PreviousSettingsFile() . ".\n";
+    open (PREVIOUS_SETTINGS_FILEHANDLE, '>' . NaturalDocs::Project->DataFile('PreviousSettings.nd'))
+        or die "Couldn't save " . NaturalDocs::Project->DataFile('PreviousSettings.nd') . ".\n";
 
     binmode(PREVIOUS_SETTINGS_FILEHANDLE);
 

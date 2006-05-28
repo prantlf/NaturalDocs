@@ -266,7 +266,7 @@ sub Load
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
         NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
-                                                    . ' in ' . NaturalDocs::Project->MainLanguagesFile());
+                                                    . ' in ' . NaturalDocs::Project->MainConfigFile('Languages.txt'));
         }
 
 
@@ -278,7 +278,7 @@ sub Load
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
         NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
-                                                    . ' in ' . NaturalDocs::Project->UserLanguagesFile());
+                                                    . ' in ' . NaturalDocs::Project->UserConfigFile('Languages.txt'));
         };
 
 
@@ -317,13 +317,13 @@ sub LoadFile #(isMain, tempExtensions, tempShebangStrings)
 
     if ($isMain)
         {
-        $file = NaturalDocs::Project->MainLanguagesFile();
-        $status = NaturalDocs::Project->MainLanguagesFileStatus();
+        $file = NaturalDocs::Project->MainConfigFile('Languages.txt');
+        $status = NaturalDocs::Project->MainConfigFileStatus('Languages.txt');
         }
     else
         {
-        $file = NaturalDocs::Project->UserLanguagesFile();
-        $status = NaturalDocs::Project->UserLanguagesFileStatus();
+        $file = NaturalDocs::Project->UserConfigFile('Languages.txt');
+        $status = NaturalDocs::Project->UserConfigFileStatus('Languages.txt');
         };
 
 
@@ -829,17 +829,17 @@ sub SaveFile #(isMain)
 
     if ($isMain)
         {
-        if (NaturalDocs::Project->MainLanguagesFileStatus() == ::FILE_SAME())
+        if (NaturalDocs::Project->MainConfigFileStatus('Languages.txt') == ::FILE_SAME())
             {  return;  };
-        $file = NaturalDocs::Project->MainLanguagesFile();
+        $file = NaturalDocs::Project->MainConfigFile('Languages.txt');
         }
     else
         {
         # Have to check the main too because this file lists the languages defined there.
-        if (NaturalDocs::Project->UserLanguagesFileStatus() == ::FILE_SAME() &&
-            NaturalDocs::Project->MainLanguagesFileStatus() == ::FILE_SAME())
+        if (NaturalDocs::Project->UserConfigFileStatus('Languages.txt') == ::FILE_SAME() &&
+            NaturalDocs::Project->MainConfigFileStatus('Languages.txt') == ::FILE_SAME())
             {  return;  };
-        $file = NaturalDocs::Project->UserLanguagesFile();
+        $file = NaturalDocs::Project->UserConfigFile('Languages.txt');
         };
 
 

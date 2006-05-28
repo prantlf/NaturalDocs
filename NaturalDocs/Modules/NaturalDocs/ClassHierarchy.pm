@@ -169,7 +169,7 @@ sub Load
     $dontRebuildFiles = 1;
 
     my $fileIsOkay;
-    my $fileName = NaturalDocs::Project->ClassHierarchyFile();
+    my $fileName = NaturalDocs::Project->DataFile('ClassHierarchy.nd');
 
     if (!NaturalDocs::Settings->RebuildData() && open(CLASS_HIERARCHY_FILEHANDLE, '<' . $fileName))
         {
@@ -283,8 +283,8 @@ sub Save
     {
     my ($self) = @_;
 
-    open (CLASS_HIERARCHY_FILEHANDLE, '>' . NaturalDocs::Project->ClassHierarchyFile())
-        or die "Couldn't save " . NaturalDocs::Project->ClassHierarchyFile() . ".\n";
+    open (CLASS_HIERARCHY_FILEHANDLE, '>' . NaturalDocs::Project->DataFile('ClassHierarchy.nd'))
+        or die "Couldn't save " . NaturalDocs::Project->DataFile('ClassHierarchy.nd') . ".\n";
 
     binmode(CLASS_HIERARCHY_FILEHANDLE);
 

@@ -320,7 +320,7 @@ sub Load
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
         NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
-                                                    . ' in ' . NaturalDocs::Project->MainTopicsFile());
+                                                    . ' in ' . NaturalDocs::Project->MainConfigFile('Topics.txt'));
         }
 
 
@@ -332,7 +332,7 @@ sub Load
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
         NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
-                                                    . ' in ' . NaturalDocs::Project->UserTopicsFile());
+                                                    . ' in ' . NaturalDocs::Project->UserConfigFile('Topics.txt'));
         }
     };
 
@@ -354,13 +354,13 @@ sub LoadFile #(isMain)
 
     if ($isMain)
         {
-        $file = NaturalDocs::Project->MainTopicsFile();
-        $status = NaturalDocs::Project->MainTopicsFileStatus();
+        $file = NaturalDocs::Project->MainConfigFile('Topics.txt');
+        $status = NaturalDocs::Project->MainConfigFileStatus('Topics.txt');
         }
     else
         {
-        $file = NaturalDocs::Project->UserTopicsFile();
-        $status = NaturalDocs::Project->UserTopicsFileStatus();
+        $file = NaturalDocs::Project->UserConfigFile('Topics.txt');
+        $status = NaturalDocs::Project->UserConfigFileStatus('Topics.txt');
         };
 
     my $version;
@@ -762,17 +762,17 @@ sub SaveFile #(isMain)
 
     if ($isMain)
         {
-        if (NaturalDocs::Project->MainTopicsFileStatus() == ::FILE_SAME())
+        if (NaturalDocs::Project->MainConfigFileStatus('Topics.txt') == ::FILE_SAME())
             {  return;  };
-        $file = NaturalDocs::Project->MainTopicsFile();
+        $file = NaturalDocs::Project->MainConfigFile('Topics.txt');
         }
     else
         {
         # We have to check the main one two because this lists the topics defined in it.
-        if (NaturalDocs::Project->UserTopicsFileStatus() == ::FILE_SAME() &&
-            NaturalDocs::Project->MainTopicsFileStatus() == ::FILE_SAME())
+        if (NaturalDocs::Project->UserConfigFileStatus('Topics.txt') == ::FILE_SAME() &&
+            NaturalDocs::Project->MainConfigFileStatus('Topics.txt') == ::FILE_SAME())
             {  return;  };
-        $file = NaturalDocs::Project->UserTopicsFile();
+        $file = NaturalDocs::Project->UserConfigFile('Topics.txt');
         };
 
 

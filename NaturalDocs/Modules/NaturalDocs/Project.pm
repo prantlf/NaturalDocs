@@ -36,7 +36,7 @@ package NaturalDocs::Project;
 
 
 ###############################################################################
-# Group: Variables
+# Group: File Handles
 
 #
 #   handle: FH_FILEINFO
@@ -50,6 +50,11 @@ package NaturalDocs::Project;
 #
 #   The file handle for the config file information file, <ConfigFileInfo.nd>.
 #
+
+
+
+###############################################################################
+# Group: Source File Variables
 
 
 #
@@ -90,26 +95,6 @@ my %filesToPurge;
 my %unbuiltFilesWithContent;
 
 
-# var: menuFileStatus
-# The <FileStatus> of the project's menu file.
-my $menuFileStatus;
-
-# var: mainTopicsFileStatus
-# The <FileStatus> of the project's main topics file.
-my $mainTopicsFileStatus;
-
-# var: userTopicsFileStatus
-# The <FileStatus> of the project's user topics file.
-my $userTopicsFileStatus;
-
-# var: mainLanguagesFileStatus
-# The <FileStatus> of the project's main languages file.
-my $mainLanguagesFileStatus;
-
-# var: userLanguagesFileStatus
-# The <FileStatus> of the project's user languages file.
-my $userLanguagesFileStatus;
-
 # bool: reparseEverything
 # Whether all the source files need to be reparsed.
 my $reparseEverything;
@@ -121,6 +106,29 @@ my $rebuildEverything;
 # hash: mostUsedLanguage
 # The name of the most used language.  Doesn't include text files.
 my $mostUsedLanguage;
+
+
+
+###############################################################################
+# Group: Configuration File Variables
+
+
+#
+#   hash: mainConfigFile
+#
+#   A hash mapping all the main configuration file names without paths to their <FileStatus>.  Prior to <LoadConfigFileInfo()>,
+#   it serves as an existence hashref of the file names.
+#
+my %mainConfigFiles = ( 'Topics.txt' => 1, 'Languages.txt' => 1 );
+
+#
+#   hash: userConfigFiles
+#
+#   A hash mapping all the user configuration file names without paths to their <FileStatus>.  Prior to <LoadConfigFileInfo()>,
+#   it serves as an existence hashref of the file names.
+#
+my %userConfigFiles = ( 'Topics.txt' => 1, 'Languages.txt' => 1, 'Menu.txt' => 1 );
+
 
 
 
@@ -229,7 +237,7 @@ sub LoadSourceFileInfo
     my $version;
     my $hasChanged;
 
-    if (open(FH_FILEINFO, '<' . $self->FileInfoFile()))
+    if (open(FH_FILEINFO, '<' . $self->DataFile('FileInfo.nd')))
         {
         # Check if the file is in the right format.
         $version = NaturalDocs::Version->FromTextFile(\*FH_FILEINFO);
@@ -400,8 +408,8 @@ sub SaveSourceFileInfo
     {
     my ($self) = @_;
 
-    open(FH_FILEINFO, '>' . $self->FileInfoFile())
-        or die "Couldn't save project file " . $self->FileInfoFile() . "\n";
+    open(FH_FILEINFO, '>' . $self->DataFile('FileInfo.nd'))
+        or die "Couldn't save project file " . $self->DataFile('FileInfo.nd') . "\n";
 
     NaturalDocs::Version->ToTextFile(\*FH_FILEINFO, NaturalDocs::Settings->AppVersion());
 
@@ -430,7 +438,7 @@ sub LoadConfigFileInfo
 
     my $fileIsOkay;
     my $version;
-    my $fileName = NaturalDocs::Project->ConfigFileInfoFile();
+    my $fileName = NaturalDocs::Project->DataFile('ConfigFileInfo.nd');
 
     if (open(FH_CONFIGFILEINFO, '<' . $fileName))
         {
@@ -456,11 +464,11 @@ sub LoadConfigFileInfo
             {  close(FH_CONFIGFILEINFO);  };
         };
 
-    my @configFiles = ( $self->MenuFile(), \$menuFileStatus,
-                                 $self->MainTopicsFile(), \$mainTopicsFileStatus,
-                                 $self->UserTopicsFile(), \$userTopicsFileStatus,
-                                 $self->MainLanguagesFile(), \$mainLanguagesFileStatus,
-                                 $self->UserLanguagesFile(), \$userLanguagesFileStatus );
+    my @configFiles = ( $self->UserConfigFile('Menu.txt'), \$userConfigFiles{'Menu.txt'},
+                                 $self->MainConfigFile('Topics.txt'), \$mainConfigFiles{'Topics.txt'},
+                                 $self->UserConfigFile('Topics.txt'), \$userConfigFiles{'Topics.txt'},
+                                 $self->MainConfigFile('Languages.txt'), \$mainConfigFiles{'Languages.txt'},
+                                 $self->UserConfigFile('Languages.txt'), \$userConfigFiles{'Languages.txt'} );
 
     if ($fileIsOkay)
         {
@@ -502,8 +510,8 @@ sub LoadConfigFileInfo
             };
         };
 
-    if ($menuFileStatus == ::FILE_SAME() && $rebuildEverything)
-        {  $menuFileStatus = ::FILE_CHANGED();  };
+    if ($userConfigFiles{'Menu.txt'} == ::FILE_SAME() && $rebuildEverything)
+        {  $userConfigFiles{'Menu.txt'} = ::FILE_CHANGED();  };
     };
 
 
@@ -516,8 +524,8 @@ sub SaveConfigFileInfo
     {
     my ($self) = @_;
 
-    open (FH_CONFIGFILEINFO, '>' . NaturalDocs::Project->ConfigFileInfoFile())
-        or die "Couldn't save " . NaturalDocs::Project->ConfigFileInfoFile() . ".\n";
+    open (FH_CONFIGFILEINFO, '>' . NaturalDocs::Project->DataFile('ConfigFileInfo.nd'))
+        or die "Couldn't save " . NaturalDocs::Project->DataFile('ConfigFileInfo.nd') . ".\n";
 
     binmode(FH_CONFIGFILEINFO);
 
@@ -525,11 +533,11 @@ sub SaveConfigFileInfo
 
     NaturalDocs::Version->ToBinaryFile(\*FH_CONFIGFILEINFO, NaturalDocs::Settings->AppVersion());
 
-    print FH_CONFIGFILEINFO pack('NNNNN', (stat($self->MenuFile()))[9],
-                                                                (stat($self->MainTopicsFile()))[9],
-                                                                (stat($self->UserTopicsFile()))[9],
-                                                                (stat($self->MainLanguagesFile()))[9],
-                                                                (stat($self->UserLanguagesFile()))[9] );
+    print FH_CONFIGFILEINFO pack('NNNNN', (stat($self->UserConfigFile('Menu.txt')))[9],
+                                                                (stat($self->MainConfigFile('Topics.txt')))[9],
+                                                                (stat($self->UserConfigFile('Topics.txt')))[9],
+                                                                (stat($self->MainConfigFile('Languages.txt')))[9],
+                                                                (stat($self->UserConfigFile('Languages.txt')))[9] );
 
     close(FH_CONFIGFILEINFO);
     };
@@ -551,114 +559,80 @@ sub MigrateOldFiles
         {
         # The Data subdirectory would have been created by NaturalDocs::Settings.
 
-        rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs_Menu.txt'), $self->MenuFile() );
+        rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs_Menu.txt'), $self->UserConfigFile('Menu.txt') );
 
         if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.sym'))
-            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.sym'), $self->SymbolTableFile() );  };
+            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.sym'), $self->DataFile('SymbolTable.nd') );  };
 
         if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.files'))
-            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.files'), $self->FileInfoFile() );  };
+            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.files'), $self->DataFile('FileInfo.nd') );  };
 
         if (-e NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.m'))
-            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.m'), $self->PreviousMenuStateFile() );  };
+            {  rename( NaturalDocs::File->JoinPaths($projectDirectory, 'NaturalDocs.m'), $self->DataFile('PreviousMenuState.nd') );  };
         };
     };
 
 
 
 ###############################################################################
-# Group: Data File Functions
+# Group: Config and Data File Functions
 
 
-# Function: FileInfoFile
-# Returns the full path to the file information file.
-sub FileInfoFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'FileInfo.nd' );  };
+#
+#   Function: MainConfigFile
+#
+#   Returns the full path to the passed main configuration file.  Pass the file name only.
+#
+sub MainConfigFile #(string file)
+    {
+    my ($self, $file) = @_;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), $file );
+    };
 
-# Function: ConfigFileInfoFile
-# Returns the full path to the config file information file.
-sub ConfigFileInfoFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'ConfigFileInfo.nd' );  };
+#
+#   Function: MainConfigFileStatus
+#
+#   Returns the <FileStatus> of the passed main configuration file.  Pass the file name only.
+#
+sub MainConfigFileStatus #(string file)
+    {
+    my ($self, $file) = @_;
+    return $mainConfigFiles{$file};
+    };
 
-# Function: SymbolTableFile
-# Returns the full path to the symbol table's data file.
-sub SymbolTableFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'SymbolTable.nd' );  };
+#
+#   Function: UserConfigFile
+#
+#   Returns the full path to the passed user configuration file.  Pass the file name only.
+#
+sub UserConfigFile #(string file)
+    {
+    my ($self, $file) = @_;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), $file );
+    };
 
-# Function: ClassHierarchyFile
-# Returns the full path to the class hierarchy's data file.
-sub ClassHierarchyFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'ClassHierarchy.nd' );  };
+#
+#   Function: UserConfigFileStatus
+#
+#   Returns the <FileStatus> of the passed user configuration file.  Pass the file name only.
+#
+sub UserConfigFileStatus #(string file)
+    {
+    my ($self, $file) = @_;
+    return $userConfigFiles{$file};
+    };
 
-# Function: MenuFile
-# Returns the full path to the project's menu file.
-sub MenuFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu.txt' );  };
+#
+#   Function: DataFile
+#
+#   Returns the full path to the passed data file.  Pass the file name only.
+#
+sub DataFile #(string file)
+    {
+    my ($self, $file) = @_;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), $file );
+    };
 
-# Function: MenuFileStatus
-# Returns the <FileStatus> of the project's menu file.
-sub MenuFileStatus
-    {  return $menuFileStatus;  };
-
-# Function: MainTopicsFile
-# Returns the full path to the main topics file.
-sub MainTopicsFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), 'Topics.txt' );  };
-
-# Function: MainTopicsFileStatus
-# Returns the <FileStatus> of the project's main topics file.
-sub MainTopicsFileStatus
-    {  return $mainTopicsFileStatus;  };
-
-# Function: UserTopicsFile
-# Returns the full path to the user's topics file.
-sub UserTopicsFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Topics.txt' );  };
-
-# Function: UserTopicsFileStatus
-# Returns the <FileStatus> of the project's user topics file.
-sub UserTopicsFileStatus
-    {  return $userTopicsFileStatus;  };
-
-# Function: MainLanguagesFile
-# Returns the full path to the main languages file.
-sub MainLanguagesFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ConfigDirectory(), 'Languages.txt' );  };
-
-# Function: MainLanguagesFileStatus
-# Returns the <FileStatus> of the project's main languages file.
-sub MainLanguagesFileStatus
-    {  return $mainLanguagesFileStatus;  };
-
-# Function: UserLanguagesFile
-# Returns the full path to the user's languages file.
-sub UserLanguagesFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Languages.txt' );  };
-
-# Function: UserLanguagesFileStatus
-# Returns the <FileStatus> of the project's user languages file.
-sub UserLanguagesFileStatus
-    {  return $userLanguagesFileStatus;  };
-
-# Function: SettingsFile
-# Returns the full path to the project's settings file.
-sub SettingsFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Settings.txt' );  };
-
-# Function: PreviousSettingsFile
-# Returns the full path to the project's previous settings file.
-sub PreviousSettingsFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'PreviousSettings.nd' );  };
-
-# Function: PreviousMenuStateFile
-# Returns the full path to the project's previous menu state file.
-sub PreviousMenuStateFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDataDirectory(), 'PreviousMenuState.nd' );  };
-
-# Function: MenuBackupFile
-# Returns the full path to the project's menu backup file, which is used to save the original menu in some situations.
-sub MenuBackupFile
-    {  return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->ProjectDirectory(), 'Menu_Backup.txt' );  };
 
 
 
@@ -748,8 +722,8 @@ sub RebuildEverything
 
     NaturalDocs::SymbolTable->RebuildAllIndexes();
 
-    if ($menuFileStatus == ::FILE_SAME())
-        {  $menuFileStatus = ::FILE_CHANGED();  };
+    if ($userConfigFiles{'Menu.txt'} == ::FILE_SAME())
+        {  $userConfigFiles{'Menu.txt'} = ::FILE_CHANGED();  };
     };
 
 

@@ -375,7 +375,7 @@ sub LoadAndUpdate
         {
         NaturalDocs::ConfigFile->PrintErrorsAndAnnotateFile();
         NaturalDocs::Error->SoftDeath('There ' . ($errorCount == 1 ? 'is an error' : 'are ' . $errorCount . ' errors')
-                                                    . ' in ' . NaturalDocs::Project->MenuFile());
+                                                    . ' in ' . NaturalDocs::Project->UserConfigFile('Menu.txt'));
         };
 
     # If the menu has a timestamp and today is a different day than the last time Natural Docs was run, we have to count it as the
@@ -384,7 +384,7 @@ sub LoadAndUpdate
         {
         my (undef, undef, undef, $currentDay, $currentMonth, $currentYear) = localtime();
         my (undef, undef, undef, $lastDay, $lastMonth, $lastYear) =
-            localtime( (stat( NaturalDocs::Project->PreviousMenuStateFile() ))[9] );
+            localtime( (stat( NaturalDocs::Project->DataFile('PreviousMenuState.nd') ))[9] );
             # This should be okay if the previous menu state file doesn't exist.
 
         if ($currentDay != $lastDay || $currentMonth != $lastMonth || $currentYear != $lastYear)
@@ -427,7 +427,7 @@ sub LoadAndUpdate
 
     # If the menu file changed, we can't be sure which groups changed and which didn't without a comparison, which really isn't
     # worth the trouble.  So we regenerate all the titles instead.
-    if (NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
+    if (NaturalDocs::Project->UserConfigFileStatus('Menu.txt') == ::FILE_CHANGED())
         {  $updateAllTitles = 1;  }
     else
         {  $self->FlagAutoTitleChanges();  };
@@ -443,7 +443,7 @@ sub LoadAndUpdate
 
     # Don't ban indexes if they deleted Menu.txt.  They may have not deleted PreviousMenuState.nd and we don't want everything
     # to be banned because of it.
-    if (NaturalDocs::Project->MenuFileStatus() != ::FILE_DOESNTEXIST())
+    if (NaturalDocs::Project->UserConfigFileStatus('Menu.txt') != ::FILE_DOESNTEXIST())
         {  $self->BanAndUnbanIndexes();  };
 
     # Index groups need to be detected before adding new ones.
@@ -665,7 +665,7 @@ sub LoadMenuFile
 
     my $version;
 
-    if ($version = NaturalDocs::ConfigFile->Open(NaturalDocs::Project->MenuFile(), 1))
+    if ($version = NaturalDocs::ConfigFile->Open(NaturalDocs::Project->UserConfigFile('Menu.txt'), 1))
         {
         # We don't check if the menu file is from a future version because we can't just throw it out and regenerate it like we can
         # with other data files.  So we just keep going regardless.  Any syntactic differences will show up as errors.
@@ -959,8 +959,8 @@ sub SaveMenuFile
     {
     my ($self) = @_;
 
-    open(MENUFILEHANDLE, '>' . NaturalDocs::Project->MenuFile())
-        or die "Couldn't save menu file " . NaturalDocs::Project->MenuFile() . "\n";
+    open(MENUFILEHANDLE, '>' . NaturalDocs::Project->UserConfigFile('Menu.txt'))
+        or die "Couldn't save menu file " . NaturalDocs::Project->UserConfigFile('Menu.txt') . "\n";
 
 
     print MENUFILEHANDLE
@@ -1210,7 +1210,7 @@ sub LoadPreviousMenuStateFile
 
     my $fileIsOkay;
     my $version;
-    my $previousStateFileName = NaturalDocs::Project->PreviousMenuStateFile();
+    my $previousStateFileName = NaturalDocs::Project->DataFile('PreviousMenuState.nd');
 
     if (open(PREVIOUSSTATEFILEHANDLE, '<' . $previousStateFileName))
         {
@@ -1238,7 +1238,7 @@ sub LoadPreviousMenuStateFile
 
     if ($fileIsOkay)
         {
-        if (NaturalDocs::Project->MenuFileStatus() == ::FILE_CHANGED())
+        if (NaturalDocs::Project->UserConfigFileStatus('Menu.txt') == ::FILE_CHANGED())
             {  $hasChanged = 1;  };
 
 
@@ -1385,8 +1385,8 @@ sub SavePreviousMenuStateFile
     {
     my ($self) = @_;
 
-    open (PREVIOUSSTATEFILEHANDLE, '>' . NaturalDocs::Project->PreviousMenuStateFile())
-        or die "Couldn't save " . NaturalDocs::Project->PreviousMenuStateFile() . ".\n";
+    open (PREVIOUSSTATEFILEHANDLE, '>' . NaturalDocs::Project->DataFile('PreviousMenuState.nd'))
+        or die "Couldn't save " . NaturalDocs::Project->DataFile('PreviousMenuState.nd') . ".\n";
 
     binmode(PREVIOUSSTATEFILEHANDLE);
 
@@ -1480,9 +1480,9 @@ sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
          ($numberOriginallyInMenu >= 12 && ($numberRemoved / $numberOriginallyInMenu) >= 0.4) ||
          ($numberRemoved >= 15) )
         {
-        my $backupFile = NaturalDocs::Project->MenuBackupFile();
+        my $backupFile = NaturalDocs::Project->UserDataFile('Menu_Backup.txt');
 
-        NaturalDocs::File->Copy( NaturalDocs::Project->MenuFile(), $backupFile );
+        NaturalDocs::File->Copy( NaturalDocs::Project->UserConfigFile('Menu.txt'), $backupFile );
 
         print STDERR
         "\n"
