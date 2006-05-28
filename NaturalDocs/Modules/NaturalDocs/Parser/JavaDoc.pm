@@ -4,7 +4,7 @@
 #
 ###############################################################################
 #
-#   A package for translating JavaDoc topics or Natural Docs topics in JavaDoc comments into Natural Docs.
+#   A package for translating JavaDoc topics into Natural Docs.
 #
 #   Supported tags:
 #
