@@ -7,7 +7,7 @@
 
     Version 1.35
 
-    Copyright (C) 2003-2005 Greg Valure
+    Copyright (C) 2003-2006 Greg Valure
 
     http://www.naturaldocs.org
 
@@ -76,25 +76,29 @@ sub INIT
 
 
 use NaturalDocs::Constants;
-use NaturalDocs::SymbolString;
-use NaturalDocs::ReferenceString;
-use NaturalDocs::Topics;
 use NaturalDocs::Version;
 use NaturalDocs::File;
+use NaturalDocs::Error;
+
 use NaturalDocs::ConfigFile;
 use NaturalDocs::BinaryFile;
+use NaturalDocs::StatusMessage;
+use NaturalDocs::SymbolString;
+use NaturalDocs::ReferenceString;
 use NaturalDocs::NDMarkup;
-use NaturalDocs::Languages;
+
 use NaturalDocs::Settings;
+use NaturalDocs::Topics;
+use NaturalDocs::Languages;
 use NaturalDocs::Project;
 use NaturalDocs::Menu;
 use NaturalDocs::SymbolTable;
 use NaturalDocs::ClassHierarchy;
+use NaturalDocs::SourceDB;
+use NaturalDocs::ImageReferenceTable;
 use NaturalDocs::Parser;
 use NaturalDocs::Builder;
-use NaturalDocs::Error;
-use NaturalDocs::StatusMessage;
-use NaturalDocs::SourceDB;
+
 
 
 ###############################################################################
@@ -321,12 +325,18 @@ eval {
         {  print "Finding files and detecting changes...\n";  };
 
     NaturalDocs::Project->LoadSourceFileInfo();
+    NaturalDocs::Project->LoadImageFileInfo();
+
+    # Register SourceDB extensions.  Order is important.
+    NaturalDocs::ImageReferenceTable->Register();
 
     NaturalDocs::SymbolTable->Load();
     NaturalDocs::ClassHierarchy->Load();
+    NaturalDocs::SourceDB->Load();
 
     NaturalDocs::SymbolTable->Purge();
     NaturalDocs::ClassHierarchy->Purge();
+    NaturalDocs::SourceDB->PurgeDeletedSourceFiles();
 
 
     # Parse any supported files that have changed.
@@ -366,9 +376,11 @@ eval {
     # Write the changes back to disk.
 
     NaturalDocs::Menu->Save();
+    NaturalDocs::Project->SaveImageFileInfo();
     NaturalDocs::Project->SaveSourceFileInfo();
     NaturalDocs::SymbolTable->Save();
     NaturalDocs::ClassHierarchy->Save();
+    NaturalDocs::SourceDB->Save();
     NaturalDocs::Settings->Save();
     NaturalDocs::Topics->Save();
     NaturalDocs::Languages->Save();

@@ -202,6 +202,14 @@ Topic: Content Structure
                     </li>
                 </ul CBulletList>
 
+                <CInlineImage>
+                    <img>
+                </CInlineImage>
+
+                <a CImageLink>
+                    text
+                </a CImageLink>
+
                 <table CDescriptionList>
                     <tr>
                         <td CDLEntry>
@@ -241,6 +249,8 @@ Styles: Content Styles
     CHeading - A heading.
     CBulletList - A bullet list.  Is implemented with a ul.
     CCode - A section of code.  Is implemented with a pre.
+    CInlineImage - Surrounds an inline image.
+    CImageLink - Surrounds a link to an image.
 
     CDescriptionList - A description list, which is the type of list you're reading right now.  Is implemented with a table.
     CDLEntry - A description list entry, which is the left side.
@@ -743,6 +753,7 @@ Topic: Revisions
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
         - CHIndent was replaced by <CHIndent#>.
         - SBorder becomes <SBody>.
+        - Added <CInlineImage> and <CImageLink>.
 
     1.33:
 

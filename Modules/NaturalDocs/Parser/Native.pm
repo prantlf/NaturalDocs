@@ -521,6 +521,23 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                 $topLevelTag = TAG_TAGCODE;
                 }
 
+            # If the line looks like an inline image...
+            elsif ($commentLines->[$index] =~ /^(\( *see +)([^\)]+?)( *\))$/i)
+                {
+                if (defined $textBlock)
+                    {
+                    $output .= $self->RichFormatTextBlock($textBlock);
+                    $textBlock = undef;
+                    };
+
+                $output .= $tagEnders{$topLevelTag};
+                $topLevelTag = TAG_NONE;
+
+                $output .= '<img inline pre="' . $1 . '" post="' . $3 . '">' . $2 . '</img>';
+
+                $prevLineBlank = undef;
+                }
+
             # If the line isn't any of those, we consider it normal text.
             else
                 {
@@ -823,6 +840,11 @@ sub RichFormatTextBlock #(text)
 
                         }
                        {<url>$1<\/url>}igx;
+
+
+    # Find image links.  Inline images should already be pulled out by now.
+
+    $output =~ s{(\( *see +)([^\)]+?)( *\))}{<img link pre=\"$1\" post=\"$3\">$2<\/img>}gi;
 
     return $output;
     };

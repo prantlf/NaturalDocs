@@ -185,4 +185,17 @@ sub HasDefinition #(FileName file) => bool
     };
 
 
+#
+#   Function: GetAllDefinitionsHashRef
+#
+#   Returns a hashref of all the definitions of this item.  *Do not change.*  The keys are the <FileNames>, and the values are
+#   either <NaturalDocs::SourceDB::ItemDefinition>-derived objects or it's just an existence hashref if those aren't used.
+#
+sub GetAllDefinitionsHashRef
+    {
+    my $self = shift;
+    return $self->[DEFINITIONS];
+    };
+
+
 1;

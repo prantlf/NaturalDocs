@@ -88,6 +88,15 @@ package NaturalDocs::SourceDB;
 #
 my @extensions;
 
+#
+#   array: extensionUsesDefinitionObjects
+#
+#   An array where the indexes are <ExtensionIDs> and the values are whether that extension uses its own definition class
+#   derived from <NaturalDocs::SourceDB::ItemDefinition> or it just tracks their existence.
+#
+my @extensionUsesDefinitionObjects;
+
+
 
 #
 #   array: items
@@ -164,32 +173,104 @@ my $watchedFileDefinitions;
 #   Parameters:
 #
 #       extension - The package or object of the extension.  Must be derived from <NaturalDocs::SourceDB::Extension>.
+#       usesDefinitionObjects - Whether the extension uses its own class derived from <NaturalDocs::SourceDB::ItemDefinition>
+#                                         or simply tracks each definitions existence.
 #
 #   Returns:
 #
 #       An <ExtensionID> unique to the extension.  This should be saved because it's required in functions such as <AddItem()>.
 #
-sub RegisterExtension #(package extension) => ExtensionID
+sub RegisterExtension #(package extension, bool usesDefinitionObjects) => ExtensionID
     {
-    my ($self, $extension);
+    my ($self, $extension, $usesDefinitionObjects) = @_;
 
     push @extensions, $extension;
+    push @extensionUsesDefinitionObjects, $usesDefinitionObjects;
 
     return scalar @extensions - 1;
     };
 
 
+
+
+###############################################################################
+# Group: File Functions
+
+
 #
-#   Function: ExtensionOnlyTracksExistence
+#   Function: Load
 #
-#   Returns whether the passed <ExtensionID> only tracks the fact that a definition exists or whether they use
-#   <NaturalDocs::SourceDB::ItemDefinition>-derived objects to track additional information about them.
+#   Loads the data of the source database and all the extensions.  Will call <NaturalDocs::SourceDB::Extension->Load()> for
+#   all of them, unless there's a situation where all the source files are going to be reparsed anyway in which case it's not needed.
 #
-sub ExtensionOnlyTracksExistence #(ExtensionID extension) => bool
+sub Load
     {
-    my ($self, $extension) = @_;
-    return $extensions[$extension]->OnlyTracksExistence();
+    my $self = shift;
+
+    # No point loading if RebuildData is set.
+    if (!NaturalDocs::Settings->RebuildData())
+        {
+        # If any load fails, stop loading the rest and just reparse all the source files.
+        my $success = 1;
+
+        for (my $extension = 0; $extension < scalar @extensions && $success; $extension++)
+            {
+            $success = $extensions[$extension]->Load();
+            };
+
+        if (!$success)
+            {  NaturalDocs::Project->ReparseEverything();  };
+        };
     };
+
+
+#
+#   Function: Save
+#
+#   Saves the data of the source database and all its extensions.  Will call <NaturalDocs::SourceDB::Extension->Save()> for all
+#   of them.
+#
+sub Save
+    {
+    my $self = shift;
+
+    for (my $extension = scalar @extensions - 1; $extension >= 0; $extension--)
+        {
+        $extensions[$extension]->Save();
+        };
+    };
+
+
+#
+#   Function: PurgeDeletedSourceFiles
+#
+#   Removes all data associated with deleted source files.
+#
+sub PurgeDeletedSourceFiles
+    {
+    my $self = shift;
+
+    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
+
+    # Extension is the outermost loop because we want the extensions added last to have their definitions removed first to cause
+    # the least amount of churn between interdependent extensions.
+    for (my $extension = scalar @extensions - 1; $extension >= 0; $extension--)
+        {
+        foreach my $file (keys %$filesToPurge)
+            {
+            if (exists $files{$file})
+                {
+                my @items = $files{$file}->ListItems($extension);
+
+                foreach my $item (@items)
+                    {
+                    $self->DeleteDefinition($extension, $item, $file);
+                    };
+                }; # file exists
+            }; # each file
+        }; # each extension
+    };
+
 
 
 
@@ -201,8 +282,8 @@ sub ExtensionOnlyTracksExistence #(ExtensionID extension) => bool
 #
 #   Function: AddItem
 #
-#   Adds the passed item to the database.  Will not work if the item string already exists.  The item added should *not* already
-#   have definitions attached.  Only use this to add blank items and then call <AddDefinition()> instead.
+#   Adds the passed item to the database.  This will not work if the item string already exists.  The item added should *not*
+#   already have definitions attached.  Only use this to add blank items and then call <AddDefinition()> instead.
 #
 #   Parameters:
 #
@@ -254,8 +335,17 @@ sub GetItem #(ExtensionID extension, string itemString) => bool
 #
 #   Function: DeleteItem
 #
-#   Deletes the record of the passed <ExtensionID> and item string.  Returns whether it was successful, meaning whether an
-#   entry existed for it.  Do *not* delete items that still have definitions this way.  Use <DeleteDefinition()> first.
+#   Deletes the record of the passed <ExtensionID> and item string.  Do *not* delete items that still have definitions.  Use
+#   <DeleteDefinition()> first.
+#
+#   Parameters:
+#
+#       extension - The <ExtensionID>.
+#       itemString - The item's identifying string.
+#
+#   Returns:
+#
+#       Whether it was successful, meaning whether an entry existed for it.
 #
 sub DeleteItem #(ExtensionID extension, string itemString) => bool
     {
@@ -290,6 +380,19 @@ sub HasItem #(ExtensionID extension, string itemString) => bool
     };
 
 
+#
+#   Function: GetAllItemsHashRef
+#
+#   Returns a hashref of all the items defined for an extension.  *Do not change the contents.*  The keys are the item strings and
+#   the values are <NaturalDocs::SourceDB::Items> or derived classes.
+#
+sub GetAllItemsHashRef #(ExtensionID extension) => hashref
+    {
+    my ($self, $extension) = @_;
+    return $items[$extension];
+    };
+
+
 
 ###############################################################################
 # Group: Definition Functions
@@ -298,16 +401,16 @@ sub HasItem #(ExtensionID extension, string itemString) => bool
 #
 #   Function: AddDefinition
 #
-#   Adds a definition to the item.  Assumes the item is already defined.  If there's already a definition for this file and item, the
-#   new definition will be ignored.
+#   Adds a definition to an item.  Assumes the item was already created with <AddItem()>.  If there's already a definition for this
+#   file in the item, the new definition will be ignored.
 #
 #   Parameters:
 #
 #       extension - The <ExtensionID>.
 #       itemString - The item string.
 #       file - The <FileName> the definition is in.
-#       definition - The definition, which must be an object derived from <NaturalDocs::SourceDB::ItemDefinition>.  Ignored if the
-#                       extension only tracks existence.
+#       definition - If you're using a custom <NaturalDocs::SourceDB::ItemDefinition> class, you must include an object for it here.
+#                       Otherwise this parameter is ignored.
 #
 #   Returns:
 #
@@ -325,7 +428,7 @@ sub AddDefinition #(ExtensionID extension, string itemString, FileName file, opt
     if (!defined $item)
         {  die "Tried to add a definition to an undefined item in SourceDB.";  };
 
-    if ($self->ExtensionOnlyTracksExistence($extension))
+    if (!$extensionUsesDefinitionObjects[$extension])
         {  $definition = 1;  };
 
     my $result = $item->AddDefinition($file, $definition);
@@ -345,7 +448,7 @@ sub AddDefinition #(ExtensionID extension, string itemString, FileName file, opt
         {
         $watchedFile->AddItem($extension, $itemString);
 
-        if (!$self->ExtensionOnlyTracksExistence($extension))
+        if ($extensionUsesDefinitionObjects[$extension])
             {  $watchedFileDefinitions->AddDefinition($extension, $itemString, $definition);  };
         };
 
@@ -357,7 +460,8 @@ sub AddDefinition #(ExtensionID extension, string itemString, FileName file, opt
 #
 #   Function: ChangeDefinition
 #
-#   Changes the definition of an item.  Assumes the item is already defined.
+#   Changes the definition of an item.  This function is only used for extensions that use custom
+#   <NaturalDocs::SourceDB::ItemDefinition>-derived classes.
 #
 #   Parameters:
 #
@@ -375,18 +479,22 @@ sub ChangeDefinition #(ExtensionID extension, string itemString, FileName file, 
     if (!defined $item)
         {  die "Tried to change the definition of an undefined item in SourceDB.";  };
 
-    if ($self->ExtensionOnlyTracksExistence($extension))
-        {  die "Tried to change the definition of an item in an extension that only tracks existence in SourceDB.";  };
+    if (!$extensionUsesDefinitionObjects[$extension])
+        {  die "Tried to change the definition of an item in an extension that doesn't use definition objects in SourceDB.";  };
+
+    if (!$item->HasDefinition($file))
+        {  die "Tried to change a definition that doesn't exist in SourceDB.";  };
 
     $item->ChangeDefinition($file, $definition);
+    $extensions[$extension]->OnChangedDefinition($itemString, $file);
     };
 
 
 #
 #   Function: GetDefinition
 #
-#   Returns the <NaturalDocs::SourceDB::ItemDefinition>-derived object for the passed item, non-zero if it only tracks existence,
-#   or undef if there is none.
+#   If the extension uses custom <NaturalDocs::SourceDB::ItemDefinition> classes, returns it for the passed definition or undef
+#   if it doesn't exist.  Otherwise returns whether it exists.
 #
 sub GetDefinition #(ExtensionID extension, string itemString, FileName file) => NaturalDocs::SourceDB::ItemDefinition or bool
     {
@@ -404,8 +512,8 @@ sub GetDefinition #(ExtensionID extension, string itemString, FileName file) => 
 #
 #   Function: DeleteDefinition
 #
-#   Removes the definition for the passed item.  Returns whether it was successful, meaning whether a definition existed
-#   for that file.
+#   Removes the definition for the passed item.  Returns whether it was successful, meaning whether a definition existed for that
+#   file.
 #
 sub DeleteDefinition #(ExtensionID extension, string itemString, FileName file) => bool
     {
@@ -418,7 +526,11 @@ sub DeleteDefinition #(ExtensionID extension, string itemString, FileName file) 
 
     my $result = $item->DeleteDefinition($file);
 
-    $files{$file}->DeleteItem($extension, $itemString);
+    if ($result)
+        {
+        $files{$file}->DeleteItem($extension, $itemString);
+        $extensions[$extension]->OnDeletedDefinition($itemString, $file, !$item->HasDefinitions());
+        };
 
     return $result;
     };
@@ -482,8 +594,8 @@ sub WatchFileForChanges #(FileName filename)
     my ($self, $filename) = @_;
 
     $watchedFileName = $filename;
-    $watchedFile = NaturalDocs::File->New();
-    $watchedFileDefinitions = NaturalDocs::WatchedFileDefinitions->New();
+    $watchedFile = NaturalDocs::SourceDB::File->New();
+    $watchedFileDefinitions = NaturalDocs::SourceDB::WatchedFileDefinitions->New();
     };
 
 
@@ -502,11 +614,7 @@ sub WatchingFileForChanges # => bool
 #
 #   Function: AnalyzeWatchedFileChanges
 #
-#   Analyzes the watched file for changes.  For each item that was removed from the file,
-#   <NaturalDocs::SourceDB::Extension->OnDeletedDefinition()> will be called for the extension class.  For each item that was
-#   changed (as determined by <NaturalDocs::SourceDB::ItemDefinition->Compare()>)
-#   <NaturalDocs::SourceDB::Extension->OnChangedDefinition()> will be called for the extension class.  This assumes that the
-#   extension is using <NaturalDocs::SourceDB::ItemDefinition>-derived classes and not merely tracking each item's existence.
+#   Analyzes the watched file for changes.  Will delete and change definitions as necessary.
 #
 sub AnalyzeWatchedFileChanges
     {
@@ -514,34 +622,32 @@ sub AnalyzeWatchedFileChanges
 
     if (!$self->WatchingFileForChanges())
         {  die "Tried to analyze watched file for changes in SourceDB when no file was being watched.";  };
+    if (!$files{$watchedFileName})
+        {  return;  };
 
 
     # Process extensions last registered to first.
 
-    for (my $i = scalar @extensions - 1; $i >= 0; $i--)
+    for (my $extension = scalar @extensions - 1; $extension >= 0; $extension--)
         {
-        my @items = $files{$watchedFileName}->ListItems($i);
+        my @items = $files{$watchedFileName}->ListItems($extension);
 
         foreach my $item (@items)
             {
-            if ($watchedFile->HasItem($item))
+            if ($watchedFile->HasItem($extension, $item))
                 {
-                if (!$self->ExtensionOnlyTracksExistence($i))
+                if ($extensionUsesDefinitionObjects[$extension])
                     {
-                    my $originalDefinition = $items[$i]->GetDefinition($watchedFileName);
-                    my $watchedDefinition = $watchedFileDefinitions->GetDefinition($i, $item);
+                    my $originalDefinition = $items[$extension]->GetDefinition($watchedFileName);
+                    my $watchedDefinition = $watchedFileDefinitions->GetDefinition($extension, $item);
 
                     if (!$originalDefinition->Compare($watchedDefinition))
-                        {
-                        $self->ChangeDefinition($i, $item, $watchedFileName, $watchedDefinition);
-                        $extensions[$i]->OnChangedDefinition($item, $watchedFileName);
-                        };
+                        {  $self->ChangeDefinition($extension, $item, $watchedFileName, $watchedDefinition);  };
                     }
                 }
             else # !$watchedFile->HasItem($item)
                 {
-                if ($self->DeleteDefinition($i, $item, $watchedFileName))
-                    {  $extensions[$i]->OnDeletedDefinition($item, $watchedFileName);  };
+                $self->DeleteDefinition($extension, $item, $watchedFileName);
                 };
             };
         };

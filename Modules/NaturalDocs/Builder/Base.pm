@@ -37,8 +37,10 @@ package NaturalDocs::Builder::Base;
 #   - <BeginBuild()> will always be called.
 #   - <PurgeFiles()> will be called next only if there's files that need to be purged.
 #   - <PurgeIndexes()> will be called next only if there's indexes that need to be purged.
+#   - <PurgeImages()> will e called next only if there's images that need to be purged.
 #   - <BuildFile()> will be called once for each file that needs to be built, if any.
 #   - <BuildIndex()> will be called once for each index that changed and is part of the menu, if any.
+#   - <UpdateImage()> will be called once for each image that needs to be updated, if any.
 #   - <UpdateMenu()> will be called next only if the menu changed.
 #   - <EndBuild()> will always be called.
 #
@@ -273,6 +275,21 @@ sub BuildIndex #(topic)
     {
     };
 
+
+#
+#   Function: UpdateImage
+#
+#   Define this function to add or update the passed image in the output.
+#
+#   Parameters:
+#
+#       file - The image <FileName>
+#
+sub UpdateImage #(file)
+    {
+    };
+
+
 #
 #   Function: PurgeFiles
 #
@@ -299,6 +316,21 @@ sub PurgeFiles #(files)
 #       indexes  - An existence hashref of the <TopicTypes> of the indexes to purge.
 #
 sub PurgeIndexes #(indexes)
+    {
+    };
+
+
+#
+#   Function: PurgeImages
+#
+#   Define this function to make the package remove all output related to the passed image files.  These files are no longer used
+#   by the documentation.
+#
+#   Parameters:
+#
+#       files - An existence hashref of the image <FileNames> to purge.
+#
+sub PurgeImages #(files)
     {
     };
 

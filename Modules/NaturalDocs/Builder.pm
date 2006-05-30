@@ -115,10 +115,18 @@ sub Run
     # Determine what we're doing.
 
     my $buildTargets = NaturalDocs::Settings->BuildTargets();
-    my $filesToBuild = NaturalDocs::Project->FilesToBuild();
 
-    my $numberToPurge = scalar keys %{NaturalDocs::Project->FilesToPurge()};
-    my $numberToBuild = scalar keys %$filesToBuild;
+    my $filesToBuild = NaturalDocs::Project->FilesToBuild();
+    my $numberOfFilesToBuild = (scalar keys %$filesToBuild) * (scalar @$buildTargets);
+
+    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
+    my $numberOfFilesToPurge = (scalar keys %$filesToPurge) * (scalar @$buildTargets);
+
+    my $imagesToUpdate = NaturalDocs::Project->ImageFilesToUpdate();
+    my $numberOfImagesToUpdate = (scalar keys %$imagesToUpdate) * (scalar @$buildTargets);
+
+    my $imagesToPurge = NaturalDocs::Project->ImageFilesToPurge();
+    my $numberOfImagesToPurge = (scalar keys %$imagesToPurge) * (scalar @$buildTargets);
 
     my %indexesToBuild;
     my %indexesToPurge;
@@ -143,34 +151,37 @@ sub Run
             };
         };
 
-    my $numberOfIndexesToBuild = scalar keys %indexesToBuild;
-    my $numberOfIndexesToPurge = scalar keys %indexesToPurge;
+    my $numberOfIndexesToBuild = (scalar keys %indexesToBuild) * (scalar @$buildTargets);
+    my $numberOfIndexesToPurge = (scalar keys %indexesToPurge) * (scalar @$buildTargets);
 
 
     # Start the build process
 
     foreach my $buildTarget (@$buildTargets)
         {
-        $buildTarget->Builder()->BeginBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild ||
-                                                             $numberOfIndexesToPurge || NaturalDocs::Menu->HasChanged());
+        $buildTarget->Builder()->BeginBuild( $numberOfFilesToBuild || $numberOfFilesToPurge ||
+                                                               $numberOfImagesToUpdate || $numberOfImagesToPurge ||
+                                                               $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
+                                                               NaturalDocs::Menu->HasChanged() );
         };
 
-    if ($numberToPurge)
+    if ($numberOfFilesToPurge)
         {
-        NaturalDocs::StatusMessage->Start('Purging ' . $numberToPurge . ' file' . ($numberToPurge > 1 ? 's' : '') . '...',
+        NaturalDocs::StatusMessage->Start('Purging ' . $numberOfFilesToPurge
+                                                          . ' file' . ($numberOfFilesToPurge > 1 ? 's' : '') . '...',
                                                              scalar @$buildTargets);
 
         foreach my $buildTarget (@$buildTargets)
             {
-            $buildTarget->Builder()->PurgeFiles();
+            $buildTarget->Builder()->PurgeFiles($filesToPurge);
             NaturalDocs::StatusMessage->CompletedItem();
             };
         };
 
     if ($numberOfIndexesToPurge)
         {
-        NaturalDocs::StatusMessage->Start('Purging ' . $numberOfIndexesToPurge .
-                                                             ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . '...',
+        NaturalDocs::StatusMessage->Start('Purging ' . $numberOfIndexesToPurge
+                                                           . ' index' . ($numberOfIndexesToPurge > 1 ? 'es' : '') . '...',
                                                              scalar @$buildTargets);
 
         foreach my $buildTarget (@$buildTargets)
@@ -180,11 +191,24 @@ sub Run
             };
         };
 
-    if ($numberToBuild)
+    if ($numberOfImagesToPurge)
         {
-        NaturalDocs::StatusMessage->Start('Building ' . $numberToBuild . ' file' . ($numberToBuild > 1 ? 's' : '') .
-                                                            (scalar @$buildTargets > 1 ? ' for ' . (scalar @$buildTargets) . ' targets' : '') . '...',
-                                                             $numberToBuild * scalar @$buildTargets);
+        NaturalDocs::StatusMessage->Start('Purging ' . $numberOfImagesToPurge
+                                                          . ' image' . ($numberOfImagesToPurge > 1 ? 's' : '') . '...',
+                                                             scalar @$buildTargets);
+
+        foreach my $buildTarget (@$buildTargets)
+            {
+            $buildTarget->Builder()->PurgeImages($imagesToPurge);
+            NaturalDocs::StatusMessage->CompletedItem();
+            };
+        };
+
+    if ($numberOfFilesToBuild)
+        {
+        NaturalDocs::StatusMessage->Start('Building ' . $numberOfFilesToBuild
+                                                           . ' file' . ($numberOfFilesToBuild > 1 ? 's' : '') . '...',
+                                                             $numberOfFilesToBuild);
 
         foreach my $file (keys %$filesToBuild)
             {
@@ -204,16 +228,31 @@ sub Run
 
     if ($numberOfIndexesToBuild)
         {
-        NaturalDocs::StatusMessage->Start('Building ' . $numberOfIndexesToBuild .
-                                                             ' index' . ($numberOfIndexesToBuild != 1 ? 'es' : '') .
-                                                            (scalar @$buildTargets > 1 ? ' for ' . (scalar @$buildTargets) . ' targets' : '') . '...',
-                                                             $numberOfIndexesToBuild * scalar @$buildTargets);
+        NaturalDocs::StatusMessage->Start('Building ' . $numberOfIndexesToBuild
+                                                          . ' index' . ($numberOfIndexesToBuild > 1 ? 'es' : '') . '...',
+                                                             $numberOfIndexesToBuild);
 
         foreach my $index (keys %indexesToBuild)
             {
             foreach my $buildTarget (@$buildTargets)
                 {
                 $buildTarget->Builder()->BuildIndex($index);
+                NaturalDocs::StatusMessage->CompletedItem();
+                };
+            };
+        };
+
+    if ($numberOfImagesToUpdate)
+        {
+        NaturalDocs::StatusMessage->Start('Updating ' . $numberOfImagesToUpdate
+                                                          . ' image' . ($numberOfImagesToUpdate > 1 ? 's' : '') . '...',
+                                                             $numberOfImagesToUpdate);
+
+        foreach my $image (keys %$imagesToUpdate)
+            {
+            foreach my $buildTarget (@$buildTargets)
+                {
+                $buildTarget->Builder()->UpdateImage($image);
                 NaturalDocs::StatusMessage->CompletedItem();
                 };
             };
@@ -230,8 +269,10 @@ sub Run
 
     foreach my $buildTarget (@$buildTargets)
         {
-        $buildTarget->Builder()->EndBuild($numberToPurge || $numberToBuild || $numberOfIndexesToBuild ||
-                                                           $numberOfIndexesToPurge || NaturalDocs::Menu->HasChanged());
+        $buildTarget->Builder()->EndBuild($numberOfFilesToBuild || $numberOfFilesToPurge ||
+                                                           $numberOfIndexesToBuild || $numberOfIndexesToPurge ||
+                                                           $numberOfImagesToUpdate || $numberOfImagesToPurge ||
+                                                           NaturalDocs::Menu->HasChanged());
         };
     };
 

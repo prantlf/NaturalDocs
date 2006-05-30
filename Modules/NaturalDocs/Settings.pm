@@ -386,21 +386,19 @@ sub InputDirectoryNameOf #(directory)
     {
     my ($self, $directory) = @_;
 
-    my $name;
-
-    for (my $i = 0; $i < scalar @inputDirectories && !defined $name; $i++)
+    for (my $i = 0; $i < scalar @inputDirectories; $i++)
         {
         if ($directory eq $inputDirectories[$i])
-            {  $name = $inputDirectoryNames[$i];  };
+            {  return $inputDirectoryNames[$i];  };
         };
 
-    for (my $i = 0; $i < scalar @removedInputDirectories && !defined $name; $i++)
+    for (my $i = 0; $i < scalar @removedInputDirectories; $i++)
         {
         if ($directory eq $removedInputDirectories[$i])
-            {  $name = $removedInputDirectoryNames[$i];  };
+            {  return $removedInputDirectoryNames[$i];  };
         };
 
-    return $name;
+    return undef;
     };
 
 
@@ -412,6 +410,55 @@ sub InputDirectoryNameOf #(directory)
 #   If the file cannot be split from an input directory, it will try to do it with the removed input directories.
 #
 sub SplitFromInputDirectory #(file)
+    {
+    my ($self, $file) = @_;
+
+    foreach my $directory (@inputDirectories, @removedInputDirectories)
+        {
+        if (NaturalDocs::File->IsSubPathOf($directory, $file))
+            {  return ( $directory, NaturalDocs::File->MakeRelativePath($directory, $file) );  };
+        };
+
+    return ( );
+    };
+
+
+#
+#   Function: ImageDirectoryNameOf
+#
+#   Returns the generated name of the passed image or input directory.  <GenerateDirectoryNames()> must be called once before
+#   this function is available.
+#
+#   If a name for a removed input or image directory is available, it will be returned as well.
+#
+sub ImageDirectoryNameOf #(directory)
+    {
+    my ($self, $directory) = @_;
+
+    for (my $i = 0; $i < scalar @inputDirectories; $i++)
+        {
+        if ($directory eq $inputDirectories[$i])
+            {  return $inputDirectoryNames[$i];  };
+        };
+
+    for (my $i = 0; $i < scalar @removedInputDirectories; $i++)
+        {
+        if ($directory eq $removedInputDirectories[$i])
+            {  return $removedInputDirectoryNames[$i];  };
+        };
+
+    return undef;
+    };
+
+
+#
+#   Function: SplitFromImageDirectory
+#
+#   Takes an input image file name and returns the array ( inputDirectory, relativePath ).
+#
+#   If the file cannot be split from an input directory, it will try to do it with the removed input directories.
+#
+sub SplitFromImageDirectory #(file)
     {
     my ($self, $file) = @_;
 

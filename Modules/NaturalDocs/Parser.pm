@@ -89,6 +89,7 @@ sub ParseForInformation #(file)
     # Watch this parse so we detect any changes.
     NaturalDocs::SymbolTable->WatchFileForChanges($sourceFile);
     NaturalDocs::ClassHierarchy->WatchFileForChanges($sourceFile);
+    NaturalDocs::SourceDB->WatchFileForChanges($sourceFile);
 
     my $defaultMenuTitle = $self->Parse();
 
@@ -157,11 +158,21 @@ sub ParseForInformation #(file)
             NaturalDocs::SymbolTable->AddReference(::REFERENCE_TEXT(), $linkSymbol,
                                                                            $topic->Package(), $topic->Using(), $sourceFile);
             };
+
+
+        # Add images in the topic.
+
+        while ($body =~ /<img(?:[^>]+)>([^<]+)<\/img>/g)
+            {
+            my $imageText = NaturalDocs::NDMarkup->RestoreAmpChars($1);
+            NaturalDocs::ImageReferenceTable->AddReference($sourceFile, $imageText);
+            };
         };
 
     # Handle any changes to the file.
     NaturalDocs::ClassHierarchy->AnalyzeChanges();
     NaturalDocs::SymbolTable->AnalyzeChanges();
+    NaturalDocs::SourceDB->AnalyzeWatchedFileChanges();
 
     # Update project on the file's characteristics.
     my $hasContent = (scalar @parsedFile > 0);
@@ -203,6 +214,7 @@ sub ParseForBuild #(file)
 
     return \@parsedFile;
     };
+
 
 
 
