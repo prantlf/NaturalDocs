@@ -29,9 +29,7 @@ require Exporter;
                    'MENU_GROUP_FILESANDGROUPSSORTED', 'MENU_GROUP_EVERYTHINGSORTED',
                    'MENU_GROUP_ISINDEXGROUP',
 
-                   'FILE_NEW', 'FILE_CHANGED', 'FILE_SAME', 'FILE_DOESNTEXIST',
-
-                   'BINARY_FORMAT');
+                   'FILE_NEW', 'FILE_CHANGED', 'FILE_SAME', 'FILE_DOESNTEXIST');
 
 #
 #   Topic: Assumptions
@@ -145,20 +143,6 @@ use constant MENU_GROUP_EVERYTHINGSORTED => 0x0080;
 
 use constant MENU_GROUP_ISINDEXGROUP => 0x0100;
 
-
-
-###############################################################################
-# Group: Other Constants
-
-
-#
-#   Constant: BINARY_FORMAT
-#
-#   An 8-bit constant that's used as the first byte of binary data files.  This is used so that you can easily distinguish between
-#   binary and old-style text data files.  It's not a character that would appear in plain text files.
-#
-use constant BINARY_FORMAT => pack('C', 0x06);
-# Which is ACK or acknowledge in ASCII.  Is the cool spade character in DOS displays.
 
 
 
