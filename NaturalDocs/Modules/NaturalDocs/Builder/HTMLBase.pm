@@ -215,15 +215,36 @@ use constant MENU_LENGTH_LIMIT => 35;
 
 
 #
+#   Function: UpdateImage
+#
+#   Define this function to add or update the passed image in the output.
+#
+#   Parameters:
+#
+#       file - The image <FileName>
+#
+sub UpdateImage #(file)
+    {
+    my ($self, $file) = @_;
+
+    my $outputFile = $self->OutputImageOf($file);
+    my $outputDirectory = NaturalDocs::File->NoFileName($outputFile);
+
+    if (!-d $outputDirectory)
+        {  NaturalDocs::File->CreatePath($outputDirectory);  };
+
+    NaturalDocs::File->Copy($file, $outputFile);
+    };
+
+
+#
 #   Function: PurgeFiles
 #
 #   Deletes the output files associated with the purged source files.
 #
-sub PurgeFiles
+sub PurgeFiles #(filesToPurge)
     {
-    my $self = shift;
-
-    my $filesToPurge = NaturalDocs::Project->FilesToPurge();
+    my ($self, $filesToPurge) = @_;
 
     # Combine directories into a hash to remove duplicate work.
     my %directoriesToPurge;
@@ -263,6 +284,42 @@ sub PurgeIndexes #(indexes)
     foreach my $index (keys %$indexes)
         {
         $self->PurgeIndexFiles($index, undef);
+        };
+    };
+
+
+#
+#   Function: PurgeImages
+#
+#   Define this function to make the package remove all output related to the passed image files.  These files are no longer used
+#   by the documentation.
+#
+#   Parameters:
+#
+#       files - An existence hashref of the image <FileNames> to purge.
+#
+sub PurgeImages #(files)
+    {
+    my ($self, $filesToPurge) = @_;
+
+    # Combine directories into a hash to remove duplicate work.
+    my %directoriesToPurge;
+
+    foreach my $file (keys %$filesToPurge)
+        {
+        # It's possible that there may be files there that aren't in a valid input directory anymore.  They won't generate an output
+        # file name so we need to check for undef.
+        my $outputFile = $self->OutputImageOf($file);
+        if (defined $outputFile)
+            {
+            unlink($outputFile);
+            $directoriesToPurge{ NaturalDocs::File->NoFileName($outputFile) } = 1;
+            };
+        };
+
+    foreach my $directory (keys %directoriesToPurge)
+        {
+        NaturalDocs::File->RemoveEmptyTree($directory, NaturalDocs::Settings->OutputDirectoryOf($self));
         };
     };
 
@@ -2105,6 +2162,31 @@ sub OutputFileOf #(sourceFile)
 
 
 #
+#   Function: OutputImageOf
+#
+#   Returns the output image file name of the source image file.  Will be undef if it is not a file from a valid input directory.
+#
+sub OutputImageOf #(sourceImageFile)
+    {
+    my ($self, $sourceImageFile) = @_;
+
+    my ($inputDirectory, $relativeImageFile) = NaturalDocs::Settings->SplitFromImageDirectory($sourceImageFile);
+    if (!defined $inputDirectory)
+        {  return undef;  };
+
+    my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
+    my $inputDirectoryName = NaturalDocs::Settings->ImageDirectoryNameOf($inputDirectory);
+
+    $outputDirectory = NaturalDocs::File->JoinPaths( $outputDirectory,
+                                                                            'files' . ($inputDirectoryName != 1 ? $inputDirectoryName : ''), 1 );
+
+    $relativeImageFile =~ tr/ /_/;
+
+    return NaturalDocs::File->JoinPaths($outputDirectory, $relativeImageFile);
+    };
+
+
+#
 #   Function: IndexDirectory
 #
 #   Returns the directory of the index files.
@@ -2392,6 +2474,55 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
                            {$self->BuildTextLink($3, $2, $1, $package, $using, $sourceFile)}ge;
             $text =~ s/<url(?: name=\"([^\"]+)\")?>([^<]+)<\/url>/$self->BuildURLLink($2, $1)/ge;
             $text =~ s/<email(?: name=\"([^\"]+)\")?>([^<]+)<\/email>/$self->BuildEMailLink($2, $1)/eg;
+
+            # Convert images.
+            $text =~ s{<img inline pre=\"([^\"]*)\" post=\"([^\"]*)\">([^<]+)<\/img>}
+                           {$self->MakeInlineImage($1, $2, $3)}ge;
+
+            sub MakeInlineImage #(pre, post, text)
+                {
+                my ($self, $pre, $post, $text) = @_;
+
+                my $image = NaturalDocs::ImageReferenceTable->GetReferenceTarget( $sourceFile,
+                                                                                                            NaturalDocs::NDMarkup->RestoreAmpChars($text) );
+
+                if ($image)
+                    {
+                    return
+                    '<div class=CInlineImage>'
+                        . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
+                                                                                   $self->OutputImageOf($image), 1) . '">'
+                    . '</div>';
+                    }
+                else
+                    {  return $pre . $text . $post;  };
+                };
+
+            $text =~ s{<img link pre=\"([^\"]*)\" post=\"([^\"]*)\">([^<]+)<\/img>}
+                           {$self->MakeImageLink($1, $2, $3)}ge;
+
+            sub MakeImageLink #(pre, post, text)
+                {
+                my ($self, $pre, $post, $text) = @_;
+
+                my $image = NaturalDocs::ImageReferenceTable->GetReferenceTarget( $sourceFile,
+                                                                                                            NaturalDocs::NDMarkup->RestoreAmpChars($text) );
+
+                if ($image)
+                    {
+                    (undef, undef, $text) = NaturalDocs::File->SplitPath($text);
+                    $text = NaturalDocs::File->NoExtension($text);
+
+                    return
+                    '<a href="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile), $self->OutputImageOf($image), 1) . '" '
+                    . 'target=_blank class=CImageLink>'
+                            . $pre . $text . $post
+                    . '</a>'
+                    }
+                else
+                    {  return $pre . $text . $post;  };
+                };
+
 
             # Add double spaces too.
             $text = $self->AddDoubleSpaces($text);

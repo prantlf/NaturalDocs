@@ -33,25 +33,39 @@ sub Register
     die "Called SourceDB::Extension->Register().  This function should be overridden by every extension.";
     };
 
+
 #
-#   Function: OnlyTracksExistence
+#   Function: Load
 #
-#   Override this function to return whether your extension only tracks the existence of items or whether it uses
-#   <NaturalDocs::SourceDB::ItemDefinition>-derived objects to track additional information about them.
+#   Called by <NaturalDocs::SourceDB->Load()> to load the extension's data.  Returns whether it was successful.
 #
-sub OnlyTracksExistence # => bool
+#   *This function might not be called.*  If there's a situation that would cause all the source files to be reparsed anyway,
+#   <NaturalDocs::SourceDB> may skip calling Load() for the remaining extensions.  You should *not* depend on this function
+#   for any critical initialization that needs to happen every time regardless.
+#
+sub Load # => bool
     {
-    die "Called SourceDB::Extension->OnlyTracksExistence().  This function should be overridden by every extension.";
+    return 1;
+    };
+
+
+#
+#   Function: Save
+#
+#   Called by <NaturalDocs::SourceDB->Save()> to save the extension's data.
+#
+sub Save
+    {
     };
 
 
 #
 #   Function: OnDeletedDefinition
 #
-#   Called for each definition deleted by <NaturalDocs::SourceDB->AnalyzeWatchedFileChanges()>.  This is called *after* the
-#   definition has been deleted from <NaturalDocs::SourceDB>.
+#   Called for each definition deleted by <NaturalDocs::SourceDB>.  This is called *after* the definition has been deleted from
+#   the database, so don't expect to be able to read it.
 #
-sub OnDeletedDefinition #(string itemString, FileName file)
+sub OnDeletedDefinition #(string itemString, FileName file, bool wasLastDefinition)
     {
     };
 
@@ -59,8 +73,8 @@ sub OnDeletedDefinition #(string itemString, FileName file)
 #
 #   Function: OnChangedDefinition
 #
-#   Called for each definition changed by <NaturalDocs::SourceDB->AnalyzeWatchedFileChanges()>.  This is called *after* the
-#   definition has been changed in <NaturalDocs::SourceDB>.
+#   Called for each definition changed by <NaturalDocs::SourceDB>.  This is called *after* the definition has been changed, so
+#   don't expect to be able to read the original value.
 #
 sub OnChangedDefinition #(string itemString, FileName file)
     {

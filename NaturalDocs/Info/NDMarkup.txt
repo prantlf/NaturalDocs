@@ -20,6 +20,10 @@ About: Top-Level Tags
    <ul></ul>       - Surrounds a bulleted (unordered) list.
    <dl></dl>       - Surrounds a description list, which is what you are reading.
 
+   <img inline pre="" post=""></img> - Surrounds an inline image.  Pre and post store the text surrounding the link, such as "(see "
+                                                          and ")", to be used if the link doesn't resolve to anything.  In between the tags is the link
+                                                          to the image itself.  No other tags will appear between them.
+
 
 About: List Item Tags
 
@@ -54,6 +58,9 @@ About: Text Tags
 
    <email></email>               - Surrounds an e-mail address.  No other tags will appear between them.
    <email name=""></email> - Surrounds a named e-mail address.
+
+   <img link pre="" post=""></img> - Surrounds an image link.  Pre and post store the text surrounding the link, such as "(see "
+                                                       and ")", and the tags surround the link itself.  No other tags will appear between them.
 
 
 About: Amp Chars

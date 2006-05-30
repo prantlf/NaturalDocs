@@ -37,6 +37,9 @@ a:active { color: #FF0000; text-decoration: underline }
 td {
     vertical-align: top }
 
+img { border: 0;  }
+
+
 /*
     Comment out this line to use web-style paragraphs (blank line between
     paragraphs, no indent) instead of print-style paragraphs (no blank line,
@@ -260,6 +263,20 @@ blockquote {
         .CDLDescription {
             font-size: 10pt;  /*  For browsers that don't inherit correctly, like Opera 5.  */
             padding-bottom: .5em; padding-left: 5ex }
+
+
+    .CInlineImage {
+        text-align: center;
+        margin: 1em 0;
+        }
+    .CInlineImage,
+    .CImageLink {
+        color: #808080;
+        font-style: italic;
+        }
+    a.CImageLink:link,
+    a.CImageLink:visited,
+    a.CImageLink:hover { color: #808080 }
 
 
 

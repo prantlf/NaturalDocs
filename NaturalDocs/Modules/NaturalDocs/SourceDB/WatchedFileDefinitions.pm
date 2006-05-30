@@ -71,9 +71,6 @@ sub AddDefinition #(ExtensionID extension, string itemString, NaturalDocs::Sourc
     {
     my ($self, $extension, $itemString, $definition) = @_;
 
-    if (NaturalDocs::SourceDB->ExtensionOnlyTracksExistence($extension))
-        {  die "Tried to add a definition to SourceDB::TrackedFileDefinitions for an extension that only tracks existence.";  };
-
     if (!defined $self->[$extension])
         {  $self->[$extension] = { };  };
 
@@ -96,9 +93,6 @@ sub GetDefinition #(ExtensionID extension, string itemString) => NaturalDocs::So
     {
     my ($self, $extension, $itemString) = @_;
 
-    if (NaturalDocs::SourceDB->ExtensionOnlyTracksExistence($extension))
-        {  die "Tried to get a definition in SourceDB::TrackedFileDefinitions for an extension that only tracks existence.";  };
-
     if (defined $self->[$extension])
         {  return $self->[$extension]->{$itemString};  }
     else
@@ -115,9 +109,6 @@ sub GetDefinition #(ExtensionID extension, string itemString) => NaturalDocs::So
 sub DeleteDefinition #(ExtensionID extension, string itemString) => bool
     {
     my ($self, $extension, $itemString) = @_;
-
-    if (NaturalDocs::SourceDB->ExtensionOnlyTracksExistence($extension))
-        {  die "Tried to delete a definition to SourceDB::TrackedFileDefinitions for an extension that only tracks existence.";  };
 
     if (defined $self->[$extension])
         {
@@ -145,9 +136,6 @@ sub HasDefinitions #(ExtensionID extension) => bool
     {
     my ($self, $extension) = @_;
 
-    if (NaturalDocs::SourceDB->ExtensionOnlyTracksExistence($extension))
-        {  die "Tried to check a definition in SourceDB::TrackedFileDefinitions for an extension that only tracks existence.";  };
-
     return (defined $self->[$extension]);
     };
 
@@ -160,9 +148,6 @@ sub HasDefinitions #(ExtensionID extension) => bool
 sub HasDefinition #(ExtensionID extension, string itemString) => bool
     {
     my ($self, $extension, $itemString) = @_;
-
-    if (NaturalDocs::SourceDB->ExtensionOnlyTracksExistence($extension))
-        {  die "Tried to check definitions in SourceDB::TrackedFileDefinitions for an extension that only tracks existence.";  };
 
     if (defined $self->[$extension])
         {  return (exists $self->[$extension]->{$itemString});  }

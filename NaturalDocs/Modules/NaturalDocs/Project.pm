@@ -9,14 +9,14 @@
 #
 #   Usage and Dependencies:
 #
-#       - All the <Data File Functions> are available immediately, except for the status functions.
+#       - All the <Config and Data File Functions> are available immediately, except for the status functions.
 #
 #       - <ReparseEverything()> and <RebuildEverything()> are available immediately, because they may need to be called
 #         after <LoadConfigFileInfo()> but before <LoadSourceFileInfo()>.
 #
 #       - Prior to <LoadConfigFileInfo()>, <NaturalDocs::Settings> must be initialized.
 #
-#       - After <LoadConfigFileInfo()>, the status <Data File Functions> are available as well.
+#       - After <LoadConfigFileInfo()>, the status <Config and Data File Functions> are available as well.
 #
 #       - Prior to <LoadSourceFileInfo()>, <NaturalDocs::Settings> and <NaturalDocs::Languages> must be initialized.
 #
@@ -28,6 +28,7 @@
 # Natural Docs is licensed under the GPL
 
 use NaturalDocs::Project::SourceFile;
+use NaturalDocs::Project::ImageFile;
 
 use strict;
 use integer;
@@ -43,7 +44,6 @@ package NaturalDocs::Project;
 #
 #   The file handle for the file information file, <FileInfo.nd>.
 #
-
 
 #
 #   handle: FH_CONFIGFILEINFO
@@ -133,6 +133,47 @@ my %userConfigFiles = ( 'Topics.txt' => 1, 'Languages.txt' => 1, 'Menu.txt' => 1
 
 
 ###############################################################################
+# Group: Image File Variables
+
+
+#
+#   hash: imageFileExtensions
+#
+#   An existence hash of all the file extensions for images.  Extensions are in all lowercase.
+#
+my %imageFileExtensions = ( 'jpg', 'jpeg', 'gif', 'png', 'bmp' );
+
+
+#
+#   hash: imageFiles
+#
+#   A hash of all the image files in the project.  The keys are the <FileNames> and the values are
+#   <NaturalDocs::Project::ImageFiles>.
+#
+my %imageFiles;
+
+
+#
+#   hash: imageFilesToUpdate
+#
+#   An existence hash of all the image <FileNames> that need to be updated, either because they changed or they're new to the
+#   project.
+#
+my %imageFilesToUpdate;
+
+
+#
+#   hash: imageFilesToPurge
+#
+#   An existence hash of all the image <FileNames> that need to be purged, either because the files no longer exist or because
+#   they are no longer used.
+#
+my %imageFilesToPurge;
+
+
+
+
+###############################################################################
 # Group: Files
 
 
@@ -209,6 +250,32 @@ my %userConfigFiles = ( 'Topics.txt' => 1, 'Languages.txt' => 1, 'Menu.txt' => 1
 #
 
 
+#
+#   File: ImageFileInfo.nd
+#
+#   An index of the state of the image files as of the last parse.
+#
+#   Format:
+#
+#       > [Standard Binary Header]
+#
+#       First is the standard binary file header as defined by <NaturalDocs::BinaryFile>.
+#
+#       > [AString16: file name or undef]
+#       > [UInt32: last modification time]
+#       > [UInt8: was used]
+#
+#       This section is repeated until the file name is null.  The last modification times are UInt32s in the standard Unix format.
+#
+#
+#   Revisions:
+#
+#       2.0:
+#
+#           - The file was added to Natural Docs.
+#
+
+
 
 ###############################################################################
 # Group: File Functions
@@ -220,7 +287,7 @@ my %userConfigFiles = ( 'Topics.txt' => 1, 'Languages.txt' => 1, 'Menu.txt' => 1
 #   <FileInfo.nd>.  New and changed files will be added to <FilesToParse()>, and if they have content,
 #   <FilesToBuild()>.
 #
-#   Will call <NaturalDocs::Languages->OnMostUsedLanguageChange()> if <MostUsedLanguage()> changes.
+#   Will call <NaturalDocs::Languages->OnMostUsedLanguageKnown()> if <MostUsedLanguage()> changes.
 #
 #   Returns:
 #
@@ -430,7 +497,7 @@ sub SaveSourceFileInfo
 #
 #   Function: LoadConfigFileInfo
 #
-#   Loads the config file info to disk.
+#   Loads the config file info from disk.
 #
 sub LoadConfigFileInfo
     {
@@ -540,6 +607,108 @@ sub SaveConfigFileInfo
                                                                 (stat($self->UserConfigFile('Languages.txt')))[9] );
 
     close(FH_CONFIGFILEINFO);
+    };
+
+
+#
+#   Function: LoadImageFileInfo
+#
+#   Loads the image file info from disk.
+#
+sub LoadImageFileInfo
+    {
+    my ($self) = @_;
+
+    my $version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('ImageFileInfo.nd') );
+    my $fileIsOkay;
+
+    if (defined $version)
+        {
+        # It hasn't changed since being introduced.
+
+        if ($version <= NaturalDocs::Settings->AppVersion())
+            {  $fileIsOkay = 1;  }
+        else
+            {  NaturalDocs::BinaryFile->Close();  };
+        };
+
+    if ($fileIsOkay)
+        {
+        # [AString16: file name or undef]
+
+        while (my $imageFile = NaturalDocs::BinaryFile->GetAString16())
+            {
+            # [UInt32: last modified]
+            # [UInt8: was used]
+
+            my $lastModified = NaturalDocs::BinaryFile->GetUInt32();
+            my $wasUsed = NaturalDocs::BinaryFile->GetUInt8();
+
+            my $imageFileObject = $imageFiles{$imageFile};
+
+            if (!$imageFileObject)
+                {
+                $imageFileObject = NaturalDocs::Project::ImageFile->New($lastModified, ::FILE_DOESNTEXIST(), $wasUsed);
+                $imageFiles{$imageFile} = $imageFileObject;
+
+                if ($wasUsed)
+                    {  $imageFilesToPurge{$imageFile} = 1;  };
+                }
+            else
+                {
+                $imageFileObject->SetWasUsed($wasUsed);
+
+                if ($imageFileObject->LastModified() == $lastModified && !$rebuildEverything)
+                    {
+                    $imageFileObject->SetStatus(::FILE_SAME());
+                    }
+                else
+                    {
+                    $imageFileObject->SetStatus(::FILE_CHANGED());
+
+                    if ($wasUsed)
+                        {  $imageFilesToUpdate{$imageFile} = 1;  };
+                    };
+                };
+            };
+
+        NaturalDocs::BinaryFile->Close();
+        }
+
+    else # !$fileIsOkay
+        {
+        $self->RebuildEverything();
+        };
+    };
+
+
+#
+#   Function: SaveImageFileInfo
+#
+#   Saves the image file info to disk.
+#
+sub SaveImageFileInfo
+    {
+    my $self = shift;
+
+    NaturalDocs::BinaryFile->OpenForWriting( NaturalDocs::Project->DataFile('ImageFileInfo.nd') );
+
+    while (my ($imageFile, $imageFileInfo) = each %imageFiles)
+        {
+        if ($imageFileInfo->Status() != ::FILE_DOESNTEXIST())
+            {
+            # [AString16: file name or undef]
+            # [UInt32: last modification time]
+            # [UInt8: was used]
+
+            NaturalDocs::BinaryFile->WriteAString16($imageFile);
+            NaturalDocs::BinaryFile->WriteUInt32($imageFileInfo->LastModified());
+            NaturalDocs::BinaryFile->WriteUInt8( ($imageFileInfo->ReferenceCount() > 0 ? 1 : 0) );
+            };
+        };
+
+    NaturalDocs::BinaryFile->WriteAString16(undef);
+    NaturalDocs::BinaryFile->Close();
     };
 
 
@@ -724,6 +893,12 @@ sub RebuildEverything
 
     if ($userConfigFiles{'Menu.txt'} == ::FILE_SAME())
         {  $userConfigFiles{'Menu.txt'} = ::FILE_CHANGED();  };
+
+    while (my ($imageFile, $imageObject) = each %imageFiles)
+        {
+        if ($imageObject->ReferenceCount())
+            {  $imageFilesToUpdate{$imageFile} = 1;  };
+        };
     };
 
 
@@ -846,6 +1021,91 @@ sub MostUsedLanguage
 
 
 
+
+###############################################################################
+# Group: Image File Functions
+
+
+#
+#   Function: ImageFileExists
+#   Returns whether the passed image file exists.
+#
+sub ImageFileExists #(FileName file) => bool
+    {
+    my ($self, $file) = @_;
+
+    return (exists $imageFiles{$file} && $imageFiles{$file}->Status() != ::FILE_DOESNTEXIST());
+    };
+
+
+#
+#   Function: ImageFileDimensions
+#   Returns the dimensions of the passed image file as the array ( width, height ).  Returns them both as undef if it cannot be
+#   determined.
+#
+sub ImageFileDimensions #(FileName file) => (int, int)
+    {
+    my ($self, $file) = @_;
+    return (undef, undef);
+    };
+
+
+#
+#   Function: AddImageFileReference
+#   Adds a reference to the passed image <FileName>.
+#
+sub AddImageFileReference #(FileName imageFile)
+    {
+    my ($self, $imageFile) = @_;
+
+    if (!exists $imageFiles{$imageFile} || $imageFiles{$imageFile}->Status() == ::FILE_DOESNTEXIST())
+        {  die "Tried to add a reference to a non-existant image file.";  };
+
+    if ($imageFiles{$imageFile}->AddReference() == 1)
+        {
+        if (!$imageFiles{$imageFile}->WasUsed())
+            {  $imageFilesToUpdate{$imageFile} = 1;  };
+
+        delete $imageFilesToPurge{$imageFile};
+        };
+    };
+
+
+#
+#   Function: DeleteImageFileReference
+#   Deletes a reference from the passed image <FileName>.
+#
+sub DeleteImageFileReference #(FileName imageFile)
+    {
+    my ($self, $imageFile) = @_;
+
+    if (!exists $imageFiles{$imageFile})
+        {  die "Tried to delete a reference to a non-existant image file.";  };
+
+    if ($imageFiles{$imageFile}->DeleteReference() == 0 && $imageFiles{$imageFile}->WasUsed())
+        {
+        $imageFilesToPurge{$imageFile} = 1;
+        };
+    };
+
+
+#
+#   Function: ImageFilesToUpdate
+#   Returns an existence hashref of image <FileNames> that need to be updated.  *Do not change.*
+#
+sub ImageFilesToUpdate
+    {  return \%imageFilesToUpdate;  };
+
+
+#
+#   Function: ImageFilesToPurge
+#   Returns an existence hashref of image <FileNames> that need to be updated.  *Do not change.*
+#
+sub ImageFilesToPurge
+    {  return \%imageFilesToPurge;  };
+
+
+
 ###############################################################################
 # Group: Support Functions
 
@@ -860,6 +1120,7 @@ sub GetAllSupportedFiles
     my ($self) = @_;
 
     my @directories = @{NaturalDocs::Settings->InputDirectories()};
+    my $isCaseSensitive = NaturalDocs::File->IsCaseSensitive();
 
     # Keys are language names, values are counts.
     my %languageCounts;
@@ -872,7 +1133,7 @@ sub GetAllSupportedFiles
 
     foreach my $excludedDirectory (@$excludedDirectoryArrayRef)
         {
-        if (NaturalDocs::File->IsCaseSensitive())
+        if ($isCaseSensitive)
             {  $excludedDirectories{$excludedDirectory} = 1;  }
         else
             {  $excludedDirectories{lc($excludedDirectory)} = 1;  };
@@ -899,7 +1160,7 @@ sub GetAllSupportedFiles
                 # Join again with the noFile flag set in case the platform handles them differently.
                 $fullEntry = NaturalDocs::File->JoinPaths($directory, $entry, 1);
 
-                if (NaturalDocs::File->IsCaseSensitive())
+                if ($isCaseSensitive)
                     {
                     if (!exists $excludedDirectories{$fullEntry})
                         {  push @directories, $fullEntry;  };
@@ -914,7 +1175,14 @@ sub GetAllSupportedFiles
             # Otherwise add it if it's a supported extension.
             else
                 {
-                if (my $language = NaturalDocs::Languages->LanguageOf($fullEntry))
+                my $extension = NaturalDocs::File->ExtensionOf($entry);
+
+                if (exists $imageFileExtensions{lc($extension)})
+                    {
+                    my $fileObject = NaturalDocs::Project::ImageFile->New( (stat($fullEntry))[9], ::FILE_NEW(), 0 );
+                    $imageFiles{$fullEntry} = $fileObject;
+                    }
+                elsif (my $language = NaturalDocs::Languages->LanguageOf($fullEntry))
                     {
                     my $fileObject = NaturalDocs::Project::SourceFile->New();
                     $fileObject->SetLastModified(( stat($fullEntry))[9] );
