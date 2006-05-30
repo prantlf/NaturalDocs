@@ -416,6 +416,24 @@ sub NoFileName #(path)
 
 
 #
+#   Function: NoExtension
+#
+#   Returns the path without an extension.
+#
+sub NoExtension #(path)
+    {
+    my ($self, $path) = @_;
+
+    my $extension = $self->ExtensionOf($path);
+
+    if ($extension)
+        {  $path = substr($path, 0, length($path) - length($extension) - 1);  };
+
+    return $path;
+    };
+
+
+#
 #   Function: ExtensionOf
 #
 #   Returns the extension of the passed path, or undef if none.
@@ -511,10 +529,14 @@ sub RemoveEmptyTree #(path, limit)
 #       source       - The file to copy.
 #       destination - The destination to copy to.
 #
-sub Copy #(source, destination)
+#   Returns:
+#
+#       Whether it succeeded
+#
+sub Copy #(source, destination) => bool
     {
     my ($self, $source, $destination) = @_;
-    File::Copy::copy($source, $destination);
+    return File::Copy::copy($source, $destination);
     };
 
 
