@@ -91,7 +91,7 @@ sub CompletedItem
 
         $completed += 100;
 
-        if (time() >= $lastMessageTime + TIME_BETWEEN_UPDATES)
+        if (time() >= $lastMessageTime + TIME_BETWEEN_UPDATES && $completed != $total * 100)
             {
             print $message . ' (' . ($completed / $total) . '%)' . "\n";
             $lastMessageTime = time();
