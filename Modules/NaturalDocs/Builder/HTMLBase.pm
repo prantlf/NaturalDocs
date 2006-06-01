@@ -2452,7 +2452,8 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             {
             # Format non-code text.
 
-            # Convert quotes to fancy quotes.
+            # Convert quotes to fancy quotes.  This has to be done before links because some of them may have JavaScript
+            # attributes that use the apostrophe character.
             $text =~ s/^\'/&lsquo;/gm;
             $text =~ s/([\ \(\[\{])\'/$1&lsquo;/g;
             $text =~ s/\'/&rsquo;/g;
@@ -2461,6 +2462,16 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             $text =~ s/([\ \(\[\{])&quot;/$1&ldquo;/g;
             $text =~ s/&quot;/&rdquo;/g;
 
+            # Resolve and convert links.
+            $text =~ s{<link target=\"([^\"]*)\" name=\"([^\"]*)\" original=\"([^\"]*)\">}
+                           {$self->BuildTextLink($1, $2, $3, $package, $using, $sourceFile)}ge;
+            $text =~ s/<url target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildURLLink($1, $2)/ge;
+            $text =~ s/<email target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildEMailLink($1, $2)/ge;
+
+            # Convert images.
+            $text =~ s{<img mode=\"(inline|link)\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
+                           {$self->BuildImage($sourceFile, $1, $2, $3)}ge;
+
             # Copyright symbols.  Prevent conversion when part of (a), (b), (c) lists.
             if ($text !~ /\(a\)/i)
                 {  $text =~ s/\(c\)/&copy;/gi;  };
@@ -2468,61 +2479,6 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             # Trademark symbols.
             $text =~ s/\(tm\)/&trade;/gi;
             $text =~ s/\(r\)/&reg;/gi;
-
-            # Resolve and convert links.
-            $text =~ s{<link original=\"([^\"]+)\"(?: name=\"([^\"]+)\")?>([^<]+)<\/link>}
-                           {$self->BuildTextLink($3, $2, $1, $package, $using, $sourceFile)}ge;
-            $text =~ s/<url(?: name=\"([^\"]+)\")?>([^<]+)<\/url>/$self->BuildURLLink($2, $1)/ge;
-            $text =~ s/<email(?: name=\"([^\"]+)\")?>([^<]+)<\/email>/$self->BuildEMailLink($2, $1)/eg;
-
-            # Convert images.
-            $text =~ s{<img inline pre=\"([^\"]*)\" post=\"([^\"]*)\">([^<]+)<\/img>}
-                           {$self->MakeInlineImage($1, $2, $3)}ge;
-
-            sub MakeInlineImage #(pre, post, text)
-                {
-                my ($self, $pre, $post, $text) = @_;
-
-                my $image = NaturalDocs::ImageReferenceTable->GetReferenceTarget( $sourceFile,
-                                                                                                            NaturalDocs::NDMarkup->RestoreAmpChars($text) );
-
-                if ($image)
-                    {
-                    return
-                    '<div class=CInlineImage>'
-                        . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
-                                                                                   $self->OutputImageOf($image), 1) . '">'
-                    . '</div>';
-                    }
-                else
-                    {  return $pre . $text . $post;  };
-                };
-
-            $text =~ s{<img link pre=\"([^\"]*)\" post=\"([^\"]*)\">([^<]+)<\/img>}
-                           {$self->MakeImageLink($1, $2, $3)}ge;
-
-            sub MakeImageLink #(pre, post, text)
-                {
-                my ($self, $pre, $post, $text) = @_;
-
-                my $image = NaturalDocs::ImageReferenceTable->GetReferenceTarget( $sourceFile,
-                                                                                                            NaturalDocs::NDMarkup->RestoreAmpChars($text) );
-
-                if ($image)
-                    {
-                    (undef, undef, $text) = NaturalDocs::File->SplitPath($text);
-                    $text = NaturalDocs::File->NoExtension($text);
-
-                    return
-                    '<a href="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile), $self->OutputImageOf($image), 1) . '" '
-                    . 'target=_blank class=CImageLink>'
-                            . $pre . $text . $post
-                    . '</a>'
-                    }
-                else
-                    {  return $pre . $text . $post;  };
-                };
-
 
             # Add double spaces too.
             $text = $self->AddDoubleSpaces($text);
@@ -2588,48 +2544,52 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
 #
 #   Parameters:
 #
-#       text  - The link text.
-#       label - The link label.  If undef, defaults to text.
-#       originalText - The original text as it appears in the source.
+#       target  - The link text.
+#       name - The link name.
+#       original - The original text as it appears in the source.
 #       package  - The package <SymbolString> the link appears in, or undef if none.
 #       using - An arrayref of additional scope <SymbolStrings> the link has access to, or undef if none.
 #       sourceFile  - The <FileName> the link appears in.
+#
+#       Target, name, and original are assumed to still have <NDMarkup> amp chars.
 #
 #   Returns:
 #
 #       The link in HTML, including tags.  If the link doesn't resolve to anything, returns the HTML that should be substituted for it.
 #
-sub BuildTextLink #(text, label, originalText, package, using, sourceFile)
+sub BuildTextLink #(target, name, original, package, using, sourceFile)
     {
-    my ($self, $text, $label, $originalText, $package, $using, $sourceFile) = @_;
+    my ($self, $target, $name, $original, $package, $using, $sourceFile) = @_;
 
-    if (!length $label)
-        {  $label = $text;  };
+    my $plainTarget = $self->RestoreAmpChars($target);
 
-    my $plainText = $self->RestoreAmpChars($text);
+    my $symbol = NaturalDocs::SymbolString->FromText($plainTarget);
+    my $symbolTarget = NaturalDocs::SymbolTable->References(::REFERENCE_TEXT(), $symbol, $package, $using, $sourceFile);
 
-    my $symbol = NaturalDocs::SymbolString->FromText($plainText);
-    my $target = NaturalDocs::SymbolTable->References(::REFERENCE_TEXT(), $symbol, $package, $using, $sourceFile);
-
-    if (defined $target)
+    if (defined $symbolTarget)
         {
-        my $targetFile;
+        my $symbolTargetFile;
 
-        if ($target->File() ne $sourceFile)
-            {  $targetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $self->OutputFileOf($target->File()), 1 );  };
+        if ($symbolTarget->File() ne $sourceFile)
+            {
+            $symbolTargetFile = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile),
+                                                                               $self->OutputFileOf($symbolTarget->File()), 1 );
+            };
         # else leave it undef
 
-        my $targetTooltipID = $self->BuildToolTip($target->Symbol(), $sourceFile, $target->Type(),
-                                                                      $target->Prototype(), $target->Summary());
+        my $symbolTargetTooltipID = $self->BuildToolTip($symbolTarget->Symbol(), $sourceFile, $symbolTarget->Type(),
+                                                                                 $symbolTarget->Prototype(), $symbolTarget->Summary());
 
-        my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
+        my $toolTipProperties = $self->BuildToolTipLinkProperties($symbolTargetTooltipID);
 
-        return '<a href="' . $targetFile . '#' . $self->SymbolToHTMLSymbol($target->Symbol()) . '" '
-                    . 'class=L' . NaturalDocs::Topics->NameOfType($target->Type(), 0, 1) . ' ' . $toolTipProperties . '>' . $label . '</a>';
+        return '<a href="' . $symbolTargetFile . '#' . $self->SymbolToHTMLSymbol($symbolTarget->Symbol()) . '" '
+                    . 'class=L' . NaturalDocs::Topics->NameOfType($symbolTarget->Type(), 0, 1) . ' ' . $toolTipProperties . '>'
+                        . $name
+                    . '</a>';
         }
     else
         {
-        return $originalText;
+        return $original;
         };
     };
 
@@ -2641,31 +2601,30 @@ sub BuildTextLink #(text, label, originalText, package, using, sourceFile)
 #
 #   Parameters:
 #
-#       url - The URL to link to.
-#       label - The label of the link, if any.
+#       target - The URL to link to.
+#       name - The label of the link.
+#
+#       Both are assumed to still have <NDMarkup> amp chars.
 #
 #   Returns:
 #
 #       The HTML link, complete with tags.
 #
-sub BuildURLLink #(url, label)
+sub BuildURLLink #(target, name)
     {
-    my ($self, $url, $label) = @_;
+    my ($self, $target, $name) = @_;
 
-    if (!length $label)
-        {  $label = $url;  };
+    # Don't restore amp chars on the target.
 
-    $url = $self->RestoreAmpChars($url);
+    if (length $name < 50 || $name ne $target)
+        {  return '<a href="' . $target . '" class=LURL>' . $name . '</a>';  };
 
-    if (length $label < 50 || $label ne $url)
-        {  return '<a href="' . $url . '" class=LURL>' . $label . '</a>';  };
-
-    my @segments = split(/([\,\&\/])/, $url);
-    my $output = '<a href="' . $url . '" class=LURL>';
+    my @segments = split(/([\,\/]|&amp;)/, $target);
+    my $output = '<a href="' . $target . '" class=LURL>';
 
     # Get past the first batch of slashes, since we don't want to break on things like http://.
 
-    $output .= $self->ConvertAmpChars($segments[0]);
+    $output .= $segments[0];
 
     my $i = 1;
     while ($i < scalar @segments && ($segments[$i] eq '/' || !$segments[$i]))
@@ -2679,10 +2638,10 @@ sub BuildURLLink #(url, label)
     while ($i < scalar @segments)
         {
         # Spaces don't wrap in IE for some reason.  Need to use dashes as well.
-        if ($segments[$i] eq ',' || $segments[$i] eq '/' || $segments[$i] eq '&')
+        if ($segments[$i] eq ',' || $segments[$i] eq '/' || $segments[$i] eq '&amp;')
             {  $output .= '<span class=HB>- </span>';  };
 
-        $output .= $self->ConvertAmpChars($segments[$i]);
+        $output .= $segments[$i];
         $i++;
         };
 
@@ -2698,34 +2657,36 @@ sub BuildURLLink #(url, label)
 #
 #   Parameters:
 #
-#       address  - The e-mail address.
-#       label - The label of the link, if any.
+#       target  - The e-mail address.
+#       name - The label of the link.
+#
+#       Both are assumed to still have <NDMarkup> amp chars.
 #
 #   Returns:
 #
 #       The HTML e-mail link, complete with tags.
 #
-sub BuildEMailLink #(address, label)
+sub BuildEMailLink #(target, name)
     {
-    my ($self, $address, $label) = @_;
+    my ($self, $target, $name) = @_;
     my @splitAddress;
 
 
     # Hack the address up.  We want two user pieces and two host pieces.
 
-    my ($user, $host) = split(/\@/, $address);
+    my ($user, $host) = split(/\@/, $self->RestoreAmpChars($target));
 
     my $userSplit = length($user) / 2;
 
-    push @splitAddress, substr($user, 0, $userSplit);
-    push @splitAddress, substr($user, $userSplit);
+    push @splitAddress, NaturalDocs::NDMarkup->ConvertAmpChars( substr($user, 0, $userSplit) );
+    push @splitAddress, NaturalDocs::NDMarkup->ConvertAmpChars( substr($user, $userSplit) );
 
     push @splitAddress, '@';
 
     my $hostSplit = length($host) / 2;
 
-    push @splitAddress, substr($host, 0, $hostSplit);
-    push @splitAddress, substr($host, $hostSplit);
+    push @splitAddress, NaturalDocs::NDMarkup->ConvertAmpChars( substr($host, 0, $hostSplit) );
+    push @splitAddress, NaturalDocs::NDMarkup->ConvertAmpChars( substr($host, $hostSplit) );
 
 
     # Now put it back together again.  We'll use spans to split the text transparently and JavaScript to split and join the link.
@@ -2733,7 +2694,7 @@ sub BuildEMailLink #(address, label)
     my $output =
     "<a href=\"#\" onClick=\"location.href='mai' + 'lto:' + '" . join("' + '", @splitAddress) . "'; return false;\" class=LEMail>";
 
-    if (!length $label)
+    if ($name eq $target)
         {
         $output .=
         $splitAddress[0] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[1]
@@ -2741,10 +2702,78 @@ sub BuildEMailLink #(address, label)
         . $splitAddress[3] . '<span style="display: none">.nosp@m.</span>' . $splitAddress[4];
         }
     else
-        {  $output .= $label;  };
+        {  $output .= $name;  };
 
     $output .= '</a>';
     return $output;
+    };
+
+
+#
+#   Function: BuildImage
+#
+#   Builds the HTML for an image.
+#
+#   Parameters:
+#
+#       sourceFile - The source <FileName> this image appears in.
+#       mode - Either "inline" or "link".
+#       target - The target.
+#       original - The original text.
+#
+#       All are assumed to still have <NDMarkup> amp chars.
+#
+#   Returns:
+#
+#       The result in HTML.
+#
+sub BuildImage #(sourceFile, mode, target, original)
+    {
+    my ($self, $sourceFile, $mode, $target, $original) = @_;
+
+    my $targetNoAmp = $self->RestoreAmpChars($target);
+
+    my $image = NaturalDocs::ImageReferenceTable->GetReferenceTarget($sourceFile, $targetNoAmp);
+
+    if ($image)
+        {
+        if ($mode eq 'inline')
+            {
+            return
+            '<div class=CInlineImage>'
+                . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
+                                                                           $self->OutputImageOf($image), 1) . '">'
+            . '</div>';
+            }
+        else # $mode eq 'link'
+            {
+            my $originalNoAmp = $self->RestoreAmpChars($original);
+            my $targetIndex = index($originalNoAmp, $targetNoAmp);
+
+            if ($targetIndex != -1)
+                {
+                my (undef, undef, $shortTargetNoAmp) = NaturalDocs::File->SplitPath($targetNoAmp);
+                $shortTargetNoAmp = NaturalDocs::File->NoExtension($shortTargetNoAmp);
+
+                substr($originalNoAmp, $targetIndex, length($targetNoAmp), $shortTargetNoAmp);
+
+                $original = NaturalDocs::NDMarkup->ConvertAmpChars($originalNoAmp);
+                };
+
+            return
+            '<a href="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile), $self->OutputImageOf($image), 1) . '" '
+            . 'target=_blank class=CImageLink>'
+                    . $original
+            . '</a>';
+            }
+        }
+    else # !$image
+        {
+        if ($mode eq 'inline')
+            {  return '<p>' . $original . '</p>';  }
+        else # $mode eq 'link'
+            {  return $original;  };
+        };
     };
 
 
