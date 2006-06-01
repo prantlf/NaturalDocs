@@ -398,7 +398,7 @@ sub FormatText #(string text, bool inParagraph)
         {  $text =~ s/&lt;p&gt;//gi;  };
 
     $text =~ s/&lt;a href=&quot;mailto:(.*?)&quot;.*?&gt;(.*?)&lt;\/a&gt;/$self->MakeEMailLink($1, $2)/gie;
-    $text =~ s/&lt;a href=&quot;(.*?)&quot;.*?&gt;(.*?)&lt;\/a&gt;/$self->MakeLink($1, $2)/gie;
+    $text =~ s/&lt;a href=&quot;(.*?)&quot;.*?&gt;(.*?)&lt;\/a&gt;/$self->MakeURLLink($1, $2)/gie;
 
     $text =~ s/&amp;nbsp;/ /gi;
     $text =~ s/&amp;amp;/&amp;/gi;
@@ -443,29 +443,21 @@ sub ConvertLink #(text)
     $label =~ s/ +$//;
 
     if (!length $label)
-        {  return '<link original="' . $target . '">' . $target . '</link>';  }
+        {  return '<link target="' . $target . '" name="' . $target . '" original="' . $target . '">';  }
     else
-        {  return '<link original="' . $label . ' (' . $target . ')" name="' . $label . '">' . $target . '</link>';  };
+        {  return '<link target="' . $target . '" name="' . $label . '" original="' . $label . ' (' . $target . ')">';  };
     };
 
-sub MakeLink #(target, text)
+sub MakeURLLink #(target, text)
     {
     my ($self, $target, $text) = @_;
-
-    if (lc($target) eq lc($text))
-        {  return '<url>' . $target . '</url>';  }
-    else
-        {  return '<url name="' . $text . '">' . $target . '</url>';  };
+    return '<url target="' . $target . '" name="' . $text . '">';
     };
 
 sub MakeEMailLink #(target, text)
     {
     my ($self, $target, $text) = @_;
-
-    if (lc($target) eq lc($text))
-        {  return '<email>' . $target . '</email>';  }
-    else
-        {  return '<email name="' . $text . '">' . $target . '</email>';  };
+    return '<email target="' . $target . '" name="' . $text . '">';
     };
 
 

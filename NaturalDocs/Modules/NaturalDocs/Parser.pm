@@ -150,7 +150,7 @@ sub ParseForInformation #(file)
 
         # Add references in the topic.
 
-        while ($body =~ /<link(?:[^>]*)>([^<]+)<\/link>/g)
+        while ($body =~ /<link target=\"([^\"]*)\" name=\"[^\"]*\" original=\"[^\"]*\">/g)
             {
             my $linkText = NaturalDocs::NDMarkup->RestoreAmpChars($1);
             my $linkSymbol = NaturalDocs::SymbolString->FromText($linkText);
@@ -162,10 +162,10 @@ sub ParseForInformation #(file)
 
         # Add images in the topic.
 
-        while ($body =~ /<img(?:[^>]+)>([^<]+)<\/img>/g)
+        while ($body =~ /<img mode=\"[^\"]*\" target=\"([^\"]+)\" original=\"[^\"]*\">/g)
             {
-            my $imageText = NaturalDocs::NDMarkup->RestoreAmpChars($1);
-            NaturalDocs::ImageReferenceTable->AddReference($sourceFile, $imageText);
+            my $target = NaturalDocs::NDMarkup->RestoreAmpChars($1);
+            NaturalDocs::ImageReferenceTable->AddReference($sourceFile, $target);
             };
         };
 

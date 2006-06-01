@@ -199,7 +199,7 @@ sub ParseComment #(commentLines, isJavaDoc, lineNumber, parsedTopics)
             $symbol = undef;
 
             $bodyStart = $index;
-            $bodyEnd = $index;
+            $bodyEnd = $index + 1;
 
             $topicCount++;
 
@@ -533,7 +533,8 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                 $output .= $tagEnders{$topLevelTag};
                 $topLevelTag = TAG_NONE;
 
-                $output .= '<img inline pre="' . $1 . '" post="' . $3 . '">' . $2 . '</img>';
+                $output .= '<img mode="inline" target="' . NaturalDocs::NDMarkup->ConvertAmpChars($2) . '" '
+                                . 'original="' . NaturalDocs::NDMarkup->ConvertAmpChars($1 . $2 . $3) . '">';
 
                 $prevLineBlank = undef;
                 }
@@ -703,15 +704,14 @@ sub RichFormatTextBlock #(text)
                     };
                 # Index will be incremented again at the end of the loop.
 
+                $linkText = NaturalDocs::NDMarkup->ConvertAmpChars($linkText);
+
                 if ($linkText =~ /^(?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
-                    {  $output .= '<email>' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '</email>';  }
+                    {  $output .= '<email target="' . $1 . '" name="' . $1 . '">';  }
                 elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:/i)
-                    {  $output .= '<url>' . NaturalDocs::NDMarkup->ConvertAmpChars($linkText) . '</url>';  }
+                    {  $output .= '<url target="' . $linkText . '" name="' . $linkText . '">';  }
                 else
-                    {
-                    my $ndLinkText = NaturalDocs::NDMarkup->ConvertAmpChars($linkText);
-                    $output .= '<link original="&lt;' . $ndLinkText . '&gt;">' . $ndLinkText . '</link>';
-                    };
+                    {  $output .= '<link target="' . $linkText . '" name="' . $linkText . '" original="&lt;' . $linkText . '&gt;">';  };
                 }
 
             else # it's not a link.
@@ -773,78 +773,79 @@ sub RichFormatTextBlock #(text)
 
         else # plain text or a > that isn't part of a link
             {
-            $output .= NaturalDocs::NDMarkup->ConvertAmpChars($textBlocks[$index]);;
-            };
+            my $textBlock = NaturalDocs::NDMarkup->ConvertAmpChars($textBlocks[$index]);;
+
+            # Pull out the e-mail addresses and URLs that aren't in angle brackets.
+
+            $textBlock =~ s{
+                                    # The previous character can't be an alphanumeric.
+                                    (?<!  [a-z0-9]  )
+
+                                    # Optional mailto:.  Ignored in output.
+                                    (?:mailto\:)?
+
+                                    # Begin capture
+                                    (
+
+                                    # The user portion.  Alphanumeric and - _.  Dots can appear between, but not at the edges or more than
+                                    # one in a row.
+                                    (?:  [a-z0-9\-_]+  \.  )*   [a-z0-9\-_]+
+
+                                    @
+
+                                    # The domain.  Alphanumeric and -.  Dots same as above, however, there must be at least two sections
+                                    # and the last one must be two to four alphanumeric characters (.com, .uk, .info, .203 for IP addresses)
+                                    (?:  [a-z0-9\-]+  \.  )+  [a-z]{2,4}
+
+                                    # End capture.
+                                    )
+
+                                    # The next character can't be an alphanumeric, which should prevent .abcde from matching the two to
+                                    # four character requirement.
+                                    (?!  [a-z0-9]  )
+
+                                    }
+
+                                   {<email target="$1" name="$1">}igx;
+
+            $textBlock =~ s{
+                                    # The previous character can't be an alphanumeric.
+                                    (?<!  [a-z0-9]  )
+
+                                    # Begin capture.
+                                    (
+
+                                    # URL must start with one of the acceptable protocols.
+                                    (?:http|https|ftp|news|file)\:
+
+                                    # The acceptable URL characters as far as I know.
+                                    [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\.\,]*
+
+                                    # The URL characters minus period and comma.  If it ends on them, they're probably intended as
+                                    # punctuation.
+                                    [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]
+
+                                    # End capture.
+                                    )
+
+                                    # The next character must not be an acceptable character.  This will prevent the URL from ending early
+                                    # just to get a match.
+                                    (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]  )
+
+                                    }
+
+                                   {<url target="$1" name="$1">}igx;
+
+
+            # Find image links.  Inline images should already be pulled out by now.  Amp chars are already converted.
+
+            $textBlock =~ s{(\( *see +)([^\)]+?)( *\))}{<img mode="link" target="$2" original="$1$2$3">}gi;
+
+            $output .= $textBlock;
+           };
 
         $index++;
         };
-
-
-    # Pull out the e-mail addresses and URLs that aren't in angle brackets.  Preventing > from being the leading character will
-    # prevent it from duplicating <url> and <email> tags, although I don't know if it may be falsely triggered in other situations
-    # as well.
-
-    $output =~ s{
-                        # The previous character can't be an alphanumeric.
-                        (?<!  [a-z0-9>]  )
-
-                        # Optional mailto:.  Ignored in output.
-                        (?:mailto\:)?
-
-                        # Begin capture
-                        (
-
-                        # The user portion.  Alphanumeric and - _.  Dots can appear between, but not at the edges or more than
-                        # one in a row.
-                        (?:  [a-z0-9\-_]+  \.  )*   [a-z0-9\-_]+
-
-                        @
-
-                        # The domain.  Alphanumeric and -.  Dots same as above, however, there must be at least two sections
-                        # and the last one must be two to four alphanumeric characters (.com, .uk, .info, .203 for IP addresses)
-                        (?:  [a-z0-9\-]+  \.  )+  [a-z]{2,4}
-
-                        # End capture.
-                        )
-
-                        # The next character can't be an alphanumeric, which should prevent .abcde from matching the two to
-                        # four character requirement.
-                        (?!  [a-z0-9]  )
-
-                        }
-
-                   {<email>$1<\/email>}igx;
-
-    $output =~ s{
-                        # The previous character can't be an alphanumeric.
-                        (?<!  [a-z0-9>]  )
-
-                        # Begin capture.
-                        (
-
-                        # URL must start with one of the acceptable protocols.
-                        (?:http|https|ftp|news|file)\:
-
-                        # The acceptable URL characters as far as I know.
-                        [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\.\,]*
-
-                        # The URL characters minus period and comma.  If it ends on them, they're probably intended as punctuation.
-                        [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]
-
-                        # End capture.
-                        )
-
-                        # The next character must not be an acceptable character.  This will prevent the URL from ending early just
-                        # to get a match.
-                        (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]  )
-
-                        }
-                       {<url>$1<\/url>}igx;
-
-
-    # Find image links.  Inline images should already be pulled out by now.
-
-    $output =~ s{(\( *see +)([^\)]+?)( *\))}{<img link pre=\"$1\" post=\"$3\">$2<\/img>}gi;
 
     return $output;
     };
