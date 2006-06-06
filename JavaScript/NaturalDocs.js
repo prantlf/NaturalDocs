@@ -192,6 +192,40 @@ function HideTip(tooltipID)
 
 
 //
+//  Image Popup
+// ____________________________________________________________________________
+
+
+var undefined;
+var popupWindowNumber = 1;
+
+function ImagePopup(popupPageURL, popupImageURL, width, height, title)
+    {
+    var scrollbars = 0;
+
+    if (width > (screen.availWidth * 0.8))
+        {
+        width = (screen.availWidth * 0.8);
+        scrollbars = 1;
+        }
+    if (height > (screen.availHeight * 0.8))
+        {
+        height = (screen.availHeight * 0.8);
+        scrollbars = 1;
+        }
+
+    var windowHandle = window.open(popupPageURL + '?' + popupImageURL + ',' + title,
+                                                      'NDImagePopupWindow' + popupWindowNumber,
+                                                      'status=0,toolbar=0,location=0,menubar=0,directories=0,resizable=1,'
+                                                       + 'scrollbars=' + scrollbars + ',width=' + width + ',height=' + height);
+
+    windowHandle.moveTo( (screen.availWidth - width) / 2, (screen.availHeight - height) / 2 );
+    popupWindowNumber++;
+    }
+
+
+
+//
 //  Event Handlers
 // ____________________________________________________________________________
 

@@ -51,6 +51,12 @@ package NaturalDocs::Project;
 #   The file handle for the config file information file, <ConfigFileInfo.nd>.
 #
 
+#
+#   handle: FH_IMAGEFILE
+#
+#   The file handle for determining the dimensions of image files.
+#
+
 
 
 ###############################################################################
@@ -141,7 +147,7 @@ my %userConfigFiles = ( 'Topics.txt' => 1, 'Languages.txt' => 1, 'Menu.txt' => 1
 #
 #   An existence hash of all the file extensions for images.  Extensions are in all lowercase.
 #
-my %imageFileExtensions = ( 'jpg', 'jpeg', 'gif', 'png', 'bmp' );
+my %imageFileExtensions = ( 'jpg' => 1, 'jpeg' => 1, 'gif' => 1, 'png' => 1, 'bmp' => 1 );
 
 
 #
@@ -1046,7 +1052,15 @@ sub ImageFileExists #(FileName file) => bool
 sub ImageFileDimensions #(FileName file) => (int, int)
     {
     my ($self, $file) = @_;
-    return (undef, undef);
+
+    my $object = $imageFiles{$file};
+    if (!$object)
+        {  die "Tried to get the dimensions of an image that doesn't exist.";  };
+
+    if ($object->Width() == -1)
+        {  $self->DetermineImageDimensions($file);  };
+
+    return ($object->Width(), $object->Height());
     };
 
 
@@ -1205,6 +1219,114 @@ sub GetAllSupportedFiles
             $mostUsedLanguage = $language;
             };
         };
+    };
+
+
+#
+#   Function: DetermineImageDimensions
+#
+#   Attempts to determine the dimensions of the passed image and apply them to their object in <imageFiles>.  Will set them to
+#   undef if they can't be determined.
+#
+sub DetermineImageDimensions #(FileName imageFile)
+    {
+    my ($self, $imageFile) = @_;
+
+    my $imageFileObject = $imageFiles{$imageFile};
+    if (!defined $imageFileObject)
+        {  die "Tried to determine image dimensions of a file with no object.";  };
+
+    my $extension = lc( NaturalDocs::File->ExtensionOf($imageFile) );
+    my ($width, $height);
+
+    if ($imageFileExtensions{$extension})
+        {
+        open(FH_IMAGEFILE, '<' . $imageFile)
+            or die 'Could not open ' . $imageFile . "\n";
+        binmode(FH_IMAGEFILE);
+
+        my $raw;
+
+        if ($extension eq 'gif')
+            {
+            read(FH_IMAGEFILE, $raw, 6);
+
+            if ($raw eq 'GIF87a' || $raw eq 'GIF89a')
+                {
+                read(FH_IMAGEFILE, $raw, 4);
+                ($width, $height) = unpack('vv', $raw);
+                };
+            }
+
+        elsif ($extension eq 'png')
+            {
+            read(FH_IMAGEFILE, $raw, 8);
+
+            if ($raw eq "\x89PNG\x0D\x0A\x1A\x0A")
+                {
+                seek(FH_IMAGEFILE, 4, 1);
+                read(FH_IMAGEFILE, $raw, 4);
+
+                if ($raw eq 'IHDR')
+                    {
+                    read(FH_IMAGEFILE, $raw, 8);
+                    ($width, $height) = unpack('NN', $raw);
+                    };
+                };
+            }
+
+        elsif ($extension eq 'bmp')
+            {
+            read(FH_IMAGEFILE, $raw, 2);
+
+            if ($raw eq 'BM')
+                {
+                seek(FH_IMAGEFILE, 16, 1);
+                read(FH_IMAGEFILE, $raw, 8);
+
+                ($width, $height) = unpack('VV', $raw);
+                };
+            }
+
+        elsif ($extension eq 'jpg' || $extension eq 'jpeg')
+            {
+            read(FH_IMAGEFILE, $raw, 2);
+            my $isOkay = ($raw eq "\xFF\xD8");
+
+            while ($isOkay)
+                {
+                read(FH_IMAGEFILE, $raw, 4);
+                my ($marker, $code, $length) = unpack('CCn', $raw);
+
+                $isOkay = ($marker eq 0xFF);
+
+                if ($isOkay)
+                    {
+                    if ($code >= 0xC0 && $code <= 0xC3)
+                        {
+                        read(FH_IMAGEFILE, $raw, 5);
+                        ($height, $width) = unpack('xnn', $raw);
+                        last;
+                        }
+
+                    else
+                        {
+                        $isOkay = seek(FH_IMAGEFILE, $length - 2, 1);
+                        };
+                    };
+                };
+            };
+
+        close(FH_IMAGEFILE);
+        };
+
+
+    # Sanity check the values.  Although images can theoretically be bigger than 5000, most won't.  The worst that happens in this
+    # case is just that they don't get length and width values in the output anyway.
+    if ($width > 0 && $width < 5000 && $height > 0 && $height < 5000)
+        {  $imageFileObject->SetDimensions($width, $height);  }
+    else
+        {  $imageFileObject->SetDimensions(undef, undef);  };
     };
 
 
