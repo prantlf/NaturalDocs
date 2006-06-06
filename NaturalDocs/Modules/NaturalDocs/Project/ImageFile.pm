@@ -30,12 +30,16 @@ package NaturalDocs::Project::ImageFile;
 #       STATUS - <FileStatus> since the last build.
 #       REFERENCE_COUNT - The number of references to the image from the source files.
 #       WAS_USED - Whether the image was used the last time Natural Docs was run.
+#       WIDTH - The image width.  Undef if can't be determined, -1 if haven't attempted to determine yet.
+#       HEIGHT - The image height.  Undef if can't be determined, -1 if haven't attempted to determine yet.
 #
 
 use NaturalDocs::DefineMembers 'LAST_MODIFIED', 'LastModified()', 'SetLastModified()',
                                                  'STATUS', 'Status()', 'SetStatus()',
                                                  'REFERENCE_COUNT', 'ReferenceCount()',
-                                                 'WAS_USED', 'WasUsed()', 'SetWasUsed()';
+                                                 'WAS_USED', 'WasUsed()', 'SetWasUsed()',
+                                                 'WIDTH', 'Width()',
+                                                 'HEIGHT', 'Height()';
 
 
 #
@@ -70,6 +74,8 @@ sub New #(timestamp lastModified, FileStatus status, bool wasUsed)
     $object->[STATUS] = $status;
     $object->[REFERENCE_COUNT] = 0;
     $object->[WAS_USED] = $wasUsed;
+    $object->[WIDTH] = -1;
+    $object->[HEIGHT] = -1;
 
     bless $object, $package;
 
@@ -124,7 +130,31 @@ sub DeleteReference
 #
 #   WasUsed - Returns whether this image file was used during the *last* Natural Docs execution.
 #   SetWasUsed - Sets whether this image file was used during the *last* Natural Docs execution.
+#   Width - Returns the width in pixels, undef if it can't be determined, and -1 if determination hasn't been attempted yet.
+#   Height - Returns the width in pixels, undef if it can't be determined, and -1 if determination hasn't been attempted yet.
 #
+
+
+#
+#   Function: SetDimensions
+#   Sets the width and height of the image.  Set to undef if they can't be determined.
+#
+sub SetDimensions #(int width, int height)
+    {
+    my ($self, $width, $height) = @_;
+
+    # If either are undef, both should be undef.  This will also convert zeroes to undef.
+    if (!$width || !$height)
+        {
+        $self->[WIDTH] = undef;
+        $self->[HEIGHT] = undef;
+        }
+    else
+        {
+        $self->[WIDTH] = $width;
+        $self->[HEIGHT] = $height;
+        };
+    };
 
 
 1;

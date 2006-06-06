@@ -34,6 +34,12 @@ use base 'NaturalDocs::Builder::Base';
 #   The file handle to use when updating CSS files.
 #
 
+#
+#   handle: FH_IMAGEPOPUPFILE
+#
+#   The file handle for handling the blank image popup HTML file.
+#
+
 
 #
 #   Hash: abbreviations
@@ -444,6 +450,52 @@ sub EndBuild #(hasChanged)
         {
         NaturalDocs::File->Copy($jsMaster, $jsOutput);
         };
+
+
+    # Make the JavaScript blank image file, which is what's needed for using IE 6 from the hard drive.  IE 6 starting with SP1
+    # doesn't let web sites link to local files.  Well, since we have to use IEWebMark() to allow scripting to run from the hard drive
+    # in the first place, ND documentation from the hard drive is treated as a web site.  So instead of creating a popup window that
+    # just has the image file directly, we have to make it have a blank page first and then edit it via JavaScript to show the image.
+    # This code creates that page.
+
+    my $popupFile = NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'ImagePopup.html' );
+
+    open(FH_IMAGEPOPUPFILE, '>' . $popupFile);
+
+    print FH_IMAGEPOPUPFILE
+    '<html>'
+        . '<head>'
+
+            . '<style type="text/css"><!--' . "\n"
+
+                . 'body { margin: 0; padding: 0; }' . "\n"
+                . 'img { border: 0; }' . "\n"
+
+            . '--></style>' . "\n"
+
+            . '<script language=JavaScript>' . "\n"
+            . 'var title = /^\?[^,]+\,(.+)$/.exec(window.location.search);' . "\n"
+            . q{document.write('<title>' + unescape(title[1]) + '</title>');}  . "\n"
+            . '// --></script>' . "\n"
+
+        . '</head>'
+        . '<body>' . "\n"
+
+            . $self->IEWebMark() . "\n"
+
+            . '<script language=JavaScript>' . "\n"
+            . 'var image = /^\?([^,]+)/.exec(window.location.search);' . "\n"
+            . 'var currentLocation = /^([^?]+)/.exec(window.location);' . "\n"
+
+            # Opera can't handle using just image[1].  It doesn't ignore slashes after the ? when going backwards with .. like IE and
+            # FireFox do.
+            . q{document.write('<img src="' + currentLocation[1] + '/../' + image[1] + '"');}  . "\n"
+            . '// --></script>' . "\n"
+
+        . '</body>'
+    . '</html>';
+
+    close(FH_IMAGEPOPUPFILE);
     };
 
 
@@ -2737,32 +2789,45 @@ sub BuildImage #(sourceFile, mode, target, original)
 
     if ($image)
         {
+        my ($width, $height) = NaturalDocs::Project->ImageFileDimensions($image);
+
         if ($mode eq 'inline')
             {
             return
-            '<div class=CInlineImage>'
+            '<blockquote>'
+            . '<div class=CInlineImage>'
                 . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
-                                                                           $self->OutputImageOf($image), 1) . '">'
-            . '</div>';
+                                                                           $self->OutputImageOf($image), 1) . '"'
+
+                . ($width && $height ? ' width="' . $width . '" height="' . $height . '"' : '')
+                . '>'
+
+            . '</div></blockquote>';
             }
         else # $mode eq 'link'
             {
             my $originalNoAmp = $self->RestoreAmpChars($original);
             my $targetIndex = index($originalNoAmp, $targetNoAmp);
+            my ($shortTarget, $shortTargetNoAmp);
 
             if ($targetIndex != -1)
                 {
-                my (undef, undef, $shortTargetNoAmp) = NaturalDocs::File->SplitPath($targetNoAmp);
+                $shortTargetNoAmp = (NaturalDocs::File->SplitPath($targetNoAmp))[2];
                 $shortTargetNoAmp = NaturalDocs::File->NoExtension($shortTargetNoAmp);
 
                 substr($originalNoAmp, $targetIndex, length($targetNoAmp), $shortTargetNoAmp);
 
                 $original = NaturalDocs::NDMarkup->ConvertAmpChars($originalNoAmp);
+                $shortTarget = NaturalDocs::NDMarkup->ConvertAmpChars($shortTargetNoAmp);
                 };
 
+            my $popupPage = NaturalDocs::File->JoinPaths($self->JavaScriptDirectory(), 'ImagePopup.html');
+            my $popupPageURL = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $popupPage, 1);
+            my $imageURL = $self->MakeRelativeURL( $popupPage, $self->OutputImageOf($image), 1);
+
             return
-            '<a href="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile), $self->OutputImageOf($image), 1) . '" '
-            . 'target=_blank class=CImageLink>'
+            '<a href="javascript:ImagePopup(\'' . $popupPageURL . '\', \'' . $imageURL . '\', '
+                 . $width . ', ' . $height . ', \'' . $shortTarget . '\')" class=CImageLink>'
                     . $original
             . '</a>';
             }
