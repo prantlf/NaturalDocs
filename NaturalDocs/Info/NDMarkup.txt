@@ -20,9 +20,8 @@ About: Top-Level Tags
    <ul></ul>       - Surrounds a bulleted (unordered) list.
    <dl></dl>       - Surrounds a description list, which is what you are reading.
 
-   <img inline pre="" post=""></img> - Surrounds an inline image.  Pre and post store the text surrounding the link, such as "(see "
-                                                          and ")", to be used if the link doesn't resolve to anything.  In between the tags is the link
-                                                          to the image itself.  No other tags will appear between them.
+   <img mode="inline" target="" original=""> - An inline image.  Target contains the image target, and original contains the
+                                                                    original text in case it doesn't resolve.
 
 
 About: List Item Tags
@@ -46,21 +45,17 @@ About: Text Tags
    <i></i>           - Italics
    <u></u>         - Underline
 
-   <link original=""></link>   - Surrounds a potential link to a symbol; potential because the target is not guaranteed to exist.  This
-                                             tag merely designates an attempted link.  No other tags will appear between them.  The original
-                                             attribute holds the original text as it appears in the source so it can be inserted if the link doesn't
-                                             resolve to anything.
-   <link original="" name=""></link> - A named link.  The same as a regular link only the name attribute is what appears in the
-                                                         output.
+   <link target="" name="" original=""> - Surrounds a potential link to a symbol; potential because the target is not guaranteed to
+                                                            exist.  This tag merely designates an attempted link.  Target is what is attempting to be
+                                                            linked to, name is the text that should appear for a successful link, and original is the
+                                                            original text in case the link doesn't resolve.
 
-   <url></url>               - Surrounds an external link.  No other tags will appear between them.
-   <url name=""></url> - Surrounds an external named link.
+   <url target="" name="">                   - An external link.  There's no need for an original attribute because it will always be
+                                                             turned into an actual link.
+   <email target="" name="">               - A link to an e-mail address.
 
-   <email></email>               - Surrounds an e-mail address.  No other tags will appear between them.
-   <email name=""></email> - Surrounds a named e-mail address.
-
-   <img link pre="" post=""></img> - Surrounds an image link.  Pre and post store the text surrounding the link, such as "(see "
-                                                       and ")", and the tags surround the link itself.  No other tags will appear between them.
+   <img mode="link" target="" original=""> - An image link.  Target contains the image target, and original contains the original
+                                                                 text in case it doesn't resolve.
 
 
 About: Amp Chars
@@ -85,10 +80,10 @@ About: General Tag Properties
 
    - Tags and amp chars will always be in all lowercase.
    - Properties will appear exactly as documented here.  They will be in all lowercase, in the documented order, and will have no
-     extraneous whitespace.
+     extraneous whitespace.  Anything appearing in the properties will have amp chars.
    - All code is valid, meaning tags will always be closed, <li>s will only appear within <ul>s, etc.
 
-   So, for example, you can match symbol links with /<link>(.+?)<\/link>/ and $1 will be the symbol.  No surprises or
+   So, for example, you can match description list entries with /<de>(.+?)<\/de>/ and $1 will be the text.  No surprises or
    gotchas.  No need for sophisticated parsing routines.
 
    Remember that for symbol definitions, the text should appear as is, but internally (such as for the anchor) they need to
