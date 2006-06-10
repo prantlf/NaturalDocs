@@ -308,7 +308,7 @@ sub SetReferenceTarget #(ImageReferenceString referenceString) => FileName
     my $target;
 
     if (NaturalDocs::Project->ImageFileExists($imageFile))
-        {  $target = $imageFile;  };
+        {  $target = NaturalDocs::Project->ImageFileCapitalization($imageFile);  };
 
     $referenceObject->SetTarget($target);
     return $target;

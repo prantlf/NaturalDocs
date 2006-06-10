@@ -177,6 +177,19 @@ my %imageFilesToUpdate;
 my %imageFilesToPurge;
 
 
+#
+#   hash: insensitiveImageFiles
+#
+#   A hash that maps all lowercase image <FileNames> to their proper case as it would appear in <imageFiles>.  Used for
+#   case insensitivity, obviously.
+#
+#   You can't just use all lowercase in <imageFiles> because both Linux and HTTP are case sensitive, so the original case must
+#   be preserved.  We also want to allow separate entries for files that differ based only on case, so it goes to <imageFiles> first
+#   where they can be distinguished and here only if there's no match.  Ties are broken by whichever is lower with cmp, because
+#   it has to resolve consistently on all runs of the program.
+#
+my %insensitiveImageFiles;
+
 
 
 ###############################################################################
@@ -1040,6 +1053,9 @@ sub ImageFileExists #(FileName file) => bool
     {
     my ($self, $file) = @_;
 
+    if (!exists $imageFiles{$file})
+        {  $file = $insensitiveImageFiles{lc($file)};  };
+
     return (exists $imageFiles{$file} && $imageFiles{$file}->Status() != ::FILE_DOESNTEXIST());
     };
 
@@ -1053,6 +1069,9 @@ sub ImageFileDimensions #(FileName file) => (int, int)
     {
     my ($self, $file) = @_;
 
+    if (!exists $imageFiles{$file})
+        {  $file = $insensitiveImageFiles{lc($file)};  };
+
     my $object = $imageFiles{$file};
     if (!$object)
         {  die "Tried to get the dimensions of an image that doesn't exist.";  };
@@ -1065,12 +1084,34 @@ sub ImageFileDimensions #(FileName file) => (int, int)
 
 
 #
+#   Function: ImageFileCapitalization
+#   Returns the properly capitalized version of the passed image <FileName>.  Image file paths are treated as case insensitive
+#   regardless of whether the underlying operating system is or not, so we have to make sure the final version matches the
+#   capitalization of the actual file.
+#
+sub ImageFileCapitalization #(FileName file) => FileName
+    {
+    my ($self, $file) = @_;
+
+    if (exists $imageFiles{$file})
+        {  return $file;  }
+    elsif (exists $insensitiveImageFiles{lc($file)})
+        {  return $insensitiveImageFiles{lc($file)};  }
+    else
+        {  die "Tried to get the capitalization of an image file that doesn't exist.";  };
+    };
+
+
+#
 #   Function: AddImageFileReference
 #   Adds a reference to the passed image <FileName>.
 #
 sub AddImageFileReference #(FileName imageFile)
     {
     my ($self, $imageFile) = @_;
+
+    if (!exists $imageFiles{$imageFile})
+        {  $imageFile = $insensitiveImageFiles{lc($imageFile)};  };
 
     if (!exists $imageFiles{$imageFile} || $imageFiles{$imageFile}->Status() == ::FILE_DOESNTEXIST())
         {  die "Tried to add a reference to a non-existant image file.";  };
@@ -1092,6 +1133,9 @@ sub AddImageFileReference #(FileName imageFile)
 sub DeleteImageFileReference #(FileName imageFile)
     {
     my ($self, $imageFile) = @_;
+
+    if (!exists $imageFiles{$imageFile})
+        {  $imageFile = $insensitiveImageFiles{lc($imageFile)};  };
 
     if (!exists $imageFiles{$imageFile})
         {  die "Tried to delete a reference to a non-existant image file.";  };
@@ -1195,6 +1239,14 @@ sub GetAllSupportedFiles
                     {
                     my $fileObject = NaturalDocs::Project::ImageFile->New( (stat($fullEntry))[9], ::FILE_NEW(), 0 );
                     $imageFiles{$fullEntry} = $fileObject;
+
+                    my $lcFullEntry = lc($fullEntry);
+
+                    if (!exists $insensitiveImageFiles{$lcFullEntry} ||
+                        ($fullEntry cmp $insensitiveImageFiles{$lcFullEntry}) < 0)
+                        {
+                        $insensitiveImageFiles{$lcFullEntry} = $fullEntry;
+                        };
                     }
                 elsif (my $language = NaturalDocs::Languages->LanguageOf($fullEntry))
                     {
