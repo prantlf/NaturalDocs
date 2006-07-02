@@ -32,13 +32,29 @@ use integer;
 package NaturalDocs::Settings;
 
 
+#
+#   Architecture: Named Directories
+#
+#   Ever since Natural Docs introduced multiple input directories in 1.16, they've had to be named.  Since they don't necessarily
+#   extend from the same root anymore, they can't share an output directory without the risk of file name conflicts.  There was an
+#   early attempt at giving them actual names, but now they're just numbered from 1.
+#
+#   The way it works now is that the names aren't generated right away.  Instead it waits for <Menu.txt> to load because that
+#   holds obfuscated names from the last run.  <NaturalDocs::Menu> then calls <GenerateDirectoryNames()> and passes those
+#   along as hints.  <GenerateDirectoryNames()> then applies them to any matches and numbers any remaining.  This is done so
+#   that output page locations can remain consistent when built on multiple computers, so long as the menu file is shared.  I tend
+#   to think the menu file is the most likely configuration file to be shared.
+#
+#   Another thing to note is that because of <PreviousSettings.nd>, we have all the names from the last run, even if the input
+#   directories don't appear on the command line anymore.  This allows us to get the output file location of any files that
+#   disappeared because of that so that they can be purged.  Otherwise they would be orphaned, as they were prior to 1.32.
+#
+
+
 
 ###############################################################################
 # Group: Variables
 
-
-# handle: SETTINGSFILEHANDLE
-# The file handle used with <Settings.txt>.
 
 # handle: PREVIOUS_SETTINGS_FILEHANDLE
 # The file handle used with <PreviousSettings.nd>.
@@ -103,63 +119,6 @@ my $charset;
 
 ###############################################################################
 # Group: Files
-
-#
-#   File: Settings.txt
-#
-#   The file that stores the Natural Docs build targets.
-#
-#   Format:
-#
-#       The file is plain text.  Blank lines can appear anywhere and are ignored.  Tags and their content must be completely
-#       contained on one line.
-#
-#       > # [comment]
-#
-#       The file supports single-line comments via #.  They can appear alone on a line or after content.
-#
-#       > Format: [version]
-#       > TabLength: [length]
-#       > Style: [style]
-#
-#       The file format version, tab length, and default style are specified as above.  Each can only be specified once, with
-#       subsequent ones being ignored.  Notice that the tags correspond to the long forms of the command line options.
-#
-#       > Source: [directory]
-#       > Input: [directory]
-#
-#       The input directory is specified as above.  As in the command line, either "Source" or "Input" can be used.
-#
-#       > [Extension Option]: [opton]
-#
-#       Options for extensions can be specified as well.  The long form is used as the tag.
-#
-#       > Option: [HeadersOnly], [Quiet], [Extension Option]
-#
-#       Options that don't have parameters can be specified in an Option line.  The commas are not required.
-#
-#       > Output: [name]
-#
-#       Specifies an output target with a user defined name.  The name is what will be referenced from the command line, and the
-#       name "All" is reserved.
-#
-#       *The options below can only be specified after an output tag.*  Everything that follows an output tag is part of that target's
-#       options until the next output tag.
-#
-#       > Format: [format]
-#
-#       The output format of the target.
-#
-#       > Directory: [directory]
-#       > Location: [directory]
-#       > Folder: [directory]
-#
-#       The output directory of the target.  All are synonyms.
-#
-#       > Style: [style]
-#
-#       The style of the output target.  This overrides the default and is optional.
-#
 
 
 #
@@ -1102,42 +1061,13 @@ sub LoadAndComparePreviousSettings
     {
     my ($self) = @_;
 
-    my $fileIsOkay = 1;
-    my $fileName = NaturalDocs::Project->DataFile('PreviousSettings.nd');
-    my $version;
+    my $version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd') );
 
-    if (!open(PREVIOUS_SETTINGS_FILEHANDLE, '<' . $fileName))
-        {  $fileIsOkay = undef;  }
-    else
+    if (!defined $version || $version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
         {
-        # See if it's binary.
-        binmode(PREVIOUS_SETTINGS_FILEHANDLE);
+        if (defined $version)
+            {  NaturalDocs::BinaryFile->Close();  };
 
-        my $firstChar;
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $firstChar, 1);
-
-        if ($firstChar != ::BINARY_FORMAT())
-            {
-            close(PREVIOUS_SETTINGS_FILEHANDLE);
-            $fileIsOkay = undef;
-            }
-        else
-            {
-            $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUS_SETTINGS_FILEHANDLE);
-
-            # The file format changed in 1.33.
-
-            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
-                {
-                close(PREVIOUS_SETTINGS_FILEHANDLE);
-                $fileIsOkay = undef;
-                };
-            };
-        };
-
-
-    if (!$fileIsOkay)
-        {
         # We need to reparse everything because --documented-only may have changed.
         # We need to rebuild everything because --tab-length may have changed.
         NaturalDocs::Project->ReparseEverything();
@@ -1152,9 +1082,10 @@ sub LoadAndComparePreviousSettings
         # [UInt8: no auto-group (0 or 1)]
         # [AString16: charset]
 
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 5);
-        my ($prevTabLength, $prevDocumentedOnly, $prevNoAutoGroup, $prevCharsetLength)
-            = unpack('CCCn', $raw);
+        my $prevTabLength = NaturalDocs::BinaryFile->GetUInt8();
+        my $prevDocumentedOnly = NaturalDocs::BinaryFile->GetUInt8();
+        my $prevNoAutoGroup = NaturalDocs::BinaryFile->GetUInt8();
+        my $prevCharset = NaturalDocs::BinaryFile->GetAString16();
 
         if ($prevTabLength != $self->TabLength())
             {
@@ -1173,33 +1104,20 @@ sub LoadAndComparePreviousSettings
             NaturalDocs::Project->ReparseEverything();
             };
 
-        my $prevCharset;
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $prevCharset, $prevCharsetLength);
-
         if ($prevCharset ne $charset)
             {  NaturalDocs::Project->RebuildEverything();  };
 
 
         # [UInt8: number of input directories]
 
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 1);
-        my $inputDirectoryCount = unpack('C', $raw);
+        my $inputDirectoryCount = NaturalDocs::BinaryFile->GetUInt8();
 
         while ($inputDirectoryCount)
             {
             # [AString16: input directory] [AString16: input directory name] ...
 
-            read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
-            my $inputDirectoryLength = unpack('n', $raw);
-
-            my $inputDirectory;
-            read(PREVIOUS_SETTINGS_FILEHANDLE, $inputDirectory, $inputDirectoryLength);
-
-            read (PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
-            my $inputDirectoryNameLength = unpack('n', $raw);
-
-            my $inputDirectoryName;
-            read(PREVIOUS_SETTINGS_FILEHANDLE, $inputDirectoryName, $inputDirectoryNameLength);
+            my $inputDirectory = NaturalDocs::BinaryFile->GetAString16();
+            my $inputDirectoryName = NaturalDocs::BinaryFile->GetAString16();
 
             # Not doing anything with this for now.
 
@@ -1209,8 +1127,7 @@ sub LoadAndComparePreviousSettings
 
         # [UInt8: number of output targets]
 
-        read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 1);
-        my $outputTargetCount = unpack('C', $raw);
+        my $outputTargetCount = NaturalDocs::BinaryFile->GetUInt8();
 
         # Keys are the directories, values are the command line options.
         my %previousOutputDirectories;
@@ -1219,17 +1136,8 @@ sub LoadAndComparePreviousSettings
             {
             # [AString16: output directory] [AString16: output format command line option] ...
 
-            read(PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
-            my $outputDirectoryLength = unpack('n', $raw);
-
-            my $outputDirectory;
-            read(PREVIOUS_SETTINGS_FILEHANDLE, $outputDirectory, $outputDirectoryLength);
-
-            read (PREVIOUS_SETTINGS_FILEHANDLE, $raw, 2);
-            my $outputCommandLength = unpack('n', $raw);
-
-            my $outputCommand;
-            read(PREVIOUS_SETTINGS_FILEHANDLE, $outputCommand, $outputCommandLength);
+            my $outputDirectory = NaturalDocs::BinaryFile->GetAString16();
+            my $outputCommand = NaturalDocs::BinaryFile->GetAString16();
 
             $previousOutputDirectories{$outputDirectory} = $outputCommand;
 
@@ -1250,7 +1158,7 @@ sub LoadAndComparePreviousSettings
                 };
             };
 
-        close(PREVIOUSSTATEFILEHANDLE);
+        NaturalDocs::BinaryFile->Close();
         };
     };
 
@@ -1264,13 +1172,7 @@ sub SavePreviousSettings
     {
     my ($self) = @_;
 
-    open (PREVIOUS_SETTINGS_FILEHANDLE, '>' . NaturalDocs::Project->DataFile('PreviousSettings.nd'))
-        or die "Couldn't save " . NaturalDocs::Project->DataFile('PreviousSettings.nd') . ".\n";
-
-    binmode(PREVIOUS_SETTINGS_FILEHANDLE);
-
-    print PREVIOUS_SETTINGS_FILEHANDLE '' . ::BINARY_FORMAT();
-    NaturalDocs::Version->ToBinaryFile(\*PREVIOUS_SETTINGS_FILEHANDLE, NaturalDocs::Settings->AppVersion());
+    NaturalDocs::BinaryFile->OpenForWriting(  NaturalDocs::Project->DataFile('PreviousSettings.nd') );
 
     # [UInt8: tab length]
     # [UInt8: documented only (0 or 1)]
@@ -1280,35 +1182,34 @@ sub SavePreviousSettings
 
     my $inputDirectories = $self->InputDirectories();
 
-    print PREVIOUS_SETTINGS_FILEHANDLE pack('CCCnA*C', $self->TabLength(), ($self->DocumentedOnly() ? 1 : 0),
-                                                                                        ($self->NoAutoGroup() ? 1 : 0), length($charset), $charset,
-                                                                                         scalar @$inputDirectories);
+    NaturalDocs::BinaryFile->WriteUInt8($self->TabLength());
+    NaturalDocs::BinaryFile->WriteUInt8($self->DocumentedOnly() ? 1 : 0);
+    NaturalDocs::BinaryFile->WriteUInt8($self->NoAutoGroup() ? 1 : 0);
+    NaturalDocs::BinaryFile->WriteAString16($charset);
+    NaturalDocs::BinaryFile->WriteUInt8(scalar @$inputDirectories);
 
     foreach my $inputDirectory (@$inputDirectories)
         {
         my $inputDirectoryName = $self->InputDirectoryNameOf($inputDirectory);
 
         # [AString16: input directory] [AString16: input directory name] ...
-        print PREVIOUS_SETTINGS_FILEHANDLE pack('nA*nA*', length($inputDirectory), $inputDirectory,
-                                                                                          length($inputDirectoryName), $inputDirectoryName);
+        NaturalDocs::BinaryFile->WriteAString16($inputDirectory);
+        NaturalDocs::BinaryFile->WriteAString16($inputDirectoryName);
         };
 
     # [UInt8: number of output targets]
 
     my $buildTargets = $self->BuildTargets();
-    print PREVIOUS_SETTINGS_FILEHANDLE pack('C', scalar @$buildTargets);
+    NaturalDocs::BinaryFile->WriteUInt8(scalar @$buildTargets);
 
     foreach my $buildTarget (@$buildTargets)
         {
-        my $buildTargetDirectory = $buildTarget->Directory();
-        my $buildTargetCommand = $buildTarget->Builder()->CommandLineOption();
-
         # [AString16: output directory] [AString16: output format command line option] ...
-        print PREVIOUS_SETTINGS_FILEHANDLE pack('nA*nA*', length($buildTargetDirectory), $buildTargetDirectory,
-                                                                                          length($buildTargetCommand), $buildTargetCommand);
+        NaturalDocs::BinaryFile->WriteAString16( $buildTarget->Directory() );
+        NaturalDocs::BinaryFile->WriteAString16( $buildTarget->Builder()->CommandLineOption() );
         };
 
-    close(PREVIOUS_SETTINGS_FILEHANDLE);
+    NaturalDocs::BinaryFile->Close();
     };
 
 
