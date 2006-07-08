@@ -98,6 +98,8 @@ sub ParseFile #(sourceFile, topicsList)
     $mustBreakPOD = 0;
     @hereDocTerminators = ( );
 
+    # The regular block comment symbols are undef because they're all potentially JavaDoc comments.  PreprocessLine() will
+    # handle translating things like =begin naturaldocs and =begin javadoc to =begin nd.
     $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef, [ '##' ], [ '=begin nd', '=end nd' ]);
 
     my $tokens = $self->Tokens();
@@ -155,26 +157,28 @@ sub ParseFile #(sourceFile, topicsList)
 #
 #   Overridden to support "=begin nd" and similar.
 #
-#   - "=begin [nd|naturaldocs|natural docs|jd|javadoc]" all translate to "=begin nd".
+#   - "=begin [nd|naturaldocs|natural docs|jd|javadoc|java doc]" all translate to "=begin nd".
 #   - "=[nd|naturaldocs|natural docs]" also translate to "=begin nd".
 #   - "=end [nd|naturaldocs|natural docs|jd|javadoc]" all translate to "=end nd".
 #   - "=cut" from a ND block translates into "=end nd", but the next line will be altered to begin with "(NDPODBREAK)".  This is
 #     so if there is POD leading into ND which ends with a cut, the parser can still end the original POD because the end ND line
-#     would have been removed.
+#     would have been removed.  Remember, <NaturalDocs::Languages::Advanced->ParseForCommentsAndTokens()> removes
+#     Natural Docs-worthy comments to save parsing time.
 #   - "=pod begin nd" and "=pod end nd" are supported for compatibility with ND 1.32 and earlier, even though the syntax is a
 #     mistake.
+#   - It also supports the wrong plural forms, so naturaldoc/natural doc/javadocs/java docs will work.
 #
 sub PreprocessLine #(lineRef)
     {
     my ($self, $lineRef) = @_;
 
-    if ($$lineRef =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|naturaldocs|natural[ \t]+docs|jd|javadoc)[ \t]*$/i)
+    if ($$lineRef =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|natural[ \t]*docs?|jd|java[ \t]*docs?)[ \t]*$/i)
         {
         $$lineRef = '=begin nd';
         $inNDPOD = 1;
         $mustBreakPOD = 0;
         }
-    elsif ($$lineRef =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|naturaldocs|natural[ \t]+docs|jd|javadoc)[ \t]*$/i)
+    elsif ($$lineRef =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|natural[ \t]*docs?|jd|javadocs?)[ \t]*$/i)
         {
         $$lineRef = '=end nd';
         $inNDPOD = 0;
