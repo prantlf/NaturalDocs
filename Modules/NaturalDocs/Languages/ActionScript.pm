@@ -124,7 +124,7 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*', '*/' ], undef, [ '/**', '*/' ] );
+    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*', '*/' ], [ '///' ], [ '/**', '*/' ] );
 
     my $tokens = $self->Tokens();
     my $index = 0;
