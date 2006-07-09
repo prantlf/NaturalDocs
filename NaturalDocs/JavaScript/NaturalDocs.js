@@ -21,9 +21,11 @@ if (agt.indexOf("opera") != -1)
         {  browserVer = "Opera7";  }
     else if (agt.indexOf("opera 8") != -1 || agt.indexOf("opera/8") != -1)
         {  browserVer = "Opera8";  }
+    else if (agt.indexOf("opera 9") != -1 || agt.indexOf("opera/9") != -1)
+        {  browserVer = "Opera9";  }
     }
 
-else if (agt.indexOf("khtml") != -1 || agt.indexOf("konq") != -1 || agt.indexOf("safari") != -1)
+else if (agt.indexOf("khtml") != -1 || agt.indexOf("konq") != -1 || agt.indexOf("safari") != -1 || agt.indexOf("applewebkit") != -1)
     {
     browserType = "KHTML";
     }
@@ -36,11 +38,18 @@ else if (agt.indexOf("msie") != -1)
         {  browserVer = "IE5";  }
     else if (agt.indexOf("msie 6") != -1)
         {  browserVer = "IE6";  }
+    else if (agt.indexOf("msie 7") != -1)
+        {  browserVer = "IE7";  }
     }
 
 else if (agt.indexOf("gecko") != -1)
     {
-    browserType = "Gecko";
+    browserType = "Firefox";
+
+    if (agt.indexOf("rv:1.7") != -1)
+        {  browserVer = "Firefox1";  }
+    else if (agt.indexOf("rv:1.8") != -1)
+        {  browserVer = "Firefox15";  }
     }
 
 
@@ -294,3 +303,261 @@ function NDDoResize()
     clearTimeout(resizeTimer);
     resizeTimer = 0;
     }
+
+
+//
+//  Search Results Page
+// ____________________________________________________________________________
+
+
+function SRToggleSubMenu(id)
+    {
+    var parentElement = document.getElementById(id);
+
+    var element = parentElement.firstChild;
+
+    while (element != null && element != parentElement)
+        {
+        if (element.nodeName == 'DIV' && element.className == 'ISubIndex')
+            {
+            if (element.style.display == 'block')
+                {  element.style.display = "none";  }
+            else
+                {  element.style.display = 'block';  }
+            };
+
+        if ( element.nodeName == 'DIV' && element.hasChildNodes() )
+            {  element = element.firstChild;  }
+        else if (element.nextSibling != null)
+            {  element = element.nextSibling;  }
+        else
+            {
+            do
+                {
+                element = element.parentNode;
+                }
+            while (element != null && element != parentElement && element.nextSibling == null);
+
+            if (element != null && element != parentElement)
+                {  element = element.nextSibling;  };
+            };
+        };
+    };
+
+
+function SRSearch()
+    {
+    var search = window.location.search;
+
+    search = search.substring(1);  // Remove the leading ?
+    search = unescape(search);
+    search = search.replace(/^ +/, "");
+    search = search.replace(/ +$/, "");
+    search = search.toLowerCase();
+
+    search = search.replace(/\_/g, "_und");
+    search = search.replace(/\ +/gi, "_spc");
+    search = search.replace(/\~/g, "_til");
+    search = search.replace(/\!/g, "_exc");
+    search = search.replace(/\@/g, "_att");
+    search = search.replace(/\#/g, "_num");
+    search = search.replace(/\$/g, "_dol");
+    search = search.replace(/\%/g, "_pct");
+    search = search.replace(/\^/g, "_car");
+    search = search.replace(/\&/g, "_amp");
+    search = search.replace(/\*/g, "_ast");
+    search = search.replace(/\(/g, "_lpa");
+    search = search.replace(/\)/g, "_rpa");
+    search = search.replace(/\-/g, "_min");
+    search = search.replace(/\+/g, "_plu");
+    search = search.replace(/\=/g, "_equ");
+    search = search.replace(/\{/g, "_lbc");
+    search = search.replace(/\}/g, "_rbc");
+    search = search.replace(/\[/g, "_lbk");
+    search = search.replace(/\]/g, "_rbk");
+    search = search.replace(/\:/g, "_col");
+    search = search.replace(/\;/g, "_sco");
+    search = search.replace(/\"/g, "_quo");
+    search = search.replace(/\'/g, "_apo");
+    search = search.replace(/\</g, "_lan");
+    search = search.replace(/\>/g, "_ran");
+    search = search.replace(/\,/g, "_com");
+    search = search.replace(/\./g, "_per");
+    search = search.replace(/\?/g, "_que");
+    search = search.replace(/\//g, "_sla");
+    search = search.replace(/[^a-z0-9\_]i/gi, "_zzz");
+
+    search = "sr_" + search;
+
+    var resultRows = document.getElementsByTagName("div");
+    var matches = 0;
+
+    var i = 0;
+    while (i < resultRows.length)
+        {
+        var row = resultRows.item(i);
+
+        if (row.className == "SRResult" &&
+            search.length <= row.id.length && row.id.substr(0, search.length).toLowerCase() == search)
+            {
+            row.style.display="block";
+            matches++;
+            }
+
+        i++;
+        };
+
+    document.getElementById("Searching").style.display="none";
+
+    if (matches == 0)
+        {  document.getElementById("NoMatches").style.display="block";  }
+    };
+
+
+
+//
+//  Search Controls on Menu
+// ____________________________________________________________________________
+
+
+var lastSearchValue ="";
+var searchTimer = 0;
+
+function SearchFieldOnFocus(active)
+    {
+    CheckSearchActive(active);
+    };
+
+function SearchTypeOnFocus(active)
+    {
+    CheckSearchActive(active);
+    };
+
+function SearchFieldOnChange()
+    {
+    var searchField = document.getElementById("MSearchField");
+
+    if (searchTimer)
+        {
+        clearTimeout(searchTimer);
+        searchTimer = 0;
+        };
+
+    var search = searchField.value.replace(/ +/g, "");
+
+    if (search != lastSearchValue)
+        {
+        if (search != "")
+            {
+            searchTimer = setTimeout("NDSearch()", 500);
+            }
+        else
+            {
+            document.getElementById("MSearchResultsWindow").style.display = "none";
+            lastSearchValue="";
+            };
+        };
+    };
+
+function SearchTypeOnChange()
+    {
+    var searchField = document.getElementById("MSearchField");
+
+    var search = searchField.value.replace(/ +/g, "");
+
+    if (search != "")
+        {
+        NDSearch();
+        };
+    };
+
+function CloseSearchResults()
+    {
+    document.getElementById("MSearchResultsWindow").style.display = "none";
+    CheckSearchActive(0);
+    };
+
+function NDSearch()
+    {
+    searchTimer = 0;
+
+    var searchField = document.getElementById("MSearchField");
+    var typeField = document.getElementById("MSearchType");
+    var results = document.getElementById("MSearchResults");
+    var resultsWindow = document.getElementById("MSearchResultsWindow");
+
+    var search = searchField.value.replace(/^ +/, "");
+
+    var filePath = typeField.value;
+
+    var pageExtension = search.substr(0,1);
+
+    if (pageExtension.match(/^[a-z]/i))
+        {  pageExtension = pageExtension.toUpperCase();  }
+    else if (pageExtension.match(/^[0-9]/))
+        {  pageExtension = 'Numbers';  }
+    else
+        {  pageExtension = "Symbols";  };
+
+    var page = filePath.replace(/\*/, pageExtension);
+
+
+    var left = typeField.offsetLeft;
+    var top = typeField.offsetTop + searchField.offsetHeight;
+    var parent = typeField.offsetParent;
+
+    while (parent != null)
+        {
+        left += parent.offsetLeft;
+        top += parent.offsetTop;
+        parent = parent.offsetParent;
+        };
+
+    resultsWindow.style.left = left + 'px';
+    resultsWindow.style.top = top + 'px';
+    results.innerHTML = '<iframe src="'+page+'?'+escape(searchField.value)+'" frameborder=0>';
+    resultsWindow.style.display = 'block';
+
+    lastSearchValue = searchField.value;
+    };
+
+
+var searchInactiveTimer = 0;
+
+function CheckSearchActive(focus)
+    {
+    var searchPanel = document.getElementById("MSearchPanel");
+    var resultsWindow = document.getElementById("MSearchResultsWindow");
+    var searchField = document.getElementById("MSearchField");
+
+    if (focus || resultsWindow.style.display == "block")
+        {
+        searchPanel.className = 'MSearchPanelActive';
+
+        if (searchField.value == 'Search')
+             {  searchField.value = "";  }
+
+        if (searchInactiveTimer)
+            {
+            clearTimeout(searchInactiveTimer);
+            searchInactiveTimer = 0;
+            };
+        }
+    else
+        {
+        searchInactiveTimer = setTimeout("MakeSearchInactive()", 200);
+        };
+    };
+
+// This method is necessary because when switching focus from one control to another, we don't want it to deactivate because
+// then it would replace the search value when we don't want it to.
+function MakeSearchInactive()
+    {
+    var searchPanel = document.getElementById("MSearchPanel");
+    var searchField = document.getElementById("MSearchField");
+
+    searchInactiveTimer = 0;
+
+    searchPanel.className = 'MSearchPanelInactive';
+    searchField.value = "Search";
+    };

@@ -65,7 +65,7 @@ blockquote {
 #IE blockquote {
     width: 400px;  }
 
-#Gecko blockquote {
+#Firefox blockquote {
     padding-bottom: .5em;
     }
 
@@ -90,9 +90,8 @@ blockquote {
     top: 0;
     left: 0;
     width: 31ex;
-    overflow: hidden;
     }
-#UnframedPage #Gecko #Menu {
+#UnframedPage #Firefox #Menu {
     width: 27ex;
     }
 
@@ -153,12 +152,107 @@ blockquote {
         padding-left: 9px; border-left-width: 1px }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    #Gecko #MSelected {
+    #Firefox #MSelected {
         -moz-border-radius-topright: 10px;
         -moz-border-radius-bottomright: 10px }
-    #Gecko .MGroup #MSelected {
+    #Firefox .MGroup #MSelected {
         -moz-border-radius-topleft: 10px;
         -moz-border-radius-bottomleft: 10px }
+
+
+    #MSearchPanel {
+        padding: 0px 6px;
+        margin: .25em 0;
+        }
+    #Opera #MSearchPanel {
+        padding: 0px 9px;
+        }
+
+
+    #MSearchField {
+        font: italic 9pt Verdana, sans-serif;
+        color: #606060;
+        background-color: #E8E8E8;
+        border: none;
+        padding: 2px 4px;
+        width: 100%;
+        }
+    /* Only Opera gets it right. */
+    #Firefox #MSearchField,
+    #IE #MSearchField {
+        width: 94%;
+        }
+    .MSearchPanelInactive:hover #MSearchField {
+        background-color: #FFFFFF;
+        border: 1px solid #C0C0C0;
+        padding: 1px 3px;
+        }
+    /* Doesn't support hover over controls */
+    #IE #MSearchField {
+        border: 1px solid #C0C0C0;
+        padding: 1px 3px;
+        }
+    .MSearchPanelActive #MSearchField {
+        background-color: #FFFFFF;
+        border: 1px solid #C0C0C0;
+        font-style: normal;
+        padding: 1px 3px;
+        }
+
+    #MSearchType {
+        visibility: hidden;
+        font: 8pt Verdana, sans-serif;
+        width: 98%;
+        padding: 0;
+        border: 1px solid #C0C0C0;
+        }
+    #Opera #MSearchType {
+        width: 96%;
+        }
+    .MSearchPanelActive #MSearchType,
+    .MSearchPanelInactive:hover #MSearchType,
+    #MSearchType:focus {
+        visibility: visible;
+        color: #606060;
+        }
+    #MSearchType option#MSearchEverything {
+        font-weight: bold;
+        }
+
+    #Opera .MSearchPanelInactive:hover,
+    #Opera .MSearchPanelActive {
+        margin-left: -1px;
+        }
+
+
+    #MSearchResults iframe {
+        width: 60ex;
+        height: 15em;
+        }
+    #MSearchResultsWindow {
+        display: none;
+        position: absolute;
+        left: 0; top: 0;
+        border: 1px solid black;
+        background-color: #E8E8E8;
+        }
+    #MSearchResultsWindowClose {
+        font-weight: bold;
+        font-size: 8pt;
+        padding: 2px 5px;
+        display: block;
+        }
+    #MSearchResultsWindowClose:link,
+    #MSearchResultsWindowClose:visited {
+        color: #000000;
+        text-decoration: none;
+        }
+    #MSearchResultsWindowClose:active,
+    #MSearchResultsWindowClose:hover {
+        color: #800000;
+        text-decoration: none;
+        background-color: #F4F4F4;
+        }
 
 
 
@@ -175,7 +269,7 @@ blockquote {
     font-size: 9pt;  /* To make 31ex match the menu's 31ex. */
     margin-left: 31ex;
     }
-#UnframedPage #Gecko #Content {
+#UnframedPage #Firefox #Content {
     margin-left: 27ex;
     }
 
@@ -356,7 +450,7 @@ blockquote {
         width: 100% }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    #Gecko .SBody {
+    #Firefox .SBody {
         -moz-border-radius: 20px }
 
 
@@ -441,7 +535,7 @@ blockquote {
         background-color: #F4F4F4; color: #606060;
         }
 
-    #Gecko .CHEntry {
+    #Firefox .CHEntry {
         -moz-border-radius: 4px;
         }
 
@@ -505,6 +599,10 @@ blockquote {
     margin-left: 27ex;
     }
 
+#SearchResults {
+    background-color: #FFFFFF;
+    }
+
     .IPageTitle {
         font-size: 20pt; font-weight: bold;
         color: #FFFFFF; background-color: #7070C0;
@@ -534,20 +632,27 @@ blockquote {
         padding-top: 0;
         }
 
-    .IEntry {
+    #Index .IEntry {
         font-size: 10pt;
         padding-left: 1ex;
+        }
+    #SearchResults .IEntry {
+        font-size: 8pt;
+        padding: 1px 5px;
         }
 
     .ISubIndex {
         padding-left: 3ex; padding-bottom: .5em }
+    #SearchResults .ISubIndex {
+        display: none;
+        }
 
     /*  While it may cause some entries to look like links when they aren't, I found it's much easier to read the
          index if everything's the same color.  */
     .ISymbol {
         font-weight: bold; color: #900000  }
 
-    .ISymbolPrefix {
+    #Index .ISymbolPrefix {
         font-size: 10pt;
         text-align: right;
         color: #C47C7C;
@@ -556,13 +661,18 @@ blockquote {
         border-left: 1px solid #E0E0E0;
         padding: 0 1px 0 2px;
         }
-    #IFirstSymbolPrefix {
+    #SearchResults .ISymbolPrefix {
+        font-size: 8pt;
+        color: #900000;
+        }
+    #Index #IFirstSymbolPrefix {
         border-top: 1px solid #E0E0E0;
         }
-    #ILastSymbolPrefix {
+    #ILastSymbolPrefix,
+    #SearchResults #IOnlySymbolPrefix {
         border-bottom: 1px solid #E0E0E0;
         }
-    #IOnlySymbolPrefix {
+    #Index #IOnlySymbolPrefix {
         border-top: 1px solid #E0E0E0;
         border-bottom: 1px solid #E0E0E0;
         }
@@ -570,6 +680,16 @@ blockquote {
     a.IParent,
     a.IFile {
         display: block;
+        }
+
+    .SRStatus {
+        font-size: 8pt;
+        font-style: italic;
+        padding: 2px 5px;
+        }
+
+    .SRResult {
+        display: none;
         }
 
 
