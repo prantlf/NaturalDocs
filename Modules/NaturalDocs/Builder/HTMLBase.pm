@@ -339,7 +339,8 @@ sub BeginBuild #(hasChanged)
     {
     my ($self, $hasChanged) = @_;
 
-    foreach my $directory ( $self->JavaScriptDirectory(), $self->CSSDirectory(), $self->IndexDirectory() )
+    foreach my $directory ( $self->JavaScriptDirectory(), $self->CSSDirectory(), $self->IndexDirectory(),
+                                       $self->SearchResultsDirectory() )
         {
         if (!-d $directory)
             {  NaturalDocs::File->CreatePath($directory);  };
@@ -624,8 +625,50 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
             '</div>';
             };
 
-        $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput;
-        $output .= $titleOutput . $segmentOutput;
+        my $searchOutput =
+        '<div id=MSearchPanel class=MSearchPanelInactive>'
+            . '<input type=text id=MSearchField value=Search onFocus="SearchFieldOnFocus(1)" onBlur="SearchFieldOnFocus(0)" '
+                . 'onKeyUp="SearchFieldOnChange()">'
+            . '<select id=MSearchType onFocus="SearchTypeOnFocus(1)" onBlur="SearchTypeOnFocus(0)" '
+                . 'onChange="SearchTypeOnChange()">';
+
+            my @indexes = keys %{NaturalDocs::Menu->Indexes()};
+            @indexes = sort
+                {
+                if ($a eq ::TOPIC_GENERAL())  {  return -1;  }
+                elsif ($b eq ::TOPIC_GENERAL())  {  return 1;  }
+                else  {  return (NaturalDocs::Topics->NameOfType($a, 1) cmp NaturalDocs::Topics->NameOfType($b, 1))  };
+                }  @indexes;
+
+            foreach my $index (@indexes)
+                {
+                my ($name, $extra);
+                if ($index eq ::TOPIC_GENERAL())
+                    {
+                    $name = 'Everything';
+                    $extra = ' id=MSearchEverything selected ';
+                    }
+                else
+                    {  $name = $self->ConvertAmpChars(NaturalDocs::Topics->NameOfType($index, 1));  }
+
+                $searchOutput .=
+                '<option ' . $extra
+                    . 'value="' . $self->MakeRelativeURL($outputDirectory, $self->SearchResultsFileOf($index, '*')) . '">'
+                    . $name
+                . '</option>';
+                };
+
+            $searchOutput .=
+            '</select>'
+        . '</a>'
+
+        . '<div id=MSearchResultsWindow>'
+            . '<div id=MSearchResults></div>'
+            . '<a href="javascript:CloseSearchResults()" id=MSearchResultsWindowClose>Close</a>'
+        . '</div>';
+
+        $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput . $searchOutput;
+        $output .= $titleOutput . $segmentOutput . $searchOutput;
         }
     else
         {  $output .= $prebuiltMenus{$outputDirectory};  };
@@ -1706,23 +1749,81 @@ sub IEWebMark
 #   Parameters:
 #
 #       type - The <TopicType> the index is limited to, or undef for none.
-#       index  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement> objects.
-#                   The first section is for symbols, the second for numbers, and the rest for A through Z.
-#       beginPage - All the content of the HTML page up to where the index content should appear.
-#       endPage - All the content of the HTML page past where the index should appear.
+#       indexSections  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement>
+#                               objects.  The first section is for symbols, the second for numbers, and the rest for A through Z.
+#       beginIndexPage - All the content of the HTML page up to where the index content should appear.
+#       endIndexPage - All the content of the HTML page past where the index should appear.
+#       beginSearchResultsPage - All the content of the HTML page up to where the search results content should appear.
+#       endSearchResultsPage - All the content of the HTML page past where the search results content should appear.
 #
 #   Returns:
 #
 #       The number of pages in the index.
 #
-sub BuildIndexPages #(type, index, beginPage, endPage)
+sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] indexSections, string beginIndexPage, string endIndexPage, string beginSearchResultsPage, string endSearchResultsPage) => int
     {
-    my ($self, $type, $indexSections, $beginPage, $endPage) = @_;
+    my ($self, $type, $indexSections, $beginIndexPage, $endIndexPage, $beginSearchResultsPage, $endSearchResultsPage) = @_;
+
 
     # Build the content.
 
-    my ($indexHTMLSections, $tooltipHTMLSections) = $self->BuildIndexSections($indexSections, $self->IndexFileOf($type, 1));
+    my ($indexHTMLSections, $tooltipHTMLSections, $searchResultsHTMLSections) = $self->BuildIndexSections($indexSections);
 
+
+    # Generate the search result pages.
+
+    for (my $i = 0; $i < 28; $i++)
+        {
+        my $extension;
+        if ($i == 0)
+            {  $extension = 'Symbols';  }
+        elsif ($i == 1)
+            {  $extension = 'Numbers';  }
+        else
+            {  $extension = chr( ord('A') + ($i - 2) );  };
+
+        my $searchResultsFileName = $self->SearchResultsFileOf($type, $extension);
+
+        open(INDEXFILEHANDLE, '>' . $searchResultsFileName)
+            or die "Couldn't create output file " . $searchResultsFileName . ".\n";
+
+        if ($searchResultsHTMLSections->[$i])
+            {
+            print INDEXFILEHANDLE
+
+            $beginSearchResultsPage
+            . '<div class=SRStatus id=Loading>Loading...</div>'
+
+            . '<table border=0 cellspacing=0 cellpadding=0>'
+                . $searchResultsHTMLSections->[$i]
+            . '</table>'
+
+            . '<div class=SRStatus id=Searching>Searching...</div>'
+            . '<div class=SRStatus id=NoMatches>No Matches</div>'
+
+            . '<script type="text/javascript"><!--' . "\n"
+                . 'document.getElementById("Loading").style.display="none";' . "\n"
+                . 'document.getElementById("NoMatches").style.display="none";' . "\n"
+
+                . 'SRSearch();' . "\n"
+            . '--></script>'
+
+            . $endSearchResultsPage;
+            }
+        else
+            {
+            print INDEXFILEHANDLE
+
+            $beginSearchResultsPage
+            . '<div class=SRStatus id=NoMatches>No Matches</div>'
+            . $endSearchResultsPage;
+            };
+
+        close(INDEXFILEHANDLE);
+        };
+
+
+    # Generate the index pages.
 
     my $page = 1;
     my $pageSize = 0;
@@ -1772,7 +1873,7 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
             {
             if ($oldPage != -1)
                 {
-                print INDEXFILEHANDLE '</table>' . $tooltips . $endPage;
+                print INDEXFILEHANDLE '</table>' . $tooltips . $endIndexPage;
                 close(INDEXFILEHANDLE);
                 $tooltips = undef;
                 };
@@ -1782,7 +1883,7 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
             open(INDEXFILEHANDLE, '>' . $indexFileName)
                 or die "Couldn't create output file " . $indexFileName . ".\n";
 
-            print INDEXFILEHANDLE $beginPage . $self->BuildIndexNavigationBar($type, $page, \@pageLocations)
+            print INDEXFILEHANDLE $beginIndexPage . $self->BuildIndexNavigationBar($type, $page, \@pageLocations)
                                               . '<table border=0 cellspacing=0 cellpadding=0>';
 
             $oldPage = $page;
@@ -1806,7 +1907,7 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
 
     if ($page != -1)
         {
-        print INDEXFILEHANDLE '</table>' . $tooltips . $endPage;
+        print INDEXFILEHANDLE '</table>' . $tooltips . $endIndexPage;
         close(INDEXFILEHANDLE);
         }
 
@@ -1819,10 +1920,10 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
             or die "Couldn't create output file " . $indexFileName . ".\n";
 
         print INDEXFILEHANDLE
-            $beginPage
+            $beginIndexPage
             . $self->BuildIndexNavigationBar($type, 1, \@pageLocations)
             . 'There are no entries in the ' . lc( NaturalDocs::Topics->NameOfType($type) ) . ' index.'
-            . $endPage;
+            . $endIndexPage;
 
         close(INDEXFILEHANDLE);
         };
@@ -1835,30 +1936,29 @@ sub BuildIndexPages #(type, index, beginPage, endPage)
 #
 #   Function: BuildIndexSections
 #
-#   Builds and returns index's sections in HTML.
+#   Builds and returns the index and search results sections in HTML.
 #
 #   Parameters:
 #
 #       index  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement> objects.
 #                   The first section is for symbols, the second for numbers, and the rest for A through Z.
-#       outputFile - The output file the index is going to be stored in.  Since there may be multiple files, just send the first file.  The
-#                        path is what matters, not the file name.
 #
 #   Returns:
 #
-#       The arrayref ( indexSections, tooltipSections ).
+#       The arrayref ( indexSections, tooltipSections, searchResultsSections ).
 #
 #       Index 0 is the symbols, index 1 is the numbers, and each following index is A through Z.  The content of each section
 #       is its HTML, or undef if there is nothing for that section.
 #
-sub BuildIndexSections #(index, outputFile)
+sub BuildIndexSections #(NaturalDocs::SymbolTable::IndexElement[] index) => ( string[], string[], string[] )
     {
-    my ($self, $indexSections, $outputFile) = @_;
+    my ($self, $indexSections) = @_;
 
     $self->ResetToolTips();
 
     my $contentSections = [ ];
     my $tooltipSections = [ ];
+    my $searchResultsSections = [ ];
 
     for (my $section = 0; $section < scalar @$indexSections; $section++)
         {
@@ -1880,7 +1980,9 @@ sub BuildIndexSections #(index, outputFile)
                 elsif ($i == $total - 1)
                     {  $id = 'ILastSymbolPrefix';  };
 
-                $contentSections->[$section] .= $self->BuildIndexElement($indexSections->[$section]->[$i], $outputFile, $id);
+                my ($content, $searchResult) = $self->BuildIndexElement($indexSections->[$section]->[$i], $id);
+                $contentSections->[$section] .= $content;
+                $searchResultsSections->[$section] .= $searchResult;
                 };
 
             $tooltipSections->[$section] .= $self->BuildToolTips();
@@ -1889,7 +1991,7 @@ sub BuildIndexSections #(index, outputFile)
         };
 
 
-    return ( $contentSections, $tooltipSections );
+    return ( $contentSections, $tooltipSections, $searchResultsSections );
     };
 
 
@@ -1901,8 +2003,7 @@ sub BuildIndexSections #(index, outputFile)
 #   Parameters:
 #
 #       element - The <NaturalDocs::SymbolTable::IndexElement> to build.
-#       outputFile - The output <FileName> this is appearing in.
-#       id - The CSS ID to apply to the prefix.
+#       cssID - The CSS ID to apply to the prefix.
 #
 #   Recursion-Only Parameters:
 #
@@ -1912,11 +2013,13 @@ sub BuildIndexSections #(index, outputFile)
 #       package - If the element is below package level, the package <SymbolString> to use.
 #       hasPackage - Whether the element is below package level.  Is necessary because package may need to be undef.
 #
-sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
+#   Returns:
+#
+#       The array ( indexHTML, searchResultHTML ) which is the element in the respective HTML forms.
+#
+sub BuildIndexElement #(NaturalDocs::SymbolTable::IndexElement element, string cssID, SymbolString symbol, SymbolString package, bool hasPackage) => ( string, string )
     {
-    my ($self, $element, $outputFile, $id, $symbol, $package, $hasPackage) = @_;
-
-    my $output;
+    my ($self, $element, $cssID, $symbol, $package, $hasPackage) = @_;
 
 
     # If we're doing a file sub-index entry...
@@ -1925,10 +2028,9 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
         {
         my ($inputDirectory, $relativePath) = NaturalDocs::Settings->SplitFromInputDirectory($element->File());
 
-        $output =
-        $self->BuildIndexLink($self->StringToHTML($relativePath, ADD_HIDDEN_BREAKS), $symbol,
-                                        $package, $element->File(), $element->Type(), $element->Prototype(),
-                                        $element->Summary(), $outputFile, 'IFile')
+        return $self->BuildIndexLink($self->StringToHTML($relativePath, ADD_HIDDEN_BREAKS), $symbol,
+                                                                                 $package, $element->File(), $element->Type(),
+                                                                                 $element->Prototype(), $element->Summary(), 'IFile');
         }
 
 
@@ -1949,26 +2051,34 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
 
         if (!$element->HasMultipleFiles())
             {
-            $output .= $self->BuildIndexLink($text, $symbol, $element->Package(), $element->File(), $element->Type(),
-                                                             $element->Prototype(), $element->Summary(), $outputFile, 'IParent');
+            return $self->BuildIndexLink($text, $symbol, $element->Package(), $element->File(), $element->Type(),
+                                                      $element->Prototype(), $element->Summary(), 'IParent');
             }
 
         else
             {
-            $output .=
+            my $searchResultID = $self->StringToSearchResultID($element->SortableSymbol());
+
+            my $indexHTML =
             '<span class=IParent>'
                 . $text
             . '</span>'
             . '<div class=ISubIndex>';
 
+            my $searchResultHTML = $indexHTML;
+
             my $fileElements = $element->File();
             foreach my $fileElement (@$fileElements)
                 {
-                $output .= $self->BuildIndexElement($fileElement, $outputFile, $id, $symbol, $element->Package(), 1);
+                my ($i, $s) = $self->BuildIndexElement($fileElement, $cssID, $symbol, $element->Package(), 1);
+                $indexHTML .= $i;
+                $searchResultHTML .= $s;
                 };
 
-            $output .=
-            '</div>';
+            $indexHTML .= '</div>';
+            $searchResultHTML .= '</div>';
+
+            return ($indexHTML, $searchResultHTML);
             };
         }
 
@@ -1979,12 +2089,19 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
         {
         my $symbolText = $self->StringToHTML($element->SortableSymbol(), ADD_HIDDEN_BREAKS);
         my $symbolPrefix = $self->StringToHTML($element->IgnoredPrefix());
+        my $searchResultID = $self->StringToSearchResultID($element->SortableSymbol());
 
-        $output .=
+        my $indexHTML =
         '<tr>'
-            . '<td class=ISymbolPrefix' . ($id ? ' id=' . $id : '') . '>'
+            . '<td class=ISymbolPrefix' . ($cssID ? ' id=' . $cssID : '') . '>'
                 . ($symbolPrefix || '&nbsp;')
             . '</td><td class=IEntry>';
+
+        my $searchResultsHTML =
+        '<div class=SRResult id=' . $searchResultID . '><div class=IEntry>';
+
+            if ($symbolPrefix)
+                {  $searchResultsHTML .= '<span class=ISymbolPrefix>' . $symbolPrefix . '</span>';  };
 
         if (!$element->HasMultiplePackages())
             {
@@ -1998,24 +2115,38 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
 
             if (!$element->HasMultipleFiles())
                 {
-                $output .=
+                my ($i, $s) =
                     $self->BuildIndexLink($symbolText, $element->Symbol(), $element->Package(), $element->File(),
-                                                     $element->Type(), $element->Prototype(), $element->Summary(), $outputFile, 'ISymbol');
+                                                     $element->Type(), $element->Prototype(), $element->Summary(), 'ISymbol');
+                $indexHTML .= $i;
+                $searchResultsHTML .= $s;
 
                 if (defined $packageText)
                     {
-                    $output .=
+                    $indexHTML .=
+                    ', <span class=IParent>'
+                        . $packageText
+                    . '</span>';
+
+                    $searchResultsHTML .=
                     ', <span class=IParent>'
                         . $packageText
                     . '</span>';
                     };
                 }
-            else # hasMultipleFiles but not mulitplePackages
+            else # hasMultipleFiles but not multiplePackages
                 {
-                $output .=
+                $indexHTML .=
                 '<span class=ISymbol>'
                     . $symbolText
                 . '</span>';
+
+                $searchResultsHTML .=
+                q{<a href="javascript:SRToggleSubMenu('} . $searchResultID . q{')" class=ISymbol>}
+                    . $symbolText
+                . '</a>';
+
+                my $output;
 
                 if (defined $packageText)
                     {
@@ -2028,40 +2159,53 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
                 $output .=
                 '<div class=ISubIndex>';
 
+                $indexHTML .= $output;
+                $searchResultsHTML .= $output;
+
                 my $fileElements = $element->File();
                 foreach my $fileElement (@$fileElements)
                     {
-                    $output .= $self->BuildIndexElement($fileElement, $outputFile, $id, $element->Symbol(), $element->Package(), 1);
+                    my ($i, $s) = $self->BuildIndexElement($fileElement, $cssID, $element->Symbol(), $element->Package(), 1);
+                    $indexHTML .= $i;
+                    $searchResultsHTML .= $s;
                     };
 
-                $output .=
-                '</div>';
+                $indexHTML .= '</div>';
+                $searchResultsHTML .= '</div>';
                 };
             }
 
         else # hasMultiplePackages
             {
-            $output .=
+            $indexHTML .=
             '<span class=ISymbol>'
                 . $symbolText
             . '</span>'
             . '<div class=ISubIndex>';
 
+            $searchResultsHTML .=
+            q{<a href="javascript:SRToggleSubMenu('} . $searchResultID . q{')" class=ISymbol>}
+                . $symbolText
+            . '</a>'
+            . '<div class=ISubIndex>';
+
             my $packageElements = $element->Package();
             foreach my $packageElement (@$packageElements)
                 {
-                $output .= $self->BuildIndexElement($packageElement, $outputFile, $id, $element->Symbol());
+                my ($i, $s) = $self->BuildIndexElement($packageElement, $cssID, $element->Symbol());
+                $indexHTML .= $i;
+                $searchResultsHTML .= $s;
                 };
 
-            $output .=
-            '</div>';
+            $indexHTML .= '</div>';
+            $searchResultsHTML .= '</div>';
             };
 
-        $output .= '</td></tr>';
+        $indexHTML .= '</td></tr>';
+        $searchResultsHTML .= '</div></div>';
+
+        return ($indexHTML, $searchResultsHTML);
         };
-
-
-    return $output;
     };
 
 
@@ -2079,21 +2223,29 @@ sub BuildIndexElement #(element, outputFile, id, symbol, package, hasPackage)
 #       type - The <TopicType> of the symbol.
 #       prototype - The prototype of the symbol, or undef if none.
 #       summary - The summary of the symbol, or undef if none.
-#       outputFile - The HTML <FileName> this link will appear in.
 #       style - The CSS style to apply to the link.
 #
-sub BuildIndexLink #(text, symbol, package, file, type, prototype, summary, outputFile, style)
+#   Returns:
+#
+#       The array ( indexHTML, searchResultHTML ) which is the link in the respective forms.
+#
+sub BuildIndexLink #(string text, SymbolString symbol, SymbolString package, FileName file, TopicType type, string prototype, string summary, string style) => ( string, string )
     {
-    my ($self, $text, $symbol, $package, $file, $type, $prototype, $summary, $outputFile, $style) = @_;
+    my ($self, $text, $symbol, $package, $file, $type, $prototype, $summary, $style) = @_;
 
     $symbol = NaturalDocs::SymbolString->Join($package, $symbol);
 
     my $targetTooltipID = $self->BuildToolTip($symbol, $file, $type, $prototype, $summary);
     my $toolTipProperties = $self->BuildToolTipLinkProperties($targetTooltipID);
 
-    return '<a href="' . $self->MakeRelativeURL( $outputFile, $self->OutputFileOf($file), 1 )
-                         . '#' . $self->SymbolToHTMLSymbol($symbol) . '" ' . $toolTipProperties . ' '
-                . 'class=' . $style . '>' . $text . '</a>';
+    my $indexHTML = '<a href="' . $self->MakeRelativeURL( $self->IndexDirectory(), $self->OutputFileOf($file) )
+                                         . '#' . $self->SymbolToHTMLSymbol($symbol) . '" ' . $toolTipProperties . ' '
+                                . 'class=' . $style . '>' . $text . '</a>';
+    my $searchResultHTML = '<a href="' . $self->MakeRelativeURL( $self->SearchResultsDirectory(), $self->OutputFileOf($file) )
+                                         . '#' . $self->SymbolToHTMLSymbol($symbol) . '" target=_parent '
+                                . 'class=' . $style . '>' . $text . '</a>';
+
+    return ($indexHTML, $searchResultHTML);
     };
 
 
@@ -2266,6 +2418,7 @@ sub IndexFileOf #(type, page)
     return NaturalDocs::File->JoinPaths( $self->IndexDirectory(), $self->RelativeIndexFileOf($type, $page) );
     };
 
+
 #
 #   Function: RelativeIndexFileOf
 #
@@ -2280,6 +2433,38 @@ sub RelativeIndexFileOf #(type, page)
     {
     my ($self, $type, $page) = @_;
     return NaturalDocs::Topics->NameOfType($type, 1, 1) . (defined $page && $page != 1 ? $page : '') . '.html';
+    };
+
+
+#
+#   Function: SearchResultsDirectory
+#
+#   Returns the directory of the search results files.
+#
+sub SearchResultsDirectory
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( NaturalDocs::Settings->OutputDirectoryOf($self), 'search', 1);
+    };
+
+
+#
+#   Function: SearchResultsFileOf
+#
+#   Returns the output file name of the search result file.
+#
+#   Parameters:
+#
+#       type  - The <TopicType> of the index.
+#       extra - The string to add to the end of the file name, such as "A" or "Symbols".
+#
+sub SearchResultsFileOf #(TopicType type, string extra)
+    {
+    my ($self, $type, $extra) = @_;
+
+    my $fileName = NaturalDocs::Topics->NameOfType($type, 1, 1) . $extra . '.html';
+
+    return NaturalDocs::File->JoinPaths( $self->SearchResultsDirectory(), $fileName );
     };
 
 
@@ -2442,6 +2627,30 @@ sub SymbolToHTMLSymbol #(symbol)
     $htmlSymbol =~ tr/ \"<>\?&%/_/d;
 
     return $htmlSymbol;
+    };
+
+
+#
+#   Function: StringToSearchResultID
+#
+#   Takes a text string and translates it into something that can be used as a CSS ID.
+#
+sub StringToSearchResultID #(string string) => string
+    {
+    my ($self, $string) = @_;
+
+    $string =~ s/\_/_und/g;
+    $string =~ s/ +/_spc/g;
+
+    my %translation = ( '~' => '_til', '!' => '_exc', '@' => '_att', '#' => '_num', '$' => '_dol', '%' => '_pct', '^' => '_car',
+                                  '&' => '_amp', '*' => '_ast', '(' => '_lpa', ')' => '_rpa', '-' => '_min', '+' => '_plu', '=' => '_equ',
+                                  '{' => '_lbc', '}' => '_rbc', '[' => '_lbk', ']' => '_rbk', ':' => '_col', ';' => '_sco', '"' => '_quo',
+                                  '\'' => '_apo', '<' => '_lan', '>' => '_ran', ',' => '_com', '.' => '_per', '?' => '_que', '/' => '_sla' );
+
+    $string =~ s/([\~\!\@\#\$\%\^\&7\*\(\)\-\+\=\{\}\[\]\:\;\"\'\<\>\,\.\?\/])/$translation{$1}/ge;
+    $string =~ s/[^a-z0-9_]/_zzz/gi;
+
+    return 'SR_' . $string;
     };
 
 

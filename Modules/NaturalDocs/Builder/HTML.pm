@@ -131,9 +131,8 @@ sub BuildIndex #(type)
     my ($self, $type) = @_;
 
     my $indexTitle = $self->IndexTitleOf($type);
-    my $indexFile = $self->IndexFileOf($type);
 
-    my $startPage =
+    my $startIndexPage =
 
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" '
             . '"http://www.w3.org/TR/REC-html40/strict.dtd">' . "\n\n"
@@ -147,14 +146,16 @@ sub BuildIndex #(type)
                 . $indexTitle;
 
                 if (defined NaturalDocs::Menu->Title())
-                    {  $startPage .= ' - ' . $self->StringToHTML(NaturalDocs::Menu->Title());  };
+                    {  $startIndexPage .= ' - ' . $self->StringToHTML(NaturalDocs::Menu->Title());  };
 
-            $startPage .=
+            $startIndexPage .=
             '</title>'
 
-            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($indexFile, $self->MainCSSFile(), 1) . '">'
+            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($self->IndexDirectory(),
+                                                                                                                       $self->MainCSSFile()) . '">'
 
-            . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->IndexDirectory,
+                                                                                                        $self->MainJavaScriptFile()) . '"></script>'
 
         . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
@@ -168,8 +169,7 @@ sub BuildIndex #(type)
                 . $indexTitle
             . '</div>';
 
-
-    my $endPage =
+    my $endIndexPage =
             '</div><!--Index-->'
 
             . "\n\n\n"
@@ -182,7 +182,37 @@ sub BuildIndex #(type)
         . '</body></html>';
 
 
-    my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startPage, $endPage);
+    my $startSearchResultsPage =
+
+        '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" '
+            . '"http://www.w3.org/TR/REC-html40/strict.dtd">' . "\n\n"
+
+        . '<html><head>'
+
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+
+            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($self->SearchResultsDirectory(),
+                                                                                                                       $self->MainCSSFile()) . '">'
+
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->SearchResultsDirectory(),
+                                                                                                        $self->MainJavaScriptFile()) . '"></script>'
+
+        . '</head><body id=SearchResults onLoad="NDOnLoad()">'
+            . $self->OpeningBrowserStyles()
+
+        . $self->StandardComments()
+
+        . "\n\n\n";
+
+
+    my $endSearchResultsPage =
+        $self->ClosingBrowserStyles()
+   . '</body></html>';
+
+
+    my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startIndexPage, $endIndexPage,
+                                                                  $startSearchResultsPage, $endSearchResultsPage);
     $self->PurgeIndexFiles($type, $pageCount + 1);
     };
 
