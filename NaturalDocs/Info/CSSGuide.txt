@@ -137,7 +137,7 @@ Styles: Browser Styles
         Safari, are taken care of.
 
         #IE - Internet Explorer
-        #Gecko - The Gecko rendering engine, which includes Firefox, Mozilla, etc.
+        #Firefox - Firefox and anything else based on the Gecko rendering engine.
         #Opera - Opera
         #KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
 
@@ -148,11 +148,16 @@ Styles: Browser Styles
 
         #IE5 - Internet Explorer 5.x.
         #IE6 - Internet Explorer 6.x.
+        #IE7 - Internet Explorer 7.x.
 
         #Opera5 - Opera 5.x.
         #Opera6 - Opera 6.x.
         #Opera7 - Opera 7.x.
         #Opera8 - Opera 8.x.
+        #Opera9 - Opera 9.x.
+
+        #Firefox1 - Firefox 1.0.x and anything else based on Gecko 1.7.x.
+        #Firefox15 - Firefox 1.5.x and anything else based on Gecko 1.8.x.
 
 
 
@@ -311,12 +316,35 @@ Topic: Menu Structure
            </MGroupContent>
         </MGroup and MEntry>
 
+        <#MSearchPanel and MSearchPanelActive/Inactive>
+            <input #MSeachField>
+            <select #MSearchType>
+                <option #MSearchEverything>
+                <option>
+                <option>
+            </select #MSearchType>
+        </#MSearchPanel and MSearchPanelActive/Inactive>
+
+        <#MSearchResultsWindow>
+
+            <#MSearchResults>
+                <iframe>
+            </#MSearchResults>
+
+            <a #MSearchResultsWindowClose>
+
+        </#MSearchResultsWindow>
+
     </#Menu>
 
     (end)
 
     The <MFile> or <MIndex> entry that's currently selected will have the <#MSelected> ID, so you can reference it in CSS via
     .MFile#MSelected.
+
+    The search panel is has its own ID, <#MSearchPanel>, but also has one of the classes <MSearchPanelActive> or
+    <MSearchPanelInactive> depending on whether any of the controls are selected or the results window is open.
+    <#MResultsWindow> is separate because it may be floating.
 
 
 Styles: Menu Styles
@@ -338,6 +366,18 @@ Styles: Menu Styles
     #MSelected - The ID of the currently selected <MFile> or <MIndex>.
 
     MType - <MFile>, <MGroup>, <MText>, <MLink>, or <MIndex>.
+
+    #MSearchPanel - Contains all the search controls.
+    MSearchPanelActive - Applied to <#MSearchPanel> when any of the controls are selected or the results window is open.
+    MSearchPanelInactive - Applied to <#MSearchPanel> when not in use.
+
+    #MSearchField - The text input field of the search panel.
+    #MSearchType - The drop down type selector of the search panel.
+    #MSearchEverything - The <#MSearchType> option for the Everything index.
+
+    #MSearchResultsWindow - Contains all the search results elements.
+    #MSearchResults - Contains the iframe that will hold the results.
+    #MSearchRseultsWindowClose - The link to manually close the search results window.
 
 
 Topic: Class Hierarchy Structure
@@ -694,6 +734,29 @@ Styles: Index Styles
     #IOnlySymbolPrefix - The ID if there is only one <ISymbolPrefix> for an <IHeading>.
 
 
+Topic: Search Results Structure
+
+    The search results use virtually the same structure and styles as the indexes, except that <#SearchResults> replaces
+    <#Index>, there's a new <SRResult> style, and there are a few additional <SRStatus> blocks.
+
+    Visibility:
+
+        Visibility is *very* important to making the search work correctly.  JavaScript will handle most of it, but your CSS needs to
+        abide by these rules.
+
+        - <SRStatus> sections are visible by default.
+        - <SRResult> sections are *not* visible by default.  They must use display: none.
+        - <ISubIndex> should be display: none when under <#SearchResults>.
+
+
+Styles: Search Results Styles
+
+    #SearchResults - Parent element for the entire page.
+    SRStatus - Status message.  Must be visible by default.
+    SRResult - A result.  All you need to do for this class is set it to display: none.  Nothing else should be set on it.
+
+
+
 Topic: Tool Tip Structure
 
     Tool tips may appear anywhere in the page, mainly because it's assumed that they will use position: absolute and
@@ -748,12 +811,15 @@ Topic: Revisions
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
         - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
           <CType> and <CTopic>, <MType> and <MEntry>, <CHType> and <CHEntry>
-        - The IE4, Netscape, and Netscape4 styles have been removed.  <Opera8> has been added.
+        - The IE4, Netscape, and Netscape4 styles have been removed.  <#IE7>, <#Opera8>, and <#Opera9> have been added.
+          Gecko has been replaced by <#Firefox>, <#Firefox1>, and <#Firefox15>.
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
         - CHIndent was replaced by <CHIndent#>.
         - SBorder becomes <SBody>.
         - Added <CInlineImage> and <CImageLink>.
+        - Added <#SearchPanel>, <#SearchResultsWindow>, and all related styles.
+        - Added <Search Results Structure> and <Search Results Styles>.
 
     1.33:
 
@@ -816,5 +882,4 @@ Topic: Revisions
     0.9:
 
         - Added <Index Styles>, since 0.9 added indexes.
-
 
