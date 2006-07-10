@@ -114,14 +114,17 @@ sub Load # => bool
     {
     my $self = shift;
 
+    if (NaturalDocs::Settings->RebuildData())
+        {  return 0;  };
+
     my $version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('ImageReferenceTable.nd') );
 
     if (!defined $version)
         {  return 0;  }
 
-    # The file format hasn't change since it was introduced.
-    if ($version > NaturalDocs::Settings->AppVersion())
-        {
+    # The file format hasn't changed since it was introduced.
+    if (!NaturalDocs::Version->CheckFileFormat($version))
+        { 
         NaturalDocs::BinaryFile->Close();
         return 0;
         };

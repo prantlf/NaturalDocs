@@ -230,10 +230,10 @@ sub Load
 
             # 1.3 is incompatible with previous versions.
 
-            if ($version >= NaturalDocs::Version->FromString('1.3') && $version <= NaturalDocs::Settings->AppVersion())
+            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.3') ))
                 {  $fileIsOkay = 1;  }
             else
-                {  close(PREVIOUSSTATEFILEHANDLE);  };
+                {  close(SYMBOLTABLE_FILEHANDLE);  };
             }
 
         else

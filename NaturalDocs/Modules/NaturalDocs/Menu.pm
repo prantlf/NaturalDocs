@@ -1226,7 +1226,7 @@ sub LoadPreviousMenuStateFile
 
             # Only the topic type format has changed since switching to binary, and we support both methods.
 
-            if ($version <= NaturalDocs::Settings->AppVersion())
+            if (NaturalDocs::Version->CheckFileFormat($version))
                 {  $fileIsOkay = 1;  }
             else
                 {  close(PREVIOUSSTATEFILEHANDLE);  };

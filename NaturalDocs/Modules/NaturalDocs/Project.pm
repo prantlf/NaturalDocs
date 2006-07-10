@@ -331,11 +331,11 @@ sub LoadSourceFileInfo
         # The project file need to be rebuilt for 1.16.  The source files need to be reparsed and the output files rebuilt for 1.35.
         # We'll tolerate the difference between 1.16 and 1.3 in the loader.
 
-        if ($version >= NaturalDocs::Version->FromString('1.16') && $version <= NaturalDocs::Settings->AppVersion())
+        if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.16') ))
             {
             $fileIsOkay = 1;
 
-            if ($version < NaturalDocs::Version->FromString('1.35'))
+            if (!NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.35') ))
                 {
                 $reparseEverything = 1;
                 $rebuildEverything = 1;
@@ -540,7 +540,7 @@ sub LoadConfigFileInfo
 
             # It hasn't changed since being introduced.
 
-            if ($version <= NaturalDocs::Settings->AppVersion())
+            if (NaturalDocs::Version->CheckFileFormat($version))
                 {  $fileIsOkay = 1;  }
             else
                 {  close(FH_CONFIGFILEINFO);  };
@@ -582,7 +582,7 @@ sub LoadConfigFileInfo
 
         close(FH_CONFIGFILEINFO);
         }
-    else
+    else # !$fileIsOkay
         {
         while (scalar @configFiles)
             {
@@ -645,7 +645,7 @@ sub LoadImageFileInfo
         {
         # It hasn't changed since being introduced.
 
-        if ($version <= NaturalDocs::Settings->AppVersion())
+        if (NaturalDocs::Version->CheckFileFormat($version))
             {  $fileIsOkay = 1;  }
         else
             {  NaturalDocs::BinaryFile->Close();  };

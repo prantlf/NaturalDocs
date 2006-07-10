@@ -548,7 +548,10 @@ sub AppVersion
 #   Returns Natural Docs' version number as plain text.
 #
 sub TextAppVersion
-    {  return '1.35';  };
+    {
+    # return '1.35';
+    return 'Development Release 07-09-2006 (1.35 base)';
+    };
 
 #
 #   Function: AppURL
@@ -1061,13 +1064,23 @@ sub LoadAndComparePreviousSettings
     {
     my ($self) = @_;
 
-    my $version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd') );
+    my $fileIsOkay;
 
-    if (!defined $version || $version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
+    if (!NaturalDocs::Settings->RebuildData())
         {
-        if (defined $version)
-            {  NaturalDocs::BinaryFile->Close();  };
+        my $version;
 
+        if ($version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd') ))
+            {
+            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.33') ))
+                {  $fileIsOkay = 1;  }
+            else
+                {  NaturalDocs::BinaryFile->Close();  };
+            };
+        };
+
+    if (!$fileIsOkay)
+        {
         # We need to reparse everything because --documented-only may have changed.
         # We need to rebuild everything because --tab-length may have changed.
         NaturalDocs::Project->ReparseEverything();

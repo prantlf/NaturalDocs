@@ -189,10 +189,10 @@ sub Load
 
             # Minor bugs were fixed in 1.33 that may affect the stored data.
 
-            if ($version > NaturalDocs::Settings->AppVersion() || $version < NaturalDocs::Version->FromString('1.33'))
-                {  close(CLASS_HIERARCHY_FILEHANDLE);  }
+            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.33') ))
+                {  $fileIsOkay = 1;  }
             else
-                {  $fileIsOkay = 1;  };
+                {  close(CLASS_HIERARCHY_FILEHANDLE);  };
             };
         };
 
