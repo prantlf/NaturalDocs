@@ -660,7 +660,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 
             $searchOutput .=
             '</select>'
-        . '</a>'
+        . '</div>'
 
         . '<div id=MSearchResultsWindow>'
             . '<div id=MSearchResults></div>'
