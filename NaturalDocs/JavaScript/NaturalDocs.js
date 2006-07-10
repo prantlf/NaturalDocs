@@ -53,6 +53,61 @@ else if (agt.indexOf("gecko") != -1)
     }
 
 
+//
+//  Support Functions
+// ____________________________________________________________________________
+
+
+function GetXPosition(item)
+    {
+    var position = 0;
+
+    if (item.offsetWidth != null && browserVer != "Opera5")
+        {
+        while (item != document.body && item != null)
+            {
+            position += item.offsetLeft;
+            item = item.offsetParent;
+            };
+        };
+
+    return position;
+    };
+
+
+function GetYPosition(item)
+    {
+    var position = 0;
+
+    if (item.offsetWidth != null && browserVer != "Opera5")
+        {
+        while (item != document.body && item != null)
+            {
+            position += item.offsetTop;
+            item = item.offsetParent;
+            };
+        };
+
+    return position;
+    };
+
+
+function MoveToPosition(item, x, y)
+    {
+    // Opera 5 chokes on the px extension, so it can use the Microsoft one instead.
+
+    if (item.style.left != null && browserVer != "Opera5")
+        {
+        item.style.left = x + "px";
+        item.style.top = y + "px";
+        }
+    else if (item.style.pixelLeft != null)
+        {
+        item.style.pixelLeft = x;
+        item.style.pixelTop = y;
+        };
+    };
+
 
 //
 //  Menu
@@ -107,36 +162,18 @@ function ReallyShowTip(tooltipID, linkID, docX, docY)
         tooltip = document.getElementById(tooltipID);
         link = document.getElementById(linkID);
         }
-    else if (document.all)
+/*    else if (document.all)
         {
         tooltip = eval("document.all['" + tooltipID + "']");
         link = eval("document.all['" + linkID + "']");
         }
-
+*/
     if (tooltip)
         {
-        var left = 0;
-        var top = 0;
+        var left = GetXPosition(link);
+        var top = GetYPosition(link);
+        top += link.offsetHeight;
 
-        // Not everything supports offsetTop/Left/Width, and some, like Opera 5, think they do but do it badly.
-
-        if (link && link.offsetWidth != null && browserVer != "Opera5")
-            {
-            var item = link;
-            while (item != document.body)
-                {
-                left += item.offsetLeft;
-                item = item.offsetParent;
-                }
-
-            item = link;
-            while (item != document.body)
-                {
-                top += item.offsetTop;
-                item = item.offsetParent;
-                }
-            top += link.offsetHeight;
-            }
 
         // The fallback method is to use the mouse X and Y relative to the document.  We use a separate if and test if its a number
         // in case some browser snuck through the above if statement but didn't support everything.
@@ -161,21 +198,13 @@ function ReallyShowTip(tooltipID, linkID, docX, docY)
 
             if (left + width > docWidth)
                 {  left = docWidth - width - 1;  }
+
+            // If there's a horizontal scroll bar we could go past zero because it's using the page width, not the window width.
+            if (left < 0)
+                {  left = 0;  };
             }
 
-        // Opera 5 chokes on the px extension, so it can use the Microsoft one instead.
-
-        if (tooltip.style.left != null && browserVer != "Opera5")
-            {
-            tooltip.style.left = left + "px";
-            tooltip.style.top = top + "px";
-            }
-        else if (tooltip.style.pixelLeft != null)
-            {
-            tooltip.style.pixelLeft = left;
-            tooltip.style.pixelTop = top;
-            }
-
+        MoveToPosition(tooltip, left, top);
         tooltip.style.visibility = "visible";
         }
     }
@@ -235,7 +264,7 @@ function ImagePopup(popupPageURL, popupImageURL, width, height, title)
 
 
 //
-//  Event Handlers
+//  Blockquote fix for IE
 // ____________________________________________________________________________
 
 
@@ -247,35 +276,23 @@ function NDOnLoad()
 
         if (scrollboxes.item(0))
             {
-            var width = scrollboxes.item(0).parentNode.offsetWidth - scrollboxes.item(0).offsetLeft;
-
-            var i = 0;
-            var item;
-
-            while (item = scrollboxes.item(i))
-                {
-                item.style.width = width;
-                i++;
-                };
-
+            NDDoResize();
             window.onresize=NDOnResize;
             };
         };
-    }
+    };
 
 
 var resizeTimer = 0;
 
 function NDOnResize()
     {
-    if (browserType == "IE")
-        {
-        if (resizeTimer != 0)
-            {  clearTimeout(resizeTimer);  };
+    if (resizeTimer != 0)
+        {  clearTimeout(resizeTimer);  };
 
-        resizeTimer = setTimeout(NDDoResize, 500);
-        };
+    resizeTimer = setTimeout(NDDoResize, 250);
     };
+
 
 function NDDoResize()
     {
@@ -287,16 +304,14 @@ function NDDoResize()
     i = 0;
     while (item = scrollboxes.item(i))
         {
-        item.style.width = "100px";
+        item.style.width = 100;
         i++;
         };
-
-    var width = scrollboxes.item(0).parentNode.offsetWidth - scrollboxes.item(0).offsetLeft;
 
     i = 0;
     while (item = scrollboxes.item(i))
         {
-        item.style.width = width;
+        item.style.width = item.parentNode.offsetWidth;
         i++;
         };
 
@@ -502,19 +517,10 @@ function NDSearch()
     var page = filePath.replace(/\*/, pageExtension);
 
 
-    var left = typeField.offsetLeft;
-    var top = typeField.offsetTop + searchField.offsetHeight;
-    var parent = typeField.offsetParent;
+    var left = GetXPosition(typeField);
+    var top = GetYPosition(typeField) + searchField.offsetHeight;
 
-    while (parent != null)
-        {
-        left += parent.offsetLeft;
-        top += parent.offsetTop;
-        parent = parent.offsetParent;
-        };
-
-    resultsWindow.style.left = left + 'px';
-    resultsWindow.style.top = top + 'px';
+    MoveToPosition(resultsWindow, left, top);
     results.innerHTML = '<iframe src="'+page+'?'+escape(searchField.value)+'" frameborder=0>';
     resultsWindow.style.display = 'block';
 
