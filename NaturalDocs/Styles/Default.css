@@ -61,9 +61,7 @@ blockquote {
     margin: 0;
     overflow: auto;
     }
-/*  This will be fixed in JavaScript.  We just need a default if it's turned off.  */
-#IE blockquote {
-    width: 400px;  }
+
 
 #Firefox blockquote {
     padding-bottom: .5em;
@@ -316,19 +314,23 @@ blockquote {
 
     .CToolTip {
         position: absolute; visibility: hidden;
-        left: 0; top: 0; max-width: 50%;
+        left: 0; top: 0;
         background-color: #FFFFE0;
         padding: 5px;
         border-width: 1px 2px 2px 1px; border-style: solid; border-color: #000000;
-        font-size: 8pt }
+        font-size: 8pt;
+        }
 
-    /*  Opera 6 gives it a huge height otherwise.  */
-    #Opera6 .CTooltip, #Opera5 .CTooltip {
-        max-width: 100% }
+    #Opera .CToolTip {
+        max-width: 98%;
+        }
 
     /*  Scrollbars would be useless.  */
     .CToolTip blockquote {
         overflow: hidden;
+        }
+    #IE6 .CToolTip blockquote {
+        overflow: visible;
         }
 
     .CHeading {
