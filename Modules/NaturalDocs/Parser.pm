@@ -463,9 +463,11 @@ sub CleanComment #(commentLines)
             }
 
         # If there's at least four symbols in a row, it's a horizontal line.  The second regex supports differing edge characters.  It
-        # doesn't matter if any of this matches the left and right side symbols.
+        # doesn't matter if any of this matches the left and right side symbols.  The length < 256 is a sanity check, because that
+        # regexp has caused the perl regexp engine to choke on an insane line someone sent me from an automatically generated
+        # file.  It had over 10k characters on the first line, and most of them were 0x00.
         elsif ($line =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
-                $line =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/)
+                (length $line < 256 && $line =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/) )
             {
             # Convert the original to a blank line.
             $commentLines->[$index] = '';
