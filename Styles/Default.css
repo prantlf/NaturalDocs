@@ -162,9 +162,6 @@ blockquote {
         padding: 0px 6px;
         margin: .25em 0;
         }
-    #Opera #MSearchPanel {
-        padding: 0px 9px;
-        }
 
 
     #MSearchField {
@@ -204,9 +201,6 @@ blockquote {
         padding: 0;
         border: 1px solid #C0C0C0;
         }
-    #Opera #MSearchType {
-        width: 96%;
-        }
     .MSearchPanelActive #MSearchType,
     .MSearchPanelInactive:hover #MSearchType,
     #MSearchType:focus {
@@ -217,8 +211,8 @@ blockquote {
         font-weight: bold;
         }
 
-    #Opera .MSearchPanelInactive:hover,
-    #Opera .MSearchPanelActive {
+    #Opera8 .MSearchPanelInactive:hover,
+    #Opera8 .MSearchPanelActive {
         margin-left: -1px;
         }
 
@@ -641,6 +635,9 @@ blockquote {
     #SearchResults .IEntry {
         font-size: 8pt;
         padding: 1px 5px;
+        }
+    #SearchResults #Opera9 .IEntry {
+        text-align: left;
         }
 
     .ISubIndex {
