@@ -627,10 +627,12 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 
         my $searchOutput =
         '<div id=MSearchPanel class=MSearchPanelInactive>'
-            . '<input type=text id=MSearchField value=Search onFocus="SearchFieldOnFocus(1)" onBlur="SearchFieldOnFocus(0)" '
-                . 'onKeyUp="SearchFieldOnChange()">'
-            . '<select id=MSearchType onFocus="SearchTypeOnFocus(1)" onBlur="SearchTypeOnFocus(0)" '
-                . 'onChange="SearchTypeOnChange()">';
+            . '<input type=text id=MSearchField value=Search '
+                . 'onFocus="searchPanel.OnSearchFieldFocus(true)" onBlur="searchPanel.OnSearchFieldFocus(false)" '
+                . 'onKeyUp="searchPanel.OnSearchFieldChange()">'
+            . '<select id=MSearchType '
+                . 'onFocus="searchPanel.OnSearchTypeFocus(true)" onBlur="searchPanel.OnSearchTypeFocus(false)" '
+                . 'onChange="searchPanel.OnSearchTypeChange()">';
 
             my @indexes = keys %{NaturalDocs::Menu->Indexes()};
             @indexes = sort
@@ -664,7 +666,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 
         . '<div id=MSearchResultsWindow>'
             . '<div id=MSearchResults></div>'
-            . '<a href="javascript:CloseSearchResults()" id=MSearchResultsWindowClose>Close</a>'
+            . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
         . '</div>';
 
         $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput . $searchOutput;
@@ -1805,7 +1807,7 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
                 . 'document.getElementById("Loading").style.display="none";' . "\n"
                 . 'document.getElementById("NoMatches").style.display="none";' . "\n"
 
-                . 'SRSearch();' . "\n"
+                . 'searchResults.Search();' . "\n"
             . '--></script>'
 
             . $endSearchResultsPage;
