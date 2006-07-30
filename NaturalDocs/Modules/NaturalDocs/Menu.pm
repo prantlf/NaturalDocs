@@ -146,7 +146,7 @@ my %bannedIndexes;
 #   Format:
 #
 #       The file is plain text.  Blank lines can appear anywhere and are ignored.  Tags and their content must be completely
-#       contained on one line with the exception of Group's braces.
+#       contained on one line with the exception of Group's braces.  All values in brackets below are encoded with entity characters.
 #
 #       > # [comment]
 #
@@ -232,11 +232,21 @@ my %bannedIndexes;
 #       When there is only one directory and its name is not "default", this stores the name.
 #
 #
+#   Entities:
+#
+#       &amp; - Ampersand.
+#       &lparen; - Left parenthesis.
+#       &rparen; - Right parenthesis.
+#       &lbrace; - Left brace.
+#       &rbrace; - Right brace.
+#
+#
 #   Revisions:
 #
-#       2.0:
+#       1.4:
 #
 #           - Added Timestamp property.
+#           - Values are now encoded with entity characters.
 #
 #       1.3:
 #
@@ -710,7 +720,8 @@ sub LoadMenuFile
                             {  $flags |= ::MENU_FILE_NOAUTOTITLE();  };
                         };
 
-                    my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $title, $file, $flags);
+                    my $entry = NaturalDocs::Menu::Entry->New(::MENU_FILE(), $self->RestoreAmpChars($title),
+                                                                                       $self->RestoreAmpChars($file), $flags);
 
                     $currentGroup->PushToGroup($entry);
                     }
@@ -728,7 +739,7 @@ sub LoadMenuFile
                     $inBracelessGroup = undef;
                     };
 
-                my $entry = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), $value, undef, undef);
+                my $entry = NaturalDocs::Menu::Entry->New(::MENU_GROUP(), $self->RestoreAmpChars($value), undef, undef);
 
                 $currentGroup->PushToGroup($entry);
 
@@ -765,7 +776,7 @@ sub LoadMenuFile
             elsif ($keyword eq 'title')
                 {
                 if (!defined $title)
-                    {  $title = $value;  }
+                    {  $title = $self->RestoreAmpChars($value);  }
                 else
                     {  NaturalDocs::ConfigFile->AddError('Title can only be defined once.');  };
                 }
@@ -776,7 +787,7 @@ sub LoadMenuFile
                 if (defined $title)
                     {
                     if (!defined $subTitle)
-                        {  $subTitle = $value;  }
+                        {  $subTitle = $self->RestoreAmpChars($value);  }
                     else
                         {  NaturalDocs::ConfigFile->AddError('SubTitle can only be defined once.');  };
                     }
@@ -788,7 +799,7 @@ sub LoadMenuFile
             elsif ($keyword eq 'footer')
                 {
                 if (!defined $footer)
-                    {  $footer = $value;  }
+                    {  $footer = $self->RestoreAmpChars($value);  }
                 else
                     {  NaturalDocs::ConfigFile->AddError('Footer can only be defined once.');  };
                 }
@@ -798,7 +809,7 @@ sub LoadMenuFile
                 {
                 if (!defined $timestampCode)
                     {
-                    $timestampCode = $value;
+                    $timestampCode = $self->RestoreAmpChars($value);
                     $self->GenerateTimestampText();
                     }
                 else
@@ -808,7 +819,8 @@ sub LoadMenuFile
 
             elsif ($keyword eq 'text')
                 {
-                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_TEXT(), $value, undef, undef) );
+                $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_TEXT(), $self->RestoreAmpChars($value),
+                                                                                                              undef, undef) );
                 }
 
 
@@ -832,7 +844,8 @@ sub LoadMenuFile
 
                 if ($title)
                     {
-                    $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_LINK(), $title, $url, undef) );
+                    $currentGroup->PushToGroup( NaturalDocs::Menu::Entry->New(::MENU_LINK(), $self->RestoreAmpChars($title),
+                                                                 $self->RestoreAmpChars($url), undef) );
                     }
                 else
                     {  NaturalDocs::ConfigFile->AddError('Link lines must be in the format "Link: [title] ([url])"');  };
@@ -866,7 +879,7 @@ sub LoadMenuFile
 
                 foreach my $index (@indexes)
                     {
-                    my $indexType = NaturalDocs::Topics->TypeFromName($index);
+                    my $indexType = NaturalDocs::Topics->TypeFromName( $self->RestoreAmpChars($index) );
 
                     if (defined $indexType)
                         {  $bannedIndexes{$indexType} = 1;  };
@@ -875,7 +888,8 @@ sub LoadMenuFile
 
             elsif ($keyword eq 'index')
                 {
-                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, ::TOPIC_GENERAL(), undef);
+                my $entry = NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $self->RestoreAmpChars($value),
+                                                                                   ::TOPIC_GENERAL(), undef);
                 $currentGroup->PushToGroup($entry);
 
                 $indexes{::TOPIC_GENERAL()} = 1;
@@ -884,7 +898,7 @@ sub LoadMenuFile
             elsif (substr($keyword, -6) eq ' index')
                 {
                 my $index = substr($keyword, 0, -6);
-                my ($indexType, $indexInfo) = NaturalDocs::Topics->NameInfo($index);
+                my ($indexType, $indexInfo) = NaturalDocs::Topics->NameInfo( $self->RestoreAmpChars($index) );
 
                 if (defined $indexType)
                     {
@@ -892,7 +906,7 @@ sub LoadMenuFile
                         {
                         $indexes{$indexType} = 1;
                         $currentGroup->PushToGroup(
-                            NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $value, $indexType, undef) );
+                            NaturalDocs::Menu::Entry->New(::MENU_INDEX(), $self->RestoreAmpChars($value), $indexType, undef) );
                         }
                     else
                         {
@@ -971,11 +985,11 @@ sub SaveMenuFile
 
     if (defined $title)
         {
-        print MENUFILEHANDLE 'Title: ' . $title . "\n";
+        print MENUFILEHANDLE 'Title: ' . $self->ConvertAmpChars($title) . "\n";
 
         if (defined $subTitle)
             {
-            print MENUFILEHANDLE 'SubTitle: ' . $subTitle . "\n";
+            print MENUFILEHANDLE 'SubTitle: ' . $self->ConvertAmpChars($subTitle) . "\n";
             }
         else
             {
@@ -997,7 +1011,7 @@ sub SaveMenuFile
 
     if (defined $footer)
         {
-        print MENUFILEHANDLE 'Footer: ' . $footer . "\n";
+        print MENUFILEHANDLE 'Footer: ' . $self->ConvertAmpChars($footer) . "\n";
         }
     else
         {
@@ -1009,7 +1023,7 @@ sub SaveMenuFile
 
     if (defined $timestampCode)
         {
-        print MENUFILEHANDLE 'Timestamp: ' . $timestampCode . "\n";
+        print MENUFILEHANDLE 'Timestamp: ' . $self->ConvertAmpChars($timestampCode) . "\n";
         }
     else
         {
@@ -1054,7 +1068,7 @@ sub SaveMenuFile
             else
                 {  $first = undef;  };
 
-            print MENUFILEHANDLE NaturalDocs::Topics->NameOfType($index, 1);
+            print MENUFILEHANDLE $self->ConvertAmpChars( NaturalDocs::Topics->NameOfType($index, 1) );
             };
 
         print MENUFILEHANDLE "\n\n";
@@ -1153,25 +1167,27 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
             else
                 {  $fileName = $entry->Target();  };
 
-            print $fileHandle $indentChars . 'File: ' . $entry->Title()
-                                  . '  (' . ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 'no auto-title, ' : '') . $fileName . ")\n";
+            print $fileHandle $indentChars . 'File: ' . $self->ConvertAmpChars( $entry->Title() )
+                                  . '  (' . ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 'no auto-title, ' : '')
+                                  . $self->ConvertAmpChars($fileName) . ")\n";
             }
         elsif ($entry->Type() == ::MENU_GROUP())
             {
             if (defined $lastEntryType && $lastEntryType != ::MENU_GROUP())
                 {  print $fileHandle "\n";  };
 
-            print $fileHandle $indentChars . 'Group: ' . $entry->Title() . "  {\n\n";
+            print $fileHandle $indentChars . 'Group: ' . $self->ConvertAmpChars( $entry->Title() ) . "  {\n\n";
             $self->WriteMenuEntries($entry->GroupContent(), $fileHandle, '   ' . $indentChars, $relativeFiles);
-            print $fileHandle '   ' . $indentChars . '}  # Group: ' . $entry->Title() . "\n\n";
+            print $fileHandle '   ' . $indentChars . '}  # Group: ' . $self->ConvertAmpChars( $entry->Title() ) . "\n\n";
             }
         elsif ($entry->Type() == ::MENU_TEXT())
             {
-            print $fileHandle $indentChars . 'Text: ' . $entry->Title() . "\n";
+            print $fileHandle $indentChars . 'Text: ' . $self->ConvertAmpChars( $entry->Title() ) . "\n";
             }
         elsif ($entry->Type() == ::MENU_LINK())
             {
-            print $fileHandle $indentChars . 'Link: ' . $entry->Title() . '  (' . $entry->Target() . ')' . "\n";
+            print $fileHandle $indentChars . 'Link: ' . $self->ConvertAmpChars( $entry->Title() ) . '  '
+                                                                     . '(' . $self->ConvertAmpChars( $entry->Target() ) . ')' . "\n";
             }
         elsif ($entry->Type() == ::MENU_INDEX())
             {
@@ -1181,7 +1197,8 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
                 $type = NaturalDocs::Topics->NameOfType($entry->Target()) . ' ';
                 };
 
-            print $fileHandle $indentChars . $type . 'Index: ' . $entry->Title() . "\n";
+            print $fileHandle $indentChars . $self->ConvertAmpChars($type) . 'Index: '
+                                                        . $self->ConvertAmpChars( $entry->Title() ) . "\n";
             };
 
         $lastEntryType = $entry->Type();
@@ -1552,6 +1569,45 @@ sub GenerateTimestampText
     $timestampText =~ s/(?<![a-z])(?:year|yyyy)(?![a-z])/$year/i; #XXX
     $timestampText =~ s/(?<![a-z])yy(?![a-z])/sprintf('%02d', $year % 100)/ie;
     };
+
+
+#
+#   Function: ConvertAmpChars
+#   Replaces certain characters in the string with their entities and returns it.
+#
+sub ConvertAmpChars #(string text) => string
+    {
+    my ($self, $text) = @_;
+
+    $text =~ s/&/&amp;/g;
+    $text =~ s/\(/&lparen;/g;
+    $text =~ s/\)/&rparen;/g;
+    $text =~ s/\{/&lbrace;/g;
+    $text =~ s/\}/&rbrace;/g;
+    $text =~ s/\,/&comma;/g;
+
+    return $text;
+    };
+
+
+#
+#   Function: RestoreAmpChars
+#   Replaces entity characters in the string with their original characters and returns it.
+#
+sub RestoreAmpChars #(string text) => string
+    {
+    my ($self, $text) = @_;
+
+    $text =~ s/&lparen;/(/gi;
+    $text =~ s/&rparen;/)/gi;
+    $text =~ s/&lbrace;/{/gi;
+    $text =~ s/&rbrace;/}/gi;
+    $text =~ s/&comma;/,/gi;
+    $text =~ s/&amp;/&/gi;
+
+    return $text;
+    };
+
 
 
 ###############################################################################
