@@ -6,13 +6,6 @@
 #
 #   A subclass to handle the language variations of Flash ActionScript.
 #
-#
-#   Topic: Language Support
-#
-#       Supported:
-#
-#       Not supported yet:
-#
 ###############################################################################
 
 # This file is part of Natural Docs, which is Copyright (C) 2003-2005 Greg Valure
@@ -27,6 +20,22 @@ use base 'NaturalDocs::Languages::Advanced';
 
 
 ################################################################################
+# Group: Constants and Types
+
+
+#
+#   Constants: XML Tag Type
+#
+#   XML_OPENING_TAG - The tag is an opening one, such as <tag>.
+#   XML_CLOSING_TAG - The tag is a closing one, such as </tag>.
+#   XML_SELF_CONTAINED_TAG - The tag is self contained, such as <tag />.
+#
+use constant XML_OPENING_TAG => 1;
+use constant XML_CLOSING_TAG => 2;
+use constant XML_SELF_CONTAINED_TAG => 3;
+
+
+################################################################################
 # Group: Package Variables
 
 #
@@ -34,7 +43,10 @@ use base 'NaturalDocs::Languages::Advanced';
 #   An existence hash of all the acceptable class modifiers.  The keys are in all lowercase.
 #
 my %classModifiers = ( 'dynamic' => 1,
-                                   'intrinsic' => 1 );
+                                   'intrinsic' => 1,
+                                   'final' => 1,
+                                   'internal' => 1,
+                                   'public' => 1 );
 
 #
 #   hash: memberModifiers
@@ -42,7 +54,10 @@ my %classModifiers = ( 'dynamic' => 1,
 #
 my %memberModifiers = ( 'public' => 1,
                                         'private' => 1,
-                                        'static' => 1 );
+                                        'protected' => 1,
+                                        'static' => 1,
+                                        'internal' => 1,
+                                        'override' => 1 );
 
 
 #
@@ -55,11 +70,19 @@ my %declarationEnders = ( ';' => 1,
                                         '{' => 1,
                                         'public' => 1,
                                         'private' => 1,
+                                        'protected' => 1,
                                         'static' => 1,
+                                        'internal' => 1,
+                                        'dynamic' => 1,
+                                        'intrinsic' => 1,
+                                        'final' => 1,
+                                        'override' => 1,
                                         'class' => 1,
                                         'interface' => 1,
                                         'var' => 1,
                                         'function' => 1,
+                                        'const' => 1,
+                                        'namespace' => 1,
                                         'import' => 1 );
 
 
@@ -91,7 +114,16 @@ sub EnumValues
 sub ParseParameterLine #(line)
     {
     my ($self, $line) = @_;
-    return $self->ParsePascalParameterLine($line);
+
+    if ($line =~ /^ ?\.\.\.\ (.+)$/)
+        {
+        # This puts them in the wrong fields as $1 should be the name and ... should be the type.  However, this is necessary
+        # because the order in the source is reversed from other parameter declarations and it's more important for the output
+        # to match the source.
+        return NaturalDocs::Languages::Prototype::Parameter->New($1, undef, '...', undef, undef, undef);
+        }
+    else
+        {  return $self->ParsePascalParameterLine($line);  };
     };
 
 
@@ -455,6 +487,7 @@ sub TryToGetClass #(indexRef, lineNumberRef)
 #       - Constructors
 #       - Properties
 #       - Functions with _global
+#       - Functions with namespaces
 #
 sub TryToGetFunction #(indexRef, lineNumberRef)
     {
@@ -468,14 +501,35 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
     my $startLine = $lineNumber;
 
     my @modifiers;
+    my $namespace;
 
-    while ($tokens->[$index] =~ /^[a-z]/i &&
-              exists $memberModifiers{lc($tokens->[$index])} )
+    while ($tokens->[$index] =~ /^[a-z]/i)
         {
-        push @modifiers, lc($tokens->[$index]);
-        $index++;
+        if ($tokens->[$index] eq 'function')
+            {  last;  }
 
-        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+        elsif (exists $memberModifiers{lc($tokens->[$index])})
+            {
+            push @modifiers, lc($tokens->[$index]);
+            $index++;
+
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            }
+
+        elsif (!$namespace)
+            {
+            do
+                {
+                $namespace .= $tokens->[$index];
+                $index++;
+                }
+            while ($tokens->[$index] =~ /^[a-z0-9_]/i);
+
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            }
+
+        else
+            {  last;  };
         };
 
     if ($tokens->[$index] ne 'function')
@@ -575,6 +629,9 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 #
 #       - Variables
 #       - Variables with _global
+#       - Variables with type * (untyped)
+#       - Constants
+#       - Variables and constants with namespaces
 #
 sub TryToGetVariable #(indexRef, lineNumberRef)
     {
@@ -588,17 +645,44 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
     my $startLine = $lineNumber;
 
     my @modifiers;
+    my $namespace;
 
-    while ($tokens->[$index] =~ /^[a-z]/i &&
-              exists $memberModifiers{lc($tokens->[$index])} )
+    while ($tokens->[$index] =~ /^[a-z]/i)
         {
-        push @modifiers, lc($tokens->[$index]);
-        $index++;
+        if ($tokens->[$index] eq 'var' || $tokens->[$index] eq 'const')
+            {  last;  }
 
-        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+        elsif (exists $memberModifiers{lc($tokens->[$index])})
+            {
+            push @modifiers, lc($tokens->[$index]);
+            $index++;
+
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            }
+
+        elsif (!$namespace)
+            {
+            do
+                {
+                $namespace .= $tokens->[$index];
+                $index++;
+                }
+            while ($tokens->[$index] =~ /^[a-z0-9_]/i);
+
+            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            }
+
+        else
+            {  last;  };
         };
 
-    if ($tokens->[$index] ne 'var')
+    my $type;
+
+    if ($tokens->[$index] eq 'var')
+        {  $type = ::TOPIC_VARIABLE();  }
+    elsif ($tokens->[$index] eq 'const')
+        {  $type = ::TOPIC_CONSTANT();  }
+    else
         {  return undef;  };
     $index++;
 
@@ -623,7 +707,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
             $index++;
             $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-            $type = ': ' . $self->TryToGetIdentifier(\$index, \$lineNumber);
+            $type = ': ' . $self->TryToGetIdentifier(\$index, \$lineNumber, 1);
 
             $self->TryToSkipWhitespace(\$index, \$lineNumber);
             };
@@ -664,7 +748,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
         if ($names[$i] =~ s/^_global.//)
             {  $scope = undef;  };
 
-        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $names[$i],
+        $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $names[$i],
                                                                                                   $scope, $self->CurrentUsing(),
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
@@ -720,7 +804,9 @@ sub GenericSkip #(indexRef, lineNumberRef)
         }
 
     elsif ($self->TryToSkipWhitespace($indexRef, $lineNumberRef) ||
-            $self->TryToSkipString($indexRef, $lineNumberRef))
+            $self->TryToSkipString($indexRef, $lineNumberRef) ||
+            $self->TryToSkipRegExp($indexRef, $lineNumberRef) ||
+            $self->TryToSkipXML($indexRef, $lineNumberRef) )
         {
         }
 
@@ -749,6 +835,35 @@ sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token)
 
 
 #
+#   Function: IndiscriminateSkipUntilAfterSequence
+#
+#   Advances the position indiscriminately until a specific token sequence is reached and passed.
+#
+sub IndiscriminateSkipUntilAfterSequence #(indexRef, lineNumberRef, token, token, ...)
+    {
+    my ($self, $indexRef, $lineNumberRef, @sequence) = @_;
+    my $tokens = $self->Tokens();
+
+    while ($$indexRef < scalar @$tokens && !$self->IsAtSequence($$indexRef, @sequence))
+        {
+        if ($tokens->[$$indexRef] eq "\n")
+            {  $$lineNumberRef++;  };
+        $$indexRef++;
+        };
+
+    if ($self->IsAtSequence($$indexRef, @sequence))
+        {
+        $$indexRef += scalar @sequence;
+        foreach my $token (@sequence)
+            {
+            if ($token eq "\n")
+                {  $$lineNumberRef++;  };
+            };
+        };
+    };
+
+
+#
 #   Function: SkipToNextStatement
 #
 #   Advances the position via <GenericSkip()> until the next statement, which is defined as anything in <declarationEnders> not
@@ -759,12 +874,354 @@ sub SkipToNextStatement #(indexRef, lineNumberRef)
     my ($self, $indexRef, $lineNumberRef) = @_;
     my $tokens = $self->Tokens();
 
-    do
+    if ($tokens->[$$indexRef] eq ';')
+        {  $$indexRef++;  }
+
+    else
         {
-        $self->GenericSkip($indexRef, $lineNumberRef);
+        do
+            {
+            $self->GenericSkip($indexRef, $lineNumberRef);
+            }
+        while ( $$indexRef < scalar @$tokens &&
+                  !exists $declarationEnders{$tokens->[$$indexRef]} );
+        };
+    };
+
+
+#
+#   Function: TryToSkipRegExp
+#   If the current position is on a regular expression, skip past it and return true.
+#
+sub TryToSkipRegExp #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    if ($tokens->[$$indexRef] eq '/')
+        {
+        # A slash can either start a regular expression or be a divide symbol.  Skip backwards to see what the previous symbol is.
+        my $index = $$indexRef - 1;
+
+        while ($index >= 0 && $tokens->[$index] =~ /^(?: |\t|\n)/)
+            {  $index--;  };
+
+        if ($index < 0 || $tokens->[$index] !~ /^\=\(\[\,]/)
+            {  return 0;  };
+
+        $$indexRef++;
+
+        while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] ne '/')
+            {
+            if ($tokens->[$$indexRef] eq '\\')
+                {  $$indexRef += 2;  }
+            elsif ($tokens->[$$indexRef] eq "\n")
+                {
+                $$indexRef++;
+                $$lineNumberRef++;
+                }
+            else
+                {  $$indexRef++;  }
+            };
+
+        if ($$indexRef < scalar @$tokens)
+            {
+            $$indexRef++;
+
+            if ($tokens->[$$indexRef] =~ /^[gimsx]+$/i)
+                {  $$indexRef++;  };
+            };
+
+        return 1;
         }
-    while ( $$indexRef < scalar @$tokens &&
-              !exists $declarationEnders{$tokens->[$$indexRef]} );
+    else
+        {  return 0;  };
+    };
+
+
+#
+#   Function: TryToSkipXML
+#   If the current position is on an XML literal, skip past it and return true.
+#
+sub TryToSkipXML #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    if ($tokens->[$$indexRef] eq '<')
+        {
+        # A < can either start an XML literal or be a comparison or shift operator.  First check the next character for << or <=.
+
+        my $index = $$indexRef + 1;
+
+        while ($index < scalar @$tokens && $tokens->[$index] =~ /^[\=\<]$/)
+            {  return 0;  };
+
+
+        # Next try the previous character.
+
+        $index = $$indexRef - 1;
+
+        while ($index >= 0 && $tokens->[$index] =~ /^[ |\t|\n]/)
+            {  $index--;  };
+
+        if ($index < 0 || $tokens->[$index] !~ /^[\=\(\[\,\>]/)
+            {  return 0;  };
+        }
+    else
+        {  return 0;  };
+
+
+    # Only handle the tag here if it's not an irregular XML section.
+    if (!$self->TryToSkipIrregularXML($indexRef, $lineNumberRef))
+        {
+        my @tagStack;
+
+        my ($tagType, $tagIdentifier) = $self->GetAndSkipXMLTag($indexRef, $lineNumberRef);
+        if ($tagType == XML_OPENING_TAG)
+            {  push @tagStack, $tagIdentifier;  };
+
+        while (scalar @tagStack && $$indexRef < scalar @$tokens)
+            {
+            $self->SkipToNextXMLTag($indexRef, $lineNumberRef);
+            ($tagType, $tagIdentifier) = $self->GetAndSkipXMLTag($indexRef, $lineNumberRef);
+
+            if ($tagType == XML_OPENING_TAG)
+                {  push @tagStack, $tagIdentifier;  }
+            elsif ($tagType == XML_CLOSING_TAG && $tagIdentifier eq $tagStack[-1])
+                {  pop @tagStack;  };
+            };
+        };
+
+
+    return 1;
+    };
+
+
+#
+#   Function: TryToSkipIrregularXML
+#
+#   If the current position is on an irregular XML tag, skip past it and return true.  Irregular XML tags are defined as
+#
+#       CDATA - <![CDATA[ ... ]]>
+#       Comments - <!-- ... -->
+#       PI - <? ... ?>
+#
+sub TryToSkipIrregularXML #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+
+    if ($self->IsAtSequence($$indexRef, '<', '!', '[', 'CDATA', '['))
+        {
+        $$indexRef += 5;
+        $self->IndiscriminateSkipUntilAfterSequence($indexRef, $lineNumberRef, ']', ']', '>');
+        return 1;
+        }
+
+    elsif ($self->IsAtSequence($$indexRef, '<', '!', '-', '-'))
+        {
+        $$indexRef += 4;
+        $self->IndiscriminateSkipUntilAfterSequence($indexRef, $lineNumberRef, '-', '-', '>');
+        return 1;
+        }
+
+    elsif ($self->IsAtSequence($$indexRef, '<', '?'))
+        {
+        $$indexRef += 2;
+        $self->IndiscriminateSkipUntilAfterSequence($indexRef, $lineNumberRef, '?', '>');
+        return 1;
+        }
+
+    else
+        {  return 0;  };
+    };
+
+
+#
+#   Function: GetAndSkipXMLTag
+#
+#   Processes the XML tag at the current position, moves beyond it, and returns information about it.  Assumes the position is on
+#   the opening angle bracket of the tag and the tag is a normal XML tag, not one of the ones handled by
+#   <TryToSkipIrregularXML()>.
+#
+#   Parameters:
+#
+#       indexRef - A reference to the index of the position of the opening angle bracket.
+#       lineNumberRef - A reference to the line number of the position of the opening angle bracket.
+#
+#   Returns:
+#
+#       The array ( tagType, name ).
+#
+#       tagType - One of the <XML Tag Type> constants.
+#       identifier - The identifier of the tag.  If it's an empty tag (<> or </>), this will be "(anonymous)".
+#
+sub GetAndSkipXMLTag #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    if ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] ne '<')
+        {  die "Tried to call GetXMLTag when the position isn't on an opening bracket.";  };
+
+    # Get the anonymous ones out of the way so we don't have to worry about them below, since they're rather exceptional.
+
+    if ($self->IsAtSequence($$indexRef, '<', '>'))
+        {
+        $$indexRef += 2;
+        return ( XML_OPENING_TAG, '(anonymous)' );
+        }
+    elsif ($self->IsAtSequence($$indexRef, '<', '/', '>'))
+        {
+        $$indexRef += 3;
+        return ( XML_CLOSING_TAG, '(anonymous)' );
+        };
+
+
+    # Grab the identifier.
+
+    my $tagType = XML_OPENING_TAG;
+    my $identifier;
+
+    $$indexRef++;
+
+    if ($tokens->[$$indexRef] eq '/')
+        {
+        $$indexRef++;
+        $tagType = XML_CLOSING_TAG;
+        };
+
+    $self->TryToSkipXMLWhitespace($indexRef, $lineNumberRef);
+
+
+    # The identifier could be a native expression in braces.
+
+    if ($tokens->[$$indexRef] eq '{')
+        {
+        my $startOfIdentifier = $$indexRef;
+
+        $$indexRef++;
+        $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}');
+
+        $identifier = $self->CreateString($startOfIdentifier, $$indexRef);
+        }
+
+
+    # Otherwise just grab content until whitespace or the end of the tag.
+
+    else
+        {
+        while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] !~ /^[\/\>\ \t]$/)
+            {
+            $identifier .= $tokens->[$$indexRef];
+            $$indexRef++;
+            };
+        };
+
+
+    # Skip to the end of the tag.
+
+    while ($$indexRef < scalar @$tokens && $tokens->[$$indexRef] !~ /^[\/\>]$/)
+        {
+        if ($tokens->[$$indexRef] eq '{')
+            {
+            $$indexRef++;
+            $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}');
+            }
+
+        elsif ($self->TryToSkipXMLWhitespace($indexRef, $lineNumberRef))
+            {  }
+
+        # We don't need to do special handling for attribute quotes or anything like that because there's no backslashing in
+        # XML.  It's all handled with entity characters.
+        else
+            {  $$indexRef++;  };
+        };
+
+
+    if ($tokens->[$$indexRef] eq '/')
+        {
+        if ($tagType == XML_OPENING_TAG)
+            {  $tagType = XML_SELF_CONTAINED_TAG;  };
+
+        $$indexRef++;
+        };
+
+    if ($tokens->[$$indexRef] eq '>')
+        {  $$indexRef++;  };
+
+    if (!$identifier)
+        {  $identifier = '(anonymous)';  };
+
+
+    return ( $tagType, $identifier );
+    };
+
+
+#
+#   Function: SkipToNextXMLTag
+#   Skips to the next normal XML tag.  It will not stop at elements handled by <TryToSkipIrregularXML()>.  Note that if the
+#   position is already at an XML tag, it will not move.
+#
+sub SkipToNextXMLTag #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    while ($$indexRef < scalar @$tokens)
+        {
+        if ($tokens->[$$indexRef] eq '{')
+            {
+            $$indexRef++;
+            $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, '}');
+            }
+
+        elsif ($self->TryToSkipIrregularXML($indexRef, $lineNumberRef))
+            {  }
+
+        elsif ($tokens->[$$indexRef] eq '<')
+            {  last;  }
+
+        else
+            {
+            if ($tokens->[$$indexRef] eq "\n")
+                {  $$lineNumberRef++;  };
+
+            $$indexRef++;
+            };
+        };
+    };
+
+
+#
+#   Function: TryToSkipXMLWhitespace
+#   If the current position is on XML whitespace, skip past it and return true.
+#
+sub TryToSkipXMLWhitespace #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my $result;
+
+    while ($$indexRef < scalar @$tokens)
+        {
+        if ($tokens->[$$indexRef] =~ /^[ \t]/)
+            {
+            $$indexRef++;
+            $result = 1;
+            }
+        elsif ($tokens->[$$indexRef] eq "\n")
+            {
+            $$indexRef++;
+            $$lineNumberRef++;
+            $result = 1;
+            }
+        else
+            {  last;  };
+        };
+
+    return $result;
     };
 
 
@@ -783,7 +1240,7 @@ sub SkipToNextStatement #(indexRef, lineNumberRef)
 #
 #   Syntax Support:
 #
-#       - Supports quotes, apostrophes, and at-quotes.
+#       - Supports quotes and apostrophes.
 #
 sub TryToSkipString #(indexRef, lineNumberRef)
     {
