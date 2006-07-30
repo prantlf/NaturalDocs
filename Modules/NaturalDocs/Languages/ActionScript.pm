@@ -86,6 +86,13 @@ my %declarationEnders = ( ';' => 1,
                                         'import' => 1 );
 
 
+#
+#   var: isEscaped
+#   Whether the current file being parsed uses escapement.
+#
+my $isEscaped;
+
+
 
 ################################################################################
 # Group: Interface Functions
@@ -136,6 +143,130 @@ sub TypeBeforeParameter
 
 
 #
+#   Function: PreprocessFile
+#
+#   If the file is escaped, strips out all unescaped code.  Will translate any unescaped comments into comments surrounded by
+#   "\x1C\x1D\x1E\x1F" and "\x1F\x1E\x1D" characters, so chosen because they are the same character lengths as <!-- and -->
+#   and will not appear in normal code.
+#
+sub PreprocessFile
+    {
+    my ($self, $lines) = @_;
+
+    if (!$isEscaped)
+        {  return;  };
+
+    use constant MODE_UNESCAPED_REGULAR => 1;
+    use constant MODE_UNESCAPED_PI => 2;
+    use constant MODE_UNESCAPED_CDATA => 3;
+    use constant MODE_UNESCAPED_COMMENT => 4;
+    use constant MODE_ESCAPED_UNKNOWN_CDATA => 5;
+    use constant MODE_ESCAPED_CDATA => 6;
+    use constant MODE_ESCAPED_NO_CDATA => 7;
+
+    my $mode = MODE_UNESCAPED_REGULAR;
+
+        print "ORIGINAL FILE\n";
+        foreach my $i (@$lines)
+            {  print ":   " . $i . "\n";  };
+        print "\n";
+
+    for (my $i = 0; $i < scalar @$lines; $i++)
+        {
+        my @tokens = split(/(<[ \t]*\/?[ \t]*mx:Script[^>]*>|<\?|\?>|<\!--|-->|<\!\[CDATA\[|\]\]\>)/, $lines->[$i]);
+        my $newLine;
+
+        foreach my $token (@tokens)
+            {
+            if ($mode == MODE_UNESCAPED_REGULAR)
+                {
+                if ($token eq '<?')
+                    {  $mode = MODE_UNESCAPED_PI;  }
+                elsif ($token eq '<![CDATA[')
+                    {  $mode = MODE_UNESCAPED_CDATA;  }
+                elsif ($token eq '<!--')
+                    {
+                    $mode = MODE_UNESCAPED_COMMENT;
+                    $newLine .= "\x1C\x1D\x1E\x1F";
+                    }
+                elsif ($token =~ /^<[ \t]*mx:Script/)
+                    {  $mode = MODE_ESCAPED_UNKNOWN_CDATA;  };
+                }
+
+            elsif ($mode == MODE_UNESCAPED_PI)
+                {
+                if ($token eq '?>')
+                    {  $mode = MODE_UNESCAPED_REGULAR;  };
+                }
+
+            elsif ($mode == MODE_UNESCAPED_CDATA)
+                {
+                if ($token eq ']]>')
+                    {  $mode = MODE_UNESCAPED_REGULAR;  };
+                }
+
+            elsif ($mode == MODE_UNESCAPED_COMMENT)
+                {
+                if ($token eq '-->')
+                    {
+                    $mode = MODE_UNESCAPED_REGULAR;
+                    $newLine .= "\x1F\x1E\x1D";
+                    }
+                else
+                    {  $newLine .= $token;  };
+                }
+
+            elsif ($mode == MODE_ESCAPED_UNKNOWN_CDATA)
+                {
+                if ($token eq '<![CDATA[')
+                    {  $mode = MODE_ESCAPED_CDATA;  }
+                elsif ($token =~ /^<[ \t]*\/[ \t]*mx:Script/)
+                    {
+                    $mode = MODE_UNESCAPED_REGULAR;
+                    $newLine .= '; ';
+                    }
+                elsif ($token !~ /^[ \t]*$/)
+                    {
+                    $mode = MODE_ESCAPED_NO_CDATA;
+                    $newLine .= $token;
+                    };
+                }
+
+            elsif ($mode == MODE_ESCAPED_CDATA)
+                {
+                if ($token eq ']]>')
+                    {
+                    $mode = MODE_UNESCAPED_REGULAR;
+                    $newLine .= '; ';
+                    }
+                else
+                    {  $newLine .= $token;  };
+                }
+
+            else #($mode == MODE_ESCAPED_NO_CDATA)
+                {
+                if ($token =~ /^<[ \t]*\/[ \t]*mx:Script/)
+                    {
+                    $mode = MODE_UNESCAPED_REGULAR;
+                    $newLine .= '; ';
+                    }
+                else
+                    {  $newLine .= $token;  };
+                };
+
+            };
+
+        $lines->[$i] = $newLine;
+        };
+
+        print "PROCESSED FILE\n";
+        foreach my $i (@$lines)
+            {  print ":   " . $i . "\n";  };
+        print "\n";
+    };
+
+
+#
 #   Function: ParseFile
 #
 #   Parses the passed source file, sending comments acceptable for documentation to <NaturalDocs::Parser->OnComment()>.
@@ -156,7 +287,13 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*', '*/' ], [ '///' ], [ '/**', '*/' ] );
+    # The \x1# comment symbols are inserted by PreprocessFile() to stand in for XML comments in escaped files.
+    my @parseParameters = ( [ '//' ], [ '/*', '*/', "\x1C\x1D\x1E\x1F", "\x1F\x1E\x1D" ], [ '///' ], [ '/**', '*/' ] );
+
+    my $extension = lc(NaturalDocs::File->ExtensionOf($sourceFile));
+    $isEscaped = ($extension eq 'mxml');
+
+    $self->ParseForCommentsAndTokens($sourceFile, @parseParameters);
 
     my $tokens = $self->Tokens();
     my $index = 0;
