@@ -100,6 +100,10 @@ my $tabLength;
 # Whether auto-grouping is turned off.
 my $noAutoGroup;
 
+# bool: onlyFileTitles
+# Whether source files should always use the file name as the title.
+my $onlyFileTitles;
+
 # bool: isQuiet
 # Whether the script should be run in quiet mode or not.
 my $isQuiet;
@@ -136,6 +140,7 @@ my $charset;
 #       > [UInt8: tab length]
 #       > [UInt8: documented only (0 or 1)]
 #       > [UInt8: no auto-group (0 or 1)]
+#       > [UInt8: only file titles (0 or 1)]
 #       > [AString16: charset]
 #       >
 #       > [UInt8: number of input directories]
@@ -150,6 +155,10 @@ my $charset;
 #
 #
 #   Revisions:
+#
+#       1.4:
+#
+#           - Added only file titles.
 #
 #       1.33:
 #
@@ -512,6 +521,11 @@ sub TabLength
 sub NoAutoGroup
     {  return $noAutoGroup;  };
 
+# Function: OnlyFileTitles
+# Returns whether source files should always use the file name as the title.
+sub OnlyFileTitles
+    {  return $onlyFileTitles;  };
+
 # Function: IsQuiet
 # Returns whether the script should be run in quiet mode or not.
 sub IsQuiet
@@ -593,6 +607,8 @@ sub ParseCommandLine
                                   'help'     => '-h',
                                   'autogroup' => '-ag',
                                   'noautogroup' => '-nag',
+                                  'onlyfiletitles' => '-oft',
+                                  'onlyfiletitle' => '-oft',
                                   'charset' => '-cs',
                                   'characterset' => '-cs' );
 
@@ -700,6 +716,8 @@ sub ParseCommandLine
                     }
                 elsif ($option eq '-do')
                     {  $documentedOnly = 1;  }
+                elsif ($option eq '-oft')
+                    {  $onlyFileTitles = 1;  }
                 elsif ($option eq '-q')
                     {  $isQuiet = 1;  }
                 elsif ($option eq '-ho')
@@ -1017,6 +1035,9 @@ sub PrintSyntax
     . " -nag\n--no-auto-group\n"
     . "    Turns off auto-grouping completely.\n"
     . "\n"
+    . " -oft\n--only-file-titles\n"
+    . "    Source files will only use the file name as the title.\n"
+    . "\n"
     . " -r\n--rebuild\n"
     . "    Rebuilds all output and data files from scratch.\n"
     . "    Does not affect the menu file.\n"
@@ -1072,7 +1093,7 @@ sub LoadAndComparePreviousSettings
 
         if ($version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd') ))
             {
-            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.33') ))
+            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.4') ))
                 {  $fileIsOkay = 1;  }
             else
                 {  NaturalDocs::BinaryFile->Close();  };
@@ -1093,11 +1114,13 @@ sub LoadAndComparePreviousSettings
         # [UInt8: tab expansion]
         # [UInt8: documented only (0 or 1)]
         # [UInt8: no auto-group (0 or 1)]
+        # [UInt8: only file titles (0 or 1)]
         # [AString16: charset]
 
         my $prevTabLength = NaturalDocs::BinaryFile->GetUInt8();
         my $prevDocumentedOnly = NaturalDocs::BinaryFile->GetUInt8();
         my $prevNoAutoGroup = NaturalDocs::BinaryFile->GetUInt8();
+        my $prevOnlyFileTitles = NaturalDocs::BinaryFile->GetUInt8();
         my $prevCharset = NaturalDocs::BinaryFile->GetAString16();
 
         if ($prevTabLength != $self->TabLength())
@@ -1110,9 +1133,12 @@ sub LoadAndComparePreviousSettings
             {  $prevDocumentedOnly = undef;  };
         if ($prevNoAutoGroup == 0)
             {  $prevNoAutoGroup = undef;  };
+        if ($prevOnlyFileTitles == 0)
+            {  $prevOnlyFileTitles = undef;  };
 
         if ($prevDocumentedOnly != $self->DocumentedOnly() ||
-            $prevNoAutoGroup != $self->NoAutoGroup())
+            $prevNoAutoGroup != $self->NoAutoGroup() ||
+            $prevOnlyFileTitles != $self->OnlyFileTitles())
             {
             NaturalDocs::Project->ReparseEverything();
             };
@@ -1190,6 +1216,7 @@ sub SavePreviousSettings
     # [UInt8: tab length]
     # [UInt8: documented only (0 or 1)]
     # [UInt8: no auto-group (0 or 1)]
+    # [UInt8: only file titles (0 or 1)]
     # [AString16: charset]
     # [UInt8: number of input directories]
 
@@ -1198,6 +1225,7 @@ sub SavePreviousSettings
     NaturalDocs::BinaryFile->WriteUInt8($self->TabLength());
     NaturalDocs::BinaryFile->WriteUInt8($self->DocumentedOnly() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8($self->NoAutoGroup() ? 1 : 0);
+    NaturalDocs::BinaryFile->WriteUInt8($self->OnlyFileTitles() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteAString16($charset);
     NaturalDocs::BinaryFile->WriteUInt8(scalar @$inputDirectories);
 
