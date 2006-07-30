@@ -2144,7 +2144,7 @@ sub BuildIndexElement #(NaturalDocs::SymbolTable::IndexElement element, string c
                 . '</span>';
 
                 $searchResultsHTML .=
-                q{<a href="javascript:SRToggleSubMenu('} . $searchResultID . q{')" class=ISymbol>}
+                q{<a href="javascript:searchResults.Toggle('} . $searchResultID . q{')" class=ISymbol>}
                     . $symbolText
                 . '</a>';
 
@@ -2186,7 +2186,7 @@ sub BuildIndexElement #(NaturalDocs::SymbolTable::IndexElement element, string c
             . '<div class=ISubIndex>';
 
             $searchResultsHTML .=
-            q{<a href="javascript:SRToggleSubMenu('} . $searchResultID . q{')" class=ISymbol>}
+            q{<a href="javascript:searchResults.Toggle('} . $searchResultID . q{')" class=ISymbol>}
                 . $symbolText
             . '</a>'
             . '<div class=ISubIndex>';
