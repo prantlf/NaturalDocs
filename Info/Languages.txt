@@ -81,8 +81,8 @@ _______________________________________________________________________________
     Ada - http://cui.unige.ch/db-research/Enseignement/analyseinfo/
 
     SQL - http://cui.unige.ch/db-research/Enseignement/analyseinfo/,
-             http://www.cs.umb.edu/cs634/ora9idocs/appdev.920/a96624/13_elems.htm, or
-             http://msdn.microsoft.com/library/default.asp?url=/library/en-us/tsqlref/ts_tsqlcon_6lyk.asp?frame=true (open in IE).
+             <http://www.cs.umb.edu/cs634/ora9idocs/appdev.920/a96624/13_elems.htm>, or
+             <http://msdn.microsoft.com/library/default.asp?url=/library/en-us/tsqlref/ts_tsqlcon_6lyk.asp?frame=true> (open in IE).
 
     JavaScript - http://academ.hvcc.edu/~kantopet/javascript/index.php
 
@@ -92,14 +92,16 @@ _______________________________________________________________________________
 
     Visual Basic - http://msdn.microsoft.com/library/default.asp?url=/library/en-us/vbls7/html/vbspecstart.asp.  Open in IE.
 
-    Pascal - http://pages.cpsc.ucalgary.ca/~becker/231/SyntaxDiagrams/pascal-syntax_files/frame.htm.  Open in IE.
+    Pascal - <http://pages.cpsc.ucalgary.ca/~becker/231/SyntaxDiagrams/pascal-syntax_files/frame.htm>.  Open in IE.
 
     Ruby - http://www.rubycentral.com/book/
 
-    ActionScript - <http://skaiste.elekta.lt/Books/O'Reilly/Bookshelfs/books/webdesign/action/index.htm>
+    ActionScript 2 - <http://download.macromedia.com/pub/documentation/en/flash/fl8/fl8_as2lr.pdf>
+    ActionScript 3 - <http://download.macromedia.com/pub/documentation/en/flex/2/prog_actionscript30.pdf>
+    E2X - http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-357.pdf
 
     R - Somewhere on http://www.r-project.org.
 
-    ColdFusion - http://livedocs.macromedia.com/coldfusion/6/Developing_ColdFusion_MX_Applications_with_CFML/contents.htm
+    ColdFusion - <http://livedocs.macromedia.com/coldfusion/6/Developing_ColdFusion_MX_Applications_with_CFML/contents.htm>
 
     Eiffel - http://www.gobosoft.com/eiffel/syntax/
