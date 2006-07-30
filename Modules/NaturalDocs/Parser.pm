@@ -363,8 +363,22 @@ sub Parse
 
     if (scalar @parsedFile)
         {
-        # If there's only one topic, it's title overrides the file name.  Certain topic types override the file name as well.
-        if (scalar @parsedFile == 1 || NaturalDocs::Topics->TypeInfo( $parsedFile[0]->Type() )->PageTitleIfFirst() )
+        my $addFileTitle;
+
+        if (NaturalDocs::Settings->OnlyFileTitles())
+            {
+            # We still want to use the title from the topics if the first one is a file.
+            if ($parsedFile[0]->Type() eq ::TOPIC_FILE())
+                {  $addFileTitle = 0;  }
+            else
+                {  $addFileTitle = 1;  };
+            }
+        elsif (scalar @parsedFile == 1 || NaturalDocs::Topics->TypeInfo( $parsedFile[0]->Type() )->PageTitleIfFirst())
+            {  $addFileTitle = 0;  }
+        else
+            {  $addFileTitle = 1;  };
+
+        if (!$addFileTitle)
             {
             $defaultMenuTitle = $parsedFile[0]->Title();
             }
