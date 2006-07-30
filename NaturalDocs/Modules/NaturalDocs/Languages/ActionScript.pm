@@ -166,11 +166,6 @@ sub PreprocessFile
 
     my $mode = MODE_UNESCAPED_REGULAR;
 
-        print "ORIGINAL FILE\n";
-        foreach my $i (@$lines)
-            {  print ":   " . $i . "\n";  };
-        print "\n";
-
     for (my $i = 0; $i < scalar @$lines; $i++)
         {
         my @tokens = split(/(<[ \t]*\/?[ \t]*mx:Script[^>]*>|<\?|\?>|<\!--|-->|<\!\[CDATA\[|\]\]\>)/, $lines->[$i]);
@@ -258,11 +253,6 @@ sub PreprocessFile
 
         $lines->[$i] = $newLine;
         };
-
-        print "PROCESSED FILE\n";
-        foreach my $i (@$lines)
-            {  print ":   " . $i . "\n";  };
-        print "\n";
     };
 
 
