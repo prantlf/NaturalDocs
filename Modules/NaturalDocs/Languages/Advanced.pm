@@ -163,8 +163,11 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
     $self->ClearAutoTopics();
     $self->ClearScopeStack();
 
+
+    # Load and preprocess the file
+
+    my @lines;
     my $line = <SOURCEFILEHANDLE>;
-    my $lineNumber = 1;
 
     # On the very first line, remove a Unicode BOM if present.  Information on it available at:
     # http://www.unicode.org/faq/utf_bom.html#BOM
@@ -173,31 +176,48 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
     while (defined $line)
         {
         ::XChomp(\$line);
-        $self->PreprocessLine(\$line);
+        push @lines, $line;
 
-        my $originalLine = $line;
+        $line = <SOURCEFILEHANDLE>;
+        };
+
+    close(SOURCEFILEHANDLE);
+
+    $self->PreprocessFile(\@lines);
+
+
+    # Go through the file
+
+    my $lineIndex = 0;
+
+    while ($lineIndex < scalar @lines)
+        {
+        $line = $lines[$lineIndex];
 
         my @commentLines;
+        my $commentLineNumber;
         my $isJavaDoc;
         my $closingSymbol;
 
 
-        # Retrieve single line comments.  This leaves $line at the next line.
+        # Retrieve single line comments.  This leaves $lineIndex at the next line.
 
         if ( ($isJavaDoc = $self->StripOpeningJavaDocSymbols(\$line, $javadocLineCommentSymbols)) ||
               $self->StripOpeningSymbols(\$line, $lineCommentSymbols))
             {
+            $commentLineNumber = $lineIndex + 1;
+
             do
                 {
                 push @commentLines, $line;
                 push @$tokens, "\n";
-                $line = <SOURCEFILEHANDLE>;
 
-                if (!defined $line)
+                $lineIndex++;
+
+                if ($lineIndex >= scalar @lines)
                     {  goto EndDo;  };
 
-                ::XChomp(\$line);
-                $self->PreprocessLine(\$line);
+                $line = $lines[$lineIndex];
                 }
             while ($self->StripOpeningSymbols(\$line, $lineCommentSymbols));
 
@@ -205,11 +225,13 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
             }
 
 
-        # Retrieve multiline comments.  This leaves $line at the next line.
+        # Retrieve multiline comments.  This leaves $lineIndex at the next line.
 
         elsif ( ($isJavaDoc = $self->StripOpeningJavaDocBlockSymbols(\$line, $javadocBlockCommentSymbols)) ||
                  ($closingSymbol = $self->StripOpeningBlockSymbols(\$line, $blockCommentSymbols)) )
             {
+            $commentLineNumber = $lineIndex + 1;
+
             if ($isJavaDoc)
                 {  $closingSymbol = $isJavaDoc;  };
 
@@ -234,14 +256,13 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
                     {  last;  };
 
                 push @$tokens, "\n";
-                $line = <SOURCEFILEHANDLE>;
+                $lineIndex++;
                 $isMultiLine = 1;
 
-                if (!defined $line)
+                if ($lineIndex >= scalar @lines)
                     {  last;  };
 
-                ::XChomp(\$line);
-                $self->PreprocessLine(\$line);
+                $line = $lines[$lineIndex];
                 };
 
             if ($lineRemainder !~ /^[ \t]*$/)
@@ -254,10 +275,9 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
                     {
                     # We go back to the original line if it wasn't a multiline comment because we want the comment to stay in the
                     # code.  Otherwise the /*@out@*/ from the example would be removed.
-                    $self->TokenizeLine($originalLine);
+                    $self->TokenizeLine($lines[$lineIndex]);
                     };
 
-                $lineNumber += scalar @commentLines;
                 @commentLines = ( );
                 }
             else
@@ -265,7 +285,7 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
                 push @$tokens, "\n";
                 };
 
-            $line = <SOURCEFILEHANDLE>;
+            $lineIndex++;
             }
 
 
@@ -274,8 +294,7 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
         else
             {
             $self->TokenizeLine($line);
-            $lineNumber++;
-            $line = <SOURCEFILEHANDLE>;
+            $lineIndex++;
             };
 
 
@@ -283,29 +302,27 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
 
         if (scalar @commentLines)
             {
-            NaturalDocs::Parser->OnComment(\@commentLines, $lineNumber, $isJavaDoc);
-            $lineNumber += scalar @commentLines;
+            NaturalDocs::Parser->OnComment(\@commentLines, $commentLineNumber, $isJavaDoc);
             @commentLines = ( );
             $isJavaDoc = undef;
             };
 
-        };  # while (defined $line)
+        # $lineIndex was incremented by the individual code paths above.
 
-
-    close(SOURCEFILEHANDLE);
-    }
+        };  # while ($lineIndex < scalar @lines)
+    };
 
 
 #
-#   Function: PreprocessLine
+#   Function: PreprocessFile
 #
-#   An overridable function if you'd like to preprocess a text line before it goes into <ParseForCommentsAndTokens()>.
+#   An overridable function if you'd like to preprocess the file before it goes into <ParseForCommentsAndTokens()>.
 #
 #   Parameters:
 #
-#       lineRef - A reference to the line.  Already has the line break stripped off, but is otherwise untouched.
+#       lines - An arrayref to the file's lines.  Each line has its line break stripped off, but is otherwise untouched.
 #
-sub PreprocessLine #(lineRef)
+sub PreprocessFile #(lines)
     {
     };
 

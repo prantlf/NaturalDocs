@@ -34,18 +34,6 @@ use base 'NaturalDocs::Languages::Advanced';
 
 
 #
-#   bool: inNDPOD
-#   Set whenever we're in ND POD in <PreprocessLine()>.
-#
-my $inNDPOD;
-
-#
-#   bool: mustBreakPOD
-#   Set whenever the next line needs to be prefixed with "(NDPODBREAK)" in <PreprocessLine()>.
-#
-my $mustBreakPOD;
-
-#
 #   array: hereDocTerminators
 #   An array of active Here Doc terminators, or an empty array if not active.  Each entry is an arrayref of tokens.  The entries
 #   must appear in the order they must appear in the source.
@@ -94,11 +82,9 @@ sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $inNDPOD = 0;
-    $mustBreakPOD = 0;
     @hereDocTerminators = ( );
 
-    # The regular block comment symbols are undef because they're all potentially JavaDoc comments.  PreprocessLine() will
+    # The regular block comment symbols are undef because they're all potentially JavaDoc comments.  PreprocessFile() will
     # handle translating things like =begin naturaldocs and =begin javadoc to =begin nd.
     $self->ParseForCommentsAndTokens($sourceFile, [ '#' ], undef, [ '##' ], [ '=begin nd', '=end nd' ]);
 
@@ -153,7 +139,7 @@ sub ParseFile #(sourceFile, topicsList)
 
 
 #
-#   Function: PreprocessLine
+#   Function: PreprocessFile
 #
 #   Overridden to support "=begin nd" and similar.
 #
@@ -168,35 +154,41 @@ sub ParseFile #(sourceFile, topicsList)
 #     mistake.
 #   - It also supports the wrong plural forms, so naturaldoc/natural doc/javadocs/java docs will work.
 #
-sub PreprocessLine #(lineRef)
+sub PreprocessFile #(lines)
     {
-    my ($self, $lineRef) = @_;
+    my ($self, $lines) = @_;
 
-    if ($$lineRef =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|natural[ \t]*docs?|jd|java[ \t]*docs?)[ \t]*$/i)
+    my $inNDPOD = 0;
+    my $mustBreakPOD = 0;
+
+    for (my $i = 0; $i < scalar @$lines; $i++)
         {
-        $$lineRef = '=begin nd';
-        $inNDPOD = 1;
-        $mustBreakPOD = 0;
-        }
-    elsif ($$lineRef =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|natural[ \t]*docs?|jd|javadocs?)[ \t]*$/i)
-        {
-        $$lineRef = '=end nd';
-        $inNDPOD = 0;
-        $mustBreakPOD = 0;
-        }
-    elsif ($$lineRef =~ /^\=cut[ \t]*$/i)
-        {
-        if ($inNDPOD)
+        if ($lines->[$i] =~ /^\=(?:(?:pod[ \t]+)?begin[ \t]+)?(?:nd|natural[ \t]*docs?|jd|java[ \t]*docs?)[ \t]*$/i)
             {
-            $$lineRef = '=end nd';
+            $lines->[$i] = '=begin nd';
+            $inNDPOD = 1;
+            $mustBreakPOD = 0;
+            }
+        elsif ($lines->[$i] =~ /^\=(?:pod[ \t]+)end[ \t]+(?:nd|natural[ \t]*docs?|jd|javadocs?)[ \t]*$/i)
+            {
+            $lines->[$i] = '=end nd';
             $inNDPOD = 0;
-            $mustBreakPOD = 1;
+            $mustBreakPOD = 0;
+            }
+        elsif ($lines->[$i] =~ /^\=cut[ \t]*$/i)
+            {
+            if ($inNDPOD)
+                {
+                $lines->[$i] = '=end nd';
+                $inNDPOD = 0;
+                $mustBreakPOD = 1;
+                };
+            }
+        elsif ($mustBreakPOD)
+            {
+            $lines->[$i] = '(NDPODBREAK)' . $lines->[$i];
+            $mustBreakPOD = 0;
             };
-        }
-    elsif ($mustBreakPOD)
-        {
-        $$lineRef = '(NDPODBREAK)' . $$lineRef;
-        $mustBreakPOD = 0;
         };
     };
 
