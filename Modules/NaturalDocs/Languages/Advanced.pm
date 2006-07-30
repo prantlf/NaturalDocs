@@ -559,7 +559,7 @@ sub IsAtSequence #(index, token, token, token ...)
 
     for (my $i = 0; $i < scalar @target; $i++)
         {
-        if ($tokens->[$i] ne $target[$i])
+        if ($tokens->[$index + $i] ne $target[$i])
             {  return undef;  };
         };
 
