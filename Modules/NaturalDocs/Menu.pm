@@ -1497,7 +1497,14 @@ sub CheckForTrashedMenu #(numberOriginallyInMenu, numberRemoved)
          ($numberOriginallyInMenu >= 12 && ($numberRemoved / $numberOriginallyInMenu) >= 0.4) ||
          ($numberRemoved >= 15) )
         {
-        my $backupFile = NaturalDocs::Project->UserDataFile('Menu_Backup.txt');
+        my $backupFile = NaturalDocs::Project->UserConfigFile('Menu_Backup.txt');
+        my $backupFileNumber = 1;
+
+        while (-e $backupFile)
+            {
+            $backupFileNumber++;
+            $backupFile = NaturalDocs::Project->UserConfigFile('Menu_Backup_' . $backupFileNumber . '.txt');
+            };
 
         NaturalDocs::File->Copy( NaturalDocs::Project->UserConfigFile('Menu.txt'), $backupFile );
 
