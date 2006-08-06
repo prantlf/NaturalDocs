@@ -1068,7 +1068,7 @@ sub SaveMenuFile
             else
                 {  $first = undef;  };
 
-            print MENUFILEHANDLE $self->ConvertAmpChars( NaturalDocs::Topics->NameOfType($index, 1) );
+            print MENUFILEHANDLE $self->ConvertAmpChars( NaturalDocs::Topics->NameOfType($index, 1), CONVERT_COMMAS() );
             };
 
         print MENUFILEHANDLE "\n\n";
@@ -1167,7 +1167,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
             else
                 {  $fileName = $entry->Target();  };
 
-            print $fileHandle $indentChars . 'File: ' . $self->ConvertAmpChars( $entry->Title() )
+            print $fileHandle $indentChars . 'File: ' . $self->ConvertAmpChars( $entry->Title(), CONVERT_PARENTHESIS() )
                                   . '  (' . ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 'no auto-title, ' : '')
                                   . $self->ConvertAmpChars($fileName) . ")\n";
             }
@@ -1187,7 +1187,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
         elsif ($entry->Type() == ::MENU_LINK())
             {
             print $fileHandle $indentChars . 'Link: ' . $self->ConvertAmpChars( $entry->Title() ) . '  '
-                                                                     . '(' . $self->ConvertAmpChars( $entry->Target() ) . ')' . "\n";
+                                                        . '(' . $self->ConvertAmpChars( $entry->Target(), CONVERT_PARENTHESIS() ) . ')' . "\n";
             }
         elsif ($entry->Type() == ::MENU_INDEX())
             {
@@ -1197,7 +1197,7 @@ sub WriteMenuEntries #(entries, fileHandle, indentChars, relativeFiles)
                 $type = NaturalDocs::Topics->NameOfType($entry->Target()) . ' ';
                 };
 
-            print $fileHandle $indentChars . $self->ConvertAmpChars($type) . 'Index: '
+            print $fileHandle $indentChars . $self->ConvertAmpChars($type, CONVERT_COLONS()) . 'Index: '
                                                         . $self->ConvertAmpChars( $entry->Title() ) . "\n";
             };
 
@@ -1578,20 +1578,50 @@ sub GenerateTimestampText
     };
 
 
+use constant CONVERT_PARENTHESIS => 0x01;
+use constant CONVERT_COMMAS => 0x02;
+use constant CONVERT_COLONS => 0x04;
+
 #
 #   Function: ConvertAmpChars
 #   Replaces certain characters in the string with their entities and returns it.
 #
-sub ConvertAmpChars #(string text) => string
+#   Parameters:
+#
+#       text - The text to convert.
+#       flags - The flags of any additional characters to convert.
+#
+#   Flags:
+#
+#       - CONVERT_PARENTHESIS
+#       - CONVERT_COMMAS
+#       - CONVERT_COLONS
+#
+#   Returns:
+#
+#       The string with the amp chars converted.
+#
+sub ConvertAmpChars #(string text, int flags) => string
     {
-    my ($self, $text) = @_;
+    my ($self, $text, $flags) = @_;
 
     $text =~ s/&/&amp;/g;
-    $text =~ s/\(/&lparen;/g;
-    $text =~ s/\)/&rparen;/g;
     $text =~ s/\{/&lbrace;/g;
     $text =~ s/\}/&rbrace;/g;
-    $text =~ s/\,/&comma;/g;
+
+    if ($flags & CONVERT_PARENTHESIS())
+        {
+        $text =~ s/\(/&lparen;/g;
+        $text =~ s/\)/&rparen;/g;
+        };
+    if ($flags & CONVERT_COMMAS())
+        {
+        $text =~ s/\,/&comma;/g;
+        };
+    if ($flags & CONVERT_COLONS())
+        {
+        $text =~ s/\:/&colon;/g;
+        };
 
     return $text;
     };
@@ -1599,7 +1629,8 @@ sub ConvertAmpChars #(string text) => string
 
 #
 #   Function: RestoreAmpChars
-#   Replaces entity characters in the string with their original characters and returns it.
+#   Replaces entity characters in the string with their original characters and returns it.  This will restore all amp chars regardless
+#   of the flags passed to <ConvertAmpChars()>.
 #
 sub RestoreAmpChars #(string text) => string
     {
@@ -1611,6 +1642,7 @@ sub RestoreAmpChars #(string text) => string
     $text =~ s/&rbrace;/}/gi;
     $text =~ s/&comma;/,/gi;
     $text =~ s/&amp;/&/gi;
+    $text =~ s/&colon;/:/gi;
 
     return $text;
     };
