@@ -207,9 +207,12 @@ Topic: Content Structure
                     </li>
                 </ul CBulletList>
 
-                <CInlineImage>
+                <CImage>
+                    <CImageCaption>?
+                        Caption
+                    </CImageCaption>?
                     <img>
-                </CInlineImage>
+                </CImage>
 
                 <a CImageLink>
                     text
@@ -254,7 +257,8 @@ Styles: Content Styles
     CHeading - A heading.
     CBulletList - A bullet list.  Is implemented with a ul.
     CCode - A section of code.  Is implemented with a pre.
-    CInlineImage - Surrounds an inline image.
+    CImage - Surrounds an image.
+    CImageCaption - Surrounds an image caption.
     CImageLink - Surrounds a link to an image.
 
     CDescriptionList - A description list, which is the type of list you're reading right now.  Is implemented with a table.
@@ -801,7 +805,7 @@ Topic: Revisions
 
     How the page structure has changed throughout the various releases.
 
-    2.0:
+    1.4:
 
         - Added <#Menu>, <#Content>, <#Footer>, and <#Index>.  They were previously shown in the diagrams as classes but did
           not actually appear in the generated output.
@@ -817,7 +821,7 @@ Topic: Revisions
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
         - CHIndent was replaced by <CHIndent#>.
         - SBorder becomes <SBody>.
-        - Added <CInlineImage> and <CImageLink>.
+        - Added <CImage>, <CImageCaption>, and <CImageLink>.
         - Added <#SearchPanel>, <#SearchResultsWindow>, and all related styles.
         - Added <Search Results Structure> and <Search Results Styles>.
 
