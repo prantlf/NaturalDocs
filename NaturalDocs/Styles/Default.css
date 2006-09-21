@@ -355,11 +355,10 @@ blockquote {
             padding-bottom: .5em; padding-left: 5ex }
 
 
-    .CInlineImage {
+    .CImage {
         text-align: center;
         margin: 1em 0;
         }
-    .CInlineImage,
     .CImageLink {
         color: #808080;
         font-style: italic;
@@ -367,6 +366,12 @@ blockquote {
     a.CImageLink:link,
     a.CImageLink:visited,
     a.CImageLink:hover { color: #808080 }
+
+    .CImageCaption {
+        font-variant: small-caps;
+        font-size: 8pt;
+        color: #808080;
+        }
 
 
 

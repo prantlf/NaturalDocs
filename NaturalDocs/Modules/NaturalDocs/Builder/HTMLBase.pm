@@ -9,7 +9,7 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2005 Greg Valure
+# This file is part of Natural Docs, which is Copyright (C) 2003-2006 Greg Valure
 # Natural Docs is licensed under the GPL
 
 
@@ -32,12 +32,6 @@ use base 'NaturalDocs::Builder::Base';
 #   handle: FH_CSS_FILE
 #
 #   The file handle to use when updating CSS files.
-#
-
-#
-#   handle: FH_IMAGEPOPUPFILE
-#
-#   The file handle for handling the blank image popup HTML file.
 #
 
 
@@ -211,6 +205,31 @@ use constant MENU_LINK_LENGTH => 1;
 use constant MENU_INDEX_LENGTH => 1;
 
 use constant MENU_LENGTH_LIMIT => 35;
+
+
+###############################################################################
+# Group: Image Package Variables
+#
+#   These variables are for the image generation functions only.  Since they're reset on every call to <BuildContent()>,
+#   and are only used by it and its support functions, they can be shared by all instances of thepackage.
+
+
+#
+#   var: imageAnchorNumber
+#   Incremented for each image link in the file that requires an anchor.
+#
+my $imageAnchorNumber;
+
+
+#
+#   var: imageContent
+#
+#   The actual embedded image HTML for all image links.  When generating an image link, the link HTML is returned and
+#   the HTML for the target image is added here.  Periodically, such as after the end of the paragraph, this content should
+#   be added to the page and the variable set to undef.
+#
+my $imageContent;
+
 
 
 ###############################################################################
@@ -451,52 +470,6 @@ sub EndBuild #(hasChanged)
         {
         NaturalDocs::File->Copy($jsMaster, $jsOutput);
         };
-
-
-    # Make the JavaScript blank image file, which is what's needed for using IE 6 from the hard drive.  IE 6 starting with SP1
-    # doesn't let web sites link to local files.  Well, since we have to use IEWebMark() to allow scripting to run from the hard drive
-    # in the first place, ND documentation from the hard drive is treated as a web site.  So instead of creating a popup window that
-    # just has the image file directly, we have to make it have a blank page first and then edit it via JavaScript to show the image.
-    # This code creates that page.
-
-    my $popupFile = NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'ImagePopup.html' );
-
-    open(FH_IMAGEPOPUPFILE, '>' . $popupFile);
-
-    print FH_IMAGEPOPUPFILE
-    '<html>'
-        . '<head>'
-
-            . '<style type="text/css"><!--' . "\n"
-
-                . 'body { margin: 0; padding: 0; }' . "\n"
-                . 'img { border: 0; }' . "\n"
-
-            . '--></style>' . "\n"
-
-            . '<script language=JavaScript>' . "\n"
-            . 'var title = /^\?[^,]+\,(.+)$/.exec(window.location.search);' . "\n"
-            . q{document.write('<title>' + unescape(title[1]) + '</title>');}  . "\n"
-            . '// --></script>' . "\n"
-
-        . '</head>'
-        . '<body>' . "\n"
-
-            . $self->IEWebMark() . "\n"
-
-            . '<script language=JavaScript>' . "\n"
-            . 'var image = /^\?([^,]+)/.exec(window.location.search);' . "\n"
-            . 'var currentLocation = /^([^?]+)/.exec(window.location);' . "\n"
-
-            # Opera can't handle using just image[1].  It doesn't ignore slashes after the ? when going backwards with .. like IE and
-            # FireFox do.
-            . q{document.write('<img src="' + currentLocation[1] + '/../' + image[1] + '"');}  . "\n"
-            . '// --></script>' . "\n"
-
-        . '</body>'
-    . '</html>';
-
-    close(FH_IMAGEPOPUPFILE);
     };
 
 
@@ -915,6 +888,8 @@ sub BuildContent #(sourceFile, parsedFile)
     my ($self, $sourceFile, $parsedFile) = @_;
 
     $self->ResetToolTips();
+    $imageAnchorNumber = 1;
+    $imageContent = undef;
 
     my $output = '<div id=Content>';
     my $i = 0;
@@ -2715,6 +2690,24 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             {
             # Format non-code text.
 
+            # Convert linked images.
+            if ($text =~ /<img mode=\"link\"/)
+                {
+                # Split by tags we would want to see the linked images appear after.  For example, an image link appearing in
+                # the middle of a paragraph would appear after the end of that paragraph.
+                my @imageBlocks = split(/(<p>.*?<\/p>|<dl>.*?<\/dl>|<ul>.*?<\/ul>)/, $text);
+                $text = undef;
+
+                foreach my $imageBlock (@imageBlocks)
+                    {
+                    $imageBlock =~ s{<img mode=\"link\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
+                                            {$self->BuildImage($sourceFile, 'link', $1, $2)}ge;
+
+                    $text .= $imageBlock . $imageContent;
+                    $imageContent = undef;
+                    };
+                };
+
             # Convert quotes to fancy quotes.  This has to be done before links because some of them may have JavaScript
             # attributes that use the apostrophe character.
             $text =~ s/^\'/&lsquo;/gm;
@@ -2731,9 +2724,9 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             $text =~ s/<url target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildURLLink($1, $2)/ge;
             $text =~ s/<email target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildEMailLink($1, $2)/ge;
 
-            # Convert images.
-            $text =~ s{<img mode=\"(inline|link)\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
-                           {$self->BuildImage($sourceFile, $1, $2, $3)}ge;
+            # Convert inline images
+            $text =~ s{<img mode=\"inline\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
+                           {$self->BuildImage($sourceFile, 'inline', $1, $2)}ge;
 
             # Copyright symbols.  Prevent conversion when part of (a), (b), (c) lists.
             if ($text !~ /\(a\)/i)
@@ -2988,7 +2981,7 @@ sub BuildEMailLink #(target, name)
 #
 #   Returns:
 #
-#       The result in HTML.
+#       The result in HTML.  If the mode was "link", the target image's HTML is added to <imageContent>.
 #
 sub BuildImage #(sourceFile, mode, target, original)
     {
@@ -3006,7 +2999,7 @@ sub BuildImage #(sourceFile, mode, target, original)
             {
             return
             '<blockquote>'
-            . '<div class=CInlineImage>'
+            . '<div class=CImage>'
                 . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
                                                                            $self->OutputImageOf($image), 1) . '"'
 
@@ -3015,11 +3008,13 @@ sub BuildImage #(sourceFile, mode, target, original)
 
             . '</div></blockquote>';
             }
-        else # $mode eq 'link'
+        else # link
             {
+            # Make the text a little more friendly in the output by removing any folders and file extensions.
+            # (see images/Table1.gif) will be turned into (see Table1).
             my $originalNoAmp = $self->RestoreAmpChars($original);
             my $targetIndex = index($originalNoAmp, $targetNoAmp);
-            my ($shortTarget, $shortTargetNoAmp);
+            my ($shortTarget, $shortTargetNoAmp, $shortOriginal);
 
             if ($targetIndex != -1)
                 {
@@ -3028,26 +3023,37 @@ sub BuildImage #(sourceFile, mode, target, original)
 
                 substr($originalNoAmp, $targetIndex, length($targetNoAmp), $shortTargetNoAmp);
 
-                $original = NaturalDocs::NDMarkup->ConvertAmpChars($originalNoAmp);
+                $shortOriginal = NaturalDocs::NDMarkup->ConvertAmpChars($originalNoAmp);
                 $shortTarget = NaturalDocs::NDMarkup->ConvertAmpChars($shortTargetNoAmp);
                 };
 
-            my $popupPage = NaturalDocs::File->JoinPaths($self->JavaScriptDirectory(), 'ImagePopup.html');
-            my $popupPageURL = $self->MakeRelativeURL( $self->OutputFileOf($sourceFile), $popupPage, 1);
-            my $imageURL = $self->MakeRelativeURL( $popupPage, $self->OutputImageOf($image), 1);
-
-            return
-            '<a href="javascript:ImagePopup(\'' . $popupPageURL . '\', \'' . $imageURL . '\', '
-                 . $width . ', ' . $height . ', \'' . $shortTarget . '\')" class=CImageLink>'
-                    . $original
+            my $output =
+            '<a href="#Image' . $imageAnchorNumber . '" class=CImageLink>'
+                . ($shortOriginal || $original)
             . '</a>';
-            }
+
+            $imageContent .=
+            '<blockquote>'
+            . '<div class=CImage>'
+                . '<a name="Image' . $imageAnchorNumber . '">'
+                . '<div class=CImageCaption>' . ($shortTarget || $target) . '</div>'
+                . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
+                                                                           $self->OutputImageOf($image), 1) . '"'
+
+                . ($width && $height ? ' width="' . $width . '" height="' . $height . '"' : '')
+                . '>'
+
+            . '</div></blockquote>';
+
+            $imageAnchorNumber++;
+            return $output;
+            };
         }
     else # !$image
         {
         if ($mode eq 'inline')
             {  return '<p>' . $original . '</p>';  }
-        else # $mode eq 'link'
+        else #($mode eq 'link')
             {  return $original;  };
         };
     };
