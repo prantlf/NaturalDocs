@@ -1,4 +1,4 @@
-Format: 1.35
+Format: Development Release 07-30-2006 (1.35 base)
 
 # This is the main Natural Docs languages file.  If you change anything here,
 # it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
@@ -113,7 +113,8 @@ Language: C/C++
    Line Comment: //
    Block Comment: /* */
    Package Separator: ::
-   Enum Values: Global
+   Enum Values: Under parent
+   Class Prototype Enders: ; {
    Function Prototype Enders: ; {
    Variable Prototype Enders: ; =
 
