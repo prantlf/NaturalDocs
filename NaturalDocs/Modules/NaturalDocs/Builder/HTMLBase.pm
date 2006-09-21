@@ -3035,7 +3035,7 @@ sub BuildImage #(sourceFile, mode, target, original)
             $imageContent .=
             '<blockquote>'
             . '<div class=CImage>'
-                . '<a name="Image' . $imageAnchorNumber . '">'
+                . '<a name="Image' . $imageAnchorNumber . '"></a>'
                 . '<div class=CImageCaption>' . ($shortTarget || $target) . '</div>'
                 . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
                                                                            $self->OutputImageOf($image), 1) . '"'
