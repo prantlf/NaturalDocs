@@ -219,7 +219,9 @@ sub ParsePrototype #(type, prototype)
     {
     my ($self, $type, $prototype) = @_;
 
-    if ($prototype !~ /\(.*[^ ].*\)/)
+    my $isClass = NaturalDocs::Topics->TypeInfo($type)->ClassHierarchy();
+
+    if ($prototype !~ /\(.*[^ ].*\)/ && (!$isClass || $prototype !~ /\{.*[^ ].*\}/))
         {
         my $object = NaturalDocs::Languages::Prototype->New($prototype);
         return $object;
@@ -245,7 +247,7 @@ sub ParsePrototype #(type, prototype)
 
         elsif ($symbolStack[-1] eq '\'' || $symbolStack[-1] eq '"')
             {
-            if ($symbolStack[0] eq '(')
+            if ($symbolStack[0] eq '(' || ($isClass && $symbolStack[0] eq '{'))
                 {  $parameter .= $token;  }
             else
                 {  $beforeParameters .= $token;  };
@@ -256,7 +258,7 @@ sub ParsePrototype #(type, prototype)
 
         elsif ($token =~ /^[\(\[\{\<\'\"]$/)
             {
-            if ($symbolStack[0] eq '(')
+            if ($symbolStack[0] eq '(' || ($isClass && $symbolStack[0] eq '{'))
                 {  $parameter .= $token;   }
             else
                 {  $beforeParameters .= $token;  };
@@ -282,6 +284,19 @@ sub ParsePrototype #(type, prototype)
                 else
                     {  $parameter .= $token;  };
                 }
+            elsif ($isClass && $symbolStack[0] eq '{')
+                {
+                if ($token eq '}' && scalar @symbolStack == 1)
+                    {
+                    if ($parameter ne ' ')
+                        {  push @parameterLines, $parameter;  };
+
+                    $finishedParameters = 1;
+                    $afterParameters .= $token;
+                    }
+                else
+                    {  $parameter .= $token;  };
+                }
             else
                 {
                 $beforeParameters .= $token;
@@ -292,7 +307,7 @@ sub ParsePrototype #(type, prototype)
 
         elsif ($token eq ',' || $token eq ';')
             {
-            if ($symbolStack[0] eq '(')
+            if ($symbolStack[0] eq '(' || ($isClass && $symbolStack[0] eq '{'))
                 {
                 if (scalar @symbolStack == 1)
                     {
@@ -312,7 +327,7 @@ sub ParsePrototype #(type, prototype)
 
         else
             {
-            if ($symbolStack[0] eq '(')
+            if ($symbolStack[0] eq '(' || ($isClass && $symbolStack[0] eq '{'))
                 {  $parameter .= $token;  }
             else
                 {  $beforeParameters .= $token;  };
