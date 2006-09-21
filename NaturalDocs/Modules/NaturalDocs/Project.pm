@@ -289,7 +289,7 @@ my %insensitiveImageFiles;
 #
 #   Revisions:
 #
-#       2.0:
+#       1.4:
 #
 #           - The file was added to Natural Docs.
 #

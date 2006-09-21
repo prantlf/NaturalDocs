@@ -272,7 +272,7 @@ my @mainTopicNames;
 #
 #   Revisions:
 #
-#       2.0:
+#       1.4:
 #
 #           Added Variable Type.
 #
