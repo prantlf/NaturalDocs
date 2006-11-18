@@ -133,7 +133,7 @@ sub BuildIndex #(type)
     my $indexTitle = $self->IndexTitleOf($type);
     my $indexFile = $self->IndexFileOf($type);
 
-    my $startPage =
+    my $startIndexPage =
 
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" '
             . '"http://www.w3.org/TR/REC-html40/loose.dtd">' . "\n\n"
@@ -146,9 +146,9 @@ sub BuildIndex #(type)
             . '<title>';
 
             if (defined NaturalDocs::Menu->Title())
-                {  $startPage .= $self->StringToHTML(NaturalDocs::Menu->Title()) . ' - ';  };
+                {  $startIndexPage .= $self->StringToHTML(NaturalDocs::Menu->Title()) . ' - ';  };
 
-                $startPage .=
+                $startIndexPage .=
                 $indexTitle
             . '</title>'
 
@@ -168,7 +168,45 @@ sub BuildIndex #(type)
                     . '</div>';
 
 
-    my $endPage =
+    my $endIndexPage =
+
+                    '</div><!--Index-->'
+                . "\n\n\n"
+
+                . $self->ClosingBrowserStyles()
+
+       . '</body></html>';
+
+    my $startSearchResultsPage =
+
+        '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" '
+            . '"http://www.w3.org/TR/REC-html40/loose.dtd">' . "\n\n"
+
+        . '<html><head>'
+
+            . (NaturalDocs::Settings->CharSet() ?
+                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+
+            . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($indexFile, $self->MainCSSFile(), 1) . '">'
+
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->SearchDataJavaScriptFile(), 1) . '">'
+                . '</script>'
+
+        . '</head><body id=FramedSearchResultsPage onLoad="NDOnLoad()">'
+            . $self->OpeningBrowserStyles()
+
+            . "\n\n\n"
+                . $self->StandardComments()
+            . "\n\n\n"
+
+                . '<div id=Index>'
+                    . '<div class=IPageTitle>'
+                        . 'Search Results'
+                    . '</div>';
+
+    my $endSearchResultsPage =
+
                     '</div><!--Index-->'
                 . "\n\n\n"
 
@@ -177,7 +215,8 @@ sub BuildIndex #(type)
        . '</body></html>';
 
     my $indexContent = NaturalDocs::SymbolTable->Index($type);
-    my $pageCount = $self->BuildIndexPages($type, $indexContent, $startPage, $endPage);
+    my $pageCount = $self->BuildIndexPages($type, $indexContent, $startIndexPage, $endIndexPage,
+                                                                  $startSearchResultsPage, $endSearchResultsPage);
     $self->PurgeIndexFiles($type, $indexContent, $pageCount + 1);
     };
 

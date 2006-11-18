@@ -97,7 +97,7 @@ sub BuildFile #(sourceFile, parsedFile)
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->SearchDataJavaScriptFile(), 1) . '">'
                 . '</script>'
 
-        . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
+        . '</head><body id=ContentPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
@@ -163,7 +163,7 @@ sub BuildIndex #(type)
                                                                                                         $self->SearchDataJavaScriptFile()) . '">'
                 . '</script>'
 
-        . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
+        . '</head><body id=IndexPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
@@ -204,16 +204,19 @@ sub BuildIndex #(type)
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->SearchResultsDirectory(),
                                                                                                         $self->MainJavaScriptFile()) . '"></script>'
 
-        . '</head><body id=SearchResults onLoad="NDOnLoad()">'
+        . '</head><body id=SearchResultsPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
 
-        . "\n\n\n";
+        . "\n\n\n"
+
+        . '<div id=Index>';
 
 
     my $endSearchResultsPage =
-        $self->ClosingBrowserStyles()
+        '</div>'
+        . $self->ClosingBrowserStyles()
    . '</body></html>';
 
     my $indexContent = NaturalDocs::SymbolTable->Index($type);

@@ -22,16 +22,15 @@ Topic: Diagram Conventions
 
 
 Topic: Page Structure
+_______________________________________________________________________________
 
-    The body tag is used to distinguish between the types of pages.  For framed pages, its style will be <#FramedMenuPage>,
-    <#FramedContentPage>, or <#FramedIndexPage> depending on what it is.  Non-framed pages have a body style of
-    <#UnframedPage>.
+    The body tag is used to distinguish between the types of pages.
 
-    Unframed Page:
+    Unframed Content/Index Page:
 
         (start diagram)
 
-        <body #UnframedPage>
+        <body #ContentPage or #IndexPage>
         [browser styles]
 
             <#Menu>
@@ -47,9 +46,23 @@ Topic: Page Structure
             </#Footer>
 
         [/browser styles]
-        </body #UnframedPage>
+        </body #ContentPage or #IndexPage>
 
         (end diagram)
+
+
+    Unframed Search Results Page:
+
+        (start diagram)
+
+        <body #SearchResultsPage>
+
+            <#Index>
+                Index
+            </#Index>
+
+        </body #SearchResultsPage>
+
 
     Framed Menu Page:
 
@@ -71,11 +84,12 @@ Topic: Page Structure
 
         (end diagram)
 
-    Framed Content/Index Page:
+
+    Framed Content/Index/SearchResults Page:
 
         (start diagram)
 
-            <body #FramedContentPage or #FramedIndexPage>
+            <body #FramedContentPage or #FramedIndexPage or #FramedSearchResultsPage>
             [browser styles]
 
                 <#Content or #Index>
@@ -83,18 +97,22 @@ Topic: Page Structure
                 </#Content or #Index>
 
             [/browser styles]
-            </body #FramedContentPage or #FramedIndexPage>
+            </body #FramedContentPage or #FramedIndexPage or #FramedSearchResultsPage>
 
         (end diagram)
 
 
 Styles: Page Styles
 
-    #UnframedPage - An unframed page.  Will be applied to a body tag.
+    #ContentPage - An unframed content page.  Will be applied to a body tag.
+    #IndexPage - An unframed index page.  Will be applied to a body tag.
+    #SearchResultsPage - An unframed search results page, which is what appears in the pop-up window.  Will be applied to a
+                                     body tag.
 
     #FramedMenuPage - A framed menu page.  Will be applied to a body tag.
     #FramedContentPage - A framed content page.  Will be applied to a body tag.
     #FramedIndexPage - A framed index page.  Will be applied to a body tag.
+    #FramedSearchResultsPage - A frame search results page.  Will be applied to the body tag.
 
     #Footer - The page footer.  Will be in a framed menu page or on its own in a non-framed page.
 
@@ -163,7 +181,7 @@ Styles: Browser Styles
 
 Topic: Content Structure
 
-    All the topics of a given file is contained in a <#Content>.  Combine with <#UnframedPage> or <#FramedContentPage> to
+    All the topics of a given file is contained in a <#Content>.  Combine with <#ContentPage> or <#FramedContentPage> to
     distinguish between framed and unframed output styles.  All other content styles are prefixed with a C.
 
     Each piece of content is a <CTopic> and its type; for example, <CFunction> for a function.  Inside that are the <CTitle> and if
@@ -274,7 +292,7 @@ Styles: Content Styles
 
 Topic: Menu Structure
 
-    Everything is enclosed in a <#Menu>.  Combine with <#UnframedPage> or <#FramedMenuPage> to distinguish between
+    Everything is enclosed in a <#Menu>.  Combine with <#ContentPage> or <#FramedMenuPage> to distinguish between
     framed and unframed output styles.  All other menu styles are prefixed with an M.
 
     The title is an <#MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
@@ -629,8 +647,9 @@ Styles: Link Styles
 
 Topic: Index Structure
 
-    Everything is enclosed in an <#Index>.  Combine with <#UnframedPage> or <#FramedIndexPage> to distinguish between
-    framed and unframed output styles.  All other index styles are prefixed with an I.
+    Everything is enclosed in an <#Index>.  Combine with <#IndexPage>, <#FramedIndexPage>, <#SearchResultsPage>, or
+    <#FramedSearchResultsPage> to distinguish between framed and unframed output styles.  All other index styles are prefixed
+    with an I.
 
     (start diagram)
 
@@ -809,9 +828,10 @@ Topic: Revisions
 
         - Added <#Menu>, <#Content>, <#Footer>, and <#Index>.  They were previously shown in the diagrams as classes but did
           not actually appear in the generated output.
-        - The following become IDs instead of classes: <#UnframedPage>, <#FramedMenuPage>, <#FramedContentPage>,
+        - The following become IDs instead of classes: <#FramedMenuPage>, <#FramedContentPage>,
           <#FramedIndexPage>, <#MTitle>, <#MSubTitle>, all <Browser Styles>.
-        - Removed MenuSection, ContentSection, and IndexSection.  Use "<#UnframedPage> <#Menu>" instead.
+        - Replaced #UnframedPage with <#ContentPage> and <#IndexPage>.
+        - Removed MenuSection, ContentSection, and IndexSection.  Use things like "<#ContentPage> <#Menu>" instead.
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
         - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
           <CType> and <CTopic>, <MType> and <MEntry>, <CHType> and <CHEntry>
@@ -823,7 +843,7 @@ Topic: Revisions
         - SBorder becomes <SBody>.
         - Added <CImage>, <CImageCaption>, and <CImageLink>.
         - Added <#SearchPanel>, <#SearchResultsWindow>, and all related styles.
-        - Added <Search Results Structure> and <Search Results Styles>.
+        - Added <Search Results Structure>, <Search Results Styles>, and <#FramedSearchResultsPage>.
 
     1.33:
 
