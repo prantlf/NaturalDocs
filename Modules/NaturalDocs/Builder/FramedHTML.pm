@@ -176,9 +176,9 @@ sub BuildIndex #(type)
 
        . '</body></html>';
 
-
-    my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startPage, $endPage);
-    $self->PurgeIndexFiles($type, $pageCount + 1);
+    my $indexContent = NaturalDocs::SymbolTable->Index($type);
+    my $pageCount = $self->BuildIndexPages($type, $indexContent, $startPage, $endPage);
+    $self->PurgeIndexFiles($type, $indexContent, $pageCount + 1);
     };
 
 
@@ -225,6 +225,8 @@ sub UpdateMenu
             . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($outputFile, $self->MainCSSFile(), 1) . '">'
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->SearchDataJavaScriptFile(), 1) . '">'
+                . '</script>'
 
         . '</head><body id=FramedMenuPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()

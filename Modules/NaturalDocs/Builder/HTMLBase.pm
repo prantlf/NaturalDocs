@@ -22,6 +22,24 @@ package NaturalDocs::Builder::HTMLBase;
 
 use base 'NaturalDocs::Builder::Base';
 
+use NaturalDocs::DefineMembers 'MADE_EMPTY_SEARCH_RESULTS_PAGE', 'MadeEmptySearchResultsPage()',
+                                                 'SetMadeEmptySearchResultsPage()';
+
+
+
+###############################################################################
+# Group: Object Variables
+
+
+#
+#   Constants: Members
+#
+#   The object is implemented as a blessed arrayref, with the follow constants as indexes.
+#
+#   MADE_EMPTY_SEARCH_RESULTS_PAGE - Whether the search results page for searches with no results was generated.
+#
+
+
 
 ###############################################################################
 # Group: Package Variables
@@ -59,6 +77,14 @@ my @indexHeadings = ( '$#!', '0-9', 'A' .. 'Z' );
 #   An array of the HTML anchors of all the index sections.  First is for symbols, second for numbers, and the rest for each letter.
 #
 my @indexAnchors = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
+
+#
+#   array: searchExtensions
+#
+#   An array of the search file name extensions for all the index sections.  First is for symbols, second for numbers, and the rest
+#   for each letter.
+#
+my @searchExtensions = ( 'Symbols', 'Numbers', 'A' .. 'Z' );
 
 #
 #   bool: saidUpdatingCSSFile
@@ -233,6 +259,33 @@ my $imageContent;
 
 
 ###############################################################################
+# Group: Object Functions
+
+
+#
+#   Function: New
+#   Creates and returns a new object.
+#
+sub New
+    {
+    my $class = shift;
+
+    my $object = $class->SUPER::New();
+    $object->SetMadeEmptySearchResultsPage(0);
+
+    return $object;
+    };
+
+
+# Function: MadeEmptySearchResultsPage
+# Returns whether the empty search results page was created or not.
+
+# Function: SetMadeEmptySearchResultsPage
+# Sets whether the empty search results page was created or not.
+
+
+
+###############################################################################
 # Group: Implemented Interface Functions
 #
 #   The behavior of these functions is shared between HTML output formats.
@@ -308,7 +361,7 @@ sub PurgeIndexes #(indexes)
 
     foreach my $index (keys %$indexes)
         {
-        $self->PurgeIndexFiles($index, undef);
+        $self->PurgeIndexFiles($index, undef, undef);
         };
     };
 
@@ -370,7 +423,7 @@ sub BeginBuild #(hasChanged)
 #
 #   Function: EndBuild
 #
-#   Synchronizes the projects CSS and JavaScript files.
+#   Synchronizes the projects CSS and JavaScript files.  Also generates the search data JavaScript file.
 #
 sub EndBuild #(hasChanged)
     {
@@ -457,7 +510,7 @@ sub EndBuild #(hasChanged)
 
 
 
-    # Update the JavaScript file.
+    # Update the JavaScript files
 
     my $jsMaster = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->JavaScriptDirectory(), 'NaturalDocs.js' );
     my $jsOutput = $self->MainJavaScriptFile();
@@ -470,6 +523,38 @@ sub EndBuild #(hasChanged)
         {
         NaturalDocs::File->Copy($jsMaster, $jsOutput);
         };
+
+
+    my @indexes = keys %{NaturalDocs::Menu->Indexes()};
+
+    open(FH_INDEXINFOJS, '>' . NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'searchdata.js'));
+
+    print FH_INDEXINFOJS
+    "var indexSectionsWithContent = {\n";
+
+    for (my $i = 0; $i < scalar @indexes; $i++)
+        {
+        if ($i != 0)
+            {  print FH_INDEXINFOJS ",\n";  };
+
+        print FH_INDEXINFOJS '   "' . NaturalDocs::Topics->NameOfType($indexes[$i], 1, 1) . "\": {\n";
+
+        my $content = NaturalDocs::SymbolTable->IndexSectionsWithContent($indexes[$i]);
+        for (my $contentIndex = 0; $contentIndex < 28; $contentIndex++)
+            {
+            if ($contentIndex != 0)
+                {  print FH_INDEXINFOJS ",\n";  };
+
+            print FH_INDEXINFOJS '      "' . $searchExtensions[$contentIndex] . '": ' . ($content->[$contentIndex] ? 'true' : 'false');
+            };
+
+        print FH_INDEXINFOJS "\n      }";
+        };
+
+    print FH_INDEXINFOJS
+    "\n   }";
+
+    close(FH_INDEXINFOJS);
     };
 
 
@@ -599,7 +684,12 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
             };
 
         my $searchOutput =
-        '<div id=MSearchPanel class=MSearchPanelInactive>'
+        '<script type="text/javascript"><!--' . "\n"
+            . 'var searchPanel = new SearchPanel("searchPanel", "' . $self->CommandLineOption() . '", '
+                . '"' . $self->MakeRelativeURL($outputDirectory, $self->SearchResultsDirectory()) . '");' . "\n"
+        . '--></script>'
+
+        . '<div id=MSearchPanel class=MSearchPanelInactive>'
             . '<input type=text id=MSearchField value=Search '
                 . 'onFocus="searchPanel.OnSearchFieldFocus(true)" onBlur="searchPanel.OnSearchFieldFocus(false)" '
                 . 'onKeyUp="searchPanel.OnSearchFieldChange()">'
@@ -627,8 +717,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
                     {  $name = $self->ConvertAmpChars(NaturalDocs::Topics->NameOfType($index, 1));  }
 
                 $searchOutput .=
-                '<option ' . $extra
-                    . 'value="' . $self->MakeRelativeURL($outputDirectory, $self->SearchResultsFileOf($index, '*')) . '">'
+                '<option ' . $extra . 'value="' . NaturalDocs::Topics->NameOfType($index, 1, 1) . '">'
                     . $name
                 . '</option>';
                 };
@@ -1749,26 +1838,22 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
 
     # Generate the search result pages.
 
-    for (my $i = 0; $i < 28; $i++)
+   for (my $i = 0; $i < 28; $i++)
         {
-        my $extension;
-        if ($i == 0)
-            {  $extension = 'Symbols';  }
-        elsif ($i == 1)
-            {  $extension = 'Numbers';  }
-        else
-            {  $extension = chr( ord('A') + ($i - 2) );  };
-
-        my $searchResultsFileName = $self->SearchResultsFileOf($type, $extension);
-
-        open(INDEXFILEHANDLE, '>' . $searchResultsFileName)
-            or die "Couldn't create output file " . $searchResultsFileName . ".\n";
-
         if ($searchResultsHTMLSections->[$i])
             {
+            my $searchResultsFileName = $self->SearchResultsFileOf($type, $searchExtensions[$i]);
+
+            open(INDEXFILEHANDLE, '>' . $searchResultsFileName)
+                or die "Couldn't create output file " . $searchResultsFileName . ".\n";
+
             print INDEXFILEHANDLE
 
             $beginSearchResultsPage
+            . '<script type="text/javascript"><!--' . "\n"
+                . 'var searchResults = new SearchResults("searchResults");' . "\n"
+            . '--></script>'
+
             . '<div class=SRStatus id=Loading>Loading...</div>'
 
             . '<table border=0 cellspacing=0 cellpadding=0>'
@@ -1786,17 +1871,27 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
             . '--></script>'
 
             . $endSearchResultsPage;
-            }
-        else
-            {
-            print INDEXFILEHANDLE
 
-            $beginSearchResultsPage
-            . '<div class=SRStatus id=NoMatches>No Matches</div>'
-            . $endSearchResultsPage;
+            close(INDEXFILEHANDLE);
             };
+        };
+
+    if (!$self->MadeEmptySearchResultsPage())
+        {
+        my $emptySearchResultsFileName = NaturalDocs::File->JoinPaths( $self->SearchResultsDirectory(), 'NoResults.html' );
+
+        open(INDEXFILEHANDLE, '>' . $emptySearchResultsFileName)
+            or die "Couldn't create output file " . $emptySearchResultsFileName . ".\n";
+
+        print INDEXFILEHANDLE
+
+        $beginSearchResultsPage
+        . '<div class=SRStatus id=NoMatches>No Matches</div>'
+        . $endSearchResultsPage;
 
         close(INDEXFILEHANDLE);
+
+        $self->SetMadeEmptySearchResultsPage(1);
         };
 
 
@@ -2283,11 +2378,16 @@ sub BuildIndexNavigationBar #(type, page, locations)
 #   Parameters:
 #
 #       type  - The index <TopicType>.
+#       indexSections  - An arrayref of sections, each section being an arrayref <NaturalDocs::SymbolTable::IndexElement>
+#                               objects.  The first section is for symbols, the second for numbers, and the rest for A through Z.  May be
+#                               undef.
 #       startingPage - If defined, only pages starting with this number will be removed.  Otherwise all pages will be removed.
 #
-sub PurgeIndexFiles #(type, startingPage)
+sub PurgeIndexFiles #(TopicType type, optional NaturalDocs::SymbolTable::IndexElement[] indexSections, optional int startingPage)
     {
-    my ($self, $type, $page) = @_;
+    my ($self, $type, $indexSections, $page) = @_;
+
+    # First the regular index pages.
 
     if (!defined $page)
         {  $page = 1;  };
@@ -2304,6 +2404,20 @@ sub PurgeIndexFiles #(type, startingPage)
         else
             {
             last;
+            };
+        };
+
+
+    # Next the search results.
+
+    for (my $i = 0; $i < 28; $i++)
+        {
+        if (!$indexSections || !$indexSections->[$i])
+            {
+            my $file = $self->SearchResultsFileOf($type, $searchExtensions[$i]);
+
+            if (-e $file)
+                {  unlink($file);  };
             };
         };
     };
@@ -2335,7 +2449,7 @@ sub OutputFileOf #(sourceFile)
     if (!($relativeSourceFile =~ tr/./-/))
         {  $relativeSourceFile .= '-';  };
 
-    $relativeSourceFile =~ tr/ /_/;
+    $relativeSourceFile =~ tr/ &?(){};/_/;
     $relativeSourceFile .= '.html';
 
     return NaturalDocs::File->JoinPaths($outputDirectory, $relativeSourceFile);
@@ -2492,6 +2606,17 @@ sub MainJavaScriptFile
     return NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'main.js' );
     };
 
+
+#
+#   Function: SearchDataJavaScriptFile
+#
+#   Returns the location of the search data JavaScript file.
+#
+sub SearchDataJavaScriptFile
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'searchdata.js' );
+    };
 
 
 
