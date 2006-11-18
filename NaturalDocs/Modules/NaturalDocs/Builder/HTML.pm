@@ -92,7 +92,10 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($outputFile, $self->MainCSSFile(), 1) . '">'
 
-            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '">'
+                . '</script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->SearchDataJavaScriptFile(), 1) . '">'
+                . '</script>'
 
         . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
@@ -154,8 +157,11 @@ sub BuildIndex #(type)
             . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($self->IndexDirectory(),
                                                                                                                        $self->MainCSSFile()) . '">'
 
-            . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->IndexDirectory,
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->IndexDirectory(),
                                                                                                         $self->MainJavaScriptFile()) . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->IndexDirectory(),
+                                                                                                        $self->SearchDataJavaScriptFile()) . '">'
+                . '</script>'
 
         . '</head><body id=UnframedPage onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
@@ -210,10 +216,10 @@ sub BuildIndex #(type)
         $self->ClosingBrowserStyles()
    . '</body></html>';
 
-
-    my $pageCount = $self->BuildIndexPages($type, NaturalDocs::SymbolTable->Index($type), $startIndexPage, $endIndexPage,
+    my $indexContent = NaturalDocs::SymbolTable->Index($type);
+    my $pageCount = $self->BuildIndexPages($type, $indexContent, $startIndexPage, $endIndexPage,
                                                                   $startSearchResultsPage, $endSearchResultsPage);
-    $self->PurgeIndexFiles($type, $pageCount + 1);
+    $self->PurgeIndexFiles($type, $indexContent, $pageCount + 1);
     };
 
 

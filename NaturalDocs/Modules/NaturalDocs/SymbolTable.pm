@@ -130,6 +130,16 @@ my %indexChanges;
 
 
 #
+#   hash: indexSectionsWithContent
+#
+#   A hash of which sections in an index have content.  The keys are the <TopicTypes> of each index, and the values are
+#   arrayrefs of bools where the first represents symbols, the second numbers, and the rest A-Z.  If there is no information
+#   available for an index, it's entry will not exist here.
+#
+my %indexSectionsWithContent;
+
+
+#
 #   bool: rebuildIndexes
 #
 #   Whether all indexes should be rebuilt regardless of whether they have been changed.
@@ -200,6 +210,36 @@ my $rebuildIndexes;
 #
 
 
+#
+#   File: IndexInfo.nd
+#
+#   The storage file for information about the indexes.
+#
+#   Format:
+#
+#       > [Standard Header]
+#
+#       The standard binary file header.
+#
+#       > [AString16: index topic name]
+#       > [uint8: symbols have content (0 or 1)]
+#       > [uint8: numbers have content (0 or 1)]
+#       > [uint8: A has content] [uint8: B has content] ...
+#       > ...
+#
+#       Every index that has information about it is stored with the topic type name first, then 28 uint8s that say whether that
+#       part of the index has content or not.  The first is for symbols, the second is for numbers, and the rest are for A-Z.  If an
+#       index's state is unknown, it won't appear in this file.
+#
+#   Revisions:
+#
+#       1.4:
+#
+#           - The file is introduced.
+#
+
+
+
 ###############################################################################
 # Group: File Functions
 
@@ -207,9 +247,23 @@ my $rebuildIndexes;
 #
 #   Function: Load
 #
-#   Loads the symbol table from disk.
+#   Loads all data files from disk.
 #
 sub Load
+    {
+    my ($self) = @_;
+
+    $self->LoadSymbolTable();
+    $self->LoadIndexInfo();
+    };
+
+
+#
+#   Function: LoadSymbolTable
+#
+#   Loads <SymbolTable.nd> from disk.
+#
+sub LoadSymbolTable
     {
     my ($self) = @_;
 
@@ -373,6 +427,47 @@ sub Load
 
 
 #
+#   Function: LoadIndexInfo
+#
+#   Loads <IndexInfo.nd> from disk.
+#
+sub LoadIndexInfo
+    {
+    my ($self) = @_;
+
+    if (NaturalDocs::Settings->RebuildData())
+        {  return;  };
+
+    my $version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('IndexInfo.nd') );
+
+    if (!defined $version)
+        {  return;  }
+
+    # The file format hasn't changed since it was introduced.
+    if (!NaturalDocs::Version->CheckFileFormat($version))
+        {
+        NaturalDocs::BinaryFile->Close();
+        return;
+        };
+
+    my $topicTypeName;
+    while ($topicTypeName = NaturalDocs::BinaryFile->GetAString16())
+        {
+        my $topicType = NaturalDocs::Topics->TypeFromName($topicTypeName);
+        my $content = [ ];
+
+        for (my $i = 0; $i < 28; $i++)
+            {  push @$content, NaturalDocs::BinaryFile->GetUInt8();  };
+
+        if (defined $topicType)  # The name in the file could be from a type that was deleted
+            {  $indexSectionsWithContent{$topicType} = $content;  };
+        };
+
+    NaturalDocs::BinaryFile->Close();
+    };
+
+
+#
 #   Function: Purge
 #
 #   Purges the symbol table of all symbols and references from files that no longer have Natural Docs content.
@@ -416,9 +511,23 @@ sub Purge
 #
 #   Function: Save
 #
-#   Saves the symbol table to disk.  It is written to <SymbolTable.nd>.
+#   Saves all data files to disk.
 #
 sub Save
+    {
+    my ($self) = @_;
+
+    $self->SaveSymbolTable();
+    $self->SaveIndexInfo();
+    };
+
+
+#
+#   Function: SaveSymbolTable
+#
+#   Saves <SymbolTable.nd> to disk.
+#
+sub SaveSymbolTable
     {
     my ($self) = @_;
 
@@ -544,6 +653,34 @@ sub Save
                                                                      ::BINARYREF_NOTYPE() | ::BINARYREF_NORESOLVINGFLAGS());
 
     close(SYMBOLTABLE_FILEHANDLE);
+    };
+
+
+#
+#   Function: SaveIndexInfo
+#
+#   Saves <IndexInfo.nd> to disk.
+#
+sub SaveIndexInfo
+    {
+    my ($self) = @_;
+
+    NaturalDocs::BinaryFile->OpenForWriting( NaturalDocs::Project->DataFile('IndexInfo.nd') );
+
+    while (my ($topicType, $content) = each %indexSectionsWithContent)
+        {
+        NaturalDocs::BinaryFile->WriteAString16( NaturalDocs::Topics->NameOfType($topicType) );
+
+        for (my $i = 0; $i < 28; $i++)
+            {
+            if ($content->[$i])
+                {  NaturalDocs::BinaryFile->WriteUInt8(1);  }
+            else
+                {  NaturalDocs::BinaryFile->WriteUInt8(0);  };
+            };
+        };
+
+    NaturalDocs::BinaryFile->Close();
     };
 
 
@@ -1160,6 +1297,7 @@ sub HasIndexes #(types)
     return $result;
     };
 
+
 #
 #   Function: IndexChanged
 #
@@ -1169,10 +1307,40 @@ sub HasIndexes #(types)
 #
 #       type  - The <TopicType> to limit the index to.
 #
-sub IndexChanged #(type)
+sub IndexChanged #(TopicType type)
     {
     my ($self, $type) = @_;
     return ($rebuildIndexes || defined $indexChanges{$type});
+    };
+
+
+#
+#   Function: IndexSectionsWithContent
+#
+#   Returns an arrayref of whether each section of the specified index has content.  The first entry will be for symbols, the second
+#   for numbers, and the rest A-Z.  Do not change the arrayref.
+#
+sub IndexSectionsWithContent #(TopicType type)
+    {
+    my ($self, $type) = @_;
+
+    if (!exists $indexSectionsWithContent{$type})
+        {
+        # This is okay because Index() stores generated indexes.  It's not an expensive operation unless the index was never asked
+        # for before or it will never be asked for otherwise, and this shouldn't be the case.
+
+        my $index = $self->Index($type);
+        my $content = [ ];
+
+        for (my $i = 0; $i < 28; $i++)
+            {
+            push @$content, (defined $index->[$i] ? 1 : 0);
+            };
+
+        $indexSectionsWithContent{$type} = $content;
+        };
+
+    return $indexSectionsWithContent{$type};
     };
 
 
@@ -1190,12 +1358,13 @@ sub IndexChanged #(type)
 #
 #       type - The <TopicType> of the symbol that caused the change.
 #
-sub OnIndexChange #(type)
+sub OnIndexChange #(TopicType type)
     {
     my ($self, $type) = @_;
 
     $indexChanges{$type} = 1;
     $indexChanges{::TOPIC_GENERAL()} = 1;
+    delete $indexSectionsWithContent{$type};
     };
 
 
@@ -1773,7 +1942,6 @@ sub MakeIndex #(type)
             @{$sections->[$i]};
             };
         };
-
 
     return $sections;
     };

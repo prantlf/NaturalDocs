@@ -231,40 +231,6 @@ function HideTip(tooltipID)
 
 
 //
-//  Image Popup
-// ____________________________________________________________________________
-
-
-var undefined;
-var popupWindowNumber = 1;
-
-function ImagePopup(popupPageURL, popupImageURL, width, height, title)
-    {
-    var scrollbars = 0;
-
-    if (width > (screen.availWidth * 0.8))
-        {
-        width = (screen.availWidth * 0.8);
-        scrollbars = 1;
-        }
-    if (height > (screen.availHeight * 0.8))
-        {
-        height = (screen.availHeight * 0.8);
-        scrollbars = 1;
-        }
-
-    var windowHandle = window.open(popupPageURL + '?' + popupImageURL + ',' + title,
-                                                      'NDImagePopupWindow' + popupWindowNumber,
-                                                      'status=0,toolbar=0,location=0,menubar=0,directories=0,resizable=1,'
-                                                       + 'scrollbars=' + scrollbars + ',width=' + width + ',height=' + height);
-
-    windowHandle.moveTo( (screen.availWidth - width) / 2, (screen.availHeight - height) / 2 );
-    popupWindowNumber++;
-    }
-
-
-
-//
 //  Blockquote fix for IE
 // ____________________________________________________________________________
 
@@ -332,15 +298,17 @@ function NDDoResize()
     Parameters:
 
         name - The name of the global variable that will be storing this instance.  Is needed to be able to set timeouts.
+        mode - The mode the search is going to work in.  Pass <NaturalDocs::Builder::Base->CommandLineOption()>, so the
+                   value will be something like "HTML" or "FramedHTML".
 
     ________________________________________________________________________________________________________
 */
 
 
-function SearchPanel(name)
+function SearchPanel(name, mode, resultsPath)
     {
-    if (!name)
-        {  alert("The SearchPanel constructor needs to be passed its variable name.");  };
+    if (!name || !mode || !resultsPath)
+        {  alert("Incorrect parameters to SearchPanel.");  };
 
 
     // Group: Variables
@@ -351,6 +319,18 @@ function SearchPanel(name)
         The name of the global variable that will be storing this instance of the class.
     */
     this.name = name;
+
+    /*
+        var: mode
+        The mode the search is going to work in, such as "HTML" or "FramedHTML".
+    */
+    this.mode = mode;
+
+    /*
+        var: resultsPath
+        The relative path from the current HTML page to the results page directory.
+    */
+    this.resultsPath = resultsPath;
 
     /*
         var: keyTimeout
@@ -520,7 +500,7 @@ function SearchPanel(name)
 
 
         var searchValue = searchField.value.replace(/^ +/, "");
-        var filePath = searchType.value;
+        var topicType = searchType.value;
 
         var pageExtension = searchValue.substr(0,1);
 
@@ -531,15 +511,30 @@ function SearchPanel(name)
         else
             {  pageExtension = "Symbols";  };
 
-        var page = filePath.replace(/\*/, pageExtension);
+        var resultsPage;
+        var resultsPageWithSearch;
+        var noResults;
 
-
-        if (page != this.lastResultsPage)
+        // indexSectionsWithContent is defined in searchdata.js
+        if (indexSectionsWithContent[topicType][pageExtension] == true)
             {
-            searchResults.innerHTML =
-                '<iframe src="'+page+'?'+escape(searchValue)+'" frameborder=0 name=JSX_SearchResultsIFrame>';
+            resultsPage = this.resultsPath + '/' + topicType + pageExtension + '.html';
+            resultsPageWithSearch = resultsPage+'?'+escape(searchValue);
+            hasResults = true;
             }
         else
+            {
+            resultsPage = this.resultsPath + '/NoResults.html';
+            resultsPageWithSearch = resultsPage;
+            hasResults = false;
+            };
+
+        if (resultsPage != this.lastResultsPage)
+            {
+            searchResults.innerHTML =
+                '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
+            }
+        else if (hasResults)
             {
             // We have to tread carefully here because these calls can fail very easily.
             var success = false;
@@ -563,7 +558,7 @@ function SearchPanel(name)
             if (!success)
                 {
                 searchResults.innerHTML =
-                    '<iframe src="'+page+'?'+escape(searchValue)+'" frameborder=0 name=JSX_SearchResultsIFrame>';
+                    '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
                 };
 
             };
@@ -578,7 +573,7 @@ function SearchPanel(name)
             };
 
         this.lastSearchValue = searchValue;
-        this.lastResultsPage = page;
+        this.lastResultsPage = resultsPage;
         };
 
 
@@ -716,7 +711,6 @@ function SearchResults(name)
     */
     this.Search = function(search)
         {
-        this.working = true;
         if (!search)
             {
             search = window.location.search;
@@ -799,26 +793,4 @@ function SearchResults(name)
         return true;
         };
     };
-
-
-
-
-
-/* _______________________________________________________________________________________________________
-
-    Section: Globals
-    ________________________________________________________________________________________________________
-*/
-
-/*
-    var: searchPanel
-    The global <SearchPanel> object.
-*/
-var searchPanel = new SearchPanel("searchPanel");
-
-/*
-    var: searchResults
-    The global <SearchResults> object.
-*/
-var searchResults = new SearchResults("searchResults");
 
