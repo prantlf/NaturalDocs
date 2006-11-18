@@ -558,7 +558,7 @@ sub TimeStamp
 #
 #   Function: Indexes
 #
-#   Returns an existence hashref of all the index <TopicTypes> appearing in the menu.  Do not change the arrayref.
+#   Returns an existence hashref of all the index <TopicTypes> appearing in the menu.  Do not change the hashref.
 #
 sub Indexes
     {  return \%indexes;  };
@@ -567,7 +567,7 @@ sub Indexes
 #   Function: PreviousIndexes
 #
 #   Returns an existence hashref of all the index <TopicTypes> that previously appeared in the menu.  Do not change the
-#   arrayref.
+#   hashref.
 #
 sub PreviousIndexes
     {  return \%previousIndexes;  };
