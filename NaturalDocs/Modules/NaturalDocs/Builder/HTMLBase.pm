@@ -700,53 +700,58 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
             '</div>';
             };
 
-        my $searchOutput =
-        '<script type="text/javascript"><!--' . "\n"
-            . 'var searchPanel = new SearchPanel("searchPanel", "' . $self->CommandLineOption() . '", '
-                . '"' . $self->MakeRelativeURL($outputDirectory, $self->SearchResultsDirectory()) . '");' . "\n"
-        . '--></script>'
+        my $searchOutput;
 
-        . '<div id=MSearchPanel class=MSearchPanelInactive>'
-            . '<input type=text id=MSearchField value=Search '
-                . 'onFocus="searchPanel.OnSearchFieldFocus(true)" onBlur="searchPanel.OnSearchFieldFocus(false)" '
-                . 'onKeyUp="searchPanel.OnSearchFieldChange()">'
-            . '<select id=MSearchType '
-                . 'onFocus="searchPanel.OnSearchTypeFocus(true)" onBlur="searchPanel.OnSearchTypeFocus(false)" '
-                . 'onChange="searchPanel.OnSearchTypeChange()">';
+        if (keys %{NaturalDocs::Menu->Indexes()})
+            {
+            $searchOutput =
+            '<script type="text/javascript"><!--' . "\n"
+                . 'var searchPanel = new SearchPanel("searchPanel", "' . $self->CommandLineOption() . '", '
+                    . '"' . $self->MakeRelativeURL($outputDirectory, $self->SearchResultsDirectory()) . '");' . "\n"
+            . '--></script>'
 
-            my @indexes = keys %{NaturalDocs::Menu->Indexes()};
-            @indexes = sort
-                {
-                if ($a eq ::TOPIC_GENERAL())  {  return -1;  }
-                elsif ($b eq ::TOPIC_GENERAL())  {  return 1;  }
-                else  {  return (NaturalDocs::Topics->NameOfType($a, 1) cmp NaturalDocs::Topics->NameOfType($b, 1))  };
-                }  @indexes;
+            . '<div id=MSearchPanel class=MSearchPanelInactive>'
+                . '<input type=text id=MSearchField value=Search '
+                    . 'onFocus="searchPanel.OnSearchFieldFocus(true)" onBlur="searchPanel.OnSearchFieldFocus(false)" '
+                    . 'onKeyUp="searchPanel.OnSearchFieldChange()">'
+                . '<select id=MSearchType '
+                    . 'onFocus="searchPanel.OnSearchTypeFocus(true)" onBlur="searchPanel.OnSearchTypeFocus(false)" '
+                    . 'onChange="searchPanel.OnSearchTypeChange()">';
 
-            foreach my $index (@indexes)
-                {
-                my ($name, $extra);
-                if ($index eq ::TOPIC_GENERAL())
+                my @indexes = keys %{NaturalDocs::Menu->Indexes()};
+                @indexes = sort
                     {
-                    $name = 'Everything';
-                    $extra = ' id=MSearchEverything selected ';
-                    }
-                else
-                    {  $name = $self->ConvertAmpChars(NaturalDocs::Topics->NameOfType($index, 1));  }
+                    if ($a eq ::TOPIC_GENERAL())  {  return -1;  }
+                    elsif ($b eq ::TOPIC_GENERAL())  {  return 1;  }
+                    else  {  return (NaturalDocs::Topics->NameOfType($a, 1) cmp NaturalDocs::Topics->NameOfType($b, 1))  };
+                    }  @indexes;
+
+                foreach my $index (@indexes)
+                    {
+                    my ($name, $extra);
+                    if ($index eq ::TOPIC_GENERAL())
+                        {
+                        $name = 'Everything';
+                        $extra = ' id=MSearchEverything selected ';
+                        }
+                    else
+                        {  $name = $self->ConvertAmpChars(NaturalDocs::Topics->NameOfType($index, 1));  }
+
+                    $searchOutput .=
+                    '<option ' . $extra . 'value="' . NaturalDocs::Topics->NameOfType($index, 1, 1) . '">'
+                        . $name
+                    . '</option>';
+                    };
 
                 $searchOutput .=
-                '<option ' . $extra . 'value="' . NaturalDocs::Topics->NameOfType($index, 1, 1) . '">'
-                    . $name
-                . '</option>';
-                };
+                '</select>'
+            . '</div>'
 
-            $searchOutput .=
-            '</select>'
-        . '</div>'
-
-        . '<div id=MSearchResultsWindow>'
-            . '<div id=MSearchResults></div>'
-            . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
-        . '</div>';
+            . '<div id=MSearchResultsWindow>'
+                . '<div id=MSearchResults></div>'
+                . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
+            . '</div>';
+            };
 
         $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput . $searchOutput;
         $output .= $titleOutput . $segmentOutput . $searchOutput;
