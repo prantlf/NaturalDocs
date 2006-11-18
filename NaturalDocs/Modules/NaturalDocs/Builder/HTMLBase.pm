@@ -702,7 +702,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 
         my $searchOutput;
 
-        if (keys %{NaturalDocs::Menu->Indexes()})
+        if (scalar keys %{NaturalDocs::Menu->Indexes()})
             {
             $searchOutput =
             '<script type="text/javascript"><!--' . "\n"
@@ -745,12 +745,16 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 
                 $searchOutput .=
                 '</select>'
-            . '</div>'
-
-            . '<div id=MSearchResultsWindow>'
-                . '<div id=MSearchResults></div>'
-                . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
             . '</div>';
+
+            if (!$isFramed)
+                {
+                $searchOutput .=
+                '<div id=MSearchResultsWindow>'
+                    . '<div id=MSearchResults></div>'
+                    . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
+                . '</div>';
+                };
             };
 
         $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput . $searchOutput;
@@ -1873,7 +1877,7 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
 
             $beginSearchResultsPage
             . '<script type="text/javascript"><!--' . "\n"
-                . 'var searchResults = new SearchResults("searchResults");' . "\n"
+                . 'var searchResults = new SearchResults("searchResults", "' . $self->CommandLineOption() . '");' . "\n"
             . '--></script>'
 
             . '<div class=SRStatus id=Loading>Loading...</div>'
@@ -2335,7 +2339,8 @@ sub BuildIndexLink #(string text, SymbolString symbol, SymbolString package, Fil
                                          . '#' . $self->SymbolToHTMLSymbol($symbol) . '" ' . $toolTipProperties . ' '
                                 . 'class=' . $style . '>' . $text . '</a>';
     my $searchResultHTML = '<a href="' . $self->MakeRelativeURL( $self->SearchResultsDirectory(), $self->OutputFileOf($file) )
-                                         . '#' . $self->SymbolToHTMLSymbol($symbol) . '" target=_parent '
+                                         . '#' . $self->SymbolToHTMLSymbol($symbol) . '" '
+                                         . ($self->CommandLineOption eq 'HTML' ? 'target=_parent ' : '')
                                 . 'class=' . $style . '>' . $text . '</a>';
 
     return ($indexHTML, $searchResultHTML);

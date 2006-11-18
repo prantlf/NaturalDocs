@@ -495,9 +495,6 @@ function SearchPanel(name, mode, resultsPath)
 
         var searchField = this.DOMSearchField();
         var searchType = this.DOMSearchType();
-        var searchResults = this.DOMSearchResults();
-        var resultsWindow = this.DOMResultsWindow();
-
 
         var searchValue = searchField.value.replace(/^ +/, "");
         var topicType = searchType.value;
@@ -529,47 +526,90 @@ function SearchPanel(name, mode, resultsPath)
             hasResults = false;
             };
 
-        if (resultsPage != this.lastResultsPage)
+        if (this.mode == "HTML")
             {
-            searchResults.innerHTML =
-                '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
-            }
-        else if (hasResults)
-            {
-            // We have to tread carefully here because these calls can fail very easily.
-            var success = false;
+            var searchResults = this.DOMSearchResults();
+            var resultsWindow = this.DOMResultsWindow();
 
-            var resultsDocument = window.frames.JSX_SearchResultsIFrame;
-
-            if (resultsDocument)
-                {
-                success = resultsDocument.searchResults;
-                };
-
-            // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some reason.
-            // It counts the right number of results, and you can even read the display as "block" after setting it, but it just doesn't
-            // work in IE 6 or IE 7 Beta 2.  So we say success is false here to force it to reload the results page, which fixes it.
-            if (success && browserType == "IE" && resultsDocument.searchResults.lastMatchCount == 0)
-                {  success = false;  };
-
-            if (success)
-                {  success = resultsDocument.searchResults.Search(searchValue);  };
-
-            if (!success)
+            if (resultsPage != this.lastResultsPage)
                 {
                 searchResults.innerHTML =
                     '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
+                }
+            else if (hasResults)
+                {
+                // We have to tread carefully here because these calls can fail very easily.
+                var success = false;
+
+                var resultsDocument = window.frames.JSX_SearchResultsIFrame;
+
+                if (resultsDocument)
+                    {
+                    success = resultsDocument.searchResults;
+                    };
+
+                // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some
+                // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it just
+                // doesn't work in IE 6 or IE 7 Beta 2.  So we say success is false here to force it to reload the results page, which fixes
+                // it.
+                if (success && browserType == "IE" && resultsDocument.searchResults.lastMatchCount == 0)
+                    {  success = false;  };
+
+                if (success)
+                    {  success = resultsDocument.searchResults.Search(searchValue);  };
+
+                if (!success)
+                    {
+                    searchResults.innerHTML =
+                        '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
+                    };
                 };
 
-            };
+            if (resultsWindow.style.display != "block")
+                {
+                var left = GetXPosition(searchType);
+                var top = GetYPosition(searchType) + searchField.offsetHeight;
 
-        if (resultsWindow.style.display != "block")
+                MoveToPosition(resultsWindow, left, top);
+                resultsWindow.style.display = 'block';
+                };
+            }
+
+        else if (this.mode == "FramedHTML")
             {
-            var left = GetXPosition(searchType);
-            var top = GetYPosition(searchType) + searchField.offsetHeight;
+            var contentFrame = window.top.frames['Content'];
 
-            MoveToPosition(resultsWindow, left, top);
-            resultsWindow.style.display = 'block';
+            if (resultsPage != this.lastResultsPage)
+                {
+                contentFrame.location.href = resultsPageWithSearch;
+                }
+            else if (hasResults)
+                {
+                // We have to tread carefully here because these calls can fail very easily.
+                var success = false;
+
+                var resultsDocument = contentFrame.contentDocument;
+
+                if (resultsDocument)
+                    {
+                    success = resultsDocument.searchResults;
+                    };
+
+                // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some
+                // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it just
+                // doesn't work in IE 6 or IE 7 Beta 2.  So we say success is false here to force it to reload the results page, which fixes
+                // it.
+                if (success && browserType == "IE" && resultsDocument.searchResults.lastMatchCount == 0)
+                    {  success = false;  };
+
+                if (success)
+                    {  success = resultsDocument.searchResults.Search(searchValue);  };
+
+                if (!success)
+                    {
+                    contentFrame.location.href = resultsPageWithSearch;
+                    };
+                };
             };
 
         this.lastSearchValue = searchValue;
@@ -597,7 +637,7 @@ function SearchPanel(name, mode, resultsPath)
     this.Activate = function(isActive, ignoreDeactivateDelay)
         {
         // We want to ignore isActive being false while the results window is open.
-        if (isActive || this.DOMResultsWindow().style.display == "block")
+        if (isActive || (this.mode == "HTML" && this.DOMResultsWindow().style.display == "block"))
             {
             if (this.inactivateTimeout)
                 {
@@ -653,8 +693,13 @@ function SearchPanel(name, mode, resultsPath)
 */
 
 
-function SearchResults(name)
+function SearchResults(name, mode)
     {
+    /*
+        var: mode
+        The mode the search is going to work in, such as "HTML" or "FramedHTML".
+    */
+    this.mode = mode;
 
     /*
         var: lastMatchCount
@@ -669,6 +714,9 @@ function SearchResults(name)
     */
     this.Toggle = function(id)
         {
+        if (this.mode == "FramedHTML")
+            {  return;  };
+
         var parentElement = document.getElementById(id);
 
         var element = parentElement.firstChild;

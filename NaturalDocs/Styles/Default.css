@@ -19,7 +19,8 @@ body {
     color: #000000;
     margin: 0px; padding: 0px }
 
-body#UnframedPage,
+body#ContentPage,
+body#IndexPage,
 body#FramedMenuPage {
     background-color: #E8E8E8;
     }
@@ -83,13 +84,15 @@ blockquote {
     font-size: 9pt;
     padding: 10px 0 0 0;
     }
-#UnframedPage #Menu {
+#ContentPage #Menu,
+#IndexPage #Menu {
     position: absolute;
     top: 0;
     left: 0;
     width: 31ex;
     }
-#UnframedPage #Firefox #Menu {
+#ContentPage #Firefox #Menu,
+#IndexPage #Firefox #Menu {
     width: 27ex;
     }
 
@@ -253,7 +256,7 @@ blockquote {
     padding-bottom: 15px;
     }
 
-#UnframedPage #Content {
+#ContentPage #Content {
     border-width: 0 0 1px 1px;
     border-style: solid;
     border-color: #000000;
@@ -261,7 +264,7 @@ blockquote {
     font-size: 9pt;  /* To make 31ex match the menu's 31ex. */
     margin-left: 31ex;
     }
-#UnframedPage #Firefox #Content {
+#ContentPage #Firefox #Content {
     margin-left: 27ex;
     }
 
@@ -592,10 +595,15 @@ blockquote {
 
 #Index {
     background-color: #FFFFFF;
+    }
+
+#IndexPage #Index,
+#FramedIndexPage #Index,
+#FramedSearchResultsPage #Index {
     padding: 15px;
     }
 
-#UnframedPage #Index {
+#IndexPage #Index {
     border-width: 0 0 1px 1px;
     border-style: solid;
     border-color: #000000;
@@ -603,7 +611,8 @@ blockquote {
     margin-left: 27ex;
     }
 
-#SearchResults {
+#SearchResultsPage,
+#FramedSearchResultsPage {
     background-color: #FFFFFF;
     }
 
@@ -613,6 +622,9 @@ blockquote {
         padding: 10px 15px 10px 15px;
         border-width: 0 0 3px 0; border-color: #000000; border-style: solid;
         margin: -15px -15px 0 -15px }
+
+    #FramedSearchResultsPage .IPageTitle {
+        margin-bottom: 15px; }
 
     .INavigationBar {
         font-size: 10pt;
@@ -636,21 +648,21 @@ blockquote {
         padding-top: 0;
         }
 
-    #Index .IEntry {
+    .IEntry {
         font-size: 10pt;
         padding-left: 1ex;
         }
-    #SearchResults .IEntry {
+    #SearchResultsPage .IEntry {
         font-size: 8pt;
         padding: 1px 5px;
         }
-    #SearchResults #Opera9 .IEntry {
+    #SearchResultsPage #Opera9 .IEntry {
         text-align: left;
         }
 
     .ISubIndex {
         padding-left: 3ex; padding-bottom: .5em }
-    #SearchResults .ISubIndex {
+    #SearchResultsPage .ISubIndex {
         display: none;
         }
 
@@ -659,7 +671,8 @@ blockquote {
     .ISymbol {
         font-weight: bold; color: #900000  }
 
-    #Index .ISymbolPrefix {
+    #IndexPage .ISymbolPrefix,
+    #FramedIndexPage .ISymbolPrefix {
         font-size: 10pt;
         text-align: right;
         color: #C47C7C;
@@ -668,18 +681,24 @@ blockquote {
         border-left: 1px solid #E0E0E0;
         padding: 0 1px 0 2px;
         }
-    #SearchResults .ISymbolPrefix {
-        font-size: 8pt;
+    #SearchResultsPage .ISymbolPrefix,
+    #FramedSearchResultsPage .ISymbolPrefix {
         color: #900000;
         }
-    #Index #IFirstSymbolPrefix {
+    #SearchResultsPage .ISymbolPrefix {
+        font-size: 8pt;
+        }
+
+    #IndexPage #IFirstSymbolPrefix,
+    #FramedIndexPage #IFirstSymbolPrefix {
         border-top: 1px solid #E0E0E0;
         }
-    #ILastSymbolPrefix,
-    #SearchResults #IOnlySymbolPrefix {
+    #IndexPage #ILastSymbolPrefix,
+    #FramedIndexPage #ILastSymbolPrefix {
         border-bottom: 1px solid #E0E0E0;
         }
-    #Index #IOnlySymbolPrefix {
+    #IndexPage #IOnlySymbolPrefix,
+    #FramedIndexPage #IOnlySymbolPrefix {
         border-top: 1px solid #E0E0E0;
         border-bottom: 1px solid #E0E0E0;
         }
@@ -712,7 +731,8 @@ blockquote {
     margin-bottom: .5em;
     }
 
-body#UnframedPage #Footer {
+body#ContentPage #Footer,
+body#IndexPage #Footer {
     text-align: right;
     margin: 2px;
     }
