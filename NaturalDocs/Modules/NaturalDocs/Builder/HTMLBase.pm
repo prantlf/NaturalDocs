@@ -106,7 +106,7 @@ use constant ADD_HIDDEN_BREAKS => 1;
 # Group: ToolTip Package Variables
 #
 #   These variables are for the tooltip generation functions only.  Since they're reset on every call to <BuildContent()> and
-#   <BuildIndexPages()>, and are only used by them and their support functions, they can be shared by all instances of the
+#   <BuildIndexSections()>, and are only used by them and their support functions, they can be shared by all instances of the
 #   package.
 
 #
@@ -255,6 +255,23 @@ my $imageAnchorNumber;
 #   be added to the page and the variable set to undef.
 #
 my $imageContent;
+
+
+
+###############################################################################
+# Group: Search Package Variables
+#
+#   These variables are for the search generation functions only.  Since they're reset on every call to <BuildIndexSections()> and
+#   are only used by them and their support functions, they can be shared by all instances of the package.
+
+
+#
+#   hash: searchResultIDs
+#
+#   A hash mapping lowercase-only search result IDs to the number of times they've been used.  This is to work around an IE
+#   bug where it won't correctly reference IDs if they differ only in case.
+#
+my %searchResultIDs;
 
 
 
@@ -2027,6 +2044,7 @@ sub BuildIndexSections #(NaturalDocs::SymbolTable::IndexElement[] index) => ( st
     my ($self, $indexSections) = @_;
 
     $self->ResetToolTips();
+    %searchResultIDs = ( );
 
     my $contentSections = [ ];
     my $tooltipSections = [ ];
@@ -2129,8 +2147,6 @@ sub BuildIndexElement #(NaturalDocs::SymbolTable::IndexElement element, string c
 
         else
             {
-            my $searchResultID = $self->StringToSearchResultID($element->SortableSymbol());
-
             my $indexHTML =
             '<span class=IParent>'
                 . $text
@@ -2737,9 +2753,15 @@ sub SymbolToHTMLSymbol #(symbol)
 #
 #   Takes a text string and translates it into something that can be used as a CSS ID.
 #
-sub StringToSearchResultID #(string string) => string
+#   Parameters:
+#
+#       string - The string to convert
+#       dontIncrement - If set, it reuses the last generated ID.  Otherwise it generates a new one if it matches a previously
+#                               generated one in a case-insensitive way.
+#
+sub StringToSearchResultID #(string string, bool dontIncrement = 0) => string
     {
-    my ($self, $string) = @_;
+    my ($self, $string, $dontIncrement) = @_;
 
     $string =~ s/\_/_und/g;
     $string =~ s/ +/_spc/g;
@@ -2752,7 +2774,16 @@ sub StringToSearchResultID #(string string) => string
     $string =~ s/([\~\!\@\#\$\%\^\&7\*\(\)\-\+\=\{\}\[\]\:\;\"\'\<\>\,\.\?\/])/$translation{$1}/ge;
     $string =~ s/[^a-z0-9_]/_zzz/gi;
 
-    return 'SR_' . $string;
+    my $number = $searchResultIDs{lc($string)};
+
+    if (!$number)
+        {  $number = 1;  }
+    elsif (!$dontIncrement)
+        {  $number++;  };
+
+    $searchResultIDs{lc($string)} = $number;
+
+    return 'SR' . ($number == 1 ? '' : $number) . '_' . $string;
     };
 
 

@@ -757,8 +757,6 @@ function SearchResults(name)
             search = search.replace(/[^a-z0-9\_]i/gi, "_zzz");
             };
 
-        search = "sr_" + search;
-
         var resultRows = document.getElementsByTagName("div");
         var matches = 0;
 
@@ -769,7 +767,10 @@ function SearchResults(name)
 
             if (row.className == "SRResult")
                 {
-                if (search.length <= row.id.length && row.id.substr(0, search.length).toLowerCase() == search)
+                var rowMatchName = row.id.toLowerCase();
+                rowMatchName = rowMatchName.replace(/^sr\d*_/, '');
+
+                if (search.length <= rowMatchName.length && rowMatchName.substr(0, search.length) == search)
                     {
                     row.style.display = "block";
                     matches++;
