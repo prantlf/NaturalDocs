@@ -49,8 +49,10 @@ else if (agt.indexOf("gecko") != -1)
 
     if (agt.indexOf("rv:1.7") != -1)
         {  browserVer = "Firefox1";  }
-    else if (agt.indexOf("rv:1.8") != -1)
+    else if (agt.indexOf("rv:1.8)") != -1 || agt.indexOf("rv:1.8.0") != -1)
         {  browserVer = "Firefox15";  }
+    else if (agt.indexOf("rv:1.8.1") != -1)
+        {  browserVer = "Firefox2";  }
     }
 
 
@@ -535,8 +537,8 @@ function SearchPanel(name, mode, resultsPath)
 
             // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some
             // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it
-            // just doesn't work in IE 6 or IE 7 Beta 2.  So if we're on the right page but the previous search had no results, reload
-            // the page anyway to get around the bug.
+            // just doesn't work in IE 6 or IE 7.  So if we're on the right page but the previous search had no results, reload the
+            // page anyway to get around the bug.
             (browserType == "IE" && resultsFrame.searchResults.lastMatchCount == 0) )
 
             {
