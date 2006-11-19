@@ -386,12 +386,12 @@ function SearchPanel(name, mode, resultsPath)
     this.DOMSearchType = function()
         {  return document.getElementById("MSearchType");  };
 
-    // Function: DOMSearchResults
-    this.DOMSearchResults = function()
+    // Function: DOMPopupSearchResults
+    this.DOMPopupSearchResults = function()
         {  return document.getElementById("MSearchResults");  };
 
-    // Function: DOMResultsWindow
-    this.DOMResultsWindow = function()
+    // Function: DOMPopupSearchResultsWindow
+    this.DOMPopupSearchResultsWindow = function()
         {  return document.getElementById("MSearchResultsWindow");  };
 
     // Function: DOMSearchPanel
@@ -437,7 +437,8 @@ function SearchPanel(name, mode, resultsPath)
                 }
             else
                 {
-                this.DOMResultsWindow().style.display = "none";
+                if (this.mode == "HTML")
+                    {  this.DOMPopupSearchResultsWindow().style.display = "none";  };
                 this.lastSearchValue = "";
                 };
             };
@@ -480,7 +481,7 @@ function SearchPanel(name, mode, resultsPath)
     */
     this.CloseResultsWindow = function()
         {
-        this.DOMResultsWindow().style.display = "none";
+        this.DOMPopupSearchResultsWindow().style.display = "none";
         this.Activate(false, true);
         };
 
@@ -493,11 +494,8 @@ function SearchPanel(name, mode, resultsPath)
         {
         this.keyTimeout = 0;
 
-        var searchField = this.DOMSearchField();
-        var searchType = this.DOMSearchType();
-
-        var searchValue = searchField.value.replace(/^ +/, "");
-        var topicType = searchType.value;
+        var searchValue = this.DOMSearchField().value.replace(/^ +/, "");
+        var searchTopic = this.DOMSearchType().value;
 
         var pageExtension = searchValue.substr(0,1);
 
@@ -513,9 +511,9 @@ function SearchPanel(name, mode, resultsPath)
         var noResults;
 
         // indexSectionsWithContent is defined in searchdata.js
-        if (indexSectionsWithContent[topicType][pageExtension] == true)
+        if (indexSectionsWithContent[searchTopic][pageExtension] == true)
             {
-            resultsPage = this.resultsPath + '/' + topicType + pageExtension + '.html';
+            resultsPage = this.resultsPath + '/' + searchTopic + pageExtension + '.html';
             resultsPageWithSearch = resultsPage+'?'+escape(searchValue);
             hasResults = true;
             }
@@ -526,91 +524,53 @@ function SearchPanel(name, mode, resultsPath)
             hasResults = false;
             };
 
+        var resultsFrame;
         if (this.mode == "HTML")
+            {  resultsFrame = window.frames.MSearchResults;  }
+        else if (this.mode == "FramedHTML")
+            {  resultsFrame = window.top.frames['Content'];  };
+
+
+        if (resultsPage != this.lastResultsPage ||
+
+            // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some
+            // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it
+            // just doesn't work in IE 6 or IE 7 Beta 2.  So if we're on the right page but the previous search had no results, reload
+            // the page anyway to get around the bug.
+            (browserType == "IE" && resultsFrame.searchResults.lastMatchCount == 0) )
+
             {
-            var searchResults = this.DOMSearchResults();
-            var resultsWindow = this.DOMResultsWindow();
-
-            if (resultsPage != this.lastResultsPage)
-                {
-                searchResults.innerHTML =
-                    '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
-                }
-            else if (hasResults)
-                {
-                // We have to tread carefully here because these calls can fail very easily.
-                var success = false;
-
-                var resultsDocument = window.frames.JSX_SearchResultsIFrame;
-
-                if (resultsDocument)
-                    {
-                    success = resultsDocument.searchResults;
-                    };
-
-                // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some
-                // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it just
-                // doesn't work in IE 6 or IE 7 Beta 2.  So we say success is false here to force it to reload the results page, which fixes
-                // it.
-                if (success && browserType == "IE" && resultsDocument.searchResults.lastMatchCount == 0)
-                    {  success = false;  };
-
-                if (success)
-                    {  success = resultsDocument.searchResults.Search(searchValue);  };
-
-                if (!success)
-                    {
-                    searchResults.innerHTML =
-                        '<iframe src="'+resultsPageWithSearch+'" frameborder=0 name=JSX_SearchResultsIFrame>';
-                    };
-                };
-
-            if (resultsWindow.style.display != "block")
-                {
-                var left = GetXPosition(searchType);
-                var top = GetYPosition(searchType) + searchField.offsetHeight;
-
-                MoveToPosition(resultsWindow, left, top);
-                resultsWindow.style.display = 'block';
-                };
+            resultsFrame.location.href = resultsPageWithSearch;
             }
 
-        else if (this.mode == "FramedHTML")
+        // So if the results page is right and there's no IE bug, reperform the search on the existing page.  We have to check if there
+        // are results because NoResults.html doesn't have any JavaScript, and it would be useless to do anything on that page even
+        // if it did.
+        else if (hasResults)
             {
-            var contentFrame = window.top.frames['Content'];
+            // We need to check if this exists in case the frame is present but didn't finish loading.
+            if (resultsFrame.searchResults)
+                {  resultsFrame.searchResults.Search(searchValue);  }
 
-            if (resultsPage != this.lastResultsPage)
-                {
-                contentFrame.location.href = resultsPageWithSearch;
-                }
-            else if (hasResults)
-                {
-                // We have to tread carefully here because these calls can fail very easily.
-                var success = false;
-
-                var resultsDocument = contentFrame.contentDocument;
-
-                if (resultsDocument)
-                    {
-                    success = resultsDocument.searchResults;
-                    };
-
-                // Bug in IE.  If everything becomes hidden in a run, none of them will be able to be reshown in the next for some
-                // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it just
-                // doesn't work in IE 6 or IE 7 Beta 2.  So we say success is false here to force it to reload the results page, which fixes
-                // it.
-                if (success && browserType == "IE" && resultsDocument.searchResults.lastMatchCount == 0)
-                    {  success = false;  };
-
-                if (success)
-                    {  success = resultsDocument.searchResults.Search(searchValue);  };
-
-                if (!success)
-                    {
-                    contentFrame.location.href = resultsPageWithSearch;
-                    };
-                };
+            // Otherwise just reload instead of waiting.
+            else
+                {  resultsFrame.location.href = resultsPageWithSearch;  };
             };
+
+
+        var domPopupSearchResultsWindow = this.DOMPopupSearchResultsWindow();
+
+        if (this.mode == "HTML" && domPopupSearchResultsWindow.style.display != "block")
+            {
+            var domSearchType = this.DOMSearchType();
+
+            var left = GetXPosition(domSearchType);
+            var top = GetYPosition(domSearchType) + domSearchType.offsetHeight;
+
+            MoveToPosition(domPopupSearchResultsWindow, left, top);
+            domPopupSearchResultsWindow.style.display = 'block';
+            };
+
 
         this.lastSearchValue = searchValue;
         this.lastResultsPage = resultsPage;
@@ -637,7 +597,7 @@ function SearchPanel(name, mode, resultsPath)
     this.Activate = function(isActive, ignoreDeactivateDelay)
         {
         // We want to ignore isActive being false while the results window is open.
-        if (isActive || (this.mode == "HTML" && this.DOMResultsWindow().style.display == "block"))
+        if (isActive || (this.mode == "HTML" && this.DOMPopupSearchResultsWindow().style.display == "block"))
             {
             if (this.inactivateTimeout)
                 {
