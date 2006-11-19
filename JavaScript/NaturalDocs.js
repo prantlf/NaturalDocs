@@ -506,20 +506,20 @@ function SearchPanel(name, mode, resultsPath)
 
         var resultsPage;
         var resultsPageWithSearch;
-        var noResults;
+        var hasResultsPage;
 
         // indexSectionsWithContent is defined in searchdata.js
         if (indexSectionsWithContent[searchTopic][pageExtension] == true)
             {
             resultsPage = this.resultsPath + '/' + searchTopic + pageExtension + '.html';
             resultsPageWithSearch = resultsPage+'?'+escape(searchValue);
-            hasResults = true;
+            hasResultsPage = true;
             }
         else
             {
             resultsPage = this.resultsPath + '/NoResults.html';
             resultsPageWithSearch = resultsPage;
-            hasResults = false;
+            hasResultsPage = false;
             };
 
         var resultsFrame;
@@ -535,7 +535,7 @@ function SearchPanel(name, mode, resultsPath)
             // reason.  It counts the right number of results, and you can even read the display as "block" after setting it, but it
             // just doesn't work in IE 6 or IE 7.  So if we're on the right page but the previous search had no results, reload the
             // page anyway to get around the bug.
-            (browserType == "IE" && resultsFrame.searchResults.lastMatchCount == 0) )
+            (browserType == "IE" && hasResultsPage && resultsFrame.searchResults.lastMatchCount == 0) )
 
             {
             resultsFrame.location.href = resultsPageWithSearch;
@@ -544,7 +544,7 @@ function SearchPanel(name, mode, resultsPath)
         // So if the results page is right and there's no IE bug, reperform the search on the existing page.  We have to check if there
         // are results because NoResults.html doesn't have any JavaScript, and it would be useless to do anything on that page even
         // if it did.
-        else if (hasResults)
+        else if (hasResultsPage)
             {
             // We need to check if this exists in case the frame is present but didn't finish loading.
             if (resultsFrame.searchResults)
