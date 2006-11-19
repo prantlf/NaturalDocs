@@ -14,11 +14,7 @@ if (agt.indexOf("opera") != -1)
     {
     browserType = "Opera";
 
-    if (agt.indexOf("opera 5") != -1 || agt.indexOf("opera/5") != -1)
-        {  browserVer = "Opera5";  }
-    else if (agt.indexOf("opera 6") != -1 || agt.indexOf("opera/6") != -1)
-        {  browserVer = "Opera6";  }
-    else if (agt.indexOf("opera 7") != -1 || agt.indexOf("opera/7") != -1)
+    if (agt.indexOf("opera 7") != -1 || agt.indexOf("opera/7") != -1)
         {  browserVer = "Opera7";  }
     else if (agt.indexOf("opera 8") != -1 || agt.indexOf("opera/8") != -1)
         {  browserVer = "Opera8";  }
@@ -65,7 +61,7 @@ function GetXPosition(item)
     {
     var position = 0;
 
-    if (item.offsetWidth != null && browserVer != "Opera5")
+    if (item.offsetWidth != null)
         {
         while (item != document.body && item != null)
             {
@@ -82,7 +78,7 @@ function GetYPosition(item)
     {
     var position = 0;
 
-    if (item.offsetWidth != null && browserVer != "Opera5")
+    if (item.offsetWidth != null)
         {
         while (item != document.body && item != null)
             {
@@ -99,7 +95,7 @@ function MoveToPosition(item, x, y)
     {
     // Opera 5 chokes on the px extension, so it can use the Microsoft one instead.
 
-    if (item.style.left != null && browserVer != "Opera5")
+    if (item.style.left != null)
         {
         item.style.left = x + "px";
         item.style.top = y + "px";
