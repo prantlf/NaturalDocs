@@ -1572,7 +1572,7 @@ sub BuildToolTip #(symbol, file, type, prototype, summary)
             if (defined $summary)
                 {
                 # Remove links, since people can't/shouldn't be clicking on tooltips anyway.
-                $summary =~ s/<\/?(?:link|url)>//g;
+                $summary =~ s/<\/?(?:link|url) target="[^"]*" name="([^"]*)"[^>]*>/$1/g;
 
                 # The fact that we don't have scope or using shouldn't matter because we removed the links.
                 $summary = $self->NDMarkupToHTML($file, $summary, undef, undef, $type, undef);
