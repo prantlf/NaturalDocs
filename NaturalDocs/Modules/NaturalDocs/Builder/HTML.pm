@@ -107,7 +107,7 @@ sub BuildFile #(sourceFile, parsedFile)
             . "\n\n\n"
                 . $self->BuildFooter()
             . "\n\n\n"
-                . $self->BuildMenu($sourceFile, undef, undef)
+                . $self->BuildMenu($sourceFile, undef)
             . "\n\n\n"
                 . $self->BuildToolTips()
             . "\n\n\n"
@@ -181,7 +181,7 @@ sub BuildIndex #(type)
             . "\n\n\n"
                 . $self->BuildFooter()
             . "\n\n\n"
-                . $self->BuildMenu(undef, $type, undef)
+                . $self->BuildMenu(undef, $type)
             . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
@@ -324,7 +324,7 @@ sub UpdateFile #(sourceFile)
 
         $content =~ s{<title>[^<]*<\/title>}{'<title>' . $self->BuildTitle($sourceFile) . '</title>'}e;
 
-        $content =~ s/<div id=Menu>.*?<\/div><!--Menu-->/$self->BuildMenu($sourceFile, undef, undef)/es;
+        $content =~ s/<div id=Menu>.*?<\/div><!--Menu-->/$self->BuildMenu($sourceFile, undef)/es;
 
         $content =~ s/<div id=Footer>.*?<\/div><!--Footer-->/$self->BuildFooter()/e;
 
@@ -354,7 +354,7 @@ sub UpdateIndex #(type)
 
     my $outputFile = $self->IndexFileOf($type, $page);
 
-    my $newMenu = $self->BuildMenu(undef, $type, undef);
+    my $newMenu = $self->BuildMenu(undef, $type);
     my $newFooter = $self->BuildFooter();
 
     while (-e $outputFile)

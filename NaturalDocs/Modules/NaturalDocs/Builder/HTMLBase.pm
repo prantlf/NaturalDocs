@@ -619,8 +619,6 @@ sub BuildTitle #(sourceFile)
 #
 #       sourceFile - The source <FileName> to use if you're looking for a source file.
 #       indexType - The index <TopicType> to use if you're looking for an index.
-#       isFramed - Whether the menu will appear in a frame.  If so, it assumes the <base> HTML tag is set to make links go to the
-#                       appropriate frame.
 #
 #       Both sourceFile and indexType may be undef.
 #
@@ -634,9 +632,9 @@ sub BuildTitle #(sourceFile)
 #         strings "<div id=Menu>" and "</div><!--Menu-->".
 #       - This function depends on the way <BuildMenuSegment()> formats file and index entries.
 #
-sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> string htmlMenu
+sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
     {
-    my ($self, $sourceFile, $indexType, $isFramed) = @_;
+    my ($self, $sourceFile, $indexType) = @_;
 
     if (!$menuNumbersAndLengthsDone)
         {
@@ -666,7 +664,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
         my $segmentOutput;
 
         ($segmentOutput, $menuRootLength) =
-            $self->BuildMenuSegment($outputDirectory, $isFramed, NaturalDocs::Menu->Content());
+            $self->BuildMenuSegment($outputDirectory, NaturalDocs::Menu->Content());
 
         my $titleOutput;
 
@@ -747,11 +745,11 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
                 '</select>'
             . '</div>';
 
-            if (!$isFramed)
+            if ($self->CommandLineOption() eq 'HTML')
                 {
                 $searchOutput .=
                 '<div id=MSearchResultsWindow>'
-                    . '<div id=MSearchResults></div>'
+                    . '<iframe src="" frameborder=0 name=MSearchResults id=MSearchResults></iframe>'
                     . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
                 . '</div>';
                 };
@@ -863,8 +861,6 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 #   Parameters:
 #
 #       outputDirectory - The output directory the menu is being built for.
-#       isFramed - Whether the menu will be in a HTML frame or not.  Assumes that if it is, the <base> HTML tag will be set so that
-#                       links are directed to the proper frame.
 #       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the contents
 #                               of a group.
 #
@@ -880,9 +876,9 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType, bool isFramed) -> stri
 #
 #       - <BuildMenu()> depends on the way this function formats file and index entries.
 #
-sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
+sub BuildMenuSegment #(outputDirectory, menuSegment)
     {
-    my ($self, $outputDirectory, $isFramed, $menuSegment) = @_;
+    my ($self, $outputDirectory, $menuSegment) = @_;
 
     my ($output, $groupLength);
 
@@ -891,7 +887,7 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
         if ($entry->Type() == ::MENU_GROUP())
             {
             my ($entryOutput, $entryLength) =
-                $self->BuildMenuSegment($outputDirectory, $isFramed, $entry->GroupContent());
+                $self->BuildMenuSegment($outputDirectory, $entry->GroupContent());
 
             my $entryNumber;
 
@@ -910,7 +906,7 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
             '<div class="MGroup MEntry">'
 
                 . '<a href="javascript:ToggleMenu(\'MGroupContent' . $entryNumber . '\')"'
-                     . ($isFramed ? ' target="_self"' : '') . '>'
+                     . ($self->CommandLineOption() eq 'FramedHTML' ? ' target="_self"' : '') . '>'
                     . $self->StringToHTML($entry->Title())
                 . '</a>'
 
@@ -952,7 +948,7 @@ sub BuildMenuSegment #(outputDirectory, isFramed, menuSegment)
             {
             $output .=
             '<div class="MLink MEntry">'
-                . '<a href="' . $entry->Target() . '"' . ($isFramed ? ' target="_top"' : '') . '>'
+                . '<a href="' . $entry->Target() . '"' . ($self->CommandLineOption() eq 'FramedHTML' ? ' target="_top"' : '') . '>'
                     . $self->StringToHTML( $entry->Title() )
                 . '</a>'
             . '</div>';
@@ -1876,9 +1872,6 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
             print INDEXFILEHANDLE
 
             $beginSearchResultsPage
-            . '<script type="text/javascript"><!--' . "\n"
-                . 'var searchResults = new SearchResults("searchResults", "' . $self->CommandLineOption() . '");' . "\n"
-            . '--></script>'
 
             . '<div class=SRStatus id=Loading>Loading...</div>'
 
@@ -1893,6 +1886,7 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
                 . 'document.getElementById("Loading").style.display="none";' . "\n"
                 . 'document.getElementById("NoMatches").style.display="none";' . "\n"
 
+                . 'var searchResults = new SearchResults("searchResults", "' . $self->CommandLineOption() . '");' . "\n"
                 . 'searchResults.Search();' . "\n"
             . '--></script>'
 

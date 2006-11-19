@@ -273,7 +273,7 @@ sub UpdateMenu
             . $self->StandardComments()
 
             . "\n\n\n"
-                . $self->BuildMenu(undef, undef, 1)
+                . $self->BuildMenu(undef, undef)
             . "\n\n\n"
                 . $self->BuildFooter(1)
             . "\n\n\n"
