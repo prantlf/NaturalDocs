@@ -2879,8 +2879,8 @@ sub GenerateAutoFileTitles #(forceAll)
             {
             # Find common prefixes and paths to strip from the default menu titles.
 
-            my @sharedDirectories;
-            my $noSharedDirectories;
+            my @sharedDirectories = $self->SharedDirectoriesOf($groupEntry);
+            my $noSharedDirectories = (scalar @sharedDirectories == 0);
 
             my @sharedPrefixes;
             my $noSharedPrefixes;
@@ -2889,39 +2889,10 @@ sub GenerateAutoFileTitles #(forceAll)
                 {
                 if ($entry->Type() == ::MENU_FILE())
                     {
-                    # Find the common path among all file entries in this group.
-
-                    if (!$noSharedDirectories)
-                        {
-                        my ($volume, $directoryString, $file) = NaturalDocs::File->SplitPath($entry->Target());
-                        my @entryDirectories = NaturalDocs::File->SplitDirectories($directoryString);
-
-                        if (!scalar @entryDirectories)
-                            {  $noSharedDirectories = 1;  }
-                        elsif (!scalar @sharedDirectories)
-                            {  @sharedDirectories = @entryDirectories;  }
-                        elsif ($entryDirectories[0] ne $sharedDirectories[0])
-                            {  $noSharedDirectories = 1;  }
-
-                        # If both arrays have entries, and the first is shared...
-                        else
-                            {
-                            my $index = 1;
-
-                            while ($index < scalar @sharedDirectories && $index < scalar @entryDirectories &&
-                                     $entryDirectories[$index] eq $sharedDirectories[$index])
-                                {  $index++;  };
-
-                            if ($index < scalar @sharedDirectories)
-                                {  splice(@sharedDirectories, $index);  };
-                            };
-                        };
-
-
                     # Find the common prefixes among all file entries that are unlocked and don't use the file name as their default title.
 
                     if (!$noSharedPrefixes && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0 &&
-                        NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()) ne $entry->Target())
+                        !$self->UsesFileNameAsTitle($entry))
                         {
                         my @entryPrefixes = split(/(\.|::|->)/, NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()));
 
@@ -2956,8 +2927,6 @@ sub GenerateAutoFileTitles #(forceAll)
                 };  # foreach entry in group content.
 
 
-            if (!scalar @sharedDirectories)
-                {  $noSharedDirectories = 1;  };
             if (!scalar @sharedPrefixes)
                 {  $noSharedPrefixes = 1;  };
 
@@ -2970,7 +2939,7 @@ sub GenerateAutoFileTitles #(forceAll)
                     {
                     my $title = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target());
 
-                    if ($title eq $entry->Target())
+                    if ($self->UsesFileNameAsTitle($entry))
                         {
                         my ($volume, $directoryString, $file) = NaturalDocs::File->SplitPath($title);
                         my @directories = NaturalDocs::File->SplitDirectories($directoryString);
@@ -3399,6 +3368,24 @@ sub SharedDirectoriesOf #(group)
         };
 
     return @sharedDirectories;
+    };
+
+
+#
+#   Function: UsesFileNameAsTitle
+#
+#   Returns whether the passed entry uses all or part of its file name as its title.  This catches both Natural Docs-assigned file titles,
+#   where the title will be the same as the full path, and user-supplied file titles where it may just be the file name or part of the
+#   end of the path.
+#
+sub UsesFileNameAsTitle #(NaturalDocs::Menu::Entry entry) => bool
+    {
+    my ($self, $entry) = @_;
+
+    my $defaultTitle = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target());
+
+    return ( length $defaultTitle <= length $entry->Target() &&
+                substr($entry->Target(), 0 - length($defaultTitle)) eq $defaultTitle );
     };
 
 
