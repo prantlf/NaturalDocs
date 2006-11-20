@@ -385,25 +385,10 @@ sub Parse
         else
             {
             # If the title ended up being the file name, add a leading section for it.
-            my $name;
-
-            my ($inputDirectory, $relativePath) = NaturalDocs::Settings->SplitFromInputDirectory($sourceFile);
-
-            my ($volume, $dirString, $file) = NaturalDocs::File->SplitPath($relativePath);
-            my @directories = NaturalDocs::File->SplitDirectories($dirString);
-
-            if (scalar @directories > 2)
-                {
-                $dirString = NaturalDocs::File->JoinDirectories('...', $directories[-2], $directories[-1]);
-                $name = NaturalDocs::File->JoinPath(undef, $dirString, $file);
-                }
-            else
-                {
-                $name = $relativePath;
-                }
 
             unshift @parsedFile,
-                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), $name, undef, undef, undef, undef, undef, 1, undef);
+                       NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FILE(), (NaturalDocs::File->SplitPath($sourceFile))[2],
+                                                                                  undef, undef, undef, undef, undef, 1, undef);
             };
         };
 
