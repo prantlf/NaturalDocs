@@ -655,7 +655,8 @@ blockquote {
         font-size: 8pt;
         padding: 1px 5px;
         }
-    #SearchResultsPage #Opera9 .IEntry {
+    #SearchResultsPage #Opera9 .IEntry,
+    #FramedSearchResultsPage #Opera9 .IEntry {
         text-align: left;
         }
     #FramedSearchResultsPage .IEntry {
