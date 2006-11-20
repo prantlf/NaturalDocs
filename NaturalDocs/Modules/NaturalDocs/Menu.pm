@@ -2891,17 +2891,35 @@ sub GenerateAutoFileTitles #(forceAll)
                     {
                     # Find the common prefixes among all file entries that are unlocked and don't use the file name as their default title.
 
+                    my $defaultTitle = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target());
+
                     if (!$noSharedPrefixes && ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE()) == 0 &&
-                        !$self->UsesFileNameAsTitle($entry))
+                        $defaultTitle ne $entry->Target())
                         {
-                        my @entryPrefixes = split(/(\.|::|->)/, NaturalDocs::Project->DefaultMenuTitleOf($entry->Target()));
+                        # If the filename is part of the title, separate it off so no part of it gets included as a common prefix.  This would
+                        # happen if there's a group with only one file in it (Project.h => h) or only files that differ by extension
+                        # (Project.h, Project.cpp => h, cpp) and people labeled them manually (// File: Project.h).
+                        my $filename = (NaturalDocs::File->SplitPath($entry->Target()))[2];
+                        my $filenamePart;
+
+                        if ( length $defaultTitle >= length $filename &&
+                             lc(substr($defaultTitle, 0 - length($filename))) eq lc($filename) )
+                            {
+                            $filenamePart = substr($defaultTitle, 0 - length($filename));
+                            $defaultTitle = substr($defaultTitle, 0, 0 - length($filename));
+                            };
+
+
+                        my @entryPrefixes = split(/(\.|::|->)/, $defaultTitle);
 
                         # Remove potential leading undef/empty string.
                         if (!length $entryPrefixes[0])
                             {  shift @entryPrefixes;  };
 
-                        # Remove last entry.  Something has to exist for the title.
-                        pop @entryPrefixes;
+                        # Remove last entry.  Something has to exist for the title.  If we already separated off the filename, that will be
+                        # it instead.
+                        if (!$filenamePart)
+                            {  pop @entryPrefixes;  };
 
                         if (!scalar @entryPrefixes)
                             {  $noSharedPrefixes = 1;  }
@@ -2939,9 +2957,9 @@ sub GenerateAutoFileTitles #(forceAll)
                     {
                     my $title = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target());
 
-                    if ($self->UsesFileNameAsTitle($entry))
+                    if ($title eq $entry->Target())
                         {
-                        my ($volume, $directoryString, $file) = NaturalDocs::File->SplitPath($title);
+                        my ($volume, $directoryString, $file) = NaturalDocs::File->SplitPath($entry->Target());
                         my @directories = NaturalDocs::File->SplitDirectories($directoryString);
 
                         if (!$noSharedDirectories)
@@ -2955,11 +2973,25 @@ sub GenerateAutoFileTitles #(forceAll)
                         $directoryString = NaturalDocs::File->JoinDirectories(@directories);
                         $title = NaturalDocs::File->JoinPaths($directoryString, $file);
                         }
+
                     else
                         {
+                        my $filename = (NaturalDocs::File->SplitPath($entry->Target()))[2];
+                        my $filenamePart;
+
+                        if ( length $title >= length $filename &&
+                             lc(substr($title, 0 - length($filename))) eq lc($filename) )
+                            {
+                            $filenamePart = substr($title, 0 - length($filename));
+                            $title = substr($title, 0, 0 - length($filename));
+                            };
+
                         my @segments = split(/(::|\.|->)/, $title);
                         if (!length $segments[0])
                             {  shift @segments;  };
+
+                        if ($filenamePart)
+                            {  push @segments, $filenamePart;  };
 
                         if (!$noSharedPrefixes)
                             {  splice(@segments, 0, scalar @sharedPrefixes);  };
@@ -3368,24 +3400,6 @@ sub SharedDirectoriesOf #(group)
         };
 
     return @sharedDirectories;
-    };
-
-
-#
-#   Function: UsesFileNameAsTitle
-#
-#   Returns whether the passed entry uses all or part of its file name as its title.  This catches both Natural Docs-assigned file titles,
-#   where the title will be the same as the full path, and user-supplied file titles where it may just be the file name or part of the
-#   end of the path.
-#
-sub UsesFileNameAsTitle #(NaturalDocs::Menu::Entry entry) => bool
-    {
-    my ($self, $entry) = @_;
-
-    my $defaultTitle = NaturalDocs::Project->DefaultMenuTitleOf($entry->Target());
-
-    return ( length $defaultTitle <= length $entry->Target() &&
-                substr($entry->Target(), 0 - length($defaultTitle)) eq $defaultTitle );
     };
 
 
