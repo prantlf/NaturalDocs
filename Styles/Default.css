@@ -447,11 +447,8 @@ blockquote {
         padding: 15px;
         border: 1px solid #C0C060 }
 
-    /* IE 5 will make them too long unless you set the width to 100%.  Isn't this implied for a div?  */
-    #IE5 .SBody {
-        width: 100% }
-    /* IE 6 behaves like 5 when it's in a frame, but without frames it will be correct without a width or slightly too long
-        (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
+    /* In a frame IE 6 will make them too long unless you set the width to 100%.  Without frames it will be correct without a width
+        or slightly too long (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
     body#FramedContentPage #IE6 .SBody {
         width: 100% }
 

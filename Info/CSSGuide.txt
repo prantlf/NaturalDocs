@@ -145,7 +145,7 @@ Styles: Browser Styles
     >
     >   </body>
 
-    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 5, override it with #IE5 .CTopic.  If a <MTitle>'s
+    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 6, override it with #IE6 .CTopic.  If a <MTitle>'s
     style gives you a problem in Opera 7 but only in frames, override it with #FramedMenuPage #Opera7 .MTitle.
 
     Browser Types:
@@ -164,7 +164,6 @@ Styles: Browser Styles
         If the browser is not one of the versions below, this style will not be present.  The browser type still may be.  Gecko and
         KHTML-based browsers are not broken out into sub-versions.
 
-        #IE5 - Internet Explorer 5.x.
         #IE6 - Internet Explorer 6.x.
         #IE7 - Internet Explorer 7.x.
 
@@ -834,7 +833,7 @@ Topic: Revisions
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
         - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
           <CType> and <CTopic>, <MType> and <MEntry>, <CHType> and <CHEntry>
-        - The IE4, Opera5, Opera6, Netscape, and Netscape4 styles have been removed.  <#IE7>, <#Opera8>, and <#Opera9>
+        - The IE4, IE5, Opera5, Opera6, Netscape, and Netscape4 styles have been removed.  <#IE7>, <#Opera8>, and <#Opera9>
           have been added.  Gecko has been replaced by <#Firefox>, <#Firefox1>, <#Firefox15>, and <#Firefox2>.
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
