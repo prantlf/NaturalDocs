@@ -20,22 +20,20 @@ use integer;
 #
 #   The specific browser versions tested are below.  Everything is tested on Windows XP unless otherwise noted.
 #
-#   - Firefox 2.0
-#   - Firefox 1.5.0.8
-#   - Firefox 1.0.8 (not important to support)
+#   Firefox 2.0 - Released October 24, 2006.
+#   Firefox 1.5.0.8 - 1.5 released Novemer 29, 2005.
+#   Firefox 1.0.8 - 1.0 released November 9, 2004.  Not important to support.
 #
-#   - IE 7
-#   - IE 6
-#   - IE 5.5 standalone hack (not important to support)
-#   - IE 5.01 standalone hack (not important to support)
+#   IE 7 - Released October 18, 2006.
+#   IE 6 SP2 - 6.0 released August 27, 2001.
 #
-#   - Opera 9.02
-#   - Opera 8.54
-#   - Opera 8.02
-#   - Opera 7.51 (not important to support)
-#   - Opera 7.02 (not important to support)
+#   Opera 9.02 - 9.0 released June 20, 2006.
+#   Opera 8.54 - 8.5 released September 20, 2005.
+#   Opera 8.02 - 8.0 released April 19, 2005.
+#   Opera 7.51 - 7.5 released around August 2004 I think.  Not important to support.
+#   Opera 7.02 - 7.0 released January 2003.  Not important to support.
 #
-#   - Konqueror 3.5.0 on SuSE Linux 10 via VMware Player
+#   Konqueror 3.5.0 - Tested on SuSE Linux 10 via VMware Player
 #
 
 
@@ -71,10 +69,6 @@ use integer;
 #       IE 7.0  - OK
 #       IE 6.0  - Controls don't appear on hover.  Bug in IE's hover handling, couldn't get around it.  Still functional and activates
 #                    correctly on click, so acceptable.  Doesn't even look like a flaw to the user.
-#       IE 5.5  - Surprisingly functional.  Hover doesn't work like in IE6.  Filter control doesn't show up at all.  Other visual flaws.
-#                    Don't care.
-#       IE 5.0  - Better than freaking 5.5!  Works as good as IE6!  Same hover bug, filter is a tiny bit too wide, but otherwise
-#                    perfect.  Very unexpected.
 #
 #       Opera 9.0  - OK
 #       Opera 8.5  - OK
@@ -112,8 +106,6 @@ use integer;
 #
 #       IE 7.0  - OK
 #       IE 6.0  - Doesn't hover (see <Unframed HTML Search>.)  Otherwise OK.
-#       IE 5.5  - Doesn't hover and no filter bar.  Otherwise OK.
-#       IE 5.0  - Doesn't hover.  Otherwise OK.
 #
 #       Opera 9.0  - OK
 #       Opera 8.5  - OK
