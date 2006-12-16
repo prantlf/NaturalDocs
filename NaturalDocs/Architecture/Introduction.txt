@@ -1,8 +1,0 @@
-
-Architecture: Introduction
-
-    Natural Docs has gotten big enough and complex enough that it's finally necessary to add some architecture documentation.  I have been finding myself needing to relearn how certain sections of code work and fit together, and it's been a barrier to doing more work on it.  Individual function and variable descriptions are no longer sufficient, I need the complete code path.  Writing this up will hopefully allow other people who would like to contribute easier access to the code as well.
-
-    The danger is always that these documents are much more likely to fall out of date than any individual function description.  So be it.  Let's follow the quote "Documentation is like sex.  Even when it's bad, it's better than nothing."  So keep in mind when reading these that there's a chance some of the finer details may be off.  It will still give you a good general idea of what happens, just remember to consult the individual function documentation if anything behaves unexpectedly.  I'm very diligent about keeping those up to date, and I will try to be so with the architecture documentation as well.
-
-    Actually, writing these up has already been beneficial.  When you have to explain the code like this, the uglier hacks become very apparent.  When working on my first document, <File Parsing>, I thought "wow, that's stupid" while writing up a couple of interactions.  It was embarrassing to lay them bare like that, so I cleaned them up and Natural Docs is better for it.
