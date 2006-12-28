@@ -124,7 +124,7 @@ sub Load # => bool
 
     # The file format hasn't changed since it was introduced.
     if (!NaturalDocs::Version->CheckFileFormat($version))
-        { 
+        {
         NaturalDocs::BinaryFile->Close();
         return 0;
         };
@@ -232,7 +232,7 @@ sub AddReference #(FileName file, string referenceText)
 
     my $referenceString = NaturalDocs::ImageReferenceTable::String->Make($file, $referenceText);
 
-    if (!NaturalDocs::SourceDB->HasItem($referenceString))
+    if (!NaturalDocs::SourceDB->HasItem($extensionID, $referenceString))
         {
         my $referenceObject = NaturalDocs::ImageReferenceTable::Reference->New();
         NaturalDocs::SourceDB->AddItem($extensionID, $referenceString, $referenceObject);
