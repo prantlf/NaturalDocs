@@ -6,17 +6,6 @@
 #
 #   A package to handle the command line and various other program settings.
 #
-#   Usage and Dependencies:
-#
-#       - The <Constant Functions> can be called immediately.
-#
-#       - Prior to initialization, <NaturalDocs::Builder> must have all its output packages registered.
-#
-#       - To initialize, call <Load()>.  All functions except <InputDirectoryNameOf()> will then be available.
-#
-#       - <GenerateDirectoryNames()> must be called before <InputDirectoryNameOf()> will work.  Currently it is called by
-#          <NaturalDocs::Menu->LoadAndUpdate()>.
-#
 ###############################################################################
 
 # This file is part of Natural Docs, which is Copyright (C) 2003-2005 Greg Valure
@@ -32,23 +21,68 @@ use integer;
 package NaturalDocs::Settings;
 
 
-#
-#   Architecture: Named Directories
-#
-#   Ever since Natural Docs introduced multiple input directories in 1.16, they've had to be named.  Since they don't necessarily
-#   extend from the same root anymore, they can't share an output directory without the risk of file name conflicts.  There was an
-#   early attempt at giving them actual names, but now they're just numbered from 1.
-#
-#   The way it works now is that the names aren't generated right away.  Instead it waits for <Menu.txt> to load because that
-#   holds obfuscated names from the last run.  <NaturalDocs::Menu> then calls <GenerateDirectoryNames()> and passes those
-#   along as hints.  <GenerateDirectoryNames()> then applies them to any matches and numbers any remaining.  This is done so
-#   that output page locations can remain consistent when built on multiple computers, so long as the menu file is shared.  I tend
-#   to think the menu file is the most likely configuration file to be shared.
-#
-#   Another thing to note is that because of <PreviousSettings.nd>, we have all the names from the last run, even if the input
-#   directories don't appear on the command line anymore.  This allows us to get the output file location of any files that
-#   disappeared because of that so that they can be purged.  Otherwise they would be orphaned, as they were prior to 1.32.
-#
+###############################################################################
+# Group: Information
+
+=pod begin nd
+
+    Topic: Usage and Dependencies
+
+        - The <Constant Functions> can be called immediately.
+
+        - Prior to initialization, <NaturalDocs::Builder> must have all its output packages registered.
+
+        - To initialize, call <Load()>.  All functions except <InputDirectoryNameOf()> will then be available.
+
+        - <GenerateDirectoryNames()> must be called before <InputDirectoryNameOf()> will work.  Currently it is called by
+          <NaturalDocs::Menu->LoadAndUpdate()>.
+
+
+    Architecture: Internal Overview
+
+        - <Load()> first parses the command line, gathering all the settings and checking for errors.  All <NaturalDocs::Builder>
+          packages must be registered before this is called because it needs their command line options.
+          <NaturalDocs::Project->ReparseEverything()> and <NaturalDocs::Project->RebuildEverything()> are called right away if -r
+          or -ro are used.
+
+        - Output directories are *not* named at this point.  See <Named Directories>.
+
+        - The previous settings from the last time Natural Docs was run are loaded and compared to the current settings.
+          <NaturalDocs::Project->ReparseEverything()> and <NaturalDocs::Project->RebuildEverything()> are called if there are
+          any differences that warrant it.
+
+        - It then waits for <GenerateDirectoryNames()> to be called by <NaturalDocs::Menu>.  The reason for this is that the
+          previous directory names are stored as hints in the menu file, for reasons explained in <Named Directories>.  Once that
+          happens all the unnamed directories have names generated for them so everything is named.  The package is completely
+          set up.
+
+        - The input directories are stored in an array instead of a hash because the order they were declared in matters.  If two
+          people use multiple input directories on separate computers without sharing a menu file, they should at least get consistent
+          directory names by declaring them in the same order.
+
+
+    Architecture: Named Directories
+
+        Ever since Natural Docs introduced multiple input directories in 1.16, they've had to be named.  Since they don't necessarily
+        extend from the same root anymore, they can't share an output directory without the risk of file name conflicts.  There was
+        an early attempt at giving them actual names, but now they're just numbered from 1.
+
+        Directory names aren't generated right away.  It waits for <Menu.txt> to load because that holds the obfuscated names from
+        the last run.  <NaturalDocs::Menu> then calls <GenerateDirectoryNames()> and passes those along as hints.
+        <GenerateDirectoryNames()> then applies them to any matches and generates new ones for any remaining.  This is done so
+        that output page locations can remain consistent when built on multiple computers, so long as the menu file is shared.  I tend
+        to think the menu file is the most likely configuration file to be shared.
+
+
+    Architecture: Removed Directories
+
+        Directories that were part of the previous run but aren't anymore are still stored in the package.  The primary reason, though
+        there may be others, is file purging.  If an input directory is removed, all the output files that were generated from anything
+        in it need to be removed.  To find out what the output file name was for a removed source file, it needs to be able to split it
+        from it's original input directory and know what that directory was named.  If this didn't happen those output files would be
+        orphaned, as was the case prior to 1.32.
+
+=cut
 
 
 
