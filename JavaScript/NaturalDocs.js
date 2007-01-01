@@ -31,7 +31,7 @@ else if (agt.indexOf("msie") != -1)
     {
     browserType = "IE";
 
-    else if (agt.indexOf("msie 6") != -1)
+    if (agt.indexOf("msie 6") != -1)
         {  browserVer = "IE6";  }
     else if (agt.indexOf("msie 7") != -1)
         {  browserVer = "IE7";  }
