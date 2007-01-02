@@ -1125,13 +1125,9 @@ sub LoadAndComparePreviousSettings
         {
         my $version;
 
-        if ($version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd') ))
-            {
-            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.4') ))
-                {  $fileIsOkay = 1;  }
-            else
-                {  NaturalDocs::BinaryFile->Close();  };
-            };
+        if (NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd'),
+                                                                           NaturalDocs::Version->FromString('1.4') ))
+            {  $fileIsOkay = 1;  };
         };
 
     if (!$fileIsOkay)
