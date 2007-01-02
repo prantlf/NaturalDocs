@@ -903,7 +903,7 @@ sub ParseCommandLine
                 if (defined $builderPackage)
                     {
                     push @buildTargets,
-                            NaturalDocs::Settings::BuildTarget->New(undef, $builderPackage->New(), $directory);
+                            NaturalDocs::Settings::BuildTarget->New($builderPackage->New(), $directory);
                     }
                 else
                     {
