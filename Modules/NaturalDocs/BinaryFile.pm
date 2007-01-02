@@ -89,12 +89,26 @@ my $currentFile;
 #
 #   Function: OpenForReading
 #
-#   Opens a binary file for reading and returns the format <VersionInt>.  Returns undef if the file doesn't exist, couldn't be
-#   opened, or is not binary.
+#   Opens a binary file for reading.
 #
-sub OpenForReading #(FileName file) => bool
+#   Parameters:
+#
+#       minimumVersion - The minimum version of the file format that is acceptible.  May be undef.
+#
+#   Returns:
+#
+#       The format <VersionInt> or undef if it failed.  It could fail for any of the following reasons.
+#
+#       - The file doesn't exist.
+#       - The file couldn't be opened.
+#       - The file didn't have the proper header.
+#       - Either the application or the file was from a development release, and they're not the exact same development release.
+#       - The file's format was less than the minimum version, if one was defined.
+#       - The file was from a later application version than the current.
+#
+sub OpenForReading #(FileName file, optional VersionInt minimumVersion) => VersionInt
     {
-    my ($self, $file) = @_;
+    my ($self, $file, $minimumVersion) = @_;
 
     if (defined $currentFile)
         {  die "Tried to open binary file " . $file . " for reading when " . $currentFile . " was already open.";  };
@@ -111,13 +125,13 @@ sub OpenForReading #(FileName file) => bool
 
         if ($firstChar == ::BINARY_FORMAT())
             {
-            return NaturalDocs::Version->FromBinaryFile(\*FH_BINARYDATAFILE);
-            }
+            my $version = NaturalDocs::Version->FromBinaryFile(\*FH_BINARYDATAFILE);
 
-        else # it's not in binary
-            {
-            close(FH_BINARYDATAFILE);
+            if (NaturalDocs::Version->CheckFileFormat($version, $minimumVersion))
+                {  return $version;  };
             };
+
+        close(FH_BINARYDATAFILE);
         };
 
     $currentFile = undef;
