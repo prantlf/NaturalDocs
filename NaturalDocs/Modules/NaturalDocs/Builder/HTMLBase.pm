@@ -39,6 +39,19 @@ use NaturalDocs::DefineMembers 'MADE_EMPTY_SEARCH_RESULTS_PAGE', 'MadeEmptySearc
 #   MADE_EMPTY_SEARCH_RESULTS_PAGE - Whether the search results page for searches with no results was generated.
 #
 
+#
+#   Constants: NDMarkupToHTML Styles
+#
+#   These are the styles used with <NDMarkupToHTML()>.
+#
+#   NDMARKUPTOHTML_GENERAL - General style.
+#   NDMARKUPTOHTML_SUMMARY - For summaries.
+#   NDMARKUPTOHTML_TOOLTIP - For tooltips.
+#
+use constant NDMARKUPTOHTML_GENERAL => undef;
+use constant NDMARKUPTOHTML_SUMMARY => 1;
+use constant NDMARKUPTOHTML_TOOLTIP => 2;
+
 
 
 ###############################################################################
@@ -1203,7 +1216,8 @@ sub BuildSummary #(sourceFile, parsedFile, index)
                 {
                 $output .= $self->NDMarkupToHTML($sourceFile, $parsedFile->[$index]->Summary(),
                                                                      $parsedFile->[$index]->Symbol(), $parsedFile->[$index]->Package(),
-                                                                     $parsedFile->[$index]->Type(), $parsedFile->[$index]->Using());
+                                                                     $parsedFile->[$index]->Type(), $parsedFile->[$index]->Using(),
+                                                                     NDMARKUPTOHTML_SUMMARY);
                 };
 
 
@@ -1571,17 +1585,8 @@ sub BuildToolTip #(symbol, file, type, prototype, summary)
 
             if (defined $summary)
                 {
-                # Remove links, since people can't/shouldn't be clicking on tooltips anyway.
-                $summary =~ s/<\/?(?:link|url) target="[^"]*" name="([^"]*)"[^>]*>/$1/g;
-
-                # The fact that we don't have scope or using shouldn't matter because we removed the links.
-                $summary = $self->NDMarkupToHTML($file, $summary, undef, undef, $type, undef);
-
-                # XXX - Hack.  We want to remove e-mail links as well, but keep their obfuscation.  So we leave the tags in there for
-                # the NDMarkupToHTML call, then strip out the link part afterwards.  The text obfuscation should still be in place.
-
-                $summary =~ s/<\/?a[^>]+>//g;
-
+                # The fact that we don't have scope or using shouldn't matter because links shouldn't be included in the style anyway.
+                $summary = $self->NDMarkupToHTML($file, $summary, undef, undef, $type, undef, NDMARKUPTOHTML_TOOLTIP);
                 $tooltipHTML .= $summary;
                 };
 
@@ -2485,15 +2490,29 @@ sub OutputImageOf #(sourceImageFile)
     {
     my ($self, $sourceImageFile) = @_;
 
-    my ($inputDirectory, $relativeImageFile) = NaturalDocs::Settings->SplitFromImageDirectory($sourceImageFile);
-    if (!defined $inputDirectory)
-        {  return undef;  };
-
     my $outputDirectory = NaturalDocs::Settings->OutputDirectoryOf($self);
-    my $inputDirectoryName = NaturalDocs::Settings->ImageDirectoryNameOf($inputDirectory);
+    my $topLevelDirectory;
 
-    $outputDirectory = NaturalDocs::File->JoinPaths( $outputDirectory,
-                                                                            'files' . ($inputDirectoryName != 1 ? $inputDirectoryName : ''), 1 );
+    my ($inputDirectory, $relativeImageFile) = NaturalDocs::Settings->SplitFromInputDirectory($sourceImageFile);
+
+    if (defined $inputDirectory)
+        {
+        my $inputDirectoryName = NaturalDocs::Settings->InputDirectoryNameOf($inputDirectory);
+        $topLevelDirectory = 'files' . ($inputDirectoryName != 1 ? $inputDirectoryName : '');
+        }
+    else
+        {
+        ($inputDirectory, $relativeImageFile) = NaturalDocs::Settings->SplitFromImageDirectory($sourceImageFile);
+
+        if (!defined $inputDirectory)
+            {  return undef;  };
+
+        my $inputDirectoryName = NaturalDocs::Settings->ImageDirectoryNameOf($inputDirectory);
+        $topLevelDirectory = 'images' . ($inputDirectoryName != 1 ? $inputDirectoryName : '');
+        }
+
+
+    $outputDirectory = NaturalDocs::File->JoinPaths($outputDirectory, $topLevelDirectory, 1);
 
     $relativeImageFile =~ tr/ /_/;
 
@@ -2804,14 +2823,15 @@ sub StringToSearchResultID #(string string, bool dontIncrement = 0) => string
 #       package  - The package <SymbolString> the <NDMarkup> appears in.
 #       type - The <TopicType> the <NDMarkup> appears in.
 #       using - An arrayref of scope <SymbolStrings> the <NDMarkup> also has access to, or undef if none.
+#       style - Set to one of the <NDMarkupToHTML Styles> or leave undef for general.
 #
 #   Returns:
 #
 #       The text in HTML.
 #
-sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
+sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
     {
-    my ($self, $sourceFile, $text, $symbol, $package, $type, $using) = @_;
+    my ($self, $sourceFile, $text, $symbol, $package, $type, $using, $style) = @_;
 
     my $dlSymbolBehavior;
 
@@ -2853,18 +2873,27 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             # Convert linked images.
             if ($text =~ /<img mode=\"link\"/)
                 {
-                # Split by tags we would want to see the linked images appear after.  For example, an image link appearing in
-                # the middle of a paragraph would appear after the end of that paragraph.
-                my @imageBlocks = split(/(<p>.*?<\/p>|<dl>.*?<\/dl>|<ul>.*?<\/ul>)/, $text);
-                $text = undef;
-
-                foreach my $imageBlock (@imageBlocks)
+                if ($style == NDMARKUPTOHTML_GENERAL)
                     {
-                    $imageBlock =~ s{<img mode=\"link\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
-                                            {$self->BuildImage($sourceFile, 'link', $1, $2)}ge;
+                    # Split by tags we would want to see the linked images appear after.  For example, an image link appearing in
+                    # the middle of a paragraph would appear after the end of that paragraph.
+                    my @imageBlocks = split(/(<p>.*?<\/p>|<dl>.*?<\/dl>|<ul>.*?<\/ul>)/, $text);
+                    $text = undef;
 
-                    $text .= $imageBlock . $imageContent;
-                    $imageContent = undef;
+                    foreach my $imageBlock (@imageBlocks)
+                        {
+                        $imageBlock =~ s{<img mode=\"link\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
+                                                {$self->BuildImage($sourceFile, 'link', $1, $2)}ge;
+
+                        $text .= $imageBlock . $imageContent;
+                        $imageContent = undef;
+                        };
+                    }
+
+                # Use only the text for tooltips and summaries.
+                else
+                    {
+                    $text =~ s{<img mode=\"link\" target=\"[^\"]*\" original=\"([^\"]*)\">}{$1}g;
                     };
                 };
 
@@ -2878,15 +2907,33 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using)
             $text =~ s/([\ \(\[\{])&quot;/$1&ldquo;/g;
             $text =~ s/&quot;/&rdquo;/g;
 
-            # Resolve and convert links.
-            $text =~ s{<link target=\"([^\"]*)\" name=\"([^\"]*)\" original=\"([^\"]*)\">}
-                           {$self->BuildTextLink($1, $2, $3, $package, $using, $sourceFile)}ge;
-            $text =~ s/<url target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildURLLink($1, $2)/ge;
+            # Resolve and convert links, except for tooltips.
+            if ($style != NDMARKUPTOHTML_TOOLTIP)
+                {
+                $text =~ s{<link target=\"([^\"]*)\" name=\"([^\"]*)\" original=\"([^\"]*)\">}
+                               {$self->BuildTextLink($1, $2, $3, $package, $using, $sourceFile)}ge;
+                $text =~ s/<url target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildURLLink($1, $2)/ge;
+                }
+            else
+                {
+                $text =~ s{<link target=\"[^\"]*\" name=\"([^\"]*)\" original=\"[^\"]*\">}{$1}g;
+                $text =~ s{<url target=\"[^\"]*\" name=\"([^\"]*)\">}{$1}g;
+                };
+
+            # We do full e-mail links anyway just so the obfuscation remains.
             $text =~ s/<email target=\"([^\"]*)\" name=\"([^\"]*)\">/$self->BuildEMailLink($1, $2)/ge;
 
-            # Convert inline images
-            $text =~ s{<img mode=\"inline\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
-                           {$self->BuildImage($sourceFile, 'inline', $1, $2)}ge;
+
+            # Convert inline images, but only for the general style.
+            if ($style == NDMARKUPTOHTML_GENERAL)
+                {
+                $text =~ s{<img mode=\"inline\" target=\"([^\"]*)\" original=\"([^\"]*)\">}
+                               {$self->BuildImage($sourceFile, 'inline', $1, $2)}ge;
+                }
+            else
+                {
+                $text =~ s{<img mode=\"inline\" target=\"[^\"]*\" original=\"([^\"]*)\">}{$1}g;
+                };
 
             # Copyright symbols.  Prevent conversion when part of (a), (b), (c) lists.
             if ($text !~ /\(a\)/i)

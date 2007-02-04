@@ -665,6 +665,7 @@ sub LoadImageFileInfo
 
             my $imageFileObject = $imageFiles{$imageFile};
 
+            # If there's an image file in ImageFileInfo.nd that no longer exists...
             if (!$imageFileObject)
                 {
                 $imageFileObject = NaturalDocs::Project::ImageFile->New($lastModified, ::FILE_DOESNTEXIST(), $wasUsed);
@@ -677,17 +678,14 @@ sub LoadImageFileInfo
                 {
                 $imageFileObject->SetWasUsed($wasUsed);
 
-                if ($imageFileObject->LastModified() == $lastModified && !$rebuildEverything)
-                    {
-                    $imageFileObject->SetStatus(::FILE_SAME());
-                    }
-                else
-                    {
-                    $imageFileObject->SetStatus(::FILE_CHANGED());
+                # This will be removed if it gets any references.
+                if ($wasUsed)
+                    {  $imageFilesToPurge{$imageFile} = 1;  };
 
-                    if ($wasUsed)
-                        {  $imageFilesToUpdate{$imageFile} = 1;  };
-                    };
+                if ($imageFileObject->LastModified() == $lastModified && !$rebuildEverything)
+                    {  $imageFileObject->SetStatus(::FILE_SAME());  }
+                else
+                    {  $imageFileObject->SetStatus(::FILE_CHANGED());  };
                 };
             };
 
@@ -1113,15 +1111,19 @@ sub AddImageFileReference #(FileName imageFile)
     if (!exists $imageFiles{$imageFile})
         {  $imageFile = $insensitiveImageFiles{lc($imageFile)};  };
 
-    if (!exists $imageFiles{$imageFile} || $imageFiles{$imageFile}->Status() == ::FILE_DOESNTEXIST())
+    my $imageFileInfo = $imageFiles{$imageFile};
+
+    if ($imageFileInfo == undef || $imageFileInfo->Status() == ::FILE_DOESNTEXIST())
         {  die "Tried to add a reference to a non-existant image file.";  };
 
-    if ($imageFiles{$imageFile}->AddReference() == 1)
+    if ($imageFileInfo->AddReference() == 1)
         {
-        if (!$imageFiles{$imageFile}->WasUsed())
-            {  $imageFilesToUpdate{$imageFile} = 1;  };
-
         delete $imageFilesToPurge{$imageFile};
+
+        if (!$imageFileInfo->WasUsed() ||
+            $imageFileInfo->Status() == ::FILE_NEW() ||
+            $imageFileInfo->Status() == ::FILE_CHANGED())
+            {  $imageFilesToUpdate{$imageFile} = 1;  };
         };
     };
 
@@ -1140,9 +1142,12 @@ sub DeleteImageFileReference #(FileName imageFile)
     if (!exists $imageFiles{$imageFile})
         {  die "Tried to delete a reference to a non-existant image file.";  };
 
-    if ($imageFiles{$imageFile}->DeleteReference() == 0 && $imageFiles{$imageFile}->WasUsed())
+    if ($imageFiles{$imageFile}->DeleteReference() == 0)
         {
-        $imageFilesToPurge{$imageFile} = 1;
+        delete $imageFilesToUpdate{$imageFile};
+
+        if ($imageFiles{$imageFile}->WasUsed())
+            {  $imageFilesToPurge{$imageFile} = 1;  };
         };
     };
 
@@ -1198,6 +1203,9 @@ sub GetAllSupportedFiles
         };
 
 
+    my $imagesOnly;
+    my $language;
+
     while (scalar @directories)
         {
         my $directory = pop @directories;
@@ -1248,7 +1256,7 @@ sub GetAllSupportedFiles
                         $insensitiveImageFiles{$lcFullEntry} = $fullEntry;
                         };
                     }
-                elsif (my $language = NaturalDocs::Languages->LanguageOf($fullEntry))
+                elsif (!$imagesOnly && ($language = NaturalDocs::Languages->LanguageOf($fullEntry)) )
                     {
                     my $fileObject = NaturalDocs::Project::SourceFile->New();
                     $fileObject->SetLastModified(( stat($fullEntry))[9] );
@@ -1257,6 +1265,15 @@ sub GetAllSupportedFiles
                     $languageCounts{$language->Name()}++;
                     };
                 };
+            };
+
+
+        # After we run out of source directories, add the image directories.
+
+        if (scalar @directories == 0 && !$imagesOnly)
+            {
+            $imagesOnly = 1;
+            @directories = @{NaturalDocs::Settings->ImageDirectories()};
             };
         };
 
