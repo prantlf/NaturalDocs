@@ -101,6 +101,18 @@ my @inputDirectories;
 # An array of the input directory names.  Each name corresponds to the directory of the same index in <inputDirectories>.
 my @inputDirectoryNames;
 
+# array: imageDirectories
+# An array of image directories.
+my @imageDirectories;
+
+# array: imageDirectoryNames
+# An array of the image directory names.  Each name corresponds to the directory of the same index in <imageDirectories>.
+my @imageDirectoryNames;
+
+# array: relativeImageDirectories
+# An array of the relative paths for images.  The asterisks found in the command line are not present.
+my @relativeImageDirectories;
+
 # array: excludedInputDirectories
 # An array of input directories to exclude.
 my @excludedInputDirectories;
@@ -110,9 +122,18 @@ my @excludedInputDirectories;
 my @removedInputDirectories;
 
 # array: removedInputDirectoryNames
-# An array of the removed input directories names.  Each name corresponds to the directory of the same index in
+# An array of the removed input directories' names.  Each name corresponds to the directory of the same index in
 # <removedInputDirectories>.
 my @removedInputDirectoryNames;
+
+# array: removedImageDirectories
+# An array of image directories that were once in the command line but are no longer.
+my @removedImageDirectories;
+
+# array: removedImageDirectoryNames
+# An array of the removed image directories' names.  Each name corresponds to the directory of the same index in
+# <removedImageDirectories>.
+my @removedImageDirectoryNames;
 
 # var: projectDirectory
 # The project directory.
@@ -247,27 +268,30 @@ sub Save
 #
 #   Function: GenerateDirectoryNames
 #
-#   Generates names for each of the input directories, which can later be retrieved with <InputDirectoryNameOf()>.
+#   Generates names for each of the input and image directories, which can later be retrieved with <InputDirectoryNameOf()>
+#   and <ImageDirectoryNameOf()>.
 #
 #   Parameters:
 #
-#       hints - A hashref of suggested names, where the keys are the directories and the values are the names.  These take
-#                 precedence over anything generated.  You should include names for directories that are no longer in the command
-#                 line.  This parameter may be undef.
+#       inputHints - A hashref of suggested input directory names, where the keys are the directories and the values are the names.
+#                        These take precedence over anything generated.  You should include names for directories that are no longer in
+#                        the command line.  This parameter may be undef.
+#       imageHints - Same as inputHints, only for the image directories.
 #
-sub GenerateDirectoryNames #(hints)
+sub GenerateDirectoryNames #(hashref inputHints, hashref imageHints)
     {
-    my ($self, $hints) = @_;
+    my ($self, $inputHints, $imageHints) = @_;
 
-    my %usedNames;
+    my %usedInputNames;
+    my %usedImageNames;
 
 
-    if (defined $hints)
+    if (defined $inputHints)
         {
         # First, we have to convert all non-numeric names to numbers, since they may come from a pre-1.32 menu file.  We do it
         # here instead of in NaturalDocs::Menu to keep the naming scheme centralized.
 
-        my @names = values %$hints;
+        my @names = values %$inputHints;
         my $hasNonNumeric;
 
         foreach my $name (@names)
@@ -311,29 +335,29 @@ sub GenerateDirectoryNames #(hints)
                 };
 
             # Convert them to the new names.
-            foreach my $directory (keys %$hints)
+            foreach my $directory (keys %$inputHints)
                 {
-                $hints->{$directory} = $conversion{ $hints->{$directory} };
+                $inputHints->{$directory} = $conversion{ $inputHints->{$directory} };
                 };
             };
 
 
-        # Now we apply all the names from the hints.
+        # Now we apply all the names from the hints, and save any unused ones as removed directories.
 
         for (my $i = 0; $i < scalar @inputDirectories; $i++)
             {
-            if (exists $hints->{$inputDirectories[$i]})
+            if (exists $inputHints->{$inputDirectories[$i]})
                 {
-                $inputDirectoryNames[$i] = $hints->{$inputDirectories[$i]};
-                $usedNames{ $hints->{$inputDirectories[$i]} } = 1;
-                delete $hints->{$inputDirectories[$i]};
+                $inputDirectoryNames[$i] = $inputHints->{$inputDirectories[$i]};
+                $usedInputNames{ $inputDirectoryNames[$i] } = 1;
+                delete $inputHints->{$inputDirectories[$i]};
                 };
             };
 
 
         # Any remaining hints are saved as removed directories.
 
-        while (my ($directory, $name) = each %$hints)
+        while (my ($directory, $name) = each %$inputHints)
             {
             push @removedInputDirectories, $directory;
             push @removedInputDirectoryNames, $name;
@@ -341,21 +365,63 @@ sub GenerateDirectoryNames #(hints)
         };
 
 
+    if (defined $imageHints)
+        {
+        # Image directory names were never non-numeric, so there is no conversion.  Apply all the names from the hints.
+
+        for (my $i = 0; $i < scalar @imageDirectories; $i++)
+            {
+            if (exists $imageHints->{$imageDirectories[$i]})
+                {
+                $imageDirectoryNames[$i] = $imageHints->{$imageDirectories[$i]};
+                $usedImageNames{ $imageDirectoryNames[$i] } = 1;
+                delete $imageHints->{$imageDirectories[$i]};
+                };
+            };
+
+
+        # Any remaining hints are saved as removed directories.
+
+        while (my ($directory, $name) = each %$imageHints)
+            {
+            push @removedImageDirectories, $directory;
+            push @removedImageDirectoryNames, $name;
+            };
+        };
+
+
     # Now we generate names for anything remaining.
 
-    my $nameCounter = 1;
+    my $inputCounter = 1;
 
     for (my $i = 0; $i < scalar @inputDirectories; $i++)
         {
         if (!defined $inputDirectoryNames[$i])
             {
-            while (exists $usedNames{$nameCounter})
-                {  $nameCounter++;  };
+            while (exists $usedInputNames{$inputCounter})
+                {  $inputCounter++;  };
 
-            $inputDirectoryNames[$i] = $nameCounter;
-            $usedNames{$nameCounter} = 1;
+            $inputDirectoryNames[$i] = $inputCounter;
+            $usedInputNames{$inputCounter} = 1;
 
-            $nameCounter++;
+            $inputCounter++;
+            };
+        };
+
+
+    my $imageCounter = 1;
+
+    for (my $i = 0; $i < scalar @imageDirectories; $i++)
+        {
+        if (!defined $imageDirectoryNames[$i])
+            {
+            while (exists $usedImageNames{$imageCounter})
+                {  $imageCounter++;  };
+
+            $imageDirectoryNames[$i] = $imageCounter;
+            $usedImageNames{$imageCounter} = 1;
+
+            $imageCounter++;
             };
         };
     };
@@ -426,6 +492,17 @@ sub SplitFromInputDirectory #(file)
 
 
 #
+#   Function: ImageDirectories
+#
+#   Returns an arrayref of image directories.  Do not change.
+#
+#   This will not return any removed image directories.
+#
+sub ImageDirectories
+    {  return \@imageDirectories;  };
+
+
+#
 #   Function: ImageDirectoryNameOf
 #
 #   Returns the generated name of the passed image or input directory.  <GenerateDirectoryNames()> must be called once before
@@ -437,16 +514,16 @@ sub ImageDirectoryNameOf #(directory)
     {
     my ($self, $directory) = @_;
 
-    for (my $i = 0; $i < scalar @inputDirectories; $i++)
+    for (my $i = 0; $i < scalar @imageDirectories; $i++)
         {
-        if ($directory eq $inputDirectories[$i])
-            {  return $inputDirectoryNames[$i];  };
+        if ($directory eq $imageDirectories[$i])
+            {  return $imageDirectoryNames[$i];  };
         };
 
-    for (my $i = 0; $i < scalar @removedInputDirectories; $i++)
+    for (my $i = 0; $i < scalar @removedImageDirectories; $i++)
         {
-        if ($directory eq $removedInputDirectories[$i])
-            {  return $removedInputDirectoryNames[$i];  };
+        if ($directory eq $removedImageDirectories[$i])
+            {  return $removedImageDirectoryNames[$i];  };
         };
 
     return undef;
@@ -456,15 +533,15 @@ sub ImageDirectoryNameOf #(directory)
 #
 #   Function: SplitFromImageDirectory
 #
-#   Takes an input image file name and returns the array ( inputDirectory, relativePath ).
+#   Takes an input image file name and returns the array ( imageDirectory, relativePath ).
 #
-#   If the file cannot be split from an input directory, it will try to do it with the removed input directories.
+#   If the file cannot be split from an image directory, it will try to do it with the removed image directories.
 #
 sub SplitFromImageDirectory #(file)
     {
     my ($self, $file) = @_;
 
-    foreach my $directory (@inputDirectories, @removedInputDirectories)
+    foreach my $directory (@imageDirectories, @removedImageDirectories)
         {
         if (NaturalDocs::File->IsSubPathOf($directory, $file))
             {  return ( $directory, NaturalDocs::File->MakeRelativePath($directory, $file) );  };
@@ -473,15 +550,27 @@ sub SplitFromImageDirectory #(file)
     return ( );
     };
 
+
+#
+#   Function: RelativeImageDirectories
+#
+#   Returns an arrayref of relative image directories.  Do not change.
+#
+sub RelativeImageDirectories
+    {  return \@relativeImageDirectories;  };
+
+
 # Function: ExcludedInputDirectories
 # Returns an arrayref of input directories to exclude.  Do not change.
 sub ExcludedInputDirectories
     {  return \@excludedInputDirectories;  };
 
+
 # Function: BuildTargets
 # Returns an arrayref of <NaturalDocs::Settings::BuildTarget>s.  Do not change.
 sub BuildTargets
     {  return \@buildTargets;  };
+
 
 #
 #   Function: OutputDirectoryOf
@@ -629,6 +718,7 @@ sub ParseCommandLine
                                   'source' => '-i',
                                   'excludeinput' => '-xi',
                                   'excludesource' => '-xi',
+                                  'image' => '-img',
                                   'output'  => '-o',
                                   'project' => '-p',
                                   'documentedonly' => '-do',
@@ -653,6 +743,7 @@ sub ParseCommandLine
     my $option;
 
     my @outputStrings;
+    my @imageStrings;
 
 
     # Sometimes $valueRef is set to $ignored instead of undef because we don't want certain errors to cause other,
@@ -698,6 +789,11 @@ sub ParseCommandLine
                 {
                 push @excludedInputDirectories, undef;
                 $valueRef = \$excludedInputDirectories[-1];
+                }
+            elsif ($option eq '-img')
+                {
+                push @imageStrings, undef;
+                $valueRef = \$imageStrings[-1];
                 }
             elsif ($option eq '-p')
                 {
@@ -918,6 +1014,38 @@ sub ParseCommandLine
         {  push @errorMessages, 'You did not specify an output directory.';  };
 
 
+    # Decode and validate the image strings.
+
+    foreach my $imageString (@imageStrings)
+        {
+        if ($imageString =~ /^ *\*/)
+            {
+            # The below NaturalDocs::File functions assume everything is canonized.
+            $imageString = NaturalDocs::File->CanonizePath($imageString);
+
+            my ($volume, $directoryString) = NaturalDocs::File->SplitPath($imageString, 1);
+            my @directories = NaturalDocs::File->SplitDirectories($directoryString);
+
+            shift @directories;
+
+            $directoryString = NaturalDocs::File->JoinDirectories(@directories);
+            push @relativeImageDirectories, NaturalDocs::File->JoinPath($volume, $directoryString);
+            }
+        else
+            {
+            if (!NaturalDocs::File->PathIsAbsolute($imageString))
+                {  $imageString = NaturalDocs::File->JoinPaths(Cwd::cwd(), $imageString, 1);  };
+
+            $imageString = NaturalDocs::File->CanonizePath($imageString);
+
+            if (! -e $imageString || ! -d $imageString)
+                {  push @errorMessages, 'The image directory ' . $imageString . ' does not exist.';  };
+
+            push @imageDirectories, $imageString;
+            };
+        };
+
+
     # Make sure the input and project directories are specified, canonized, and exist.
 
     if (scalar @inputDirectories)
@@ -1032,11 +1160,11 @@ sub PrintSyntax
     . "Required Parameters:\n"
     . "\n"
     . " -i [dir]\n--input [dir]\n--source [dir]\n"
-    . "     Specifies the input (source) directory.  Required.\n"
+    . "     Specifies an input (source) directory.  Required.\n"
     . "     Can be specified multiple times.\n"
     . "\n"
     . " -o [fmt] [dir]\n--output [fmt] [dir]\n"
-    . "    Specifies the output format and directory.  Required.\n"
+    . "    Specifies an output format and directory.  Required.\n"
     . "    Can be specified multiple times, but only once per directory.\n"
     . "    Possible output formats:\n";
 
@@ -1054,6 +1182,10 @@ sub PrintSyntax
     . "    Specifies the CSS style when building HTML output.  If multiple styles are\n"
     . "    specified, they will all be included in the order given.\n"
     . "\n"
+    . " -img [image directory]\n--image [image directory]"
+    . "    Specifies an image directory.  Can be specified multiple times.\n"
+    . "    Start with * to specify a relative directory, as in -img */images.\n"
+    . "\n"
     . " -do\n--documented-only\n"
     . "    Specifies only documented code aspects should be included in the output.\n"
     . "\n"
@@ -1062,9 +1194,9 @@ sub PrintSyntax
     . "    to be set if you use tabs in example code and text diagrams.  Defaults to 4.\n"
     . "\n"
     . " -xi [dir]\n--exclude-input [dir]\n--exclude-source [dir]\n"
-    . "     Excludes an input (source) directory from the documentation.\n"
-    . "     Automatically done for the project and output directories.  Can\n"
-    . "     be specified multiple times.\n"
+    . "    Excludes an input (source) directory from the documentation.\n"
+    . "    Automatically done for the project and output directories.  Can\n"
+    . "    be specified multiple times.\n"
     . "\n"
     . " -nag\n--no-auto-group\n"
     . "    Turns off auto-grouping completely.\n"
