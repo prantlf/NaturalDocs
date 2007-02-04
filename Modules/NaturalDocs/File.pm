@@ -91,7 +91,7 @@ sub CanonizePath #(path)
         my $i = 1;
         while ($i < scalar @directories)
             {
-            if ($i > 0 && $directories[$i] eq $upDir)
+            if ($i > 0 && $directories[$i] eq $upDir && $directories[$i - 1] ne $upDir)
                 {
                 splice(@directories, $i - 1, 2);
                 $i--;
