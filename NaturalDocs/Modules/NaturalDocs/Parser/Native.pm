@@ -663,9 +663,84 @@ sub RichFormatTextBlock #(text)
     my $output;
 
 
+    # First find bare urls, e-mail addresses, and images.  We have to do this before the split because they may contain underscores
+    # or asterisks.  We have to mark the tags with \x1E and \x1F so they don't get confused with angle brackets from the comment.
+    # We can't convert the amp chars beforehand because we need lookbehinds in the regexps below and they need to be
+    # constant length.  Sucks, huh?
+
+    $text =~ s{
+                       # The previous character can't be an alphanumeric or an opening angle bracket.
+                       (?<!  [a-z0-9<]  )
+
+                       # Optional mailto:.  Ignored in output.
+                       (?:mailto\:)?
+
+                       # Begin capture
+                       (
+
+                       # The user portion.  Alphanumeric and - _.  Dots can appear between, but not at the edges or more than
+                       # one in a row.
+                       (?:  [a-z0-9\-_]+  \.  )*   [a-z0-9\-_]+
+
+                       @
+
+                       # The domain.  Alphanumeric and -.  Dots same as above, however, there must be at least two sections
+                       # and the last one must be two to four alphanumeric characters (.com, .uk, .info, .203 for IP addresses)
+                       (?:  [a-z0-9\-]+  \.  )+  [a-z]{2,4}
+
+                       # End capture.
+                       )
+
+                       # The next character can't be an alphanumeric, which should prevent .abcde from matching the two to
+                       # four character requirement, or a closing angle bracket.
+                       (?!  [a-z0-9>]  )
+
+                       }
+
+                       {"\x1E" . 'email target="' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '" '
+                       . 'name="' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '"' . "\x1F"}igxe;
+
+    $text =~ s{
+                       # The previous character can't be an alphanumeric or an opening angle bracket.
+                       (?<!  [a-z0-9<]  )
+
+                       # Begin capture.
+                       (
+
+                       # URL must start with one of the acceptable protocols.
+                       (?:http|https|ftp|news|file)\:
+
+                       # The acceptable URL characters as far as I know.
+                       [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\*\.\,]*
+
+                       # The URL characters minus period and comma.  If it ends on them, they're probably intended as
+                       # punctuation.
+                       [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\*]
+
+                       # End capture.
+                       )
+
+                       # The next character must not be an acceptable character or a closing angle bracket.  This will prevent the URL
+                       # from ending early just to get a match.
+                       (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\*\>]  )
+
+                       }
+
+                       {"\x1E" . 'url target="' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '" '
+                       . 'name="' . NaturalDocs::NDMarkup->ConvertAmpChars($1) . '"' . "\x1F"}igxe;
+
+
+    # Find image links.  Inline images should already be pulled out by now.
+
+    $text =~ s{(\( *see +)([^\)]+?)( *\))}
+                      {"\x1E" . 'img mode="link" target="' . NaturalDocs::NDMarkup->ConvertAmpChars($2) . '" '
+                        . 'original="' . NaturalDocs::NDMarkup->ConvertAmpChars($1 . $2 . $3) . '"' . "\x1F"}gie;
+
+
+
     # Split the text from the potential tags.
 
-    my @tempTextBlocks = split(/([\*_<>])/, $text);
+    my @tempTextBlocks = split(/([\*_<>\x1E\x1F])/, $text);
 
     # Since the symbols are considered dividers, empty strings could appear between two in a row or at the beginning/end of the
     # array.  This could seriously screw up TagType(), so we need to get rid of them.
@@ -688,7 +763,21 @@ sub RichFormatTextBlock #(text)
 
     while ($index < scalar @textBlocks)
         {
-        if ($textBlocks[$index] eq '<' && $self->TagType(\@textBlocks, $index) == POSSIBLE_OPENING_TAG)
+        if ($textBlocks[$index] eq "\x1E")
+            {
+            $output .= '<';
+            $index++;
+
+            while ($textBlocks[$index] ne "\x1F")
+                {
+                $output .= $textBlocks[$index];
+                $index++;
+                };
+
+            $output .= '>';
+            }
+
+        elsif ($textBlocks[$index] eq '<' && $self->TagType(\@textBlocks, $index) == POSSIBLE_OPENING_TAG)
             {
             my $endingIndex = $self->ClosingTag(\@textBlocks, $index, undef);
 
@@ -773,75 +862,7 @@ sub RichFormatTextBlock #(text)
 
         else # plain text or a > that isn't part of a link
             {
-            my $textBlock = NaturalDocs::NDMarkup->ConvertAmpChars($textBlocks[$index]);;
-
-            # Pull out the e-mail addresses and URLs that aren't in angle brackets.
-
-            $textBlock =~ s{
-                                    # The previous character can't be an alphanumeric.
-                                    (?<!  [a-z0-9]  )
-
-                                    # Optional mailto:.  Ignored in output.
-                                    (?:mailto\:)?
-
-                                    # Begin capture
-                                    (
-
-                                    # The user portion.  Alphanumeric and - _.  Dots can appear between, but not at the edges or more than
-                                    # one in a row.
-                                    (?:  [a-z0-9\-_]+  \.  )*   [a-z0-9\-_]+
-
-                                    @
-
-                                    # The domain.  Alphanumeric and -.  Dots same as above, however, there must be at least two sections
-                                    # and the last one must be two to four alphanumeric characters (.com, .uk, .info, .203 for IP addresses)
-                                    (?:  [a-z0-9\-]+  \.  )+  [a-z]{2,4}
-
-                                    # End capture.
-                                    )
-
-                                    # The next character can't be an alphanumeric, which should prevent .abcde from matching the two to
-                                    # four character requirement.
-                                    (?!  [a-z0-9]  )
-
-                                    }
-
-                                   {<email target="$1" name="$1">}igx;
-
-            $textBlock =~ s{
-                                    # The previous character can't be an alphanumeric.
-                                    (?<!  [a-z0-9]  )
-
-                                    # Begin capture.
-                                    (
-
-                                    # URL must start with one of the acceptable protocols.
-                                    (?:http|https|ftp|news|file)\:
-
-                                    # The acceptable URL characters as far as I know.
-                                    [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\.\,]*
-
-                                    # The URL characters minus period and comma.  If it ends on them, they're probably intended as
-                                    # punctuation.
-                                    [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]
-
-                                    # End capture.
-                                    )
-
-                                    # The next character must not be an acceptable character.  This will prevent the URL from ending early
-                                    # just to get a match.
-                                    (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?]  )
-
-                                    }
-
-                                   {<url target="$1" name="$1">}igx;
-
-
-            # Find image links.  Inline images should already be pulled out by now.  Amp chars are already converted.
-
-            $textBlock =~ s{(\( *see +)([^\)]+?)( *\))}{<img mode="link" target="$2" original="$1$2$3">}gi;
-
-            $output .= $textBlock;
+            $output .= NaturalDocs::NDMarkup->ConvertAmpChars($textBlocks[$index]);
            };
 
         $index++;
