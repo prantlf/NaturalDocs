@@ -730,6 +730,8 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 
     if ($name =~ s/^_global.//)
         {  $scope = undef;  };
+    if ($namespace)
+        {  $scope = NaturalDocs::SymbolString->Join($scope, $namespace);  };
 
     $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
                                                                                               $scope, $self->CurrentUsing(),
@@ -874,6 +876,8 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
         if ($names[$i] =~ s/^_global.//)
             {  $scope = undef;  };
+        if ($namespace)
+            {  $scope = NaturalDocs::SymbolString->Join($scope, $namespace);  };
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $names[$i],
                                                                                                   $scope, $self->CurrentUsing(),
