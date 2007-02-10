@@ -66,7 +66,7 @@ sub FromString #(string string) => VersionInt
             ($major, $minor) = ($1, $2);
             ($month, $day, $year) = (0, 0, 0);
             }
-        elsif ($string =~ /^Development Release (\d\d)-(\d\d)-(\d\d\d\d) \((\d{1,2})\.(\d{1,2}) base\)$/)
+        elsif ($string =~ /^Development Release (\d{1,2})-(\d{1,2})-(\d\d\d\d) \((\d{1,2})\.(\d{1,2}) base\)$/)
             {
             ($month, $day, $year, $major, $minor) = ($1, $2, $3, $4, $5);
 
