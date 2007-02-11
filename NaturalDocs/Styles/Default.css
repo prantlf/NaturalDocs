@@ -90,6 +90,7 @@ blockquote {
     top: 0;
     left: 0;
     width: 31ex;
+    overflow: hidden;
     }
 #ContentPage #Firefox #Menu,
 #IndexPage #Firefox #Menu {
