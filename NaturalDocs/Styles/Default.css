@@ -330,15 +330,17 @@ blockquote {
         overflow: visible;
         }
 
-    .CHeading {
+    .CBody h1 {
         font-weight: bold; font-size: 10pt;
-        margin-top: 1.5em; margin-bottom: .5em }
-
-    .CCode {
-        font: 10pt "Courier New", Courier, monospace;
+        margin: 1.5em 0 .5em 0;
         }
 
-    .CBulletList {
+    .CBody pre {
+        font: 10pt "Courier New", Courier, monospace;
+        margin: 1em 0;
+        }
+
+    .CBody ul {
         /*  I don't know why CBody's margin doesn't apply, but it's consistent across browsers so whatever.
              Reapply it here as padding.  */
         padding-left: 15px; padding-right: 15px;

@@ -7,13 +7,13 @@ you're content with the default styles, there's no need to read this document.
 
 Topic: Diagram Conventions
 
-    The diagrams are designed for clarity.  In the actual HTML, you'd obviously see "<pre class=CCode></pre>" instead of
-    "<pre CCode></pre CCode>".
+    The diagrams are designed for clarity.  In the actual HTML, you'd obviously see "<table class=CDescriptionList></table>"
+    instead of "<table CDescriptionList></table CDescriptionList>".
 
     - A tag with just a style, for example "CTitle", means an unspecified element with that class.  Style with .CTitle.
     - A tag that includes a #, for example "#Menu", means an unspecified element with that ID.  Style with #Menu.
-    - A tag that includes a HTML element as well, for example "pre CCode", means it will always be that element.  You can style with
-      either .CCode or pre.CCode.
+    - A tag that includes a HTML element as well, for example "table CDescriptionList", means it will always be that element.  You
+      can style with either .CDescriptionList or table.CDescriptionList.
     - A tag that has an "or" in it, for example "#Content or #Index", is just shorthand for either of those elements.  The diagram
       applies to both of them but only one will actually appear at a time in the output.
     - A tag that has an "and" in it, for example "CType and CTopic", means that both styles will apply to the same element.  You can
@@ -56,12 +56,16 @@ _______________________________________________________________________________
         (start diagram)
 
         <body #SearchResultsPage>
+        [browser styles]
 
             <#Index>
                 Index
             </#Index>
 
+        [/browser styles]
         </body #SearchResultsPage>
+
+        (end diagram)
 
 
     Framed Menu Page:
@@ -183,8 +187,7 @@ Topic: Content Structure
     distinguish between framed and unframed output styles.  All other content styles are prefixed with a C.
 
     Each piece of content is a <CTopic> and its type; for example, <CFunction> for a function.  Inside that are the <CTitle> and if
-    necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags: <CHeading>, <CParagraph>, etc.
-    Styles like <CParagraph> exist so that you only style explicit <NDMarkup> paragraphs, not any p that appears.
+    necessary, <CBody>.  Inside <CBody> are analogues to all the top-level <NDMarkup> tags: <h1>, <p>, etc.
 
     In addition to the top-level <NDMarkup> tags, you also have <Prototype>, <CTitle>, and <Summaries>.  <Summaries> are
     described in their own section.
@@ -205,23 +208,23 @@ Topic: Content Structure
 
                 <Prototype> (See it's section)
 
-                <p CParagraph>
-                     Paragraph
-                </p CParagraph>
+                <p>
+                    Paragraph
+                </p>
 
-                <CHeading>
+                <h1>
                     Heading
-                </CHeading>
+                </h1>
 
-                <pre CCode>
-                    Code
-                </pre CCode>
+                <pre>
+                    Code or text diagram
+                </pre>
 
-                <ul CBulletList>
+                <ul>
                     <li>
-                    Bullet item
+                        Bullet item
                     </li>
-                </ul CBulletList>
+                </ul>
 
                 <CImage>
                     <CImageCaption>?
@@ -269,10 +272,6 @@ Styles: Content Styles
 
     CTitle - The title of a topic.
     CBody - The body of a topic.  May not exist.
-    CParagraph - A paragraph.  Is implemented with a p.
-    CHeading - A heading.
-    CBulletList - A bullet list.  Is implemented with a ul.
-    CCode - A section of code.  Is implemented with a pre.
     CImage - Surrounds an image.
     CImageCaption - Surrounds an image caption.
     CImageLink - Surrounds a link to an image.
@@ -840,8 +839,9 @@ Topic: Revisions
         - CHIndent was replaced by <CHIndent#>.
         - SBorder becomes <SBody>.
         - Added <CImage>, <CImageCaption>, and <CImageLink>.
-        - Added <#SearchPanel>, <#SearchResultsWindow>, and all related styles.
+        - Added <#MSearchPanel>, <#MSearchResultsWindow>, and all related styles.
         - Added <Search Results Structure>, <Search Results Styles>, and <#FramedSearchResultsPage>.
+        - Removed redundant CParagraph, CCode, CBulletList, and CHeading tags.  Use <CBody> with p, pre, ul, and h1 instead.
 
     1.33:
 

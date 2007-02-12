@@ -2853,7 +2853,7 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
 
         if ($text eq '<code>')
             {
-            $output .= '<blockquote><pre class=CCode>';
+            $output .= '<blockquote><pre>';
             $inCode = 1;
             }
         elsif ($text eq '</code>')
@@ -2863,7 +2863,7 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
             }
         elsif ($inCode)
             {
-            $text =~ s/\n/<br>/g;
+            # Leave line breaks in.
             $output .= $text;
             }
         else
@@ -2946,15 +2946,9 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
             # Add double spaces too.
             $text = $self->AddDoubleSpaces($text);
 
-            # Paragraphs
-            $text =~ s/<p>/<p class=CParagraph>/g;
-
-            # Bulleted lists
-            $text =~ s/<ul>/<ul class=CBulletList>/g;
-
             # Headings
-            $text =~ s/<h>/<h4 class=CHeading>/g;
-            $text =~ s/<\/h>/<\/h4>/g;
+            $text =~ s/<h>/<h1>/g;
+            $text =~ s/<\/h>/<\/h1>/g;
 
             # Description Lists
             $text =~ s/<dl>/<table border=0 cellspacing=0 cellpadding=0 class=CDescriptionList>/g;
