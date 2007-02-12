@@ -823,36 +823,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
 
         '<script language=JavaScript><!--' . "\n"
 
-        # Using ToggleMenu here causes IE to sometimes say display is nothing instead of "block" or "none" on the first click.
-        # Whatever.  This is just as good.
-
-        . 'if (document.getElementById)'
-            . '{';
-
-            if (scalar @$toExpand)
-                {
-                $output .=
-
-                'for (var menu = 1; menu < ' . $menuGroupNumber . '; menu++)'
-                    . '{'
-                    . 'if (menu != ' . join(' && menu != ', @$toExpand) . ')'
-                        . '{'
-                        . 'document.getElementById("MGroupContent" + menu).style.display = "none";'
-                        . '};'
-                    . '};'
-                }
-            else
-                {
-                $output .=
-
-                'for (var menu = 1; menu < ' . $menuGroupNumber . '; menu++)'
-                    . '{'
-                    . 'document.getElementById("MGroupContent" + menu).style.display = "none";'
-                    . '};'
-                };
-
-            $output .=
-            '}'
+        . 'HideAllBut([' . join(', ', @$toExpand) . '], ' . $menuGroupNumber . ');'
 
         . '// --></script>';
         };
