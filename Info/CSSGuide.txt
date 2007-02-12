@@ -293,9 +293,9 @@ Topic: Menu Structure
     framed and unframed output styles.  All other menu styles are prefixed with an M.
 
     The title is an <#MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
-    as an <#MSubTitle> inside <#MTitle>.  Subtitles aren't allowed without titles.  Every other entry in the menu is contained in a
-    <MEntry> and <MType>, inside of which is the content.  With <MGroups>, there's also a section inside called <MGroupContent>
-    which can contain more entries.  Here's the diagram:
+    as an <#MSubTitle> inside <#MTitle>.  Subtitles aren't allowed without titles.  Most other entries in the menu are contained in
+    <#MEntries> and <MTypes>, inside of which is the content.  With <MGroups>, there's also a section inside called
+    <MGroupContent> which can contain more entries.  Here's the diagram:
 
     (start diagram)
 
@@ -310,30 +310,34 @@ Topic: Menu Structure
 
         </#MTitle>
 
-        <MFile and MEntry (and #MSelected?)>
-            <a href>File</a href>
-        </MFile and MEntry (and #MSelected?)>
+        <ul #MEntries>
 
-        <MIndex and MEntry (and #MSelected?)>
-            <a href>Index</a href>
-        </MIndex and MEntry (and #MSelected?)>
+            <li MFile (and #MSelected?)>
+                <a href>File</a href>
+            </li MFile (and #MSelected?)>
 
-        <MText and MEntry>
-            Text
-        </MText and MEntry>
+            <li MIndex (and #MSelected?)>
+                <a href>Index</a href>
+            </li MIndex (and #MSelected?)>
 
-        <MLink and MEntry>
-            <a href>Link</a href>
-        </MLink and MEntry>
+            <li MText>
+                Text
+            </li MText>
 
-        <MGroup and MEntry>
-            <a href>Group</a href>
-            <MGroupContent>
+            <li MLink>
+                <a href>Link</a href>
+            </li MLink>
 
-                (MEntries)
+            <li MGroup>
+                <a href>Group</a href>
+                <ul MGroupContent>
 
-           </MGroupContent>
-        </MGroup and MEntry>
+                    Entries
+
+               </ul MGroupContent>
+            </li MGroup>
+
+        </ul #MEntries>
 
         <#MSearchPanel and MSearchPanelActive/Inactive>
             <input #MSeachField>
@@ -373,7 +377,7 @@ Styles: Menu Styles
     #MTitle - The title of the menu.
     #MSubTitle - The subtitle of the menu.  Will appear within <#MTitle>.
 
-    MEntry - The parent container of <MFile> and <MGroup> entries.
+    #MEntries - The parent ul container of all other <MType> entries.
 
     MFile - A file entry.
     MGroup - A group entry.
@@ -831,7 +835,7 @@ Topic: Revisions
         - Removed MenuSection, ContentSection, and IndexSection.  Use things like "<#ContentPage> <#Menu>" instead.
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
         - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
-          <CType> and <CTopic>, <MType> and <MEntry>, <CHType> and <CHEntry>
+          <CType> and <CTopic>, <CHType> and <CHEntry>
         - The IE4, IE5, Opera5, Opera6, Netscape, and Netscape4 styles have been removed.  <#IE7>, <#Opera8>, and <#Opera9>
           have been added.  Gecko has been replaced by <#Firefox>, <#Firefox1>, <#Firefox15>, and <#Firefox2>.
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
@@ -842,6 +846,7 @@ Topic: Revisions
         - Added <#MSearchPanel>, <#MSearchResultsWindow>, and all related styles.
         - Added <Search Results Structure>, <Search Results Styles>, and <#FramedSearchResultsPage>.
         - Removed redundant CParagraph, CCode, CBulletList, and CHeading tags.  Use <CBody> with p, pre, ul, and h1 instead.
+        - Changed the <Menu Structure> to use ul and li instead of MEntry divs.  <#MEntries> is added to the top level one.
 
     1.33:
 
