@@ -677,7 +677,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
         my $segmentOutput;
 
         ($segmentOutput, $menuRootLength) =
-            $self->BuildMenuSegment($outputDirectory, NaturalDocs::Menu->Content());
+            $self->BuildMenuSegment($outputDirectory, NaturalDocs::Menu->Content(), 1);
 
         my $titleOutput;
 
@@ -781,7 +781,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
         {
         # Dependency: This depends on how BuildMenuSegment() formats file entries.
         my $outputFile = $self->OutputFileOf($sourceFile);
-        my $tag = '<div class="MFile MEntry"><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
+        my $tag = '<li class=MFile><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
         my $tagIndex = index($output, $tag);
 
         if ($tagIndex != -1)
@@ -789,14 +789,14 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
             my $endIndex = index($output, '</a>', $tagIndex);
 
             substr($output, $endIndex, 4, '');
-            substr($output, $tagIndex, length($tag), '<div class="MFile MEntry" id=MSelected>');
+            substr($output, $tagIndex, length($tag), '<li class=MFile id=MSelected>');
             };
         }
     elsif ($indexType)
         {
         # Dependency: This depends on how BuildMenuSegment() formats index entries.
         my $outputFile = $self->IndexFileOf($indexType);
-        my $tag = '<div class="MIndex MEntry"><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
+        my $tag = '<li class=MIndex><a href="' . $self->MakeRelativeURL($outputDirectory, $outputFile) . '">';
         my $tagIndex = index($output, $tag);
 
         if ($tagIndex != -1)
@@ -804,7 +804,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
             my $endIndex = index($output, '</a>', $tagIndex);
 
             substr($output, $endIndex, 4, '');
-            substr($output, $tagIndex, length($tag), '<div class="MIndex MEntry" id=MSelected>');
+            substr($output, $tagIndex, length($tag), '<li class=MIndex id=MSelected>');
             };
         };
 
@@ -876,6 +876,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
 #       outputDirectory - The output directory the menu is being built for.
 #       menuSegment - An arrayref specifying the segment of the menu to build.  Either pass the menu itself or the contents
 #                               of a group.
+#       topLevel - Whether the passed segment is the top level segment or not.
 #
 #   Returns:
 #
@@ -889,11 +890,15 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
 #
 #       - <BuildMenu()> depends on the way this function formats file and index entries.
 #
-sub BuildMenuSegment #(outputDirectory, menuSegment)
+sub BuildMenuSegment #(outputDirectory, menuSegment, topLevel)
     {
-    my ($self, $outputDirectory, $menuSegment) = @_;
+    my ($self, $outputDirectory, $menuSegment, $topLevel) = @_;
 
-    my ($output, $groupLength);
+    my $output;
+    if ($topLevel)
+        {  $output = '<ul id=MEntries>';  };
+
+    my $groupLength = 0;
 
     foreach my $entry (@$menuSegment)
         {
@@ -916,18 +921,18 @@ sub BuildMenuSegment #(outputDirectory, menuSegment)
                 {  $entryNumber = $menuGroupNumbers{$entry};  };
 
             $output .=
-            '<div class="MGroup MEntry">'
+            '<li class=MGroup>'
 
                 . '<a href="javascript:ToggleMenu(\'MGroupContent' . $entryNumber . '\')"'
                      . ($self->CommandLineOption() eq 'FramedHTML' ? ' target="_self"' : '') . '>'
                     . $self->StringToHTML($entry->Title())
                 . '</a>'
 
-                . '<div class=MGroupContent id=MGroupContent' . $entryNumber . '>'
+                . '<ul class=MGroupContent id=MGroupContent' . $entryNumber . '>'
                     . $entryOutput
-                . '</div>'
+                . '</ul>'
 
-            . '</div>';
+            . '</li>';
 
             $groupLength += MENU_GROUP_LENGTH;
             }
@@ -938,11 +943,11 @@ sub BuildMenuSegment #(outputDirectory, menuSegment)
 
         # Dependency: BuildMenu() depends on how this formats file entries.
             $output .=
-            '<div class="MFile MEntry">'
+            '<li class=MFile>'
                 . '<a href="' . $self->MakeRelativeURL($outputDirectory, $targetOutputFile) . '">'
                     . $self->StringToHTML( $entry->Title(), ADD_HIDDEN_BREAKS)
                 . '</a>'
-            . '</div>';
+            . '</li>';
 
             $groupLength += MENU_FILE_LENGTH;
             }
@@ -950,9 +955,9 @@ sub BuildMenuSegment #(outputDirectory, menuSegment)
         elsif ($entry->Type() == ::MENU_TEXT())
             {
             $output .=
-            '<div class="MText MEntry">'
+            '<li class=MText>'
                 . $self->StringToHTML( $entry->Title() )
-            . '</div>';
+            . '</li>';
 
             $groupLength += MENU_TEXT_LENGTH;
             }
@@ -960,11 +965,11 @@ sub BuildMenuSegment #(outputDirectory, menuSegment)
         elsif ($entry->Type() == ::MENU_LINK())
             {
             $output .=
-            '<div class="MLink MEntry">'
+            '<li class=MLink>'
                 . '<a href="' . $entry->Target() . '"' . ($self->CommandLineOption() eq 'FramedHTML' ? ' target="_top"' : '') . '>'
                     . $self->StringToHTML( $entry->Title() )
                 . '</a>'
-            . '</div>';
+            . '</li>';
 
             $groupLength += MENU_LINK_LENGTH;
             }
@@ -975,11 +980,11 @@ sub BuildMenuSegment #(outputDirectory, menuSegment)
 
         # Dependency: BuildMenu() depends on how this formats index entries.
             $output .=
-            '<div class="MIndex MEntry">'
+            '<li class=MIndex>'
                 . '<a href="' . $self->MakeRelativeURL( $outputDirectory, $self->IndexFileOf($entry->Target()) ) . '">'
                     . $self->StringToHTML( $entry->Title() )
                 . '</a>'
-            . '</div>';
+            . '</li>';
 
             $groupLength += MENU_INDEX_LENGTH;
             };
@@ -988,6 +993,9 @@ sub BuildMenuSegment #(outputDirectory, menuSegment)
 
     if (!$menuNumbersAndLengthsDone)
         {  $menuLength += $groupLength;  };
+
+    if ($topLevel)
+        {  $output .= '</ul>';  };
 
     return ($output, $groupLength);
     };
