@@ -126,6 +126,27 @@ function ToggleMenu(id)
     window.document.getElementById(id).style.display = display;
     }
 
+function HideAllBut(ids, max)
+    {
+    if (document.getElementById)
+        {
+        ids.sort( function(a,b) { return a - b; } );
+        var number = 1;
+
+        while (number < max)
+            {
+            if (ids.length > 0 && number == ids[0])
+                {  ids.shift();  }
+            else
+                {
+                document.getElementById("MGroupContent" + number).style.display = "none";
+                };
+
+            number++;
+            };
+        };
+    }
+
 
 //
 //  Tooltips
