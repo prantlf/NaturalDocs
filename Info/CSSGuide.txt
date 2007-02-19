@@ -139,45 +139,45 @@ Styles: Browser Styles
 
     >   <body>
     >
-    >       <#Browser Type>?
-    >           <#Browser Version>?
+    >       <Browser Type>?
+    >           <Browser Version>?
     >
     >              Page Content
     >
-    >           </#Browser Version>?
-    >       </#BrowserType>?
+    >           </Browser Version>?
+    >       </BrowserType>?
     >
     >   </body>
 
-    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 6, override it with #IE6 .CTopic.  If a <MTitle>'s
-    style gives you a problem in Opera 7 but only in frames, override it with #FramedMenuPage #Opera7 .MTitle.
+    For example, if a <CTopic>'s style is giving you problems in Internet Explorer 6, override it with .IE6 .CTopic.  If a <MTitle>'s
+    style gives you a problem in Opera 7 but only in frames, override it with #FramedMenuPage .Opera7 .MTitle.
 
     Browser Types:
 
         If the browser is not one of the types below, neither this nor the browser version will be present.  There's the possibility that
-        some obscure browser will appear as one of the others by spoofing, but the most prominent of these, Opera, Konquerer, and
+        some obscure browser will appear as one of the others by spoofing, but the most prominent of these, Opera, Konqueror, and
         Safari, are taken care of.
 
-        #IE - Internet Explorer
-        #Firefox - Firefox and anything else based on the Gecko rendering engine.
-        #Opera - Opera
-        #KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
+        IE - Internet Explorer
+        Firefox - Firefox and anything else based on the Gecko rendering engine.
+        Opera - Opera
+        KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
 
     Browser Versions:
 
-        If the browser is not one of the versions below, this style will not be present.  The browser type still may be.  Gecko and
-        KHTML-based browsers are not broken out into sub-versions.
+        If the browser is not one of the versions below, this style will not be present.  The browser type still may be.  KHTML-based
+        browsers are not broken out into sub-versions.
 
-        #IE6 - Internet Explorer 6.x.
-        #IE7 - Internet Explorer 7.x.
+        IE6 - Internet Explorer 6.x.
+        IE7 - Internet Explorer 7.x.
 
-        #Opera7 - Opera 7.x.
-        #Opera8 - Opera 8.x.
-        #Opera9 - Opera 9.x.
+        Opera7 - Opera 7.x.
+        Opera8 - Opera 8.x.
+        Opera9 - Opera 9.x.
 
-        #Firefox1 - Firefox 1.0.x and anything else based on Gecko 1.7.x.
-        #Firefox15 - Firefox 1.5.x and anything else based on Gecko 1.8.0.x.
-        #Firefox2 - Firefox 2.0.x and anything else based on Gecko 1.8.1.x.
+        Firefox1 - Firefox 1.0.x and anything else based on Gecko 1.7.x.
+        Firefox15 - Firefox 1.5.x and anything else based on Gecko 1.8.0.x.
+        Firefox2 - Firefox 2.0.x and anything else based on Gecko 1.8.1.x.
 
 
 
@@ -367,7 +367,7 @@ Topic: Menu Structure
 
     The search panel is has its own ID, <#MSearchPanel>, but also has one of the classes <MSearchPanelActive> or
     <MSearchPanelInactive> depending on whether any of the controls are selected or the results window is open.
-    <#MResultsWindow> is separate because it may be floating.
+    <#MSearchResultsWindow> is separate because it may be floating.
 
 
 Styles: Menu Styles
@@ -830,14 +830,14 @@ Topic: Revisions
         - Added <#Menu>, <#Content>, <#Footer>, and <#Index>.  They were previously shown in the diagrams as classes but did
           not actually appear in the generated output.
         - The following become IDs instead of classes: <#FramedMenuPage>, <#FramedContentPage>,
-          <#FramedIndexPage>, <#MTitle>, <#MSubTitle>, all <Browser Styles>.
+          <#FramedIndexPage>, <#MTitle>, <#MSubTitle>.
         - Replaced #UnframedPage with <#ContentPage> and <#IndexPage>.
         - Removed MenuSection, ContentSection, and IndexSection.  Use things like "<#ContentPage> <#Menu>" instead.
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
         - The following were merged into single items, so you have to style them with .A.B (no space) instead of .A .B (space):
           <CType> and <CTopic>, <CHType> and <CHEntry>
-        - The IE4, IE5, Opera5, Opera6, Netscape, and Netscape4 styles have been removed.  <#IE7>, <#Opera8>, and <#Opera9>
-          have been added.  Gecko has been replaced by <#Firefox>, <#Firefox1>, <#Firefox15>, and <#Firefox2>.
+        - The IE4, IE5, Opera5, Opera6, Netscape, and Netscape4 styles have been removed.  <IE7>, <Opera8>, and <Opera9>
+          have been added.  Gecko has been replaced by <Firefox>, <Firefox1>, <Firefox15>, and <Firefox2>.
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
         - CHIndent was replaced by <CHIndent#>.

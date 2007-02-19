@@ -64,7 +64,7 @@ blockquote {
     }
 
 
-#Firefox blockquote {
+.Firefox blockquote {
     padding-bottom: .5em;
     }
 
@@ -73,7 +73,7 @@ blockquote {
     blockquote {
         overflow: visible;
         }
-    #IE blockquote {
+    .IE blockquote {
         width: auto;
         }
     }
@@ -92,8 +92,8 @@ blockquote {
     width: 31ex;
     overflow: hidden;
     }
-#ContentPage #Firefox #Menu,
-#IndexPage #Firefox #Menu {
+#ContentPage .Firefox #Menu,
+#IndexPage .Firefox #Menu {
     width: 27ex;
     }
 
@@ -165,10 +165,10 @@ blockquote {
         padding-left: 9px; border-left-width: 1px }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    #Firefox #MSelected {
+    .Firefox #MSelected {
         -moz-border-radius-topright: 10px;
         -moz-border-radius-bottomright: 10px }
-    #Firefox .MGroup #MSelected {
+    .Firefox .MGroup #MSelected {
         -moz-border-radius-topleft: 10px;
         -moz-border-radius-bottomleft: 10px }
 
@@ -188,8 +188,8 @@ blockquote {
         width: 100%;
         }
     /* Only Opera gets it right. */
-    #Firefox #MSearchField,
-    #IE #MSearchField {
+    .Firefox #MSearchField,
+    .IE #MSearchField {
         width: 94%;
         }
 
@@ -225,8 +225,8 @@ blockquote {
         font-weight: bold;
         }
 
-    #Opera8 .MSearchPanelInactive:hover,
-    #Opera8 .MSearchPanelActive {
+    .Opera8 .MSearchPanelInactive:hover,
+    .Opera8 .MSearchPanelActive {
         margin-left: -1px;
         }
 
@@ -275,7 +275,7 @@ blockquote {
     font-size: 9pt;  /* To make 31ex match the menu's 31ex. */
     margin-left: 31ex;
     }
-#ContentPage #Firefox #Content {
+#ContentPage .Firefox #Content {
     margin-left: 27ex;
     }
 
@@ -329,7 +329,7 @@ blockquote {
         font-size: 8pt;
         }
 
-    #Opera .CToolTip {
+    .Opera .CToolTip {
         max-width: 98%;
         }
 
@@ -337,7 +337,7 @@ blockquote {
     .CToolTip blockquote {
         overflow: hidden;
         }
-    #IE6 .CToolTip blockquote {
+    .IE6 .CToolTip blockquote {
         overflow: visible;
         }
 
@@ -415,7 +415,7 @@ blockquote {
         vertical-align: bottom;
         }
 
-    #IE .Prototype table {
+    .IE .Prototype table {
         padding: 0;
         }
 
@@ -463,11 +463,11 @@ blockquote {
 
     /* In a frame IE 6 will make them too long unless you set the width to 100%.  Without frames it will be correct without a width
         or slightly too long (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
-    body#FramedContentPage #IE6 .SBody {
+    body#FramedContentPage .IE6 .SBody {
         width: 100% }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    #Firefox .SBody {
+    .Firefox .SBody {
         -moz-border-radius: 20px }
 
 
@@ -542,7 +542,8 @@ blockquote {
 
 
 .ClassHierarchy {
-    margin: 0 15px 1em 15px }
+    margin: 0 5ex 1em 5ex;
+    }
 
     .CHEntry {
         border-width: 1px 2px 2px 1px; border-style: solid; border-color: #A0A0A0;
@@ -552,7 +553,7 @@ blockquote {
         background-color: #F4F4F4; color: #606060;
         }
 
-    #Firefox .CHEntry {
+    .Firefox .CHEntry {
         -moz-border-radius: 4px;
         }
 
@@ -572,7 +573,7 @@ blockquote {
         visibility: hidden;
         }
     /*  IE doesn't support :after.  Take advantage of a bug to get the same effect.  */
-    #IE .ClassHierarchy {
+    .IE .ClassHierarchy {
         height: 1%;
         }
 
@@ -666,8 +667,8 @@ blockquote {
         font-size: 8pt;
         padding: 1px 5px;
         }
-    #SearchResultsPage #Opera9 .IEntry,
-    #FramedSearchResultsPage #Opera9 .IEntry {
+    #SearchResultsPage .Opera9 .IEntry,
+    #FramedSearchResultsPage .Opera9 .IEntry {
         text-align: left;
         }
     #FramedSearchResultsPage .IEntry {

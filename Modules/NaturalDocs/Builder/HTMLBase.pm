@@ -1737,9 +1737,9 @@ sub OpeningBrowserStyles
 
         # IE 4 and 5 don't understand 'undefined', so you can't say '!= undefined'.
         . 'if (browserType) {'
-            . 'document.write("<div id=" + browserType + ">");'
+            . 'document.write("<div class=" + browserType + ">");'
             . 'if (browserVer) {'
-                . 'document.write("<div id=" + browserVer + ">"); }'
+                . 'document.write("<div class=" + browserVer + ">"); }'
             . '}'
 
     . '// --></script>';
