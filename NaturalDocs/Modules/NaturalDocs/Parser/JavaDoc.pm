@@ -280,7 +280,7 @@ sub ParseComment #(string[] commentLines, bool isJavaDoc, int lineNumber, Parsed
                 $unformattedTextPtr = \$authors;
                 $unformattedTextCloser = undef;
                 }
-            elsif ($keyword eq 'depreciated')
+            elsif ($keyword eq 'deprecated')
                 {
                 if ($deprecation)
                     {  $deprecation .= ' ';  };
