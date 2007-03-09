@@ -348,17 +348,17 @@ Topic: Menu Structure
             </select #MSearchType>
         </#MSearchPanel and MSearchPanelActive/Inactive>
 
-        <#MSearchResultsWindow>
-
-            <#MSearchResults>
-                <iframe>
-            </#MSearchResults>
-
-            <a #MSearchResultsWindowClose>
-
-        </#MSearchResultsWindow>
-
     </#Menu>
+
+    <#MSearchResultsWindow>
+
+        <#MSearchResults>
+            <iframe>
+        </#MSearchResults>
+
+        <a #MSearchResultsWindowClose>
+
+    </#MSearchResultsWindow>
 
     (end)
 
