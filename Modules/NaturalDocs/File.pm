@@ -247,7 +247,7 @@ sub JoinDirectories #(directory, directory, ...)
 #   Why oh why?:
 #
 #       Because File::Spec->splitdir might leave an empty element at the end of the array, which screws up both joining in
-#       <ConvertToURL> and navigation in <MakeRelativePath>.  Morons.
+#       <ConvertToURL> and navigation in <MakeRelativePath>.
 #
 sub SplitDirectories #(directoryString)
     {
@@ -280,19 +280,16 @@ sub SplitDirectories #(directoryString)
 #
 #   Why oh why?:
 #
-#       Wow, where to begin?  First of all, there's nothing that gives a relative path between two relative paths.
+#       First, there's nothing that gives a relative path between two relative paths.
 #
-#       Second of all, if target and base are absolute but on different volumes, File::Spec->abs2rel creates a totally non-functional
+#       Second, if target and base are absolute but on different volumes, File::Spec->abs2rel creates a totally non-functional
 #       relative path.  It should return the target as is, since there is no relative path.
 #
-#       Third of all, File::Spec->abs2rel between absolute paths on the same volume, at least on Windows, leaves the drive letter
-#       on.  So abs2rel('a:\b\c\d', 'a:\b') returns 'a:c\d' instead of the expected 'c\d'.  That makes no fucking sense whatsoever.  It's
+#       Third, File::Spec->abs2rel between absolute paths on the same volume, at least on Windows, leaves the drive letter
+#       on.  So abs2rel('a:\b\c\d', 'a:\b') returns 'a:c\d' instead of the expected 'c\d'.  That makes no sense whatsoever.  It's
 #       not like it was designed to handle only directory names, either; the documentation says 'path' and the code seems to
-#       explicitly handle it.  There's just an 'unless' in there that tacks on the volume, defeating the purpose of a *relative* path and
-#       making the function worthless.  Morons.
-#
-#       Update: This last one appears to be fixed in File::Spec 0.83, but that version isn't even listed on CPAN.  Lovely.  Apparently
-#       it just comes with ActivePerl.  Somehow I don't think most Linux users are using that.
+#       explicitly handle it.  There's just an 'unless' in there that tacks on the volume, defeating the purpose of a *relative* path
+#       and making the function worthless.
 #
 sub MakeRelativePath #(basePath, targetPath)
     {
