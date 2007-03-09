@@ -757,15 +757,6 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
                 $searchOutput .=
                 '</select>'
             . '</div>';
-
-            if ($self->CommandLineOption() eq 'HTML')
-                {
-                $searchOutput .=
-                '<div id=MSearchResultsWindow>'
-                    . '<iframe src="" frameborder=0 name=MSearchResults id=MSearchResults></iframe>'
-                    . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
-                . '</div>';
-                };
             };
 
         $prebuiltMenus{$outputDirectory} = $titleOutput . $segmentOutput . $searchOutput;

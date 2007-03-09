@@ -111,6 +111,11 @@ sub BuildFile #(sourceFile, parsedFile)
             . "\n\n\n"
                 . $self->BuildToolTips()
             . "\n\n\n"
+                . '<div id=MSearchResultsWindow>'
+                    . '<iframe src="" frameborder=0 name=MSearchResults id=MSearchResults></iframe>'
+                    . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
+                . '</div>'
+            . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
         . '</body></html>';
@@ -182,6 +187,11 @@ sub BuildIndex #(type)
                 . $self->BuildFooter()
             . "\n\n\n"
                 . $self->BuildMenu(undef, $type)
+            . "\n\n\n"
+                . '<div id=MSearchResultsWindow>'
+                    . '<iframe src="" frameborder=0 name=MSearchResults id=MSearchResults></iframe>'
+                    . '<a href="javascript:searchPanel.CloseResultsWindow()" id=MSearchResultsWindowClose>Close</a>'
+                . '</div>'
             . "\n\n\n"
 
             . $self->ClosingBrowserStyles()
