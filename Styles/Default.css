@@ -15,17 +15,20 @@
 */
 
 body {
-    font-family: Verdana, Arial, sans-serif;
+    font: 10pt Verdana, Arial, sans-serif;
     color: #000000;
-    margin: 0px; padding: 0px }
+    margin: 0; padding: 0;
+    }
 
-body#ContentPage,
-body#IndexPage,
-body#FramedMenuPage {
+.ContentPage,
+.IndexPage,
+.FramedMenuPage {
     background-color: #E8E8E8;
     }
-body#FramedContentPage,
-body#FramedIndexPage {
+.FramedContentPage,
+.FramedIndexPage,
+.FramedSearchResultsPage,
+.PopupSearchResultsPage {
     background-color: #FFFFFF;
     }
 
@@ -84,28 +87,28 @@ blockquote {
     font-size: 9pt;
     padding: 10px 0 0 0;
     }
-#ContentPage #Menu,
-#IndexPage #Menu {
+.ContentPage #Menu,
+.IndexPage #Menu {
     position: absolute;
     top: 0;
     left: 0;
     width: 31ex;
     overflow: hidden;
     }
-#ContentPage .Firefox #Menu,
-#IndexPage .Firefox #Menu {
+.ContentPage .Firefox #Menu,
+.IndexPage .Firefox #Menu {
     width: 27ex;
     }
 
 
-    #MTitle {
+    .MTitle {
         font-size: 16pt; font-weight: bold; font-variant: small-caps;
         text-align: center;
         padding: 5px 10px 15px 10px;
         border-bottom: 1px dotted #000000;
         margin-bottom: 15px }
 
-    #MSubTitle {
+    .MSubTitle {
         font-size: 9pt; font-weight: normal; font-variant: normal;
         margin-top: 1ex; margin-bottom: 5px }
 
@@ -129,7 +132,7 @@ blockquote {
         margin: 1em 0 1em 10px;
         }
 
-    .MGroupContent {
+    .MGroup ul {
         font-variant: normal; font-weight: normal }
 
     .MGroup a:link,
@@ -239,7 +242,7 @@ blockquote {
         display: none;
         position: absolute;
         left: 0; top: 0;
-        border-style: solid; border-color:#000000; border-width: 1px 2px 2px 1px;
+        border: 1px solid #000000;
         background-color: #E8E8E8;
         }
     #MSearchResultsWindowClose {
@@ -267,7 +270,7 @@ blockquote {
     padding-bottom: 15px;
     }
 
-#ContentPage #Content {
+.ContentPage #Content {
     border-width: 0 0 1px 1px;
     border-style: solid;
     border-color: #000000;
@@ -275,7 +278,7 @@ blockquote {
     font-size: 9pt;  /* To make 31ex match the menu's 31ex. */
     margin-left: 31ex;
     }
-#ContentPage .Firefox #Content {
+.ContentPage .Firefox #Content {
     margin-left: 27ex;
     }
 
@@ -341,7 +344,7 @@ blockquote {
         overflow: visible;
         }
 
-    .CBody h1 {
+    .CHeading {
         font-weight: bold; font-size: 10pt;
         margin: 1.5em 0 .5em 0;
         }
@@ -371,10 +374,20 @@ blockquote {
             padding-bottom: .5em; padding-left: 5ex }
 
 
-    .CImage {
+    .CTopic img {
         text-align: center;
-        margin: 1em 0;
+        display: block;
+        margin: 1em auto;
         }
+    .CImageCaption {
+        font-variant: small-caps;
+        font-size: 8pt;
+        color: #808080;
+        text-align: center;
+        position: relative;
+        top: 1em;
+        }
+
     .CImageLink {
         color: #808080;
         font-style: italic;
@@ -383,11 +396,6 @@ blockquote {
     a.CImageLink:visited,
     a.CImageLink:hover { color: #808080 }
 
-    .CImageCaption {
-        font-variant: small-caps;
-        font-size: 8pt;
-        color: #808080;
-        }
 
 
 
@@ -456,18 +464,19 @@ blockquote {
         margin-bottom: .5em }
 
 
-    .SBody {
+    .SBorder {
         background-color: #FFFFF0;
         padding: 15px;
         border: 1px solid #C0C060 }
 
     /* In a frame IE 6 will make them too long unless you set the width to 100%.  Without frames it will be correct without a width
-        or slightly too long (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  */
-    body#FramedContentPage .IE6 .SBody {
+        or slightly too long (but not enough to scroll) with a width.  This arbitrary weirdness simply astounds me.  IE 7 has the same
+        problem with frames, haven't tested it without.  */
+    .FramedContentPage .IE .SBorder {
         width: 100% }
 
     /*  A treat for Mozilla users.  Blatantly non-standard.  Will be replaced with CSS 3 attributes when finalized/supported.  */
-    .Firefox .SBody {
+    .Firefox .SBorder {
         -moz-border-radius: 20px }
 
 
@@ -542,8 +551,7 @@ blockquote {
 
 
 .ClassHierarchy {
-    margin: 0 5ex 1em 5ex;
-    }
+    margin: 0 15px 1em 15px }
 
     .CHEntry {
         border-width: 1px 2px 2px 1px; border-style: solid; border-color: #A0A0A0;
@@ -557,38 +565,19 @@ blockquote {
         -moz-border-radius: 4px;
         }
 
-    .CHIndent0,
-    .CHIndent1,
-    .CHIndent2 {
-        float: left;
-        clear: both;
-        }
-
-    /*  Clear the float  */
-    .ClassHierarchy:after {
-        content: '.';
-        clear: both;
-        display: block;
-        height: 0;
-        visibility: hidden;
-        }
-    /*  IE doesn't support :after.  Take advantage of a bug to get the same effect.  */
-    .IE .ClassHierarchy {
-        height: 1%;
-        }
-
-    .CHIndent1 { margin-left: 3ex }
-    .CHIndent2 { margin-left: 6ex }
-
-    .CHCurrent {
+    .CHCurrent .CHEntry {
         font-weight: bold;
         border-color: #000000;
         color: #000000;
         }
 
-    .CHChildNote {
+    .CHChildNote .CHEntry {
         font-style: italic;
         font-size: 8pt;
+        }
+
+    .CHIndent {
+        margin-left: 3ex;
         }
 
     .CHEntry a:link,
@@ -608,13 +597,14 @@ blockquote {
     background-color: #FFFFFF;
     }
 
-#IndexPage #Index,
-#FramedIndexPage #Index,
-#FramedSearchResultsPage #Index {
+/*  As opposed to .PopupSearchResultsPage #Index  */
+.IndexPage #Index,
+.FramedIndexPage #Index,
+.FramedSearchResultsPage #Index {
     padding: 15px;
     }
 
-#IndexPage #Index {
+.IndexPage #Index {
     border-width: 0 0 1px 1px;
     border-style: solid;
     border-color: #000000;
@@ -622,10 +612,6 @@ blockquote {
     margin-left: 27ex;
     }
 
-#SearchResultsPage,
-#FramedSearchResultsPage {
-    background-color: #FFFFFF;
-    }
 
     .IPageTitle {
         font-size: 20pt; font-weight: bold;
@@ -634,7 +620,7 @@ blockquote {
         border-width: 0 0 3px 0; border-color: #000000; border-style: solid;
         margin: -15px -15px 0 -15px }
 
-    #FramedSearchResultsPage .IPageTitle {
+    .FramedSearchResultsPage .IPageTitle {
         margin-bottom: 15px;
         }
 
@@ -664,21 +650,21 @@ blockquote {
         font-size: 10pt;
         padding-left: 1ex;
         }
-    #SearchResultsPage .IEntry {
+    .PopupSearchResultsPage .IEntry {
         font-size: 8pt;
         padding: 1px 5px;
         }
-    #SearchResultsPage .Opera9 .IEntry,
-    #FramedSearchResultsPage .Opera9 .IEntry {
+    .PopupSearchResultsPage .Opera9 .IEntry,
+    .FramedSearchResultsPage .Opera9 .IEntry {
         text-align: left;
         }
-    #FramedSearchResultsPage .IEntry {
+    .FramedSearchResultsPage .IEntry {
         padding: 0;
         }
 
     .ISubIndex {
         padding-left: 3ex; padding-bottom: .5em }
-    #SearchResultsPage .ISubIndex {
+    .PopupSearchResultsPage .ISubIndex {
         display: none;
         }
 
@@ -687,8 +673,8 @@ blockquote {
     .ISymbol {
         font-weight: bold; color: #900000  }
 
-    #IndexPage .ISymbolPrefix,
-    #FramedIndexPage .ISymbolPrefix {
+    .IndexPage .ISymbolPrefix,
+    .FramedIndexPage .ISymbolPrefix {
         font-size: 10pt;
         text-align: right;
         color: #C47C7C;
@@ -697,24 +683,24 @@ blockquote {
         border-left: 1px solid #E0E0E0;
         padding: 0 1px 0 2px;
         }
-    #SearchResultsPage .ISymbolPrefix,
-    #FramedSearchResultsPage .ISymbolPrefix {
+    .PopupSearchResultsPage .ISymbolPrefix,
+    .FramedSearchResultsPage .ISymbolPrefix {
         color: #900000;
         }
-    #SearchResultsPage .ISymbolPrefix {
+    .PopupSearchResultsPage .ISymbolPrefix {
         font-size: 8pt;
         }
 
-    #IndexPage #IFirstSymbolPrefix,
-    #FramedIndexPage #IFirstSymbolPrefix {
+    .IndexPage #IFirstSymbolPrefix,
+    .FramedIndexPage #IFirstSymbolPrefix {
         border-top: 1px solid #E0E0E0;
         }
-    #IndexPage #ILastSymbolPrefix,
-    #FramedIndexPage #ILastSymbolPrefix {
+    .IndexPage #ILastSymbolPrefix,
+    .FramedIndexPage #ILastSymbolPrefix {
         border-bottom: 1px solid #E0E0E0;
         }
-    #IndexPage #IOnlySymbolPrefix,
-    #FramedIndexPage #IOnlySymbolPrefix {
+    .IndexPage #IOnlySymbolPrefix,
+    .FramedIndexPage #IOnlySymbolPrefix {
         border-top: 1px solid #E0E0E0;
         border-bottom: 1px solid #E0E0E0;
         }
@@ -724,12 +710,12 @@ blockquote {
         display: block;
         }
 
-    #SearchResultsPage .SRStatus {
+    .PopupSearchResultsPage .SRStatus {
         padding: 2px 5px;
         font-size: 8pt;
         font-style: italic;
         }
-    #FramedSearchResultsPage .SRStatus {
+    .FramedSearchResultsPage .SRStatus {
         font-size: 10pt;
         font-style: italic;
         }
@@ -751,13 +737,13 @@ blockquote {
     margin-bottom: .5em;
     }
 
-body#ContentPage #Footer,
-body#IndexPage #Footer {
+.ContentPage #Footer,
+.IndexPage #Footer {
     text-align: right;
     margin: 2px;
     }
 
-body#FramedMenuPage #Footer {
+.FramedMenuPage #Footer {
     text-align: center;
     margin: 5em 10px 10px 10px;
     padding-top: 1em;

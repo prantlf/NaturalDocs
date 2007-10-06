@@ -690,7 +690,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
             $menuRootLength += MENU_TITLE_LENGTH;
 
             $titleOutput .=
-            '<div id=MTitle>'
+            '<div class=MTitle>'
                 . $self->StringToHTML($menuTitle);
 
             my $menuSubTitle = NaturalDocs::Menu->SubTitle();
@@ -702,7 +702,7 @@ sub BuildMenu #(FileName sourceFile, TopicType indexType) -> string htmlMenu
                 $menuRootLength += MENU_SUBTITLE_LENGTH;
 
                 $titleOutput .=
-                '<div id=MSubTitle>'
+                '<div class=MSubTitle>'
                     . $self->StringToHTML($menuSubTitle)
                 . '</div>';
                 };
@@ -858,7 +858,7 @@ sub BuildMenuSegment #(outputDirectory, menuSegment, topLevel)
 
     my $output;
     if ($topLevel)
-        {  $output = '<ul id=MEntries>';  };
+        {  $output = '<ul>';  };
 
     my $groupLength = 0;
 
@@ -1008,13 +1008,13 @@ sub BuildContent #(sourceFile, parsedFile)
 
         $output .=
 
-        '<div class="C' . NaturalDocs::Topics->NameOfType($parsedFile->[$i]->Type(), 0, 1) . ' CTopic"'
-            . ($i == 0 ? ' id=MainTopic' : '') . '>'
+        '<div class="C' . NaturalDocs::Topics->NameOfType($parsedFile->[$i]->Type(), 0, 1) . '">'
+            . '<div class=CTopic' . ($i == 0 ? ' id=MainTopic' : '') . '>'
 
-            . '<' . $headerType . ' class=CTitle>'
-                . '<a name="' . $anchor . '"></a>'
-                . $self->StringToHTML( $parsedFile->[$i]->Title(), ADD_HIDDEN_BREAKS)
-            . '</' . $headerType . '>';
+                . '<' . $headerType . ' class=CTitle>'
+                    . '<a name="' . $anchor . '"></a>'
+                    . $self->StringToHTML( $parsedFile->[$i]->Title(), ADD_HIDDEN_BREAKS)
+                . '</' . $headerType . '>';
 
 
         my $hierarchy;
@@ -1058,7 +1058,8 @@ sub BuildContent #(sourceFile, parsedFile)
             {  $output .= '</div>';  };
 
         $output .=
-        '</div>' # CType CTopic
+            '</div>' # CTopic
+        . '</div>' # CType
         . "\n\n";
 
         $i++;
@@ -1125,7 +1126,7 @@ sub BuildSummary #(sourceFile, parsedFile, index)
     . '<div class=Summary><div class=STitle>Summary</div>'
 
         # Not all browsers get table padding right, so we need a div to apply the border.
-        . '<div class=SBody>'
+        . '<div class=SBorder>'
         . '<table border=0 cellspacing=0 cellpadding=0 class=STable>';
 
         while ($index < scalar @$parsedFile)
@@ -1605,35 +1606,31 @@ sub BuildClassHierarchy #(file, symbol)
     if (!scalar @parents && !scalar @children)
         {  return undef;  };
 
-    my $indent = 0;
-
     my $output =
     '<div class=ClassHierarchy>';
 
     if (scalar @parents)
         {
-        $output .='<div class=CHIndent' . $indent . '>';
-        $indent++;
+        $output .='<table border=0 cellspacing=0 cellpadding=0><tr><td>';
 
         foreach my $parent (@parents)
             {
             $output .= $self->BuildClassHierarchyEntry($file, $parent, 'CHParent', 1);
             };
 
-        $output .= '</div>';
+        $output .= '</td></tr></table><div class=CHIndent>';
         };
 
     $output .=
-    '<div class=CHIndent' . $indent . '>'
+    '<table border=0 cellspacing=0 cellpadding=0><tr><td>'
         . $self->BuildClassHierarchyEntry($file, $symbol, 'CHCurrent', undef)
-    . '</div>';
-
-    $indent++;
+    . '</td></tr></table>';
 
     if (scalar @children)
         {
-        $output .= '<div class=CHIndent' . $indent . '>';
-        $indent++;
+        $output .=
+        '<div class=CHIndent>'
+            . '<table border=0 cellspacing=0 cellpadding=0><tr><td>';
 
         if (scalar @children <= 5)
             {
@@ -1645,11 +1642,16 @@ sub BuildClassHierarchy #(file, symbol)
             for (my $i = 0; $i < 4; $i++)
                 {  $output .= $self->BuildClassHierarchyEntry($file, $children[$i], 'CHChild', 1);  };
 
-            $output .= '<div class="CHChildNote CHEntry">' . (scalar @children - 4) . ' other children</div>';
+           $output .= '<div class=CHChildNote><div class=CHEntry>' . (scalar @children - 4) . ' other children</div></div>';
             };
 
-        $output .= '</div>';
+        $output .=
+        '</td></tr></table>'
+        . '</div>';
         };
+
+    if (scalar @parents)
+        {  $output .= '</div>';  };
 
     $output .=
     '</div>';
@@ -1679,7 +1681,7 @@ sub BuildClassHierarchyEntry #(file, symbol, style, link)
     my $name = join(NaturalDocs::Languages->LanguageOf($file)->PackageSeparator(), @identifiers);
     $name = $self->StringToHTML($name);
 
-    my $output = '<div class="' . $style . ' CHEntry">';
+    my $output = '<div class=' . $style . '><div class=CHEntry>';
 
     if ($link)
         {
@@ -1708,7 +1710,7 @@ sub BuildClassHierarchyEntry #(file, symbol, style, link)
     else
         {  $output .= $name;  };
 
-    $output .= '</div>';
+    $output .= '</div></div>';
     return $output;
     };
 
@@ -2764,7 +2766,7 @@ sub StringToSearchResultID #(string string, bool dontIncrement = 0) => string
                                   '{' => '_lbc', '}' => '_rbc', '[' => '_lbk', ']' => '_rbk', ':' => '_col', ';' => '_sco', '"' => '_quo',
                                   '\'' => '_apo', '<' => '_lan', '>' => '_ran', ',' => '_com', '.' => '_per', '?' => '_que', '/' => '_sla' );
 
-    $string =~ s/([\~\!\@\#\$\%\^\&7\*\(\)\-\+\=\{\}\[\]\:\;\"\'\<\>\,\.\?\/])/$translation{$1}/ge;
+    $string =~ s/([\~\!\@\#\$\%\^\&\*\(\)\-\+\=\{\}\[\]\:\;\"\'\<\>\,\.\?\/])/$translation{$1}/ge;
     $string =~ s/[^a-z0-9_]/_zzz/gi;
 
     my $number = $searchResultIDs{lc($string)};
@@ -2917,8 +2919,8 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
             $text = $self->AddDoubleSpaces($text);
 
             # Headings
-            $text =~ s/<h>/<h1>/g;
-            $text =~ s/<\/h>/<\/h1>/g;
+            $text =~ s/<h>/<h4 class=CHeading>/g;
+            $text =~ s/<\/h>/<\/h4>/g;
 
             # Description Lists
             $text =~ s/<dl>/<table border=0 cellspacing=0 cellpadding=0 class=CDescriptionList>/g;
@@ -3169,15 +3171,11 @@ sub BuildImage #(sourceFile, mode, target, original)
         if ($mode eq 'inline')
             {
             return
-            '<blockquote>'
-            . '<div class=CImage>'
-                . '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
-                                                                           $self->OutputImageOf($image), 1) . '"'
+            '<img src="' . $self->MakeRelativeURL($self->OutputFileOf($sourceFile),
+                                                                       $self->OutputImageOf($image), 1) . '"'
 
-                . ($width && $height ? ' width="' . $width . '" height="' . $height . '"' : '')
-                . '>'
-
-            . '</div></blockquote>';
+            . ($width && $height ? ' width="' . $width . '" height="' . $height . '"' : '')
+            . '>';
             }
         else # link
             {

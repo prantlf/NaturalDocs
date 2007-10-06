@@ -98,7 +98,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body id=FramedContentPage onLoad="NDOnLoad()">'
+        . '</head><body class="FramedContentPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
@@ -156,7 +156,7 @@ sub BuildIndex #(type)
 
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->MainJavaScriptFile(), 1) . '"></script>'
 
-        . '</head><body id=FramedIndexPage onLoad="NDOnLoad()">'
+        . '</head><body class="FramedIndexPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . "\n\n\n"
@@ -193,7 +193,7 @@ sub BuildIndex #(type)
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($indexFile, $self->SearchDataJavaScriptFile(), 1) . '">'
                 . '</script>'
 
-        . '</head><body id=FramedSearchResultsPage onLoad="NDOnLoad()">'
+        . '</head><body class="FramedSearchResultsPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . "\n\n\n"
@@ -267,7 +267,7 @@ sub UpdateMenu
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->SearchDataJavaScriptFile(), 1) . '">'
                 . '</script>'
 
-        . '</head><body id=FramedMenuPage onLoad="NDOnLoad()">'
+        . '</head><body class="FramedMenuPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()

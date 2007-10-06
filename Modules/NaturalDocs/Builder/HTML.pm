@@ -97,7 +97,7 @@ sub BuildFile #(sourceFile, parsedFile)
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->SearchDataJavaScriptFile(), 1) . '">'
                 . '</script>'
 
-        . '</head><body id=ContentPage onLoad="NDOnLoad()">'
+        . '</head><body class="ContentPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
@@ -168,7 +168,7 @@ sub BuildIndex #(type)
                                                                                                         $self->SearchDataJavaScriptFile()) . '">'
                 . '</script>'
 
-        . '</head><body id=IndexPage onLoad="NDOnLoad()">'
+        . '</head><body class="IndexPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
@@ -214,7 +214,7 @@ sub BuildIndex #(type)
             . '<script language=JavaScript src="' . $self->MakeRelativeURL($self->SearchResultsDirectory(),
                                                                                                         $self->MainJavaScriptFile()) . '"></script>'
 
-        . '</head><body id=SearchResultsPage onLoad="NDOnLoad()">'
+        . '</head><body class="PopupSearchResultsPage" onLoad="NDOnLoad()">'
             . $self->OpeningBrowserStyles()
 
         . $self->StandardComments()
