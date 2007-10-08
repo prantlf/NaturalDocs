@@ -22,10 +22,11 @@
 #       - Variables
 #       - Constants
 #       - Events
+#       - Enums
 #
 #       Not supported yet:
 #
-#       - Enums
+#       - Autodocumenting enum members
 #       - Using
 #       - Using alias
 #
@@ -64,7 +65,8 @@ my %classModifiers = ( 'new' => 1,
                                    'private' => 1,
                                    'abstract' => 1,
                                    'sealed' => 1,
-                                   'unsafe' => 1 );
+                                   'unsafe' => 1,
+                                   'static' => 1 );
 
 #
 #   hash: functionModifiers
@@ -97,6 +99,19 @@ my %variableModifiers = ( 'new' => 1,
                                        'readonly' => 1,
                                        'volatile' => 1,
                                        'unsafe' => 1 );
+
+#
+#   hash: enumTypes
+#   An existence hash of all the possible enum types.  The keys are in all lowercase.
+#
+my %enumTypes = ( 'sbyte' => 1,
+                             'byte' => 1,
+                             'short' => 1,
+                             'ushort' => 1,
+                             'int' => 1,
+                             'uint' => 1,
+                             'long' => 1,
+                             'ulong' => 1 );
 
 #
 #   hash: impossibleTypeWords
@@ -171,7 +186,8 @@ sub ParseFile #(sourceFile, topicsList)
             $self->TryToGetClass(\$index, \$lineNumber) ||
             $self->TryToGetFunction(\$index, \$lineNumber) ||
             $self->TryToGetOverloadedOperator(\$index, \$lineNumber) ||
-            $self->TryToGetVariable(\$index, \$lineNumber) )
+            $self->TryToGetVariable(\$index, \$lineNumber) ||
+            $self->TryToGetEnum(\$index, \$lineNumber) )
             {
             # The functions above will handle everything.
             }
@@ -858,6 +874,95 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
         };
+
+    $$indexRef = $index;
+    $$lineNumberRef = $lineNumber;
+
+    return 1;
+    };
+
+
+#
+#   Function: TryToGetEnum
+#
+#   Determines if the position is on an enum declaration statement, and if so, generates a topic for it.
+#
+#   Supported Syntaxes:
+#
+#       - Enums
+#       - Enums with declared types
+#
+#   Unsupported:
+#
+#       - Documenting the members automatically
+#
+sub TryToGetEnum #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my $index = $$indexRef;
+    my $lineNumber = $$lineNumberRef;
+
+    if ($self->TryToSkipAttributes(\$index, \$lineNumber))
+        {  $self->TryToSkipWhitespace(\$index, \$lineNumber);  };
+
+    my $startIndex = $index;
+    my $startLine = $lineNumber;
+
+    my @modifiers;
+
+    while ($tokens->[$index] =~ /^[a-z]/i &&
+              exists $variableModifiers{lc($tokens->[$index])} )
+        {
+        push @modifiers, lc($tokens->[$index]);
+        $index++;
+
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+        };
+
+    if (lc($tokens->[$index]) ne 'enum')
+        {  return undef;  }
+
+    $index++;
+    $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+    my $name;
+
+    while ($tokens->[$index] =~ /^[a-z\@\_]/i)
+        {
+        $name .= $tokens->[$index];
+        $index++;
+        };
+
+    $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+    if ($tokens->[$index] eq ':')
+        {
+        $index++;
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        if (!exists $enumTypes{ lc($tokens->[$index]) })
+            {  return undef;  }
+
+        $index++;
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+        }
+
+    if ($tokens->[$index] ne '{')
+        {  return undef;  }
+
+    # We succeeded if we got this far.
+
+    my $prototype = $self->CreateString($startIndex, $index);
+    $prototype = $self->NormalizePrototype( $prototype );
+
+    $self->SkipRestOfStatement(\$index, \$lineNumber);
+
+    $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_TYPE(), $name,
+                                                                                              $self->CurrentScope(), undef,
+                                                                                              $prototype,
+                                                                                              undef, undef, $startLine));
 
     $$indexRef = $index;
     $$lineNumberRef = $lineNumber;
