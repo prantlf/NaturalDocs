@@ -489,7 +489,7 @@ sub SkipUntilAfter #(indexRef, lineNumberRef, token, token, ...)
                 };
             };
 
-        if ($tokens->[$index] eq "\n")
+        if ($tokens->[$$index] eq "\n")
             {
             $$lineNumber++;
             $$index++;
