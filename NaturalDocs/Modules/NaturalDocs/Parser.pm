@@ -786,9 +786,25 @@ sub MergeAutoTopics #(language, autoTopics)
         };
 
     # Add any auto-topics remaining.
-    if ($autoTopicIndex < scalar @$autoTopics && !NaturalDocs::Settings->DocumentedOnly())
-        {
-        push @parsedFile, @$autoTopics[$autoTopicIndex..scalar @$autoTopics-1];
+    if (!NaturalDocs::Settings->DocumentedOnly())
+    	{
+	    while ($autoTopicIndex < scalar @$autoTopics)
+	        {
+	        my $autoTopic = $autoTopics->[$autoTopicIndex];
+
+	        if (exists $topicsInLists{$autoTopic->Type()} &&
+	            exists $topicsInLists{$autoTopic->Type()}->{$autoTopic->Title()})
+	            {
+	            # Remove it from the list so a second one with the same name will be added.
+	            delete $topicsInLists{$autoTopic->Type()}->{$autoTopic->Title()};
+	            }
+	        else
+	            {
+	            push(@parsedFile, $autoTopic);
+	            };
+
+	        $autoTopicIndex++;
+	        };
         };
    };
 
