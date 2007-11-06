@@ -1252,6 +1252,8 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
 
         if ($tokens->[$index] =~ /^\w/)
             {  return undef;  };
+        if ($tokens->[$index] eq '=' && $tokens->[$index+1] eq '>')
+        	{  return undef;  };
 
         my $openingSymbol = $tokens->[$index];
         my $closingSymbol;
