@@ -302,7 +302,7 @@ _______________________________________________________________________________
 
     The title is an <MTitle> and will always be at the beginning of the menu if it exists.  If a subtitle exists as well, it will appear
     as an <MSubTitle> inside <MTitle>.  Subtitles aren't allowed without titles.  Most other entries in the menu are contained in
-    unordered lists.  Here's the diagram:
+    <MEntries>.  Here's the diagram:
 
     (start diagram)
 
@@ -317,34 +317,40 @@ _______________________________________________________________________________
 
         </MTitle>
 
-        <ul>
-
-            <li MFile (and #MSelected?)>
+        <MEntry>
+            <MFile (and #MSelected?)>
                 <a href>File</a href>
-            </li MFile (and #MSelected?)>
+            </MFile>
+        </MEntry>
 
-            <li MIndex (and #MSelected?)>
-                <a href>Index</a href>
-            </li MIndex (and #MSelected?)>
+        <MEntry>
+            <MIndex (and #MSelected?)>
+                <a href>File</a href>
+            </MIndex>
+        </MEntry>
 
-            <li MText>
+        <MEntry>
+            <MText>
                 Text
-            </li MText>
+            </MText>
+        </MEntry>
 
-            <li MLink>
+        <MEntry>
+            <MLink>
                 <a href>Link</a href>
-            </li MLink>
+            </MLink>
+        </MEntry>
 
-            <li MGroup>
+        <MEntry>
+            <MGroup>
                 <a href>Group</a href>
-                <ul>
+                <MGroupContent>
 
-                    Entries
+                    (MEntries)
 
-               </ul>
-            </li MGroup>
-
-        </ul>
+                </MGroupContent>
+           </MGroup>
+        </MEntry>
 
         <#MSearchPanel and MSearchPanelActive/Inactive>
             <input #MSeachField>
@@ -869,7 +875,6 @@ _______________________________________________________________________________
           have been added.  Gecko has been replaced by <Firefox>, <Firefox1>, <Firefox15>, and <Firefox2>.
         - Removed redundant CParagraph, CCode, and CBulletList classes.  Use <CBody> with p, pre, and ul instead.
         - Added <CImageCaption> and <CImageLink>.
-        - Changed the <Menu Structure> to use ul and li instead of MEntry divs.
         - Added <#MSearchPanel>, <#MSearchResultsWindow>, and all related styles.
         - Added <Search Results Structure>, <Search Results Styles>, and <SearchResultsPage>.
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
