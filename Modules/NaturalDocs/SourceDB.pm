@@ -4,12 +4,28 @@
 #
 ###############################################################################
 #
-#   The central source repository database.
+#   SourceDB is an experimental package meant to unify the tracking of various elements in the source code.
 #
 #   Requirements:
 #
 #       - All extension packages must call <RegisterExtension()> before they can be used.
 #
+#
+#   Architecture: The Idea
+#
+#       For quite a while Natural Docs only needed <SymbolTable>.  However, 1.3 introduced the <ClassHierarchy> package
+#       which duplicated some of its functionality to track classes and parent references.  1.4 now needs <ImageReferenceTable>,
+#       so this package was an attempt to isolate the common functionality so the wheel doesn't have to keep being rewritten as
+#       the scope of Natural Docs expands.
+#
+#       SourceDB is designed around <Extensions> and items.  The purposefully vague "items" are anything in the source code
+#       that we need to track the definitions of.  Extensions are the packages to track them, only they're derived from
+#       <NaturalDocs::SourceDB::Extension> and registered with this package instead of being free standing and duplicating
+#       functionality such as watched files.
+#
+#       The architecture on this package isn't comprehensive yet.  As more extensions are added or previously made free standing
+#       packages are migrated to it it will expand to encompass them.  However, it's still experimental so this concept may
+#       eventually be abandoned for something better instead.
 #
 #
 #   Architecture: Assumptions
