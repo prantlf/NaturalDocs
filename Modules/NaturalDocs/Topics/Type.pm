@@ -24,7 +24,6 @@ use NaturalDocs::DefineMembers 'NAME',                         'Name()',
                                                  'PAGE_TITLE_IF_FIRST', 'PageTitleIfFirst()', 'SetPageTitleIfFirst()',
                                                  'BREAK_LISTS',             'BreakLists()',        'SetBreakLists()',
                                                  'CLASS_HIERARCHY',    'ClassHierarchy()',  'SetClassHierarchy()',
-                                                 'VARIABLE_TYPE',          'VariableType()',    'SetVariableType()',
                                                  'CAN_GROUP_WITH';
 
 # Dependency: New() depends on the order of these and that there are no parent classes.
@@ -44,7 +43,6 @@ our @EXPORT = ('SCOPE_NORMAL', 'SCOPE_START', 'SCOPE_END', 'SCOPE_ALWAYS_GLOBAL'
 #   PAGE_TITLE_IF_FIRST - Whether the topic becomes the page title if it's first in a file.
 #   BREAK_LISTS - Whether list topics should be broken into individual topics in the output.
 #   CLASS_HIERARCHY - Whether the topic is part of the class hierarchy.
-#   VARIABLE_TYPE - Whether the topic can be a variable type.
 #   CAN_GROUP_WITH - The existence hashref of <TopicTypes> the type can be grouped with.
 #
 
@@ -118,8 +116,6 @@ sub New #(name, pluralName, index, scope, pageTitleIfFirst, breakLists)
 #   SetBreakLists - Sets whether list topics should be broken into individual topics in the output.
 #   ClassHierarchy - Returns whether the topic is part of the class hierarchy.
 #   SetClassHierarchy - Sets whether the topic is part of the class hierarchy.
-#   VariableType - Returns whether the topic can be a variable type.
-#   SetVariableType - Sets whether the topic can be a variable type.
 #
 
 
