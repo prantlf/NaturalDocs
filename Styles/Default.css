@@ -112,19 +112,11 @@ blockquote {
         font-size: 9pt; font-weight: normal; font-variant: normal;
         margin-top: 1ex; margin-bottom: 5px }
 
-    #Menu li {
-        list-style-type: none;
-        }
-    #Menu ul {
-        padding: 0;
-        margin: 0;
-        }
 
-
-    #Menu a:link,
-    #Menu a:hover,
-    #Menu a:visited { color: #606060; margin-right: 0 }
-    #Menu a:active { color: #A00000; margin-right: 0 }
+    .MEntry a:link,
+    .MEntry a:hover,
+    .MEntry a:visited { color: #606060; margin-right: 0 }
+    .MEntry a:active { color: #A00000; margin-right: 0 }
 
 
     .MGroup {
@@ -132,7 +124,7 @@ blockquote {
         margin: 1em 0 1em 10px;
         }
 
-    .MGroup ul {
+    .MGroupContent {
         font-variant: normal; font-weight: normal }
 
     .MGroup a:link,
