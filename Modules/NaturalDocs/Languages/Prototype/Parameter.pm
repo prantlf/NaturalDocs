@@ -26,6 +26,19 @@ use NaturalDocs::DefineMembers 'TYPE', 'Type()', 'SetType()',
 
 
 #
+#   Constants: Members
+#
+#   The object is implemented as a blessed arrayref, with the following constants as its indexes.
+#
+#       TYPE - The parameter type, if any.
+#       TYPE_PREFIX - The parameter type prefix which should be aligned separately, if any.
+#       NAME - The parameter name.
+#       NAME_PREFIX - The parameter name prefix which should be aligned separately, if any.
+#       DEFAULT_VALUE - The default value expression, if any.
+#       DEFAULT_VALUE_PREFIX - The default value prefix which should be aligned separately, if any.
+#
+
+#
 #   Function: New
 #
 #   Creates and returns a new prototype object.
