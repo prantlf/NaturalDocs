@@ -254,7 +254,7 @@ function HideTip(tooltipID)
 
 function NDOnLoad()
     {
-    if (browserType == "IE")
+    if (browserVer == "IE6")
         {
         var scrollboxes = document.getElementsByTagName('blockquote');
 
@@ -654,6 +654,9 @@ function SearchPanel(name, mode, resultsPath)
 
         this.DOMSearchPanel().className = 'MSearchPanelInactive';
         this.DOMSearchField().value = "Search";
+
+	    this.lastSearchValue = "";
+	    this.lastResultsPage = "";
         };
     };
 
