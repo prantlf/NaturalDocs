@@ -67,7 +67,7 @@ blockquote {
     }
 
 
-.Firefox blockquote {
+.Firefox1 blockquote {
     padding-bottom: .5em;
     }
 
@@ -184,8 +184,13 @@ blockquote {
         }
     /* Only Opera gets it right. */
     .Firefox #MSearchField,
-    .IE #MSearchField {
+    .IE #MSearchField,
+    .KHTML #MSearchField {
         width: 94%;
+        }
+    .FramedMenuPage .Firefox #MSearchField,
+    .FramedMenuPage .KHTML #MSearchField {
+        width: 98%;
         }
 
     /* Firefox doesn't do this right in frames without #MSearchPanel added on.
