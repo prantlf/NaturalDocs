@@ -3050,10 +3050,10 @@ sub BuildURLLink #(target, name)
     # Don't restore amp chars on the target.
 
     if (length $name < 50 || $name ne $target)
-        {  return '<a href="' . $target . '" class=LURL>' . $name . '</a>';  };
+        {  return '<a href="' . $target . '" class=LURL target=_top>' . $name . '</a>';  };
 
     my @segments = split(/([\,\/]|&amp;)/, $target);
-    my $output = '<a href="' . $target . '" class=LURL>';
+    my $output = '<a href="' . $target . '" class=LURL target=_top>';
 
     # Get past the first batch of slashes, since we don't want to break on things like http://.
 
