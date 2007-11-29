@@ -161,23 +161,26 @@ _______________________________________________________________________________
         IE - Internet Explorer
         Firefox - Firefox and anything else based on the Gecko rendering engine.
         Opera - Opera
-        KHTML - The KHTML rendering engine, which includes Konqueror and Safari.
+        Safari - Safari
+        Konqueror - Konqueror and anything else based on the KHTML rendering engine except Safari.
 
     Browser Versions:
 
-        If the browser is not one of the versions below, this style will not be present.  The browser type still may be.  KHTML-based
-        browsers are not broken out into sub-versions.
+        If the browser is not one of the versions below, this style will not be present.  The browser type still may be.
 
         IE6 - Internet Explorer 6.x.
         IE7 - Internet Explorer 7.x.
+
+        Firefox1 - Firefox 1.0.x and anything else based on Gecko 1.7.x.
+        Firefox15 - Firefox 1.5.x and anything else based on Gecko 1.8.0.x.
+        Firefox2 - Firefox 2.0.x and anything else based on Gecko 1.8.1.x.
 
         Opera7 - Opera 7.x.
         Opera8 - Opera 8.x.
         Opera9 - Opera 9.x.
 
-        Firefox1 - Firefox 1.0.x and anything else based on Gecko 1.7.x.
-        Firefox15 - Firefox 1.5.x and anything else based on Gecko 1.8.0.x.
-        Firefox2 - Firefox 2.0.x and anything else based on Gecko 1.8.1.x.
+        Safari2 - Safari 2.x.
+        Safari3 - Safari 3.x.
 
     Notes:
 
@@ -871,8 +874,9 @@ _______________________________________________________________________________
         - Removed MenuSection, ContentSection, and IndexSection.  Use things like ".ContentPage #Menu" instead.
         - Removed tables from the unframed <Page Structure>.  Use CSS to position the elements instead.
         - <#MainTopic> is applied to <CTopic> instead of <CType>.
-        - IE4, IE5, Opera5, Opera6, Netscape, and Netscape4 browser styles have been removed.  <IE7>, <Opera8>, and <Opera9>
-          have been added.  Gecko has been replaced by <Firefox>, <Firefox1>, <Firefox15>, and <Firefox2>.
+        - IE4, IE5, Opera5, Opera6, Netscape, and Netscape4 browser styles have been removed.  <IE7>, <Opera8>,
+          and <Opera9> have been added.  Gecko has been replaced by <Firefox>, <Firefox1>, <Firefox15>, and <Firefox2>.
+          KHTML has been replaced by <Safari>, <Safari2>, <Safari3>, and <Konqueror>.
         - Removed redundant CParagraph, CCode, and CBulletList classes.  Use <CBody> with p, pre, and ul instead.
         - Added <CImageCaption> and <CImageLink>.
         - Added <#MSearchPanel>, <#MSearchResultsWindow>, and all related styles.

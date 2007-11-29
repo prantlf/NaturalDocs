@@ -22,9 +22,19 @@ if (agt.indexOf("opera") != -1)
         {  browserVer = "Opera9";  }
     }
 
-else if (agt.indexOf("khtml") != -1 || agt.indexOf("konq") != -1 || agt.indexOf("safari") != -1 || agt.indexOf("applewebkit") != -1)
+else if (agt.indexOf("applewebkit") != -1)
     {
-    browserType = "KHTML";
+    browserType = "Safari";
+
+    if (agt.indexOf("version/3") != -1)
+        {  browserVer = "Safari3";  }
+    else if (agt.indexOf("safari/4") != -1)
+        {  browserVer = "Safari2";  }
+    }
+
+else if (agt.indexOf("khtml") != -1)
+    {
+    browserType = "Konqueror";
     }
 
 else if (agt.indexOf("msie") != -1)
