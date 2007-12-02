@@ -998,6 +998,27 @@ sub TryToGetType #(indexRef, lineNumberRef)
     if (!defined $name)
         {  return undef;  };
 
+    if ($tokens->[$index] eq '<')
+    	{
+    	# XXX: This is half-assed.
+    	$name .= '<';
+    	$index++;
+
+    	while ($index < scalar @$tokens && $tokens->[$index] ne '>')
+    		{
+    		$name .= $tokens->[$index];
+    		$index++;
+    		}
+
+    	if ($index < scalar @$tokens)
+    		{
+    		$name .= '>';
+    		$index++;
+    		}
+    	else
+    		{  return undef;  }
+    	}
+
     while ($tokens->[$index] eq '[')
         {
         $name .= '[';
