@@ -686,8 +686,8 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    # return '1.35';
-    return 'Development Release 02-10-2007 (1.35 base)';
+    # return '1.4';
+    return 'Development Release 12-07-2007 (1.35 base)';
     };
 
 #
