@@ -27,7 +27,6 @@
 #       Not supported yet:
 #
 #       - Autodocumenting enum members
-#       - Using
 #       - Using alias
 #
 ###############################################################################
@@ -183,6 +182,7 @@ sub ParseFile #(sourceFile, topicsList)
         {
         if ($self->TryToSkipWhitespace(\$index, \$lineNumber) ||
             $self->TryToGetNamespace(\$index, \$lineNumber) ||
+            $self->TryToGetUsing(\$index, \$lineNumber) ||
             $self->TryToGetClass(\$index, \$lineNumber) ||
             $self->TryToGetFunction(\$index, \$lineNumber) ||
             $self->TryToGetOverloadedOperator(\$index, \$lineNumber) ||
@@ -297,7 +297,7 @@ sub TryToGetNamespace #(indexRef, lineNumberRef)
     # We found a valid one if we made it this far.
 
     my $autoTopic = NaturalDocs::Parser::ParsedTopic->New(::TOPIC_CLASS(), $name,
-                                                                                         $self->CurrentScope(), undef,
+                                                                                         $self->CurrentScope(), $self->CurrentUsing(),
                                                                                          undef,
                                                                                          undef, undef, $$lineNumberRef);
 
@@ -460,7 +460,7 @@ sub TryToGetClass #(indexRef, lineNumberRef)
     	}
 
     my $autoTopic = NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
-                                                                                         undef, undef,
+                                                                                         undef, $self->CurrentUsing(),
                                                                                          $prototype,
                                                                                          undef, undef, $$lineNumberRef);
 
@@ -482,6 +482,59 @@ sub TryToGetClass #(indexRef, lineNumberRef)
 
     return 1;
     };
+
+
+#
+#   Function: TryToGetUsing
+#
+#   Determines whether the position is at a using statement, and if so, adds it to the current scope, skips it, and returns
+#	true.
+#
+#	Supported:
+#
+#       - Using
+#
+#	Unsupported:
+#
+#		- Using with alias
+#
+sub TryToGetUsing #(indexRef, lineNumberRef)
+    {
+    my ($self, $indexRef, $lineNumberRef) = @_;
+    my $tokens = $self->Tokens();
+
+    my $index = $$indexRef;
+    my $lineNumber = $$lineNumberRef;
+
+    if (lc($tokens->[$index]) ne 'using')
+        {  return undef;  };
+
+    $index++;
+    $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+    my $name;
+
+    while ($tokens->[$index] =~ /^[a-z_\@\.]/i)
+        {
+        $name .= $tokens->[$index];
+        $index++;
+        };
+
+    if ($tokens->[$index] ne ';' ||
+		!defined $name)
+        {  return undef;  };
+
+    $index++;
+
+
+    $self->AddUsing( NaturalDocs::SymbolString->FromText($name) );
+
+    $$indexRef = $index;
+    $$lineNumberRef = $lineNumber;
+
+    return 1;
+    };
+
 
 
 #
@@ -645,7 +698,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         my $topicType = ( $isEvent ? ::TOPIC_EVENT() : ::TOPIC_PROPERTY() );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
-                                                                                                  $self->CurrentScope(), undef,
+                                                                                                  $self->CurrentScope(), $self->CurrentUsing(),
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
         }
@@ -662,7 +715,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
-                                                                                                  $self->CurrentScope(), undef,
+                                                                                                  $self->CurrentScope(), $self->CurrentUsing(),
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
 
@@ -677,7 +730,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_EVENT(), $name,
-                                                                                                  $self->CurrentScope(), undef,
+                                                                                                  $self->CurrentScope(), $self->CurrentUsing(),
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
         $index++;
@@ -793,7 +846,7 @@ sub TryToGetOverloadedOperator #(indexRef, lineNumberRef)
     my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
 
     $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FUNCTION(), 'operator ' . $name,
-                                                                                              $self->CurrentScope(), undef,
+                                                                                              $self->CurrentScope(), $self->CurrentUsing(),
                                                                                               $prototype,
                                                                                               undef, undef, $startLine));
 
@@ -913,7 +966,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
         my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $name );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
-                                                                                                  $self->CurrentScope(), undef,
+                                                                                                  $self->CurrentScope(), $self->CurrentUsing(),
                                                                                                   $prototype,
                                                                                                   undef, undef, $startLine));
         };
@@ -1003,7 +1056,7 @@ sub TryToGetEnum #(indexRef, lineNumberRef)
     $self->SkipRestOfStatement(\$index, \$lineNumber);
 
     $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_TYPE(), $name,
-                                                                                              $self->CurrentScope(), undef,
+                                                                                              $self->CurrentScope(), $self->CurrentUsing(),
                                                                                               $prototype,
                                                                                               undef, undef, $startLine));
 
