@@ -334,6 +334,10 @@ sub TryToGetClass #(indexRef, lineNumberRef)
     my $index = $$indexRef;
     my $lineNumber = $$lineNumberRef;
 
+    my $startIndex = $index;
+    my $startLine = $lineNumber;
+    my $needsPrototype = 0;
+
     if ($self->TryToSkipAttributes(\$index, \$lineNumber))
         {  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
 
@@ -372,6 +376,27 @@ sub TryToGetClass #(indexRef, lineNumberRef)
 
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
+    if ($tokens->[$index] eq '<')
+    	{
+    	# XXX: This is half-assed.
+    	$index++;
+    	$needsPrototype = 1;
+
+    	while ($index < scalar @$tokens && $tokens->[$index] ne '>')
+    		{
+    		$index++;
+    		}
+
+    	if ($index < scalar @$tokens)
+    		{
+    		$index++;
+    		}
+    	else
+    		{  return undef;  }
+
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+    	}
+
     my @parents;
 
     if ($tokens->[$index] eq ':')
@@ -400,10 +425,19 @@ sub TryToGetClass #(indexRef, lineNumberRef)
         while ($tokens->[$index] eq ',')
         };
 
+    if (lc($tokens->[$index]) eq 'where')
+    	{
+    	# XXX: This is also half-assed
+    	$index++;
+
+    	while ($index < scalar @$tokens && $tokens->[$index] ne '{')
+    		{
+    		$index++;
+    		}
+    	}
+
     if ($tokens->[$index] ne '{')
         {  return undef;  };
-
-    $index++;
 
 
     # If we made it this far, we have a valid class declaration.
@@ -418,9 +452,16 @@ sub TryToGetClass #(indexRef, lineNumberRef)
     else
         {  $topicType = ::TOPIC_CLASS();  };
 
+    my $prototype;
+
+    if ($needsPrototype)
+    	{
+    	$prototype = $self->CreateString($startIndex, $index);
+    	}
+
     my $autoTopic = NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                          undef, undef,
-                                                                                         undef,
+                                                                                         $prototype,
                                                                                          undef, undef, $$lineNumberRef);
 
     $self->AddAutoTopic($autoTopic);
@@ -433,6 +474,8 @@ sub TryToGetClass #(indexRef, lineNumberRef)
         };
 
     $self->StartScope('}', $lineNumber, $autoTopic->Package());
+
+    $index++;
 
     $$indexRef = $index;
     $$lineNumberRef = $lineNumber;
@@ -998,6 +1041,8 @@ sub TryToGetType #(indexRef, lineNumberRef)
     if (!defined $name)
         {  return undef;  };
 
+	$self->TryToSkipWhitespace(\$index, \$lineNumber);
+
     if ($tokens->[$index] eq '<')
     	{
     	# XXX: This is half-assed.
@@ -1017,6 +1062,8 @@ sub TryToGetType #(indexRef, lineNumberRef)
     		}
     	else
     		{  return undef;  }
+
+		$self->TryToSkipWhitespace(\$index, \$lineNumber);
     	}
 
     while ($tokens->[$index] eq '[')
