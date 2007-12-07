@@ -1,4 +1,4 @@
-Format: Development Release 07-30-2006 (1.35 base)
+Format: Development Release 12-07-2007 (1.35 base)
 
 # This is the main Natural Docs languages file.  If you change anything here,
 # it will apply to EVERY PROJECT you use Natural Docs on.  If you'd like to
