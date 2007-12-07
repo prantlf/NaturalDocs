@@ -185,9 +185,12 @@ blockquote {
     /* Only Opera gets it right. */
     .Firefox #MSearchField,
     .IE #MSearchField,
-    .Safari #MSearchField,
-    .Konqueror #MSearchField {
+    .Safari #MSearchField {
         width: 94%;
+        }
+    .Opera9 #MSearchField,
+    .Konqueror #MSearchField {
+        width: 97%;
         }
     .FramedMenuPage .Firefox #MSearchField,
     .FramedMenuPage .Safari #MSearchField,
