@@ -739,6 +739,7 @@ sub MergeAutoTopics #(language, autoTopics)
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
+            $topic->SetUsing($autoTopic->Using());
 
             if (!$topic->Title())
                 {  $topic->SetTitle($autoTopic->Title());  };
