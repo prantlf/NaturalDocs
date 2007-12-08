@@ -1096,6 +1096,14 @@ sub TryToGetType #(indexRef, lineNumberRef)
 
 	$self->TryToSkipWhitespace(\$index, \$lineNumber);
 
+	if ($tokens->[$index] eq '?')
+		{
+		$name .= '?';
+		$index++;
+
+		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+		}
+
     if ($tokens->[$index] eq '<')
     	{
     	# XXX: This is half-assed.
