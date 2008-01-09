@@ -74,8 +74,6 @@ Topic Type: Generic
    Keywords:
       topic, topics
       about, list
-      note
-      notes
 
 
 Topic Type: Class
