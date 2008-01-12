@@ -8,7 +8,7 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2006 Greg Valure
+# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
 # Natural Docs is licensed under the GPL
 
 use strict;
