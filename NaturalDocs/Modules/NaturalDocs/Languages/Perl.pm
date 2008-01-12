@@ -719,9 +719,8 @@ sub TryToGetListOfStrings #(indexRef, lineNumberRef)
 #       indexRef - A reference to the current index.
 #       lineNumberRef - A reference to the current line number.
 #       noRegExps - If set, does not test for regular expressions.
-#       allowStringedClosingParens - If set, allows $) to end a parenthesis set.
 #
-sub GenericSkip #(indexRef, lineNumberRef, noRegExps, allowStringedClosingParens)
+sub GenericSkip #(indexRef, lineNumberRef, noRegExps)
     {
     my ($self, $indexRef, $lineNumberRef, $noRegExps, $allowStringedClosingParens) = @_;
     my $tokens = $self->Tokens();
@@ -740,11 +739,23 @@ sub GenericSkip #(indexRef, lineNumberRef, noRegExps, allowStringedClosingParens
         }
     elsif ($tokens->[$$indexRef] eq '(' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
         {
+        # Temporarily allow stringed closing parenthesis if it looks like we're in an anonymous function declaration with Perl's
+        # cheap version of prototypes, such as "my $_declare = sub($) {}".
+        my $tempAllowStringedClosingParens = $allowStringedClosingParens;
+        if (!$allowStringedClosingParens)
+        	{
+        	my $tempIndex = $$indexRef - 1;
+        	if ($tempIndex >= 0 && $tokens->[$tempIndex] =~ /^[ \t]/)
+        		{  $tempIndex--;  }
+        	if ($tempIndex >= 0 && $tokens->[$tempIndex] eq 'sub')
+        		{  $tempAllowStringedClosingParens = 1;  }
+        	}
+
         $$indexRef++;
 
         do
-            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ')', $noRegExps, $allowStringedClosingParens);  }
-        while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1) && !$allowStringedClosingParens);
+            {  $self->GenericSkipUntilAfter($indexRef, $lineNumberRef, ')', $noRegExps, $tempAllowStringedClosingParens);  }
+        while ($$indexRef < scalar @$tokens && $self->IsStringed($$indexRef - 1) && !$tempAllowStringedClosingParens);
         }
     elsif ($tokens->[$$indexRef] eq '[' && !$self->IsBackslashed($$indexRef) && !$self->IsStringed($$indexRef))
         {
