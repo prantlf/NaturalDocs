@@ -468,10 +468,8 @@ sub CleanComment #(commentLines)
         elsif ($line =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
                 (length $line < 256 && $line =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/) )
             {
-            # Convert the original to a blank line.
-            $commentLines->[$index] = '';
-
-            # This has no effect on the vertical line detection.
+            # Ignore it.  This has no effect on the vertical line detection.  We want to keep it in the output though in case it was
+            # in a code section.
             }
 
         # If the line is not blank or a horizontal line...
@@ -551,31 +549,59 @@ sub CleanComment #(commentLines)
 
 
     $index = 0;
+    my $inCodeSection = 0;
 
     while ($index < scalar @$commentLines)
         {
-        # Clear vertical lines.
+        # Clear horizontal lines only if we're not in a code section.
+        if ($commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
+            ( length $commentLines->[$index] < 256 &&
+              $commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/ ) )
+        	{
+        	if (!$inCodeSection)
+        		{  $commentLines->[$index] = '';  }
+        	}
 
-        if ($leftSide == IS_UNIFORM)
-            {
-            # This works because every line should either start this way, be blank, or be the first line that doesn't start with a symbol.
-            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1*//;
-            };
+        else
+        	{
+	        # Clear vertical lines.
 
-        if ($rightSide == IS_UNIFORM)
-            {
-            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9 ])\1*$//;
-            };
+	        if ($leftSide == IS_UNIFORM)
+	            {
+	            # This works because every line should either start this way, be blank, or be the first line that doesn't start with a
+	            # symbol.
+	            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1*//;
+	            };
+
+	        if ($rightSide == IS_UNIFORM)
+	            {
+	            $commentLines->[$index] =~ s/ *([^a-zA-Z0-9 ])\1*$//;
+	            };
 
 
-        # Clear horizontal lines again if there were vertical lines.  This catches lines that were separated from the verticals by
-        # whitespace.  We couldn't do this in the first loop because that would make the regexes over-tolerant.
+	        # Clear horizontal lines again if there were vertical lines.  This catches lines that were separated from the verticals by
+	        # whitespace.
 
-        if ($leftSide == IS_UNIFORM || $rightSide == IS_UNIFORM)
-            {
-            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1{3,}$//;
-            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$//;
-            };
+	        if (($leftSide == IS_UNIFORM || $rightSide == IS_UNIFORM) && !$inCodeSection)
+	            {
+	            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1{3,}$//;
+	            $commentLines->[$index] =~ s/^ *([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$//;
+	            };
+
+
+	        # Check for the start and end of code sections.  Note that this doesn't affect vertical line removal.
+
+	        if (!$inCodeSection &&
+	        	$commentLines->[$index] =~ /^ *\( *(?:(?:start|begin)? +)?(?:table|code|example|diagram) *\)$/i )
+	        	{
+	        	$inCodeSection = 1;
+	        	}
+	        elsif ($inCodeSection &&
+	        	    $commentLines->[$index] =~ /^ *\( *(?:end|finish|done)(?: +(?:table|code|example|diagram))? *\)$/i)
+	        	 {
+	        	 $inCodeSection = 0;
+	        	 }
+	        }
 
 
         $index++;
