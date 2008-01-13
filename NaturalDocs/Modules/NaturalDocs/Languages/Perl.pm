@@ -1240,7 +1240,7 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
             {  $index--;  };
 
         if ($index < 0 || $tokens->[$index] !~ /^[a-zA-Z0-9_\)\]\}\'\"\`]/ ||
-            (lc($tokens->[$index]) eq 'split' && $index > 0 && $tokens->[$index-1] !~ /^[\$\%\@\*]$/) )
+            ($tokens->[$index] =~ /^split|grep$/ && $index > 0 && $tokens->[$index-1] !~ /^[\$\%\@\*]$/) )
             {  $isRegexp = 1;  };
         };
 
