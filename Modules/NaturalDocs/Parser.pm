@@ -554,9 +554,9 @@ sub CleanComment #(commentLines)
     while ($index < scalar @$commentLines)
         {
         # Clear horizontal lines only if we're not in a code section.
-        if ($commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1{3,}$/ ||
+        if ($commentLines->[$index] =~ /^ *([^a-zA-Z0-9 ])\1{3,}$/ ||
             ( length $commentLines->[$index] < 256 &&
-              $commentLines->[$index] =~ /^([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/ ) )
+              $commentLines->[$index] =~ /^ *([^a-zA-Z0-9 ])\1*([^a-zA-Z0-9 ])\2{3,}([^a-zA-Z0-9 ])\3*$/ ) )
         	{
         	if (!$inCodeSection)
         		{  $commentLines->[$index] = '';  }
