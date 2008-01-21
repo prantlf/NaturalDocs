@@ -30,6 +30,11 @@ use base 'NaturalDocs::Languages::Simple';
 #   ignore text-based enders preceded by an at sign.  Also note that it does not have parenthesis for parameter lists.  We need to
 #   skip all commas if the prototype doesn't have parenthesis but does have @ characters.
 #
+#	Identifiers such as function names may contain the characters $, #, and _, so if "as" or "is" appears directly after one of them
+#	we need to ignore the ender there as well.
+#
+#	> FUNCTION Something_is_something ...
+#
 #   Parameters:
 #
 #       type - The <TopicType> of the prototype.
@@ -51,7 +56,7 @@ sub OnPrototypeEnd #(type, prototypeRef, ender)
     {
     my ($self, $type, $prototypeRef, $ender) = @_;
 
-    if ($ender =~ /^[a-z]+$/i && substr($$prototypeRef, -1) eq '@')
+    if ($ender =~ /^[a-z]+$/i && substr($$prototypeRef, -1) =~ /^[\@\$\#\_]$/)
         {  return ::ENDER_IGNORE();  }
 
     elsif ($type eq ::TOPIC_FUNCTION() && $ender eq ',')
