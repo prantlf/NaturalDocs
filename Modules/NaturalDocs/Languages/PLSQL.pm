@@ -56,7 +56,8 @@ sub OnPrototypeEnd #(type, prototypeRef, ender)
     {
     my ($self, $type, $prototypeRef, $ender) = @_;
 
-    if ($ender =~ /^[a-z]+$/i && substr($$prototypeRef, -1) =~ /^[\@\$\#\_]$/)
+    # _ should be handled already.
+    if ($ender =~ /^[a-z]+$/i && substr($$prototypeRef, -1) =~ /^[\@\$\#]$/)
         {  return ::ENDER_IGNORE();  }
 
     elsif ($type eq ::TOPIC_FUNCTION() && $ender eq ',')
