@@ -415,6 +415,27 @@ sub TryToGetClass #(indexRef, lineNumberRef)
                 $index++;
                 };
 
+	        if ($tokens->[$index] eq '<')
+	            {
+	            # XXX: This is still half-assed.
+	            $index++;
+	            $needsPrototype = 1;
+
+	            while ($index < scalar @$tokens && $tokens->[$index] ne '>')
+	                {
+	                $index++;
+	                }
+
+	            if ($index < scalar @$tokens)
+	                {
+	                $index++;
+	                }
+	            else
+	                {  return undef;  }
+
+	            $self->TryToSkipWhitespace(\$index, \$lineNumber);
+	            }
+
             if (!defined $parentName)
                 {  return undef;  };
 
