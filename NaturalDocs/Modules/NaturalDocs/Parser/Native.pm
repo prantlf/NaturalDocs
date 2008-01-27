@@ -897,15 +897,21 @@ sub TagType #(textBlocks, index)
 
     if ( ( $textBlocks->[$index] =~ /^[\*_<]$/ ) &&
 
-        # Before it must be whitespace, the beginning of the text, or ({["'-/.
-        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/]$/ )&&
+        # Before it must be whitespace, the beginning of the text, or ({["'-/*_.
+        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/\*\_]$/ ) &&
+
+        # Notes for 2.0: Include Spanish upside down ! and ? as well as opening quotes (66) and apostrophes (6).  Look into
+        # Unicode character classes as well.
 
         # After it must be non-whitespace.
         ( $index + 1 < scalar @$textBlocks && $textBlocks->[$index+1] !~ /^[\ \t\n]/) &&
 
-        # Make sure we don't accept <<, <=, <-, or *= as opening tags
+        # Make sure we don't accept <<, <=, <-, or *= as opening tags.
         ( $textBlocks->[$index] ne '<' || $textBlocks->[$index+1] !~ /^[<=-]/ ) &&
-        ( $textBlocks->[$index] ne '*' || $textBlocks->[$index+1] !~ /^\=/ ) )
+        ( $textBlocks->[$index] ne '*' || $textBlocks->[$index+1] !~ /^[\=\*]/ ) &&
+
+        # Make sure we don't accept * or _ before it unless it's <.
+        ( $textBlocks->[$index] eq '<' || $index == 0 || $textBlocks->[$index-1] !~ /[\*\_]$/) )
         {
         return POSSIBLE_OPENING_TAG;
         }
@@ -915,16 +921,21 @@ sub TagType #(textBlocks, index)
 
     elsif ( ( $textBlocks->[$index] =~ /^[\*_>]$/) &&
 
-            # After it must be whitespace, the end of the text, or )}].,!?"';:-/.
-            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/]/ ||
+            # After it must be whitespace, the end of the text, or )}].,!?"';:-/*_.
+            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/\*\_]/ ||
               # Links also get plurals, like <link>s, <linx>es, <link>'s, and <links>'.
               ( $textBlocks->[$index] eq '>' && $textBlocks->[$index+1] =~ /^(?:es|s|\')/ ) ) &&
+
+            # Notes for 2.0: Include closing quotes (99) and apostrophes (9).  Look into Unicode character classes as well.
 
             # Before it must be non-whitespace.
             ( $index != 0 && $textBlocks->[$index-1] !~ /[ \t\n]$/ ) &&
 
             # Make sure we don't accept >>, ->, or => as closing tags.  >= is already taken care of.
-            ( $textBlocks->[$index] ne '>' || $textBlocks->[$index-1] !~ /[>=-]$/ ) )
+            ( $textBlocks->[$index] ne '>' || $textBlocks->[$index-1] !~ /[>=-]$/ ) &&
+
+            # Make sure we don't accept * or _ after it unless it's >.
+            ( $textBlocks->[$index] eq '>' || $textBlocks->[$index+1] !~ /[\*\_]$/) )
         {
         return POSSIBLE_CLOSING_TAG;
         }
