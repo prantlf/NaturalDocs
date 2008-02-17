@@ -781,7 +781,7 @@ sub ProcessProperties #(properties, version, tempExtensions, tempShebangStrings)
                 elsif ($value eq 'under parent')
                     {  $constant = ::ENUM_UNDER_PARENT();  };
 
-                if (defined $value)
+                if (defined $constant)
                     {  $language->SetEnumValues($constant);  }
                 else
                     {
