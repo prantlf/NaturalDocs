@@ -131,7 +131,7 @@ Language: Java
    Extension: java
    Line Comment: //
    Block Comment: /* */
-   Enum Values: Local
+   Enum Values: Under type
    Function Prototype Ender: {
    Variable Prototype Enders: ; =
 
@@ -141,7 +141,7 @@ Language: JavaScript
    Extension: js
    Line Comment: //
    Block Comment: /* */
-   Enum Values: Local
+   Enum Values: Under type
    Function Prototype Ender: {
    Variable Prototype Enders: ; =
 
@@ -192,7 +192,7 @@ Language: Visual Basic
 
    Extensions: vb vbs bas cls frm
    Line Comment: '
-   Enum Values: Local
+   Enum Values: Under type
    Function Prototype Ender: \n
    Variable Prototype Enders: \n =
    Line Extender: _
@@ -243,7 +243,7 @@ Language: Ruby
    Shebang String: ruby
    Ignore Variable Prefixes in Index: $ @ @@
    Line Comment: #
-   Enum Values: Parent
+   Enum Values: Under parent
    Function Prototype Enders: ; \n
    Variable Prototype Enders: ; \n =
    Line Extender: \
