@@ -436,13 +436,21 @@ blockquote {
     .CVariable .Prototype {
         background-color: #FFFFF0; border-color: #E0E0A0 }
 
+    .CClass .Prototype {
+        border-width: 1px 2px 2px 1px; border-style: solid; border-color: #A0A0A0;
+        background-color: #F4F4F4;
+        }
+    .CInterface .Prototype {
+        border-width: 1px 2px 2px 1px; border-style: solid; border-color: #A0A0D0;
+        background-color: #F4F4FF;
+        }
+
     .CDatabaseIndex .Prototype,
     .CConstant .Prototype {
         background-color: #D0D0D0; border-color: #000000 }
     .CType .Prototype,
-    .CClass .Prototype,
-    .CInterface .Prototype {
-        background-color: #FAF0F0; border-color: #E0B0B0;
+    .CEnumeration .Prototype {
+        background-color: #E0E0B0; border-color: #909070;
         }
     .CDatabaseTrigger .Prototype,
     .CEvent .Prototype,
