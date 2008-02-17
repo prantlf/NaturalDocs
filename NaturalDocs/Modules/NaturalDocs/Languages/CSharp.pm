@@ -1076,7 +1076,7 @@ sub TryToGetEnum #(indexRef, lineNumberRef)
 
     $self->SkipRestOfStatement(\$index, \$lineNumber);
 
-    $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_TYPE(), $name,
+    $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_ENUMERATION(), $name,
                                                                                               $self->CurrentScope(), $self->CurrentUsing(),
                                                                                               $prototype,
                                                                                               undef, undef, $startLine));
