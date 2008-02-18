@@ -621,9 +621,23 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
     my $name;
     my $lastNameWord;
 
-    while ($tokens->[$index] =~ /^[a-z\_\@\.\~]/i)
+    while ($tokens->[$index] =~ /^[a-z\_\@\.\~\<]/i)
         {
         $name .= $tokens->[$index];
+
+        # Ugly hack, but what else is new?  For explicit generic interface definitions, such as:
+        # IDObjectType System.Collections.Generic.IEnumerator<IDObjectType>.Current
+
+        if ($tokens->[$index] eq '<')
+        	{
+        	do
+        		{
+	        	$index++;
+        		$name .= $tokens->[$index];
+        		}
+        	while ($index < @$tokens && $tokens->[$index] ne '>');
+        	}
+
         $lastNameWord = $tokens->[$index];
         $index++;
         };
