@@ -712,7 +712,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 
         $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-        $self->TryToGetIdentifier(\$index, \$lineNumber);
+        $self->TryToGetIdentifier(\$index, \$lineNumber, 1);
 
         $self->TryToSkipWhitespace(\$index, \$lineNumber);
         };
