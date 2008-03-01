@@ -1401,15 +1401,19 @@ sub LanguageOf #(sourceFile)
                 {
                 my $shebangLine;
 
-                open(SOURCEFILEHANDLE, '<' . $sourceFile) or die 'Could not open ' . $sourceFile;
+                if (open(SOURCEFILEHANDLE, '<' . $sourceFile))
+                	{
+	                read(SOURCEFILEHANDLE, $shebangLine, 2);
+	                if ($shebangLine eq '#!')
+	                    {  $shebangLine = <SOURCEFILEHANDLE>;  }
+	                else
+	                    {  $shebangLine = undef;  };
 
-                read(SOURCEFILEHANDLE, $shebangLine, 2);
-                if ($shebangLine eq '#!')
-                    {  $shebangLine = <SOURCEFILEHANDLE>;  }
-                else
-                    {  $shebangLine = undef;  };
-
-                close (SOURCEFILEHANDLE);
+	                close (SOURCEFILEHANDLE);
+	                }
+	            elsif (defined $extension)
+	            	{  die 'Could not open ' . $sourceFile;  }
+	            # Ignore extensionless files that can't be opened.  They may be system files.
 
                 if (!defined $shebangLine)
                     {
