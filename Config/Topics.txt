@@ -158,6 +158,7 @@ Topic Type: Function
       callback, callbacks
       constructor, constructors
       destructor, destructors
+      operator, operators
 
 
 Topic Type: Variable
