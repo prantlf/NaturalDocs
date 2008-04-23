@@ -243,16 +243,16 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
             #
             # The annotation starts correctly but doesn't end so because it is followed by code on the same line.
 
-            my ($symbol, $lineRemainder, $isMultiLine);
+            my ($lineRemainder, $isMultiLine);
 
             for (;;)
                 {
-                ($symbol, $lineRemainder) = $self->StripClosingSymbol(\$line, $closingSymbol);
+                $lineRemainder = $self->StripClosingSymbol(\$line, $closingSymbol);
 
                 push @commentLines, $line;
 
                 #  If we found an end comment symbol...
-                if (defined $symbol)
+                if (defined $lineRemainder)
                     {  last;  };
 
                 push @$tokens, "\n";
