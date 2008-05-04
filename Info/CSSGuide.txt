@@ -880,7 +880,7 @@ _______________________________________________________________________________
         - Removed redundant CParagraph, CCode, and CBulletList classes.  Use <CBody> with p, pre, and ul instead.
         - Added <CImageCaption> and <CImageLink>.
         - Added <#MSearchPanel>, <#MSearchResultsWindow>, and all related styles.
-        - Added <Search Results Structure>, <Search Results Styles>, and <SearchResultsPage>.
+        - Added <Search Results Structure>, <Search Results Styles>, and <FramedSearchResultsPage>.
         - Removed SEntrySize.  Apply the width to <SEntry> and <SDescription> instead.
         - <SType>, <SEntry>, and <SIndent#> were moved from the td and divs into the tr.
 
