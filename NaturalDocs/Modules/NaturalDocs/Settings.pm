@@ -718,7 +718,7 @@ sub ParseCommandLine
                                   'source' => '-i',
                                   'excludeinput' => '-xi',
                                   'excludesource' => '-xi',
-                                  'image' => '-img',
+                                  'images' => '-img',
                                   'output'  => '-o',
                                   'project' => '-p',
                                   'documentedonly' => '-do',
