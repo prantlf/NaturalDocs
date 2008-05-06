@@ -114,6 +114,12 @@ my $extensionID;
 #
 #       This whole series is repeated for each <ImageReferenceString> until it hits an undef.
 #
+#	Revisions:
+#
+#		1.4:
+#
+#			- The file was added to Natural Docs.
+#
 
 
 
