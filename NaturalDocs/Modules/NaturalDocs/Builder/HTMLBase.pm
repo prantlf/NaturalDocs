@@ -3070,9 +3070,8 @@ sub BuildURLLink #(target, name)
 
     while ($i < scalar @segments)
         {
-        # Spaces don't wrap in IE for some reason.  Need to use dashes as well.
         if ($segments[$i] eq ',' || $segments[$i] eq '/' || $segments[$i] eq '&amp;')
-            {  $output .= '<span class=HB>- </span>';  };
+            {  $output .= '<wbr>';  };
 
         $output .= $segments[$i];
         $i++;
@@ -3396,7 +3395,7 @@ sub AddHiddenBreaks #(string)
     # \.(?=.{5,}) instead of \. so file extensions don't get breaks.
     # :+ instead of :: because Mac paths are separated by a : and we want to get those too.
 
-    $string =~ s/(\w(?:\.(?=.{5,})|:+|->|\\|\/))(\w)/$1 . '<span class=HB> <\/span>' . $2/ge;
+    $string =~ s/(\w(?:\.(?=.{5,})|:+|->|\\|\/))(\w)/$1 . '<wbr>' . $2/ge;
 
     return $string;
     };

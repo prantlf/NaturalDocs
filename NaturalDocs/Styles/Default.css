@@ -53,11 +53,11 @@ p {
     text-indent: 5ex; margin: 0 }
 
 
-/*  Can't use something like display: none or it won't break.  */
-.HB {
-    font-size: 1px;
-    visibility: hidden;
-    }
+/*  Opera doesn't break with just wbr, but will if you add this.  */
+.Opera wbr:after {
+	content: "\00200B";
+	}
+
 
 /*  Blockquotes are used as containers for things that may need to scroll.  */
 blockquote {
