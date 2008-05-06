@@ -686,8 +686,7 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    # return '1.4';
-    return 'Development Release 01-12-2008 (1.35 base)';
+    return '1.4';
     };
 
 #
@@ -1272,7 +1271,7 @@ sub LoadAndComparePreviousSettings
     else
         {
         my $raw;
-
+  
         # [UInt8: tab expansion]
         # [UInt8: documented only (0 or 1)]
         # [UInt8: no auto-group (0 or 1)]

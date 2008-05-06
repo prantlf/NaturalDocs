@@ -328,14 +328,14 @@ sub LoadSourceFileInfo
         # Check if the file is in the right format.
         $version = NaturalDocs::Version->FromTextFile(\*FH_FILEINFO);
 
-        # The project file need to be rebuilt for 1.16.  The source files need to be reparsed and the output files rebuilt for 1.35.
+        # The project file need to be rebuilt for 1.16.  The source files need to be reparsed and the output files rebuilt for 1.4.
         # We'll tolerate the difference between 1.16 and 1.3 in the loader.
 
         if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.16') ))
             {
             $fileIsOkay = 1;
 
-            if (!NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.35') ))
+            if (!NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.4') ))
                 {
                 $reparseEverything = 1;
                 $rebuildEverything = 1;
