@@ -761,7 +761,10 @@ sub MergeAutoTopics #(language, autoTopics)
             }
 
         # Transfer information if we have a match or a headerless topic.
-        elsif ( !$topic->Title() || ($topic->Type() == $autoTopic->Type() && index($autoTopic->Title(), $cleanTitle) != -1) )
+        elsif ( !$topic->Title() ||
+        		  $topic->Symbol() eq $autoTopic->Symbol() ||
+        		  ( $topic->Type() == $autoTopic->Type() &&
+        			( index($autoTopic->Title(), $cleanTitle) != -1 || index($cleanTitle, $autoTopic->Title()) != -1 ) ) )
             {
             $topic->SetType($autoTopic->Type());
             $topic->SetPrototype($autoTopic->Prototype());
