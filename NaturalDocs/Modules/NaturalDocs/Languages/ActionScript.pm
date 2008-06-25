@@ -529,13 +529,26 @@ sub TryToGetClass #(indexRef, lineNumberRef)
         $index++;
         $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-        my $parent = $self->TryToGetIdentifier(\$index, \$lineNumber);
-        if (!$parent)
-            {  return undef;  };
+        # Interfaces can extend multiple other interfaces, which is NOT clearly mentioned in the docs.
 
-        push @parents, $parent;
+        for (;;)
+        	{
+	        my $parent = $self->TryToGetIdentifier(\$index, \$lineNumber);
+	        if (!$parent)
+	            {  return undef;  };
 
-        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+	        push @parents, $parent;
+
+	        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+            if ($tokens->[$index] ne ',')
+                {  last;  }
+            else
+                {
+                $index++;
+                $self->TryToSkipWhitespace(\$index, \$lineNumber);
+                };
+	        }
         };
 
     if ($type eq 'class' && $tokens->[$index] eq 'implements')
