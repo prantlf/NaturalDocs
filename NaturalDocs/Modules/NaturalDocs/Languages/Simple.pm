@@ -425,8 +425,9 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
                     };
 
                 # Check for opening brackets.
-                if ($tokens[$tokenIndex] =~ /^[\(\[\{\<]$/)
-                    {
+				if ($tokens[$tokenIndex] =~ /^[\(\[\{]$/ ||
+				    ($tokens[$tokenIndex] eq "<" && $tokens[$tokenIndex-1] !~ /operator[ \t]*$/) )
+	                {
                     push @brackets, $tokens[$tokenIndex];
                     };
 
