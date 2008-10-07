@@ -222,7 +222,7 @@ sub ParseComment #(commentLines, isJavaDoc, lineNumber, parsedTopics)
 
 
     # Last one, if any.  This is the only one that gets the prototypes.
-    if ($bodyStart)
+    if ($topicCount)
         {
         if ($scope == ::SCOPE_START() || $scope == ::SCOPE_END())
             {  $package = undef;  };
