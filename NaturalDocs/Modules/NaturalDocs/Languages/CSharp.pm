@@ -377,31 +377,21 @@ sub TryToGetClass #(indexRef, lineNumberRef)
 
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-    if ($tokens->[$index] eq '<')
-            {
-            # XXX: This is half-assed.
-            $index++;
-            $needsPrototype = 1;
+	if ($self->TryToSkipTemplateSpec(\$index, \$lineNumber))
+		{
+		$needsPrototype = 1;
+		$self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-            while ($index < scalar @$tokens && $tokens->[$index] ne '>')
-                    {
-                    $index++;
-                    }
-
-            if ($index < scalar @$tokens)
-                    {
-                    $index++;
-                    }
-            else
-                    {  return undef;  }
-
-        $self->TryToSkipWhitespace(\$index, \$lineNumber);
-            }
+		if ($self->TryToSkipWhereClauses(\$index, \$lineNumber))
+			{  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
+		}
 
     my @parents;
 
     if ($tokens->[$index] eq ':')
         {
+        my $inheritsTemplates;
+
         do
             {
             $index++;
@@ -416,47 +406,28 @@ sub TryToGetClass #(indexRef, lineNumberRef)
                 $index++;
                 };
 
-                if ($tokens->[$index] eq '<')
-                    {
-                    # XXX: This is still half-assed.
-                    $index++;
-                    $needsPrototype = 1;
-
-                    while ($index < scalar @$tokens && $tokens->[$index] ne '>')
-                        {
-                        $index++;
-                        }
-
-                    if ($index < scalar @$tokens)
-                        {
-                        $index++;
-                        }
-                    else
-                        {  return undef;  }
-
-                    $self->TryToSkipWhitespace(\$index, \$lineNumber);
-                    }
-
             if (!defined $parentName)
                 {  return undef;  };
 
             push @parents, NaturalDocs::SymbolString->FromText($parentName);
 
             $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+            if ($self->TryToSkipTemplateSpec(\$index, \$lineNumber))
+            	{
+            	$inheritsTemplates = 1;
+            	$needsPrototype = 1;
+            	$self->TryToSkipWhitespace(\$index, \$lineNumber);
+            	}
             }
-        while ($tokens->[$index] eq ',')
+        while ($tokens->[$index] eq ',');
+
+        if ($inheritsTemplates)
+        	{
+        	if ($self->TryToSkipWhereClauses(\$index, \$lineNumber))
+        		{  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
+        	}
         };
-
-    if (lc($tokens->[$index]) eq 'where')
-            {
-            # XXX: This is also half-assed
-            $index++;
-
-            while ($index < scalar @$tokens && $tokens->[$index] ne '{')
-                    {
-                    $index++;
-                    }
-            }
 
     if ($tokens->[$index] ne '{')
         {  return undef;  };
@@ -621,26 +592,23 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 
     my $name;
     my $lastNameWord;
+    my $hasTemplates;
 
-    while ($tokens->[$index] =~ /^[a-z\_\@\.\~\<]/i)
+    while ($tokens->[$index] =~ /^[a-z\_\@\.\~]/i)
         {
         $name .= $tokens->[$index];
-
-        # Ugly hack, but what else is new?  For explicit generic interface definitions, such as:
-        # IDObjectType System.Collections.Generic.IEnumerator<IDObjectType>.Current
-
-        if ($tokens->[$index] eq '<')
-                {
-                do
-                        {
-                        $index++;
-                        $name .= $tokens->[$index];
-                        }
-                while ($index < @$tokens && $tokens->[$index] ne '>');
-                }
-
         $lastNameWord = $tokens->[$index];
         $index++;
+
+        # For explicit generic interface definitions, such as
+        # IDObjectType System.Collections.Generic.IEnumerator<IDObjectType>.Current
+        # or templated functions.
+
+        if ($self->TryToSkipTemplateSpec(\$index, \$lineNumber))
+        	{
+        	$hasTemplates = 1;
+        	$self->TryToSkipWhitespace(\$index, \$lineNumber);
+        	}
         };
 
     if (!defined $name)
@@ -746,6 +714,10 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         {
         # This should jump the parenthesis completely.
         $self->GenericSkip(\$index, \$lineNumber);
+		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        if ($hasTemplates && $self->TryToSkipWhereClauses(\$index, \$lineNumber))
+        	{  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
 
         my $topicType = ( $isDelegate ? ::TOPIC_DELEGATE() : ::TOPIC_FUNCTION() );
         my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
@@ -1140,28 +1112,8 @@ sub TryToGetType #(indexRef, lineNumberRef)
                 $self->TryToSkipWhitespace(\$index, \$lineNumber);
                 }
 
-    if ($tokens->[$index] eq '<')
-            {
-            # XXX: This is half-assed.
-            $name .= '<';
-            $index++;
-
-            while ($index < scalar @$tokens && $tokens->[$index] ne '>')
-                    {
-                    $name .= $tokens->[$index];
-                    $index++;
-                    }
-
-            if ($index < scalar @$tokens)
-                    {
-                    $name .= '>';
-                    $index++;
-                    }
-            else
-                    {  return undef;  }
-
-                $self->TryToSkipWhitespace(\$index, \$lineNumber);
-            }
+    if ($self->TryToSkipTemplateSpec(\$index, \$lineNumber))
+    	{  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
 
     while ($tokens->[$index] eq '[')
         {
@@ -1372,6 +1324,119 @@ sub TryToSkipAttributes #(indexRef, lineNumberRef)
 
     return $success;
     };
+
+
+#
+#	Function: TryToSkipTemplateSpec
+#	If the current position is on a template spec (the part in angle brackets) skip it and return true.  Can handle nested
+#	templates.
+#
+sub TryToSkipTemplateSpec #(indexRef, lineNumberRef)
+	{
+	my ($self, $indexRef, $lineNumberRef) = @_;
+	my $tokens = $self->Tokens();
+
+    if ($tokens->[$$indexRef] eq '<')
+        {
+        my $nestingLevel = 1;
+        $$indexRef++;
+        $self->TryToSkipWhitespace($indexRef, $lineNumberRef);
+
+        while ($$indexRef < scalar @$tokens && $nestingLevel > 0)
+        	{
+        	if ($tokens->[$$indexRef] eq '<')
+        		{  $nestingLevel++;  }
+        	elsif ($tokens->[$$indexRef] eq '>')
+        		{  $nestingLevel--;  }
+
+            $$indexRef++;
+        	$self->TryToSkipWhitespace($indexRef, $lineNumberRef);
+			}
+
+		return 1;
+        }
+    else
+    	{  return undef;  }
+	}
+
+
+#
+#	Function: TryToSkipWhereClauses
+#	If the current position is on a "where" clause, skips it and returns true.  Can handle multiple wheres in a row.
+#
+sub TryToSkipWhereClauses #(indexRef, lineNumberRef)
+	{
+	my ($self, $indexRef, $lineNumberRef) = @_;
+	my $tokens = $self->Tokens();
+
+    if ($tokens->[$$indexRef] ne 'where')
+    	{  return undef;  }
+
+	my $index = $$indexRef;
+	my $lineNumber = $$lineNumberRef;
+
+    do
+        {
+        $index++;  # Skip the where
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        $index++;  # Skip the variable name
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        if ($tokens->[$index] ne ':')
+        	{  return undef;  }
+
+        $index++;  # Skip the colon
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        for (;;)
+        	{
+        	if ($index >= scalar @$tokens)
+        		{  return undef;  }
+        	elsif ($tokens->[$index] eq 'new')
+        		{
+        		$index++;
+        		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        		if ($tokens->[$index] ne '(')
+        			{  return undef;  }
+
+                $index++;
+        		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        		if ($tokens->[$index] ne ')')
+        			{  return undef;  }
+
+        		$index++;
+        		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+        		}
+        	else
+        		{
+        		while ($index < scalar @$tokens && $tokens->[$index] =~ /^[a-z0-9_\.\@]+$/i)
+        			{  $index++;  }
+
+        		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+
+        		if ($self->TryToSkipTemplateSpec(\$index, \$lineNumber))
+        			{  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
+        		}
+
+        	if ($tokens->[$index] eq ',')
+        		{
+        		$index++;
+        		$self->TryToSkipWhitespace(\$index, \$lineNumber);
+        		}
+        	else
+        		{  last;  }
+        	}
+        }
+    while ($tokens->[$index] eq 'where');
+
+    $$indexRef = $index;
+    $$lineNumberRef = $lineNumber;
+
+    return 1;
+	}
 
 
 #
