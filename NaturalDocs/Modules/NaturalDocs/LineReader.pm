@@ -76,6 +76,23 @@ sub Chomp #(lineRef)
 
 
 #
+#   Function: StripBOM
+#
+#   Removes the Unicode BOM from the line if present.  Information on it is available at
+#	http://www.unicode.org/faq/utf_bom.html#BOM
+#
+#   Parameters:
+#
+#       lineRef - A *reference* to the line to strip.
+#
+sub StripBOM #(lineRef)
+    {
+    my ($self, $lineRef) = @_;
+    $$lineRef =~ s/^\xEF\xBB\xBF//;
+    };
+
+
+#
 #	Function: Get
 #
 #	Returns the next line of text from the file, or undef if there are no more.  The line break will be removed automatically.  If
@@ -109,15 +126,31 @@ sub Get
 
     if ($self->[ON_FIRST_LINE])
     	{
-        # On the very first line, remove a Unicode BOM if present.  Information on it available at:
-        # http://www.unicode.org/faq/utf_bom.html#BOM
-        $line =~ s/^\xEF\xBB\xBF//;
-
+        $self->StripBOM(\$line);
         $self->[ON_FIRST_LINE] = undef;
         }
 
 	return $line;
 	}
 
+
+#
+#	Function: GetAll
+#
+#	Returns an array of all the lines from the file.  The line breaks will be removed automatically.  If the first line contains a
+#	Unicode BOM, that will also be removed automatically.
+#
+sub GetAll
+	{
+	my $self = shift;
+
+	my $filehandle = $self->[LINEREADER_FILEHANDLE];
+	my $rawContent;
+
+    read($filehandle, $rawContent, -s $filehandle);
+    $self->StripBOM(\$rawContent);
+
+    return split(/\r\n|\n|\r/, $rawContent);
+	}
 
 1;

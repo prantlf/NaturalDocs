@@ -168,15 +168,7 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
 
     # Load and preprocess the file
 
-    my @lines;
-    my $line = $lineReader->Get();
-
-    while (defined $line)
-        {
-        push @lines, $line;
-        $line = $lineReader->Get();
-        };
-
+    my @lines = $lineReader->GetAll();
     close(SOURCEFILEHANDLE);
 
     $self->PreprocessFile(\@lines);
@@ -188,7 +180,7 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
 
     while ($lineIndex < scalar @lines)
         {
-        $line = $lines[$lineIndex];
+        my $line = $lines[$lineIndex];
 
         my @commentLines;
         my $commentLineNumber;

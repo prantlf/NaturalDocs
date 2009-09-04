@@ -175,14 +175,7 @@ sub ParseFile #(sourceFile, topicsList)
 
     if ($self->Name() eq 'Text File')
         {
-        my $line = $lineReader->Get();
-
-        while ($line)
-            {
-            push @commentLines, $line;
-            $line = $lineReader->Get();
-            };
-
+        @commentLines = $lineReader->GetAll();
         NaturalDocs::Parser->OnComment(\@commentLines, 1);
         }
 

@@ -345,15 +345,9 @@ sub PrintErrorsAndAnnotateFile
     if (scalar @errors)
         {
         open(CONFIG_FILEHANDLE, '<' . $file);
-        my $lineReader = NaturalDocs::LineReader->New(\*CONFIG_FILEHANDLE);
 
-        my @lines;
-        my $line = $lineReader->Get();
-        while (defined $line)
-        	{
-        	push @lines, $line;
-        	$line = $lineReader->Get();
-        	}
+        my $lineReader = NaturalDocs::LineReader->New(\*CONFIG_FILEHANDLE);
+        my @lines = $lineReader->GetAll();
 
         close(CONFIG_FILEHANDLE);
 
