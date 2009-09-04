@@ -732,7 +732,7 @@ sub RichFormatTextBlock #(text)
 
     # Find image links.  Inline images should already be pulled out by now.
 
-    $text =~ s{(\( *see +)([^\)]+?)( *\))}
+    $text =~ s{(\( *see +)([^\)\<\>]+?)( *\))}
                       {"\x1E" . 'img mode="link" target="' . NaturalDocs::NDMarkup->ConvertAmpChars($2) . '" '
                         . 'original="' . NaturalDocs::NDMarkup->ConvertAmpChars($1 . $2 . $3) . '"' . "\x1F"}gie;
 
