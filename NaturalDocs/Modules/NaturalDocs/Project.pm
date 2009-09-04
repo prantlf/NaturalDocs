@@ -322,11 +322,14 @@ sub LoadSourceFileInfo
     my $fileIsOkay;
     my $version;
     my $hasChanged;
+    my $lineReader;
 
     if (open(FH_FILEINFO, '<' . $self->DataFile('FileInfo.nd')))
         {
+        $lineReader = NaturalDocs::LineReader->New(\*FH_FILEINFO);
+
         # Check if the file is in the right format.
-        $version = NaturalDocs::Version->FromTextFile(\*FH_FILEINFO);
+        $version = NaturalDocs::Version->FromString($lineReader->Get());
 
         # The project file need to be rebuilt for 1.16.  The source files need to be reparsed and the output files rebuilt for 1.4.
         # We'll tolerate the difference between 1.16 and 1.3 in the loader.
@@ -355,8 +358,7 @@ sub LoadSourceFileInfo
         my %indexedFiles;
 
 
-        my $line = <FH_FILEINFO>;
-        ::XChomp(\$line);
+        my $line = $lineReader->Get();
 
         # Prior to 1.3 it was the last modification time of Menu.txt, which we ignore and treat as though the most used language
         # changed.  Prior to 1.32 the settings didn't transfer over correctly to Menu.txt so we need to behave that way again.
@@ -369,9 +371,8 @@ sub LoadSourceFileInfo
 
         # Parse the rest of the file.
 
-        while ($line = <FH_FILEINFO>)
+        while ($line = $lineReader->Get())
             {
-            ::XChomp(\$line);
             my ($file, $modification, $hasContent, $menuTitle) = split(/\t/, $line, 4);
 
             # If the file no longer exists...

@@ -167,23 +167,20 @@ sub ParseFile #(sourceFile, topicsList)
     open(SOURCEFILEHANDLE, '<' . $sourceFile)
         or die "Couldn't open input file " . $sourceFile . "\n";
 
+    my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
+
     my @commentLines;
     my @codeLines;
     my $lastCommentTopicCount = 0;
 
     if ($self->Name() eq 'Text File')
         {
-        my $line = <SOURCEFILEHANDLE>;
-
-        # On the very first line, remove a Unicode BOM if present.  Information on it available at:
-        # http://www.unicode.org/faq/utf_bom.html#BOM
-        $line =~ s/^\xEF\xBB\xBF//;
+        my $line = $lineReader->Get();
 
         while ($line)
             {
-            ::XChomp(\$line);
             push @commentLines, $line;
-            $line = <SOURCEFILEHANDLE>;
+            $line = $lineReader->Get();
             };
 
         NaturalDocs::Parser->OnComment(\@commentLines, 1);
@@ -191,16 +188,11 @@ sub ParseFile #(sourceFile, topicsList)
 
     else
         {
-        my $line = <SOURCEFILEHANDLE>;
+        my $line = $lineReader->Get();
         my $lineNumber = 1;
-
-        # On the very first line, remove a Unicode BOM if present.  Information on it available at:
-        # http://www.unicode.org/faq/utf_bom.html#BOM
-        $line =~ s/^\xEF\xBB\xBF//;
 
         while (defined $line)
             {
-            ::XChomp(\$line);
             my $originalLine = $line;
 
 
@@ -211,12 +203,10 @@ sub ParseFile #(sourceFile, topicsList)
                 do
                     {
                     push @commentLines, $line;
-                    $line = <SOURCEFILEHANDLE>;
+                    $line = $lineReader->Get();
 
                     if (!defined $line)
                         {  goto EndDo;  };
-
-                    ::XChomp(\$line);
                     }
                 while ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()));
 
@@ -248,12 +238,10 @@ sub ParseFile #(sourceFile, topicsList)
                     if (defined $lineRemainder)
                         {  last;  };
 
-                    $line = <SOURCEFILEHANDLE>;
+                    $line = $lineReader->Get();
 
                     if (!defined $line)
                         {  last;  };
-
-                    ::XChomp(\$line);
                     };
 
                 if ($lineRemainder !~ /^[ \t]*$/)
@@ -263,7 +251,7 @@ sub ParseFile #(sourceFile, topicsList)
                     @commentLines = ( );
                     };
 
-                $line = <SOURCEFILEHANDLE>;
+                $line = $lineReader->Get();
                 }
 
 
@@ -272,7 +260,7 @@ sub ParseFile #(sourceFile, topicsList)
             else
                 {
                 push @codeLines, $line;
-                $line = <SOURCEFILEHANDLE>;
+                $line = $lineReader->Get();
                 };
 
 

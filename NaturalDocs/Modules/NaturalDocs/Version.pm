@@ -108,30 +108,6 @@ sub ToTextFile #(handle fileHandle, VersionInt version)
 
 
 #
-#   Function: FromTextFile
-#
-#   Retrieves a <VersionInt> from a text file.
-#
-#   Parameters:
-#
-#       fileHandle - The handle of the file to read it from.  It should be at the correct location.
-#
-#   Returns:
-#
-#       The <VersionInt>.
-#
-sub FromTextFile #(handle fileHandle) => VersionInt
-    {
-    my ($self, $fileHandle) = @_;
-
-    my $version = <$fileHandle>;
-    ::XChomp(\$version);
-
-    return $self->FromString($version);
-    };
-
-
-#
 #   Function: ToBinaryFile
 #
 #   Writes a <VersionInt> to a binary file.

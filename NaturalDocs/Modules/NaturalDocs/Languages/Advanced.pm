@@ -156,6 +156,8 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
     open(SOURCEFILEHANDLE, '<' . $sourceFile)
         or die "Couldn't open input file " . $sourceFile . "\n";
 
+    my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
+
     my $tokens = [ ];
     $self->SetTokens($tokens);
 
@@ -167,18 +169,12 @@ sub ParseForCommentsAndTokens #(FileName sourceFile, string[] lineCommentSymbols
     # Load and preprocess the file
 
     my @lines;
-    my $line = <SOURCEFILEHANDLE>;
-
-    # On the very first line, remove a Unicode BOM if present.  Information on it available at:
-    # http://www.unicode.org/faq/utf_bom.html#BOM
-    $line =~ s/^\xEF\xBB\xBF//;
+    my $line = $lineReader->Get();
 
     while (defined $line)
         {
-        ::XChomp(\$line);
         push @lines, $line;
-
-        $line = <SOURCEFILEHANDLE>;
+        $line = $lineReader->Get();
         };
 
     close(SOURCEFILEHANDLE);

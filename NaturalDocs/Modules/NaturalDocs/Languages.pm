@@ -1405,7 +1405,10 @@ sub LanguageOf #(sourceFile)
                 	{
 	                read(SOURCEFILEHANDLE, $shebangLine, 2);
 	                if ($shebangLine eq '#!')
-	                    {  $shebangLine = <SOURCEFILEHANDLE>;  }
+	                    {
+	                    my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
+	                    $shebangLine = $lineReader->Get();
+	                    }
 	                else
 	                    {  $shebangLine = undef;  };
 

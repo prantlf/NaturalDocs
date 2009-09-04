@@ -85,6 +85,14 @@ my $file;
 
 
 #
+#	var: lineReader
+#
+#	The <LineReader> used to read the configuration file.
+#
+my $lineReader;
+
+
+#
 #   array: errors
 #
 #   An array of errors added by <AddError()>.  Every odd entry is the line number, and every even entry following is the
@@ -151,6 +159,7 @@ sub Open #(file, hasBraceGroups)
     $lineNumber = 0;
 
     open(CONFIG_FILEHANDLE, '<' . $file) or return undef;
+    $lineReader = NaturalDocs::LineReader->New(\*CONFIG_FILEHANDLE);
 
 
     # Get the format line.
@@ -215,13 +224,11 @@ sub GetLine
             }
         else
             {
-            $line = <CONFIG_FILEHANDLE>;
+            $line = $lineReader->Get();
             $lineNumber++;
 
             if (!defined $line)
                 {  return ( );  };
-
-            ::XChomp(\$line);
 
             # Condense spaces and tabs into a single space.
             $line =~ tr/\t /  /s;
@@ -338,7 +345,16 @@ sub PrintErrorsAndAnnotateFile
     if (scalar @errors)
         {
         open(CONFIG_FILEHANDLE, '<' . $file);
-        my @lines = <CONFIG_FILEHANDLE>;
+        my $lineReader = NaturalDocs::LineReader->New(\*CONFIG_FILEHANDLE);
+
+        my @lines;
+        my $line = $lineReader->Get();
+        while (defined $line)
+        	{
+        	push @lines, $line;
+        	$line = $lineReader->Get();
+        	}
+
         close(CONFIG_FILEHANDLE);
 
         # We need to keep track of both the real and the original line numbers.  The original line numbers are for matching errors in
