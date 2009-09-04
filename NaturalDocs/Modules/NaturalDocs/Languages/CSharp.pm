@@ -65,7 +65,8 @@ my %classModifiers = ( 'new' => 1,
                                    'abstract' => 1,
                                    'sealed' => 1,
                                    'unsafe' => 1,
-                                   'static' => 1 );
+                                   'static' => 1,
+                                   'partial' => 1 );
 
 #
 #   hash: functionModifiers
@@ -377,25 +378,25 @@ sub TryToGetClass #(indexRef, lineNumberRef)
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
     if ($tokens->[$index] eq '<')
-    	{
-    	# XXX: This is half-assed.
-    	$index++;
-    	$needsPrototype = 1;
+            {
+            # XXX: This is half-assed.
+            $index++;
+            $needsPrototype = 1;
 
-    	while ($index < scalar @$tokens && $tokens->[$index] ne '>')
-    		{
-    		$index++;
-    		}
+            while ($index < scalar @$tokens && $tokens->[$index] ne '>')
+                    {
+                    $index++;
+                    }
 
-    	if ($index < scalar @$tokens)
-    		{
-    		$index++;
-    		}
-    	else
-    		{  return undef;  }
+            if ($index < scalar @$tokens)
+                    {
+                    $index++;
+                    }
+            else
+                    {  return undef;  }
 
         $self->TryToSkipWhitespace(\$index, \$lineNumber);
-    	}
+            }
 
     my @parents;
 
@@ -415,26 +416,26 @@ sub TryToGetClass #(indexRef, lineNumberRef)
                 $index++;
                 };
 
-	        if ($tokens->[$index] eq '<')
-	            {
-	            # XXX: This is still half-assed.
-	            $index++;
-	            $needsPrototype = 1;
+                if ($tokens->[$index] eq '<')
+                    {
+                    # XXX: This is still half-assed.
+                    $index++;
+                    $needsPrototype = 1;
 
-	            while ($index < scalar @$tokens && $tokens->[$index] ne '>')
-	                {
-	                $index++;
-	                }
+                    while ($index < scalar @$tokens && $tokens->[$index] ne '>')
+                        {
+                        $index++;
+                        }
 
-	            if ($index < scalar @$tokens)
-	                {
-	                $index++;
-	                }
-	            else
-	                {  return undef;  }
+                    if ($index < scalar @$tokens)
+                        {
+                        $index++;
+                        }
+                    else
+                        {  return undef;  }
 
-	            $self->TryToSkipWhitespace(\$index, \$lineNumber);
-	            }
+                    $self->TryToSkipWhitespace(\$index, \$lineNumber);
+                    }
 
             if (!defined $parentName)
                 {  return undef;  };
@@ -447,15 +448,15 @@ sub TryToGetClass #(indexRef, lineNumberRef)
         };
 
     if (lc($tokens->[$index]) eq 'where')
-    	{
-    	# XXX: This is also half-assed
-    	$index++;
+            {
+            # XXX: This is also half-assed
+            $index++;
 
-    	while ($index < scalar @$tokens && $tokens->[$index] ne '{')
-    		{
-    		$index++;
-    		}
-    	}
+            while ($index < scalar @$tokens && $tokens->[$index] ne '{')
+                    {
+                    $index++;
+                    }
+            }
 
     if ($tokens->[$index] ne '{')
         {  return undef;  };
@@ -476,9 +477,9 @@ sub TryToGetClass #(indexRef, lineNumberRef)
     my $prototype;
 
     if ($needsPrototype)
-    	{
-    	$prototype = $self->CreateString($startIndex, $index);
-    	}
+            {
+            $prototype = $self->CreateString($startIndex, $index);
+            }
 
     my $autoTopic = NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                          undef, $self->CurrentUsing(),
@@ -509,15 +510,15 @@ sub TryToGetClass #(indexRef, lineNumberRef)
 #   Function: TryToGetUsing
 #
 #   Determines whether the position is at a using statement, and if so, adds it to the current scope, skips it, and returns
-#	true.
+#        true.
 #
-#	Supported:
+#        Supported:
 #
 #       - Using
 #
-#	Unsupported:
+#        Unsupported:
 #
-#		- Using with alias
+#                - Using with alias
 #
 sub TryToGetUsing #(indexRef, lineNumberRef)
     {
@@ -542,7 +543,7 @@ sub TryToGetUsing #(indexRef, lineNumberRef)
         };
 
     if ($tokens->[$index] ne ';' ||
-		!defined $name)
+                !defined $name)
         {  return undef;  };
 
     $index++;
@@ -629,14 +630,14 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         # IDObjectType System.Collections.Generic.IEnumerator<IDObjectType>.Current
 
         if ($tokens->[$index] eq '<')
-        	{
-        	do
-        		{
-	        	$index++;
-        		$name .= $tokens->[$index];
-        		}
-        	while ($index < @$tokens && $tokens->[$index] ne '>');
-        	}
+                {
+                do
+                        {
+                        $index++;
+                        $name .= $tokens->[$index];
+                        }
+                while ($index < @$tokens && $tokens->[$index] ne '>');
+                }
 
         $lastNameWord = $tokens->[$index];
         $index++;
@@ -1129,38 +1130,38 @@ sub TryToGetType #(indexRef, lineNumberRef)
     if (!defined $name)
         {  return undef;  };
 
-	$self->TryToSkipWhitespace(\$index, \$lineNumber);
+        $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-	if ($tokens->[$index] eq '?')
-		{
-		$name .= '?';
-		$index++;
+        if ($tokens->[$index] eq '?')
+                {
+                $name .= '?';
+                $index++;
 
-		$self->TryToSkipWhitespace(\$index, \$lineNumber);
-		}
+                $self->TryToSkipWhitespace(\$index, \$lineNumber);
+                }
 
     if ($tokens->[$index] eq '<')
-    	{
-    	# XXX: This is half-assed.
-    	$name .= '<';
-    	$index++;
+            {
+            # XXX: This is half-assed.
+            $name .= '<';
+            $index++;
 
-    	while ($index < scalar @$tokens && $tokens->[$index] ne '>')
-    		{
-    		$name .= $tokens->[$index];
-    		$index++;
-    		}
+            while ($index < scalar @$tokens && $tokens->[$index] ne '>')
+                    {
+                    $name .= $tokens->[$index];
+                    $index++;
+                    }
 
-    	if ($index < scalar @$tokens)
-    		{
-    		$name .= '>';
-    		$index++;
-    		}
-    	else
-    		{  return undef;  }
+            if ($index < scalar @$tokens)
+                    {
+                    $name .= '>';
+                    $index++;
+                    }
+            else
+                    {  return undef;  }
 
-		$self->TryToSkipWhitespace(\$index, \$lineNumber);
-    	}
+                $self->TryToSkipWhitespace(\$index, \$lineNumber);
+            }
 
     while ($tokens->[$index] eq '[')
         {
