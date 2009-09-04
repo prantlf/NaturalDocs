@@ -1050,7 +1050,7 @@ sub TryToSkipRegExp #(indexRef, lineNumberRef)
         while ($index >= 0 && $tokens->[$index] =~ /^(?: |\t|\n)/)
             {  $index--;  };
 
-        if ($index < 0 || $tokens->[$index] !~ /^\=\(\[\,]/)
+        if ($index < 0 || $tokens->[$index] !~ /^[\:\=\(\[\,]/)
             {  return 0;  };
 
         $$indexRef++;
