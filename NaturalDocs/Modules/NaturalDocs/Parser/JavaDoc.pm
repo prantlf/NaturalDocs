@@ -60,8 +60,9 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
-# Natural Docs is licensed under the GPL
+# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
+# Refer to License.txt for the complete details
 
 use strict;
 use integer;
@@ -169,7 +170,7 @@ sub ParseComment #(string[] commentLines, bool isJavaDoc, int lineNumber, Parsed
                     $unformattedText =~ s/^ {$sharedCodeIndent}//mg;
                     $unformattedText =~ s/\n{3,}/\n\n/g;
                     $unformattedText =~ s/\n+$//;
-                    $output .= '<code>' . $unformattedText . '</code>';
+                    $output .= '<code type="anonymous">' . $unformattedText . '</code>';
 
                     $sharedCodeIndent = undef;
                     };
@@ -211,7 +212,7 @@ sub ParseComment #(string[] commentLines, bool isJavaDoc, int lineNumber, Parsed
             $unformattedText =~ s/^ {$sharedCodeIndent}//mg;
             $unformattedText =~ s/\n{3,}/\n\n/g;
             $unformattedText =~ s/\n+$//;
-            $output .= '<code>' . $unformattedText . '</code>';
+            $output .= '<code type="anonymous">' . $unformattedText . '</code>';
             }
         else
             {  $output .= '<p>' . $self->FormatText($unformattedText, 1) . '</p>';  };
