@@ -20,8 +20,9 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
-# Natural Docs is licensed under the GPL
+# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
+# Refer to License.txt for the complete details
 
 use Tie::RefHash;
 
@@ -728,7 +729,6 @@ sub LoadMenuFile
                 else
                     {  NaturalDocs::ConfigFile->AddError('File lines must be in the format "File: [title] ([location])"');  };
                 }
-
 
             elsif ($keyword eq 'group')
                 {
@@ -1573,7 +1573,6 @@ sub GenerateTimestampText
     $timestampText =~ s/(?<![a-z])d(?![a-z])/$day/i;
 
     $timestampText =~ s/(?<![a-z])(?:year|yyyy)(?![a-z])/$year/i;
-    $timestampText =~ s/(?<![a-z])(?:year|yyyy)(?![a-z])/$year/i; #XXX
     $timestampText =~ s/(?<![a-z])yy(?![a-z])/sprintf('%02d', $year % 100)/ie;
     };
 
