@@ -10,8 +10,9 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
-# Natural Docs is licensed under the GPL
+# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
+# Refer to License.txt for the complete details
 
 
 use strict;
@@ -75,9 +76,10 @@ sub BuildFile #(sourceFile, parsedFile)
             or die "Couldn't create output file " . $outputFile . "\n";
         };
 
+    my $usePrettify = (NaturalDocs::Settings->HighlightCode() || NaturalDocs::Settings->HighlightAnonymous());
+
+
     print OUTPUTFILEHANDLE
-
-
 
         # IE 6 doesn't like any doctype here at all.  Add one (strict or transitional doesn't matter) and it makes the page slightly too
         # wide for the frame.  Mozilla and Opera handle it like champs either way because they Don't Suck(tm).
@@ -96,9 +98,17 @@ sub BuildFile #(sourceFile, parsedFile)
 
             . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($outputFile, $self->MainCSSFile(), 1) . '">'
 
-            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>'
+            . '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->MainJavaScriptFile(), 1) . '"></script>';
 
-        . '</head><body class="FramedContentPage" onLoad="NDOnLoad()">'
+            if ($usePrettify)
+            	{
+            	print OUTPUTFILEHANDLE
+	            '<script language=JavaScript src="' . $self->MakeRelativeURL($outputFile, $self->PrettifyJavaScriptFile(), 1) . '">'
+	            . '</script>';
+            	}
+
+        print OUTPUTFILEHANDLE
+        '</head><body class="FramedContentPage" onLoad="NDOnLoad();' . ($usePrettify ? 'prettyPrint();' : '') . '">'
             . $self->OpeningBrowserStyles()
 
             . $self->StandardComments()
