@@ -8,8 +8,9 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
-# Natural Docs is licensed under the GPL
+# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
+# Refer to License.txt for the complete details
 
 use Cwd ();
 
@@ -175,6 +176,14 @@ my @styles;
 # The character encoding of the source files, and thus the output.
 my $charset;
 
+# var: highlightCode
+# Whether syntax highlighting should be applied to code tags.
+my $highlightCode;
+
+# var: highlightAnonymous
+# Whether syntax highlighting should be applied to anonymous code tags.
+my $highlightAnonymous;
+
 
 ###############################################################################
 # Group: Files
@@ -197,6 +206,8 @@ my $charset;
 #       > [UInt8: no auto-group (0 or 1)]
 #       > [UInt8: only file titles (0 or 1)]
 #       > [AString16: charset]
+#		> [UInt8: highlight code (0 or 1)]
+#		> [UInt8: highlight anonymous (0 or 1)]
 #       >
 #       > [UInt8: number of input directories]
 #       > [AString16: input directory] [AString16: input directory name] ...
@@ -210,6 +221,10 @@ my $charset;
 #
 #
 #   Revisions:
+#
+#		1.5:
+#
+#			- Added highlight code and highlight anonymous.
 #
 #       1.4:
 #
@@ -664,6 +679,16 @@ sub RebuildData
 sub CharSet
     {  return $charset;  };
 
+# Function: HighlightCode
+# Returns whether to apply syntax highlighting (start code) sections.
+sub HighlightCode
+	{  return $highlightCode;  }
+
+# Function: HighlightAnonymous
+# Returns whether to apply syntax highlighting to anonymous code sections designated with :, >, or |.
+sub HighlightAnonymous
+	{  return $highlightAnonymous;  }
+
 
 ###############################################################################
 # Group: Constant Functions
@@ -686,7 +711,7 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    return '1.4';
+    return '1.5';
     };
 
 #
@@ -733,7 +758,9 @@ sub ParseCommandLine
                                   'onlyfiletitles' => '-oft',
                                   'onlyfiletitle' => '-oft',
                                   'charset' => '-cs',
-                                  'characterset' => '-cs' );
+                                  'characterset' => '-cs',
+                                  'highlight' => '-hl',
+                                  'highlighting' => '-hl' );
 
 
     my @errorMessages;
@@ -743,6 +770,7 @@ sub ParseCommandLine
 
     my @outputStrings;
     my @imageStrings;
+    my $highlightString;
 
 
     # Sometimes $valueRef is set to $ignored instead of undef because we don't want certain errors to cause other,
@@ -821,6 +849,10 @@ sub ParseCommandLine
                 {
                 $valueRef = \$charset;
                 }
+            elsif ($option eq '-hl')
+            	{
+            	$valueRef = \$highlightString;
+            	}
             elsif ($option eq '-ag')
                 {
                 push @errorMessages, 'The -ag setting is no longer supported.  You can use -nag (--no-auto-group) to turn off '
@@ -1113,6 +1145,37 @@ sub ParseCommandLine
     $charset =~ tr/\"//d;
 
 
+    # Decode and validate the highlight setting.
+
+    if (defined $highlightString)
+    	{
+    	$highlightString = lc($highlightString);
+
+    	if ($highlightString eq 'off')
+    		{
+    		$highlightCode = undef;
+    		$highlightAnonymous = undef;
+    		}
+    	elsif ($highlightString eq 'code')
+    		{
+    		$highlightCode = 1;
+    		$highlightAnonymous = undef;
+    		}
+    	elsif ($highlightString eq 'all')
+    		{
+    		$highlightCode = 1;
+    		$highlightAnonymous = 1;
+    		}
+    	else
+    		{  push @errorMessages, $highlightString . ' is not a valid value for --highlight.';  }
+    	}
+    else
+    	{
+    	$highlightCode = 1;
+    	$highlightAnonymous = undef;
+    	}
+
+
     # Exit with the error message if there was one.
 
     if (scalar @errorMessages)
@@ -1137,7 +1200,8 @@ sub PrintSyntax
 
     "Natural Docs, version " . $self->TextAppVersion() . "\n"
     . $self->AppURL() . "\n"
-    . "This program is licensed under the GPL\n"
+    . "This program is licensed under version 3 of the AGPL\n"
+    . "Refer to License.txt for the complete details\n"
     . "--------------------------------------\n"
     . "\n"
     . "Syntax:\n"
@@ -1181,7 +1245,7 @@ sub PrintSyntax
     . "    Specifies the CSS style when building HTML output.  If multiple styles are\n"
     . "    specified, they will all be included in the order given.\n"
     . "\n"
-    . " -img [image directory]\n--image [image directory]"
+    . " -img [image directory]\n--image [image directory]\n"
     . "    Specifies an image directory.  Can be specified multiple times.\n"
     . "    Start with * to specify a relative directory, as in -img */images.\n"
     . "\n"
@@ -1202,6 +1266,13 @@ sub PrintSyntax
     . "\n"
     . " -oft\n--only-file-titles\n"
     . "    Source files will only use the file name as the title.\n"
+    . "\n"
+    . " -hl [option]\n--highlight [option]\n"
+    . "    Specifies when syntax highlighting should be applied.  Defaults to code.\n"
+    . "    off  - No syntax highlighting is applied.\n"
+    . "    code - Syntax highlighting is only applied to (start code) segments.\n"
+    . "    all  - Systax highlighting is applied to (start code) and unnamed segments\n"
+    . "           specified with >, :, or |."
     . "\n"
     . " -r\n--rebuild\n"
     . "    Rebuilds all output and data files from scratch.\n"
@@ -1257,7 +1328,7 @@ sub LoadAndComparePreviousSettings
         my $version;
 
         if (NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd'),
-                                                                           NaturalDocs::Version->FromString('1.4') ))
+                                                                           NaturalDocs::Version->FromString('1.5') ))
             {  $fileIsOkay = 1;  };
         };
 
@@ -1271,24 +1342,22 @@ sub LoadAndComparePreviousSettings
     else
         {
         my $raw;
-  
+
         # [UInt8: tab expansion]
         # [UInt8: documented only (0 or 1)]
         # [UInt8: no auto-group (0 or 1)]
         # [UInt8: only file titles (0 or 1)]
         # [AString16: charset]
+        # [UInt8: highlight code (0 or 1)]
+        # [UInt8: highlight anonymous (0 or 1)]
 
         my $prevTabLength = NaturalDocs::BinaryFile->GetUInt8();
         my $prevDocumentedOnly = NaturalDocs::BinaryFile->GetUInt8();
         my $prevNoAutoGroup = NaturalDocs::BinaryFile->GetUInt8();
         my $prevOnlyFileTitles = NaturalDocs::BinaryFile->GetUInt8();
         my $prevCharset = NaturalDocs::BinaryFile->GetAString16();
-
-        if ($prevTabLength != $self->TabLength())
-            {
-            # We need to rebuild all output because this affects all text diagrams.
-            NaturalDocs::Project->RebuildEverything();
-            };
+        my $prevHighlightCode = NaturalDocs::BinaryFile->GetUInt8();
+        my $prevHighlightAnonymous = NaturalDocs::BinaryFile->GetUInt8();
 
         if ($prevDocumentedOnly == 0)
             {  $prevDocumentedOnly = undef;  };
@@ -1296,6 +1365,17 @@ sub LoadAndComparePreviousSettings
             {  $prevNoAutoGroup = undef;  };
         if ($prevOnlyFileTitles == 0)
             {  $prevOnlyFileTitles = undef;  };
+        if ($prevHighlightCode == 0)
+            {  $prevHighlightCode = undef;  };
+        if ($prevHighlightAnonymous == 0)
+            {  $prevHighlightAnonymous = undef;  };
+
+        if ($prevTabLength != $self->TabLength() ||
+        	$prevHighlightCode != $self->HighlightCode() ||
+        	$prevHighlightAnonymous != $self->HighlightAnonymous())
+            {
+            NaturalDocs::Project->RebuildEverything();
+            };
 
         if ($prevDocumentedOnly != $self->DocumentedOnly() ||
             $prevNoAutoGroup != $self->NoAutoGroup() ||
@@ -1379,6 +1459,8 @@ sub SavePreviousSettings
     # [UInt8: no auto-group (0 or 1)]
     # [UInt8: only file titles (0 or 1)]
     # [AString16: charset]
+    # [UInt8: highlight code (0 or 1)]
+    # [UInt8: highlight anonymous (0 or 1)]
     # [UInt8: number of input directories]
 
     my $inputDirectories = $self->InputDirectories();
@@ -1388,6 +1470,8 @@ sub SavePreviousSettings
     NaturalDocs::BinaryFile->WriteUInt8($self->NoAutoGroup() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8($self->OnlyFileTitles() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteAString16($charset);
+    NaturalDocs::BinaryFile->WriteUInt8($self->HighlightCode() ? 1 : 0);
+    NaturalDocs::BinaryFile->WriteUInt8($self->HighlightAnonymous() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8(scalar @$inputDirectories);
 
     foreach my $inputDirectory (@$inputDirectories)
