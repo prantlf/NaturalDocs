@@ -9,8 +9,9 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
-# Natural Docs is licensed under the GPL
+# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
+# Refer to License.txt for the complete details
 
 
 use strict;
@@ -391,7 +392,7 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                     };
 
                 $topLevelTag = TAG_PREFIXCODE;
-                $output .= '<code>';
+                $output .= '<code type="anonymous">';
                 $self->AddToCodeBlock($code, \$codeBlock, \$removedCodeSpaces);
                 };
             }
@@ -509,15 +510,23 @@ sub FormatBody #(commentLines, startingIndex, endingIndex, type, isList)
                 }
 
             # If the line looks like a code tag...
-            elsif ($commentLines->[$index] =~ /^\( *(?:(?:start|begin)? +)?(?:table|code|example|diagram) *\)$/i)
+            elsif ($commentLines->[$index] =~ /^\( *(?:(?:start|begin)? +)?(table|code|example|diagram) *\)$/i)
                 {
+				my $codeType = lc($1);
+
                 if (defined $textBlock)
                     {
                     $output .= $self->RichFormatTextBlock($textBlock);
                     $textBlock = undef;
                     };
 
-                $output .= $tagEnders{$topLevelTag} . '<code>';
+                if ($codeType eq 'example')
+                	{  $codeType = 'anonymous';  }
+                elsif ($codeType eq 'table' || $codeType eq 'diagram')
+                	{  $codeType = 'text';  }
+                # else leave it 'code'
+
+                $output .= $tagEnders{$topLevelTag} . '<code type="' . $codeType . '">';
                 $topLevelTag = TAG_TAGCODE;
                 }
 
@@ -720,9 +729,9 @@ sub RichFormatTextBlock #(text)
                        # End capture.
                        )
 
-                       # The next character must not be an acceptable character or a closing angle bracket.  This will prevent the URL
-                       # from ending early just to get a match.
-                       (?!  [a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\*\>]  )
+                       # The next character must not be an acceptable character or a closing angle bracket.  It must also not be a
+					   # dot and then an acceptable character.  These will prevent the URL from ending early just to get a match.
+                       (?!  \.?[a-z0-9\-\=\~\@\#\%\&\_\+\/\;\:\?\*\>]  )
 
                        }
 
@@ -797,8 +806,12 @@ sub RichFormatTextBlock #(text)
 
                 if ($linkText =~ /^(?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
                     {  $output .= '<email target="' . $1 . '" name="' . $1 . '">';  }
+                elsif ($linkText =~ /^(.+)(?: at|:) (?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
+                    {  $output .= '<email target="' . $2 . '" name="' . $1 . '">';  }
                 elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:/i)
                     {  $output .= '<url target="' . $linkText . '" name="' . $linkText . '">';  }
+                elsif ($linkText =~ /^(.+)(?: at|:) ((?:http|https|ftp|news|file)\:.+)/i)
+                    {  $output .= '<url target="' . $2 . '" name="' . $1 . '">';  }
                 else
                     {  $output .= '<link target="' . $linkText . '" name="' . $linkText . '" original="&lt;' . $linkText . '&gt;">';  };
                 }
