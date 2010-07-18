@@ -9,8 +9,9 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright (C) 2003-2008 Greg Valure
-# Natural Docs is licensed under the GPL
+# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
+# Refer to License.txt for the complete details
 
 
 use Tie::RefHash;
@@ -553,6 +554,27 @@ sub EndBuild #(hasChanged)
         {
         NaturalDocs::File->Copy($jsMaster, $jsOutput);
         };
+
+
+    my $prettifyOutput = $self->PrettifyJavaScriptFile();
+
+    if (NaturalDocs::Settings->HighlightCode() || NaturalDocs::Settings->HighlightAnonymous())
+    	{
+	    my $prettifyMaster = NaturalDocs::File->JoinPaths( NaturalDocs::Settings->JavaScriptDirectory(), 'GooglePrettify.js' );
+
+	    # We check both the date and the size in case the user switches between two styles which just happen to have the same
+	    # date.  Should rarely happen, but it might.
+	    if (! -e $prettifyOutput ||
+	        (stat($prettifyMaster))[9] != (stat($prettifyOutput))[9] ||
+	         -s $prettifyMaster != -s $prettifyOutput)
+	        {
+	        NaturalDocs::File->Copy($prettifyMaster, $prettifyOutput);
+	        };
+	    }
+	elsif (-e $prettifyOutput)
+		{
+		unlink $prettifyOutput;
+		}
 
 
     my @indexes = keys %{NaturalDocs::Menu->Indexes()};
@@ -1260,7 +1282,8 @@ sub BuildPrototype #(type, prototype, file)
         # A blockquote to scroll it if it's too long.
         '<blockquote>'
             # A surrounding table as a hack to make the div form-fit.
-            . '<table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
+            . '<table border=0 cellspacing=0 cellpadding=0 '
+            	. 'class="Prototype' . (NaturalDocs::Settings->HighlightCode() ? ' prettyprint' : '') . '"><tr><td>'
                 . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
             . '</td></tr></table>'
         . '</blockquote>';
@@ -1334,7 +1357,8 @@ sub BuildPrototype #(type, prototype, file)
                                                $hasDefaultValue + $hasDefaultValuePrefix + $useCondensed;
 
         $output =
-        '<blockquote><table border=0 cellspacing=0 cellpadding=0 class=Prototype><tr><td>'
+        '<blockquote><table border=0 cellspacing=0 cellpadding=0 '
+           	. 'class="Prototype' . (NaturalDocs::Settings->HighlightCode() ? ' prettyprint' : '') . '"><tr><td>'
 
             # Stupid hack to get it to work right in IE.
             . '<table border=0 cellspacing=0 cellpadding=0><tr>'
@@ -2450,7 +2474,7 @@ sub OutputFileOf #(sourceFile)
     if (!($relativeSourceFile =~ tr/./-/))
         {  $relativeSourceFile .= '-';  };
 
-    $relativeSourceFile =~ tr/ &?(){};/_/;
+    $relativeSourceFile =~ tr/ &?(){};#/_/;
     $relativeSourceFile .= '.html';
 
     return NaturalDocs::File->JoinPaths($outputDirectory, $relativeSourceFile);
@@ -2619,6 +2643,18 @@ sub MainJavaScriptFile
     {
     my $self = shift;
     return NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'main.js' );
+    };
+
+
+#
+#   Function: PrettifyJavaScriptFile
+#
+#   Returns the location of the Google Prettify JavaScript file.
+#
+sub PrettifyJavaScriptFile
+    {
+    my $self = shift;
+    return NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'prettify.js' );
     };
 
 
@@ -2821,15 +2857,20 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
     my $output;
     my $inCode;
 
-    my @splitText = split(/(<\/?code>)/, $text);
+    my @splitText = split(/(<\/?code(?: type="[^"]+")?>)/, $text);
 
     while (scalar @splitText)
         {
         $text = shift @splitText;
 
-        if ($text eq '<code>')
+        if ($text =~ /<code type="([^"]+)">/)
             {
-            $output .= '<blockquote><pre>';
+            my $codeType = $1;
+
+            my $highlight = ( ($codeType eq "code" && NaturalDocs::Settings->HighlightCode()) ||
+            						  ($codeType eq "anonymous" && NaturalDocs::Settings->HighlightAnonymous()) );
+
+            $output .= '<blockquote><pre' . ($highlight ? ' class="prettyprint"' : '') . '>';
             $inCode = 1;
             }
         elsif ($text eq '</code>')
