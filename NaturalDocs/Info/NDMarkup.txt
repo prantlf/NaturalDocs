@@ -13,7 +13,8 @@ About: Top-Level Tags
    <p></p>         - Surrounds a paragraph.  Paragraph breaks will replace double line breaks, and single line breaks will
                             be removed completely.
 
-   <code></code>   - Surrounds code or text diagrams that should appear literally in the output.
+   <code type=""></code>   - Surrounds code or text diagrams that should appear literally in the output.  The type can
+   									     be code, text, or anonymous, in which case it's not specified whether it's code or text.
 
    <h></h>         - Surrounds a heading.
 
