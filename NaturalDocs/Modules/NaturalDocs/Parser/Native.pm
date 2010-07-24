@@ -806,11 +806,11 @@ sub RichFormatTextBlock #(text)
 
                 if ($linkText =~ /^(?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
                     {  $output .= '<email target="' . $1 . '" name="' . $1 . '">';  }
-                elsif ($linkText =~ /^(.+)(?: at|:) (?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
+                elsif ($linkText =~ /^(.+?) at (?:mailto\:)?((?:[a-z0-9\-_]+\.)*[a-z0-9\-_]+@(?:[a-z0-9\-]+\.)+[a-z]{2,4})$/i)
                     {  $output .= '<email target="' . $2 . '" name="' . $1 . '">';  }
                 elsif ($linkText =~ /^(?:http|https|ftp|news|file)\:/i)
                     {  $output .= '<url target="' . $linkText . '" name="' . $linkText . '">';  }
-                elsif ($linkText =~ /^(.+)(?: at|:) ((?:http|https|ftp|news|file)\:.+)/i)
+                elsif ($linkText =~ /^(.+?) at ((?:http|https|ftp|news|file)\:.+)/i)
                     {  $output .= '<url target="' . $2 . '" name="' . $1 . '">';  }
                 else
                     {  $output .= '<link target="' . $linkText . '" name="' . $linkText . '" original="&lt;' . $linkText . '&gt;">';  };
