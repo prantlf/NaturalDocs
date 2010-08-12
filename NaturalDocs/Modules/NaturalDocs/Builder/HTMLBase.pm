@@ -1282,10 +1282,11 @@ sub BuildPrototype #(type, prototype, file)
         # A blockquote to scroll it if it's too long.
         '<blockquote>'
             # A surrounding table as a hack to make the div form-fit.
-            . '<table border=0 cellspacing=0 cellpadding=0 '
-            	. 'class="Prototype' . (NaturalDocs::Settings->HighlightCode() ? ' prettyprint' : '') . '"><tr><td>'
-                . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
-            . '</td></tr></table>'
+            . '<table border=0 cellspacing=0 cellpadding=0 class="Prototype"><tr>'
+            	. '<td' . (NaturalDocs::Settings->HighlightCode() ? ' class="prettyprint"' : '') . '>'
+	                . $self->ConvertAmpChars($prototypeObject->BeforeParameters())
+	            . '</td>'
+	        . '</tr></table>'
         . '</blockquote>';
         }
 
@@ -1295,6 +1296,7 @@ sub BuildPrototype #(type, prototype, file)
         my $beforeParams = $prototypeObject->BeforeParameters();
         my $afterParams = $prototypeObject->AfterParameters();
 
+	    my $highlightClass = (NaturalDocs::Settings->HighlightCode() ? ' prettyprint ' : '');
 
         # Determine what features the prototype has and its length.
 
@@ -1357,13 +1359,12 @@ sub BuildPrototype #(type, prototype, file)
                                                $hasDefaultValue + $hasDefaultValuePrefix + $useCondensed;
 
         $output =
-        '<blockquote><table border=0 cellspacing=0 cellpadding=0 '
-           	. 'class="Prototype' . (NaturalDocs::Settings->HighlightCode() ? ' prettyprint' : '') . '"><tr><td>'
+        '<blockquote><table border=0 cellspacing=0 cellpadding=0 class="Prototype"><tr><td>'
 
             # Stupid hack to get it to work right in IE.
             . '<table border=0 cellspacing=0 cellpadding=0><tr>'
 
-            . '<td class=PBeforeParameters ' . ($useCondensed ? 'colspan=' . $parameterColumns : 'nowrap') . '>'
+            . '<td class="PBeforeParameters ' . $highlightClass . '"' . ($useCondensed ? 'colspan=' . $parameterColumns : 'nowrap') . '>'
                 . $self->ConvertAmpChars($beforeParams);
 
                 if ($beforeParams && $beforeParams !~ /[\(\[\{\<]$/)
@@ -1392,7 +1393,7 @@ sub BuildPrototype #(type, prototype, file)
                         $htmlTypePrefix =~ s/ $/&nbsp;/;
 
                         $output .=
-                        '<td class=PTypePrefix nowrap>'
+                        '<td class="PTypePrefix ' . $highlightClass . '" nowrap>'
                             . $htmlTypePrefix
                         . '</td>';
                         };
@@ -1400,7 +1401,7 @@ sub BuildPrototype #(type, prototype, file)
                     if ($hasType)
                         {
                         $output .=
-                        '<td class=PType nowrap>'
+                        '<td class="PType ' . $highlightClass . '" nowrap>'
                             . $self->ConvertAmpChars($params->[$i]->Type()) . '&nbsp;'
                         . '</td>';
                         };
@@ -1408,13 +1409,13 @@ sub BuildPrototype #(type, prototype, file)
                     if ($hasNamePrefix)
                         {
                         $output .=
-                        '<td class=PParameterPrefix nowrap>'
+                        '<td class="PParameterPrefix ' . $highlightClass . '" nowrap>'
                             . $self->ConvertAmpChars($params->[$i]->NamePrefix())
                         . '</td>';
                         };
 
                     $output .=
-                    '<td class=PParameter nowrap' . ($useCondensed && !$hasDefaultValue ? ' width=100%' : '') . '>'
+                    '<td class="PParameter ' . $highlightClass . '" nowrap' . ($useCondensed && !$hasDefaultValue ? ' width=100%' : '') . '>'
                         . $self->ConvertAmpChars($params->[$i]->Name())
                     . '</td>';
                     }
@@ -1422,7 +1423,7 @@ sub BuildPrototype #(type, prototype, file)
                 else # !$language->TypeBeforeParameter()
                     {
                     $output .=
-                    '<td class=PParameter nowrap>'
+                    '<td class="PParameter ' . $highlightClass . '" nowrap>'
                         . $self->ConvertAmpChars( $params->[$i]->NamePrefix() . $params->[$i]->Name() )
                     . '</td>';
 
@@ -1433,7 +1434,7 @@ sub BuildPrototype #(type, prototype, file)
                             {  $typePrefix .= ' ';  };
 
                         $output .=
-                        '<td class=PType nowrap' . ($useCondensed && !$hasDefaultValue ? ' width=100%' : '') . '>'
+                        '<td class="PType ' . $highlightClass . '" nowrap' . ($useCondensed && !$hasDefaultValue ? ' width=100%' : '') . '>'
                             . '&nbsp;' . $self->ConvertAmpChars( $typePrefix . $params->[$i]->Type() )
                         . '</td>';
                         };
@@ -1442,7 +1443,7 @@ sub BuildPrototype #(type, prototype, file)
                 if ($hasDefaultValuePrefix)
                     {
                     $output .=
-                    '<td class=PDefaultValuePrefix>'
+                    '<td class="PDefaultValuePrefix ' . $highlightClass . '">'
 
                        . '&nbsp;' . $self->ConvertAmpChars( $params->[$i]->DefaultValuePrefix() ) . '&nbsp;'
                     . '</td>';
@@ -1451,7 +1452,7 @@ sub BuildPrototype #(type, prototype, file)
                 if ($hasDefaultValue)
                     {
                     $output .=
-                    '<td class=PDefaultValue width=100%>'
+                    '<td class="PDefaultValue ' . $highlightClass . '" width=100%>'
                         . ($hasDefaultValuePrefix ? '' : '&nbsp;') . $self->ConvertAmpChars( $params->[$i]->DefaultValue() )
                     . '</td>';
                     };
@@ -1461,7 +1462,7 @@ sub BuildPrototype #(type, prototype, file)
                 {  $output .= '</tr><tr>';  };
 
             $output .=
-            '<td class=PAfterParameters ' . ($useCondensed ? 'colspan=' . $parameterColumns : 'nowrap') . '>'
+            '<td class="PAfterParameters ' . $highlightClass . '"' . ($useCondensed ? 'colspan=' . $parameterColumns : 'nowrap') . '>'
                  . $self->ConvertAmpChars($afterParams);
 
                 if ($afterParams && $afterParams !~ /^[\)\]\}\>]/)
