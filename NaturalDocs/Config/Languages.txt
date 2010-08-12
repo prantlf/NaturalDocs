@@ -143,7 +143,7 @@ Language: JavaScript
    Block Comment: /* */
    Enum Values: Under type
    Function Prototype Ender: {
-   Variable Prototype Enders: ; =
+   Variable Prototype Enders: ; = , }
 
 
 Language: Perl
@@ -183,8 +183,8 @@ Language: SQL
    Enum Values: Global
    Function Prototype Enders: , ; ) as As AS is Is IS
    Variable Prototype Enders: , ; ) := default Default DEFAULT
-   Database Trigger Prototype Enders: begin Begin BEGIN as As AS
    Database Index Prototype Enders: , ; )
+   Database Trigger Prototype Enders: begin Begin BEGIN as As AS
    Perl Package: NaturalDocs::Languages::PLSQL
 
 
