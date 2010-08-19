@@ -76,6 +76,7 @@ sub BuildFile #(sourceFile, parsedFile)
             or die "Couldn't create output file " . $outputFile . "\n";
         };
 
+    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
     my $usePrettify = (NaturalDocs::Settings->HighlightCode() || NaturalDocs::Settings->HighlightAnonymous());
 
 
@@ -89,8 +90,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
         '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+        	. '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<title>'
                 . $self->BuildTitle($sourceFile)
@@ -150,8 +150,7 @@ sub BuildIndex #(type)
 
         . '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+        	. '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<title>';
 
@@ -194,8 +193,7 @@ sub BuildIndex #(type)
 
         . '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+            . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($indexFile, $self->MainCSSFile(), 1) . '">'
 
@@ -247,6 +245,8 @@ sub UpdateMenu
     open(OUTPUTFILEHANDLE, '>' . $outputFile)
         or die "Couldn't create output file " . $outputFile . "\n";
 
+    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
+
     my $title = 'Menu';
     if (defined $title)
         {  $title .= ' - ' . NaturalDocs::Menu->Title();  };
@@ -256,14 +256,12 @@ sub UpdateMenu
 
     print OUTPUTFILEHANDLE
 
-
         '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" '
             . '"http://www.w3.org/TR/REC-html40/loose.dtd">' . "\n\n"
 
         . '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+          	. '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<title>'
                 . $title
@@ -306,6 +304,8 @@ sub UpdateMenu
         open(INDEXFILEHANDLE, '>' . $indexFile)
             or die "Couldn't create output file " . $indexFile . ".\n";
 
+	    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
+
         print INDEXFILEHANDLE
 
             '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Frameset//EN" '
@@ -315,8 +315,7 @@ sub UpdateMenu
 
                 . '<head>'
 
-                    . (NaturalDocs::Settings->CharSet() ?
-                        '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+                    . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
                     . '<title>'
                         . $self->StringToHTML(NaturalDocs::Menu->Title())

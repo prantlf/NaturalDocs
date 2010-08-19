@@ -529,6 +529,7 @@ sub EndBuild #(hasChanged)
         if (scalar @$styles > 1)
             {
             open(FH_CSS_FILE, '>' . $mainCSSFile);
+		    binmode(FH_CSS_FILE, ':encoding(UTF-8)');
 
             for (my $i = 0; $i < scalar @$styles; $i++)
                 {
@@ -580,6 +581,7 @@ sub EndBuild #(hasChanged)
     my @indexes = keys %{NaturalDocs::Menu->Indexes()};
 
     open(FH_INDEXINFOJS, '>' . NaturalDocs::File->JoinPaths( $self->JavaScriptDirectory(), 'searchdata.js'));
+    binmode(FH_INDEXINFOJS, ':encoding(UTF-8)');
 
     print FH_INDEXINFOJS
     "var indexSectionsWithContent = {\n";
@@ -1875,6 +1877,8 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
             open(INDEXFILEHANDLE, '>' . $searchResultsFileName)
                 or die "Couldn't create output file " . $searchResultsFileName . ".\n";
 
+		    binmode(INDEXFILEHANDLE, ':encoding(UTF-8)');
+
             print INDEXFILEHANDLE
 
             $beginSearchResultsPage
@@ -1908,6 +1912,8 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
 
         open(INDEXFILEHANDLE, '>' . $emptySearchResultsFileName)
             or die "Couldn't create output file " . $emptySearchResultsFileName . ".\n";
+
+	    binmode(INDEXFILEHANDLE, ':encoding(UTF-8)');
 
         print INDEXFILEHANDLE
 
@@ -1981,6 +1987,8 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
             open(INDEXFILEHANDLE, '>' . $indexFileName)
                 or die "Couldn't create output file " . $indexFileName . ".\n";
 
+		    binmode(INDEXFILEHANDLE, ':encoding(UTF-8)');
+
             print INDEXFILEHANDLE $beginIndexPage . $self->BuildIndexNavigationBar($type, $page, \@pageLocations)
                                               . '<table border=0 cellspacing=0 cellpadding=0>';
 
@@ -2016,6 +2024,8 @@ sub BuildIndexPages #(TopicType type, NaturalDocs::SymbolTable::IndexElement[] i
 
         open(INDEXFILEHANDLE, '>' . $indexFileName)
             or die "Couldn't create output file " . $indexFileName . ".\n";
+
+    	binmode(INDEXFILEHANDLE, ':encoding(UTF-8)');
 
         print INDEXFILEHANDLE
             $beginIndexPage

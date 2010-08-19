@@ -76,6 +76,7 @@ sub BuildFile #(sourceFile, parsedFile)
             or die "Couldn't create output file " . $outputFile . "\n";
         };
 
+    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
     my $usePrettify = (NaturalDocs::Settings->HighlightCode() || NaturalDocs::Settings->HighlightAnonymous());
 
 
@@ -86,8 +87,7 @@ sub BuildFile #(sourceFile, parsedFile)
 
         . '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+            . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<title>'
                 . $self->BuildTitle($sourceFile)
@@ -159,8 +159,7 @@ sub BuildIndex #(type)
 
         . '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+            . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<title>'
                 . $indexTitle;
@@ -217,8 +216,7 @@ sub BuildIndex #(type)
 
         . '<html><head>'
 
-            . (NaturalDocs::Settings->CharSet() ?
-                '<meta http-equiv="Content-Type" content="text/html; charset=' . NaturalDocs::Settings->CharSet() . '">' : '')
+            . '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">'
 
             . '<link rel="stylesheet" type="text/css" href="' . $self->MakeRelativeURL($self->SearchResultsDirectory(),
                                                                                                                        $self->MainCSSFile()) . '">'
@@ -292,6 +290,8 @@ sub UpdateMenu
         open(INDEXFILEHANDLE, '>' . $indexFile)
             or die "Couldn't create output file " . $indexFile . ".\n";
 
+	    binmode(INDEXFILEHANDLE, ':encoding(UTF-8)');
+
         print INDEXFILEHANDLE
         '<html><head>'
              . '<meta http-equiv="Refresh" CONTENT="0; URL='
@@ -340,6 +340,7 @@ sub UpdateFile #(sourceFile)
         {
         my $content;
 
+	    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
         read(OUTPUTFILEHANDLE, $content, -s OUTPUTFILEHANDLE);
         close(OUTPUTFILEHANDLE);
 
@@ -352,6 +353,7 @@ sub UpdateFile #(sourceFile)
 
 
         open(OUTPUTFILEHANDLE, '>' . $outputFile);
+	    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
         print OUTPUTFILEHANDLE $content;
         close(OUTPUTFILEHANDLE);
         };
@@ -386,6 +388,7 @@ sub UpdateIndex #(type)
 
         my $content;
 
+	    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
         read(OUTPUTFILEHANDLE, $content, -s OUTPUTFILEHANDLE);
         close(OUTPUTFILEHANDLE);
 
@@ -398,6 +401,7 @@ sub UpdateIndex #(type)
         open(OUTPUTFILEHANDLE, '>' . $outputFile)
             or die "Couldn't save output file " . $outputFile . ".\n";
 
+	    binmode(OUTPUTFILEHANDLE, ':encoding(UTF-8)');
         print OUTPUTFILEHANDLE $content;
         close(OUTPUTFILEHANDLE);
 
