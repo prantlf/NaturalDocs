@@ -172,10 +172,6 @@ my $rebuildData;
 # An array of style names to use, most important first.
 my @styles;
 
-# var: charset
-# The character encoding of the source files, and thus the output.
-my $charset;
-
 # var: highlightCode
 # Whether syntax highlighting should be applied to code tags.
 my $highlightCode;
@@ -205,7 +201,6 @@ my $highlightAnonymous;
 #       > [UInt8: documented only (0 or 1)]
 #       > [UInt8: no auto-group (0 or 1)]
 #       > [UInt8: only file titles (0 or 1)]
-#       > [AString16: charset]
 #		> [UInt8: highlight code (0 or 1)]
 #		> [UInt8: highlight anonymous (0 or 1)]
 #       >
@@ -221,6 +216,10 @@ my $highlightAnonymous;
 #
 #
 #   Revisions:
+#
+#		1.51:
+#
+#			- Removed charset.
 #
 #		1.5:
 #
@@ -674,11 +673,6 @@ sub IsQuiet
 sub RebuildData
     {  return $rebuildData;  };
 
-# Function: CharSet
-# Returns the character set, or undef if none.
-sub CharSet
-    {  return $charset;  };
-
 # Function: HighlightCode
 # Returns whether to apply syntax highlighting (start code) sections.
 sub HighlightCode
@@ -711,7 +705,7 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    return '1.5';
+    return '1.51';
     };
 
 #
@@ -757,8 +751,6 @@ sub ParseCommandLine
                                   'noautogroup' => '-nag',
                                   'onlyfiletitles' => '-oft',
                                   'onlyfiletitle' => '-oft',
-                                  'charset' => '-cs',
-                                  'characterset' => '-cs',
                                   'highlight' => '-hl',
                                   'highlighting' => '-hl' );
 
@@ -844,10 +836,6 @@ sub ParseCommandLine
             elsif ($option eq '-t')
                 {
                 $valueRef = \$tabLength;
-                }
-            elsif ($option eq '-cs')
-                {
-                $valueRef = \$charset;
                 }
             elsif ($option eq '-hl')
             	{
@@ -1141,10 +1129,6 @@ sub ParseCommandLine
         {  $tabLength = 4;  };
 
 
-    # Strip any quotes off of the charset.
-    $charset =~ tr/\"//d;
-
-
     # Decode and validate the highlight setting.
 
     if (defined $highlightString)
@@ -1329,7 +1313,7 @@ sub LoadAndComparePreviousSettings
         my $version;
 
         if (NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd'),
-                                                                           NaturalDocs::Version->FromString('1.5') ))
+                                                                           NaturalDocs::Version->FromString('1.51') ))
             {  $fileIsOkay = 1;  };
         };
 
@@ -1348,7 +1332,6 @@ sub LoadAndComparePreviousSettings
         # [UInt8: documented only (0 or 1)]
         # [UInt8: no auto-group (0 or 1)]
         # [UInt8: only file titles (0 or 1)]
-        # [AString16: charset]
         # [UInt8: highlight code (0 or 1)]
         # [UInt8: highlight anonymous (0 or 1)]
 
@@ -1356,7 +1339,6 @@ sub LoadAndComparePreviousSettings
         my $prevDocumentedOnly = NaturalDocs::BinaryFile->GetUInt8();
         my $prevNoAutoGroup = NaturalDocs::BinaryFile->GetUInt8();
         my $prevOnlyFileTitles = NaturalDocs::BinaryFile->GetUInt8();
-        my $prevCharset = NaturalDocs::BinaryFile->GetAString16();
         my $prevHighlightCode = NaturalDocs::BinaryFile->GetUInt8();
         my $prevHighlightAnonymous = NaturalDocs::BinaryFile->GetUInt8();
 
@@ -1384,9 +1366,6 @@ sub LoadAndComparePreviousSettings
             {
             NaturalDocs::Project->ReparseEverything();
             };
-
-        if ($prevCharset ne $charset)
-            {  NaturalDocs::Project->RebuildEverything();  };
 
 
         # [UInt8: number of input directories]
@@ -1459,7 +1438,6 @@ sub SavePreviousSettings
     # [UInt8: documented only (0 or 1)]
     # [UInt8: no auto-group (0 or 1)]
     # [UInt8: only file titles (0 or 1)]
-    # [AString16: charset]
     # [UInt8: highlight code (0 or 1)]
     # [UInt8: highlight anonymous (0 or 1)]
     # [UInt8: number of input directories]
@@ -1470,7 +1448,6 @@ sub SavePreviousSettings
     NaturalDocs::BinaryFile->WriteUInt8($self->DocumentedOnly() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8($self->NoAutoGroup() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8($self->OnlyFileTitles() ? 1 : 0);
-    NaturalDocs::BinaryFile->WriteAString16($charset);
     NaturalDocs::BinaryFile->WriteUInt8($self->HighlightCode() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8($self->HighlightAnonymous() ? 1 : 0);
     NaturalDocs::BinaryFile->WriteUInt8(scalar @$inputDirectories);
