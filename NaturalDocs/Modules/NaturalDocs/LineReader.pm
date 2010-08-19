@@ -22,6 +22,7 @@
 use strict;
 use integer;
 
+
 package NaturalDocs::LineReader;
 
 #
@@ -30,11 +31,9 @@ package NaturalDocs::LineReader;
 #	LINEREADER_FILEHANDLE - The file handle being used to read the file.  Has the LINEREADER_ prefix to make sure it doesn't
 #											 conflict with any actual filehandles named FILEHANDLE in the program.
 #	CACHED_LINES - An arrayref of lines already read into memory.
-#	ON_FIRST_LINE - Whether we're about to return the first line or not.
 #
 use NaturalDocs::DefineMembers 'LINEREADER_FILEHANDLE',
-                                                 'CACHED_LINES',
-                                                 'ON_FIRST_LINE';
+                                                 'CACHED_LINES';
 
 #
 #   Function: New
@@ -53,7 +52,41 @@ sub New #(filehandle)
 
     $object->[LINEREADER_FILEHANDLE] = $filehandle;
     $object->[CACHED_LINES] = [ ];
-    $object->[ON_FIRST_LINE] = 1;
+
+    binmode($filehandle, ':raw');
+
+    my $possibleBOM = undef;
+    read($filehandle, $possibleBOM, 2);
+
+    if ($possibleBOM eq "\xEF\xBB")
+        {
+        read($filehandle, $possibleBOM, 1);
+        if ($possibleBOM eq "\xBF")
+            {
+            seek($filehandle, 3, 0);
+            binmode($filehandle, ':crlf:encoding(UTF-8)');  # Strict UTF-8, not Perl's lax version.
+            }
+        else
+            {
+            seek($filehandle, 0, 0);
+            binmode($filehandle, ':crlf');
+            }
+        }
+    elsif ($possibleBOM eq "\xFE\xFF")
+        {
+        seek($filehandle, 2, 0);
+        binmode($filehandle, ':crlf:encoding(UTF-16BE)');
+        }
+    elsif ($possibleBOM eq "\xFF\xFE")
+        {
+        seek($filehandle, 2, 0);
+        binmode($filehandle, ':crlf:encoding(UTF-16LE)');
+        }
+    else
+        {
+        seek($filehandle, 0, 0);
+        binmode($filehandle, ':crlf');
+        }
 
     bless $object, $selfPackage;
     return $object;
@@ -72,24 +105,7 @@ sub New #(filehandle)
 sub Chomp #(lineRef)
     {
     my ($self, $lineRef) = @_;
-    $$lineRef =~ s/\r\n|\r|\n$//;
-    };
-
-
-#
-#   Function: StripBOM
-#
-#   Removes the Unicode BOM from the line if present.  Information on it is available at
-#	http://www.unicode.org/faq/utf_bom.html#BOM
-#
-#   Parameters:
-#
-#       lineRef - A *reference* to the line to strip.
-#
-sub StripBOM #(lineRef)
-    {
-    my ($self, $lineRef) = @_;
-    $$lineRef =~ s/^\xEF\xBB\xBF//;
+    $$lineRef =~ s/(?:\r\n|\r|\n)$//;
     };
 
 
@@ -116,20 +132,14 @@ sub Get
 
         if ($rawLine =~ /\r/)
         	{
-			push @{$self->[CACHED_LINES]}, split(/\r/, $rawLine);  # Split for Classic Mac
+	  		push @{$self->[CACHED_LINES]}, split(/\r/, $rawLine);  # Split for Classic Mac
 			$line = shift @{$self->[CACHED_LINES]};
-        	}
+          	}
         else
         	{  $line = $rawLine;  }
 		}
 	else
 		{  $line = shift @{$self->[CACHED_LINES]};  }
-
-    if ($self->[ON_FIRST_LINE])
-    	{
-        $self->StripBOM(\$line);
-        $self->[ON_FIRST_LINE] = undef;
-        }
 
 	return $line;
 	}
@@ -149,7 +159,6 @@ sub GetAll
 	my $rawContent;
 
     read($filehandle, $rawContent, -s $filehandle);
-    $self->StripBOM(\$rawContent);
 
     return split(/\r\n|\n|\r/, $rawContent);
 	}

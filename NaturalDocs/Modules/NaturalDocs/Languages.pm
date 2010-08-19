@@ -1404,13 +1404,10 @@ sub LanguageOf #(sourceFile)
 
                 if (open(SOURCEFILEHANDLE, '<' . $sourceFile))
                 	{
-	                read(SOURCEFILEHANDLE, $shebangLine, 2);
-	                if ($shebangLine eq '#!')
-	                    {
-	                    my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
-	                    $shebangLine = $lineReader->Get();
-	                    }
-	                else
+                    my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
+                    $shebangLine = $lineReader->Get();
+
+	                if (substr($shebangLine, 0, 2) ne '#!')
 	                    {  $shebangLine = undef;  };
 
 	                close (SOURCEFILEHANDLE);
