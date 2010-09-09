@@ -190,27 +190,10 @@ sub ParseFile #(sourceFile, topicsList)
             my $originalLine = $line;
 
 
-            # Retrieve single line comments.  This leaves $line at the next line.
-
-            if ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()))
-                {
-                do
-                    {
-                    push @commentLines, $line;
-                    $line = $lineReader->Get();
-
-                    if (!defined $line)
-                        {  goto EndDo;  };
-                    }
-                while ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()));
-
-                EndDo:  # I hate Perl sometimes.
-                }
-
-
             # Retrieve multiline comments.  This leaves $line at the next line.
+            # We check for multiline comments before single line comments because in Lua the symbols are --[[ and --.
 
-            elsif (my $closingSymbol = $self->StripOpeningBlockSymbols(\$line, $self->BlockCommentSymbols()))
+            if (my $closingSymbol = $self->StripOpeningBlockSymbols(\$line, $self->BlockCommentSymbols()))
                 {
                 # Note that it is possible for a multiline comment to start correctly but not end so.  We want those comments to stay in
                 # the code.  For example, look at this prototype with this splint annotation:
@@ -246,6 +229,24 @@ sub ParseFile #(sourceFile, topicsList)
                     };
 
                 $line = $lineReader->Get();
+                }
+
+
+            # Retrieve single line comments.  This leaves $line at the next line.
+
+            elsif ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()))
+                {
+                do
+                    {
+                    push @commentLines, $line;
+                    $line = $lineReader->Get();
+
+                    if (!defined $line)
+                        {  goto EndDo;  };
+                    }
+                while ($self->StripOpeningSymbols(\$line, $self->LineCommentSymbols()));
+
+                EndDo:  # I hate Perl sometimes.
                 }
 
 
