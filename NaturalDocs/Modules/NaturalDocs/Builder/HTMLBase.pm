@@ -2858,9 +2858,9 @@ sub NDMarkupToHTML #(sourceFile, text, symbol, package, type, using, style)
 
     my $dlSymbolBehavior;
 
-    if ($type == ::TOPIC_ENUMERATION())
+    if ($type eq ::TOPIC_ENUMERATION())
         {  $dlSymbolBehavior = NaturalDocs::Languages->LanguageOf($sourceFile)->EnumValues();  }
-    elsif (NaturalDocs::Topics->TypeInfo($type)->Scope() == ::SCOPE_ALWAYS_GLOBAL())
+   elsif (NaturalDocs::Topics->TypeInfo($type)->Scope() == ::SCOPE_ALWAYS_GLOBAL())
         {  $dlSymbolBehavior = ::ENUM_GLOBAL();  }
     else
         {  $dlSymbolBehavior = ::ENUM_UNDER_PARENT();  };
