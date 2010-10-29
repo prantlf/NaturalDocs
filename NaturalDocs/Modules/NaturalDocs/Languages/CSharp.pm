@@ -1093,7 +1093,8 @@ sub TryToGetType #(indexRef, lineNumberRef)
 
     while ($tokens->[$index] =~ /^[a-z\@\.\_]/i)
         {
-        if (exists $impossibleTypeWords{ lc($tokens->[$index]) } && $name !~ /\@$/)
+		# Case sensitive since you can declare a class Lock even though lock is a keyword.
+        if (exists $impossibleTypeWords{ $tokens->[$index] } && $name !~ /\@$/)
             {  return undef;  };
 
         $name .= $tokens->[$index];
