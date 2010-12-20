@@ -1221,9 +1221,9 @@ sub TryToSkipRegexp #(indexRef, lineNumberRef)
 
     my $isRegexp;
 
-    # If it's a supported character sequence that's not a variable (ex $qr)...
+    # If it's a supported character sequence that's not a variable (ex $qr) or package (ex a::tr)...
     if ($tokens->[$$indexRef] =~ /^(?:m|qr|s|tr|y)$/i &&
-         ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*\-]$/) )
+         ($$indexRef == 0 || $tokens->[$$indexRef - 1] !~ /^[\$\%\@\*\-\>\:]$/) )
         {  $isRegexp = 1;  }
 
     elsif ($tokens->[$$indexRef] eq '/' && !$self->IsStringed($$indexRef))
