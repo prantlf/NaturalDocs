@@ -33,6 +33,8 @@ use integer;
 
 package NaturalDocs::Menu;
 
+use Encode qw(encode_utf8 decode_utf8);
+
 
 #
 #   Constants: Constants
@@ -311,11 +313,11 @@ my %bannedIndexes;
 #   First is the standard <BINARY_FORMAT> <VersionInt> header.
 #
 #   > [UInt8: 0 (end group)]
-#   > [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
-#   > [UInt8: MENU_GROUP] [AString16: title]
-#   > [UInt8: MENU_INDEX] [AString16: title] [AString16: topic type]
-#   > [UInt8: MENU_LINK] [AString16: title] [AString16: url]
-#   > [UInt8: MENU_TEXT] [AString16: text]
+#   > [UInt8: MENU_FILE] [UInt8: noAutoTitle] [UString16: title] [UString16: target]
+#   > [UInt8: MENU_GROUP] [UString16: title]
+#   > [UInt8: MENU_INDEX] [UString16: title] [UString16: topic type]
+#   > [UInt8: MENU_LINK] [UString16: title] [UString16: url]
+#   > [UInt8: MENU_TEXT] [UString16: text]
 #
 #   The first UInt8 of each following line is either zero or one of the <Menu Entry Types>.  What follows is contextual.
 #
@@ -330,6 +332,10 @@ my %bannedIndexes;
 #       - Because the type is represented by a UInt8, the <Menu Entry Types> must all be <= 255.
 #
 #   Revisions:
+#
+#		1.52:
+#
+#			- All AString16s were changed to UString16s.
 #
 #       1.3:
 #
@@ -976,6 +982,7 @@ sub SaveMenuFile
     open(MENUFILEHANDLE, '>' . NaturalDocs::Project->UserConfigFile('Menu.txt'))
         or die "Couldn't save menu file " . NaturalDocs::Project->UserConfigFile('Menu.txt') . "\n";
 
+    binmode(MENUFILEHANDLE, ':encoding(UTF-8)');
 
     print MENUFILEHANDLE
     "Format: " . NaturalDocs::Settings->TextAppVersion() . "\n\n\n";
@@ -1241,9 +1248,7 @@ sub LoadPreviousMenuStateFile
             {
             $version = NaturalDocs::Version->FromBinaryFile(\*PREVIOUSSTATEFILEHANDLE);
 
-            # Only the topic type format has changed since switching to binary, and we support both methods.
-
-            if (NaturalDocs::Version->CheckFileFormat($version))
+            if (NaturalDocs::Version->CheckFileFormat($version, NaturalDocs::Version->FromString('1.52')))
                 {  $fileIsOkay = 1;  }
             else
                 {  close(PREVIOUSSTATEFILEHANDLE);  };
@@ -1279,7 +1284,7 @@ sub LoadPreviousMenuStateFile
 
             elsif ($type == ::MENU_FILE())
                 {
-                # [UInt8: noAutoTitle] [AString16: title] [AString16: target]
+                # [UInt8: noAutoTitle] [UString16: title] [UString16: target]
 
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 3);
                 (my $noAutoTitle, $titleLength) = unpack('Cn', $raw);
@@ -1288,39 +1293,45 @@ sub LoadPreviousMenuStateFile
                     {  $flags = ::MENU_FILE_NOAUTOTITLE();  };
 
                 read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                $title = decode_utf8($title);
+
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
 
                 $targetLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $target, $targetLength);
+                $target = decode_utf8($target);
                 }
 
             elsif ($type == ::MENU_GROUP())
                 {
-                # [AString16: title]
+                # [UString16: title]
 
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                $title = decode_utf8($title);
                 }
 
             elsif ($type == ::MENU_INDEX())
                 {
-                # [AString16: title]
+                # [UString16: title]
 
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                $title = decode_utf8($title);
 
                 if ($version >= NaturalDocs::Version->FromString('1.3'))
                     {
-                    # [AString16: topic type]
+                    # [UString16: topic type]
                     read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                     $targetLength = unpack('n', $raw);
 
                     read(PREVIOUSSTATEFILEHANDLE, $target, $targetLength);
+                    $target = decode_utf8($target);
                     }
                 else
                     {
@@ -1334,26 +1345,30 @@ sub LoadPreviousMenuStateFile
 
             elsif ($type == ::MENU_LINK())
                 {
-                # [AString16: title] [AString16: url]
+                # [UString16: title] [UString16: url]
 
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                $title = decode_utf8($title);
+
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $targetLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $target, $targetLength);
+                $target = decode_utf8($target);
                 }
 
             elsif ($type == ::MENU_TEXT())
                 {
-                # [AString16: text]
+                # [UString16: text]
 
                 read(PREVIOUSSTATEFILEHANDLE, $raw, 2);
                 $titleLength = unpack('n', $raw);
 
                 read(PREVIOUSSTATEFILEHANDLE, $title, $titleLength);
+                $title = decode_utf8($title);
                 };
 
 
@@ -1438,38 +1453,48 @@ sub WritePreviousMenuStateEntries #(entries, fileHandle)
             # We need to do length manually instead of using n/A in the template because it's not supported in earlier versions
             # of Perl.
 
-            # [UInt8: MENU_FILE] [UInt8: noAutoTitle] [AString16: title] [AString16: target]
-            print $fileHandle pack('CCnA*nA*', ::MENU_FILE(), ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 1 : 0),
-                                                                length($entry->Title()), $entry->Title(),
-                                                                length($entry->Target()), $entry->Target());
+            # [UInt8: MENU_FILE] [UInt8: noAutoTitle] [UString16: title] [UString16: target]
+            my $uTitle = encode_utf8($entry->Title());
+            my $uTarget = encode_utf8($entry->Target());
+
+            print $fileHandle pack('CCna*na*', ::MENU_FILE(), ($entry->Flags() & ::MENU_FILE_NOAUTOTITLE() ? 1 : 0),
+                                                                length($uTitle), $uTitle, length($uTarget), $uTarget);
             }
 
         elsif ($entry->Type() == ::MENU_GROUP())
             {
-            # [UInt8: MENU_GROUP] [AString16: title]
-            print $fileHandle pack('CnA*', ::MENU_GROUP(), length($entry->Title()), $entry->Title());
+            # [UInt8: MENU_GROUP] [UString16: title]
+            my $uTitle = encode_utf8($entry->Title());
+
+            print $fileHandle pack('Cna*', ::MENU_GROUP(), length($uTitle), $uTitle);
             $self->WritePreviousMenuStateEntries($entry->GroupContent(), $fileHandle);
             print $fileHandle pack('C', 0);
             }
 
         elsif ($entry->Type() == ::MENU_INDEX())
             {
-            # [UInt8: MENU_INDEX] [AString16: title] [AString16: topic type]
-            print $fileHandle pack('CnA*nA*', ::MENU_INDEX(), length($entry->Title()), $entry->Title(),
-                                                                                       length($entry->Target()), $entry->Target());
+            # [UInt8: MENU_INDEX] [UString16: title] [UString16: topic type]
+            my $uTitle = encode_utf8($entry->Title());
+            my $uTarget = encode_utf8($entry->Target());
+
+            print $fileHandle pack('Cna*na*', ::MENU_INDEX(), length($uTitle), $uTitle, length($uTarget), $uTarget);
             }
 
         elsif ($entry->Type() == ::MENU_LINK())
             {
-            # [UInt8: MENU_LINK] [AString16: title] [AString16: url]
-            print $fileHandle pack('CnA*nA*', ::MENU_LINK(), length($entry->Title()), $entry->Title(),
-                                                             length($entry->Target()), $entry->Target());
+            # [UInt8: MENU_LINK] [UString16: title] [UString16: url]
+            my $uTitle = encode_utf8($entry->Title());
+            my $uTarget = encode_utf8($entry->Target());
+
+            print $fileHandle pack('Cna*na*', ::MENU_LINK(), length($uTitle), $uTitle, length($uTarget), $uTarget);
             }
 
         elsif ($entry->Type() == ::MENU_TEXT())
             {
-            # [UInt8: MENU_TEXT] [AString16: hext]
-            print $fileHandle pack('CnA*', ::MENU_TEXT(), length($entry->Title()), $entry->Title());
+            # [UInt8: MENU_TEXT] [UString16: text]
+            my $uTitle = encode_utf8($entry->Title());
+
+            print $fileHandle pack('Cna*', ::MENU_TEXT(), length($uTitle), $uTitle);
             };
         };
 

@@ -17,6 +17,8 @@ use integer;
 
 package NaturalDocs::SymbolString;
 
+use Encode qw(encode_utf8 decode_utf8);
+
 
 #
 #   Function: FromText
@@ -104,7 +106,7 @@ sub ToText #(SymbolString symbolString, string separator)
 #   Format:
 #
 #       > [UInt8: number of identifiers]
-#       >    [AString16: identifier] [AString16: identifier] ...
+#       >    [UString16: identifier] [UString16: identifier] ...
 #
 #       Undef is represented by a zero for the number of identifiers.
 #
@@ -120,7 +122,8 @@ sub ToBinaryFile #(FileHandle fileHandle, SymbolString symbol)
 
     foreach my $identifier (@identifiers)
         {
-        print $fileHandle pack('nA*', length($identifier), $identifier);
+        my $uIdentifier = encode_utf8($identifier);
+        print $fileHandle pack('na*', length($uIdentifier), $uIdentifier);
         };
     };
 
@@ -157,13 +160,14 @@ sub FromBinaryFile #(FileHandle fileHandle)
 
     while ($identifierCount)
         {
-        # [AString16: identifier] [AString16: identifier] ...
+        # [UString16: identifier] [UString16: identifier] ...
 
         read($fileHandle, $raw, 2);
         my $identifierLength = unpack('n', $raw);
 
         my $identifier;
         read($fileHandle, $identifier, $identifierLength);
+        $identifier = decode_utf8($identifier);
 
         push @identifiers, $identifier;
 

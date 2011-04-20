@@ -99,7 +99,7 @@ my $extensionID;
 #       It starts with the standard binary header from <NaturalDocs::BinaryFile>.
 #
 #       > [Image Reference String or undef]
-#       > [AString16: target file]
+#       > [UString16: target file]
 #       > [UInt16: target width or 0]
 #       > [UInt16: target height or 0]
 #
@@ -109,13 +109,17 @@ my $extensionID;
 #
 #       <ImageReferenceStrings> are encoded by <NaturalDocs::ImageReferenceTable::String>.
 #
-#       > [AString16: definition file or undef] ...
+#       > [UString16: definition file or undef] ...
 #
-#       Then comes a series of AString16s for all the files that define the reference until it hits an undef.
+#       Then comes a series of UString16s for all the files that define the reference until it hits an undef.
 #
 #       This whole series is repeated for each <ImageReferenceString> until it hits an undef.
 #
 #	Revisions:
+#
+#		1.52:
+#
+#			- AString16s were changed to UString16s.
 #
 #		1.4:
 #
@@ -151,8 +155,18 @@ sub Load # => bool
     if (NaturalDocs::Settings->RebuildData())
         {  return 0;  };
 
-    # The file format hasn't changed since it was introduced.
-    if (!NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('ImageReferenceTable.nd') ))
+    my $version = NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('ImageReferenceTable.nd') );
+    my $fileIsOkay;
+
+    if (defined $version)
+        {
+        if (NaturalDocs::Version->CheckFileFormat($version, NaturalDocs::Version->FromString('1.52')))
+            {  $fileIsOkay = 1;  }
+        else
+            {  NaturalDocs::BinaryFile->Close();  };
+        };
+
+    if (!$fileIsOkay)
         {  return 0;  };
 
 
@@ -162,11 +176,11 @@ sub Load # => bool
         NaturalDocs::SourceDB->AddItem($extensionID, $referenceString,
                                                            NaturalDocs::ImageReferenceTable::Reference->New());
 
-        # [AString16: target file]
+        # [UString16: target file]
         # [UInt16: target width or 0]
         # [UInt16: target height or 0]
 
-        my $targetFile = NaturalDocs::BinaryFile->GetAString16();
+        my $targetFile = NaturalDocs::BinaryFile->GetUString16();
         my $width = NaturalDocs::BinaryFile->GetUInt16();
         my $height = NaturalDocs::BinaryFile->GetUInt16();
 
@@ -183,8 +197,8 @@ sub Load # => bool
         my $rebuildDefinitions = ($newTargetFile ne $targetFile || $newWidth != $width || $newHeight != $height);
 
 
-        # [AString16: definition file or undef] ...
-        while (my $definitionFile = NaturalDocs::BinaryFile->GetAString16())
+        # [UString16: definition file or undef] ...
+        while (my $definitionFile = NaturalDocs::BinaryFile->GetUString16())
             {
             NaturalDocs::SourceDB->AddDefinition($extensionID, $referenceString, $definitionFile);
 
@@ -215,7 +229,7 @@ sub Save
     while (my ($referenceString, $referenceObject) = each %$references)
         {
         # [Image Reference String or undef]
-        # [AString16: target file]
+        # [UString16: target file]
         # [UInt16: target width or 0]
         # [UInt16: target height or 0]
 
@@ -227,18 +241,18 @@ sub Save
         if ($target)
             {  ($width, $height) = NaturalDocs::Project->ImageFileDimensions($target);  };
 
-        NaturalDocs::BinaryFile->WriteAString16( $referenceObject->Target() );
+        NaturalDocs::BinaryFile->WriteUString16( $referenceObject->Target() );
         NaturalDocs::BinaryFile->WriteUInt16( ($width || 0) );
         NaturalDocs::BinaryFile->WriteUInt16( ($height || 0) );
 
-        # [AString16: definition file or undef] ...
+        # [UString16: definition file or undef] ...
 
         my $definitions = $referenceObject->GetAllDefinitionsHashRef();
 
         foreach my $definition (keys %$definitions)
-            {  NaturalDocs::BinaryFile->WriteAString16($definition);  };
+            {  NaturalDocs::BinaryFile->WriteUString16($definition);  };
 
-        NaturalDocs::BinaryFile->WriteAString16(undef);
+        NaturalDocs::BinaryFile->WriteUString16(undef);
         };
 
     NaturalDocs::ImageReferenceTable::String->ToBinaryFile(undef);

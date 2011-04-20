@@ -22,6 +22,8 @@
 use strict;
 use integer;
 
+use Encode;
+
 
 package NaturalDocs::LineReader;
 
@@ -55,6 +57,7 @@ sub New #(filehandle)
 
     binmode($filehandle, ':raw');
 
+	my $hasBOM = 0;
     my $possibleBOM = undef;
     read($filehandle, $possibleBOM, 2);
 
@@ -63,30 +66,53 @@ sub New #(filehandle)
         read($filehandle, $possibleBOM, 1);
         if ($possibleBOM eq "\xBF")
             {
-            seek($filehandle, 3, 0);
             binmode($filehandle, ':crlf:encoding(UTF-8)');  # Strict UTF-8, not Perl's lax version.
-            }
-        else
-            {
-            seek($filehandle, 0, 0);
-            binmode($filehandle, ':crlf');
+			$hasBOM = 1;
             }
         }
     elsif ($possibleBOM eq "\xFE\xFF")
         {
-        seek($filehandle, 2, 0);
         binmode($filehandle, ':crlf:encoding(UTF-16BE)');
+		$hasBOM = 1;
         }
     elsif ($possibleBOM eq "\xFF\xFE")
         {
-        seek($filehandle, 2, 0);
         binmode($filehandle, ':crlf:encoding(UTF-16LE)');
+		$hasBOM = 1;
         }
-    else
+
+	if (!$hasBOM)
         {
         seek($filehandle, 0, 0);
-        binmode($filehandle, ':crlf');
-        }
+
+		my $rawData = undef;
+		my $readLength = -s $filehandle;
+
+		# Since we're only reading the data to determine if it's UTF-8, sanity check the file length.  We may run 
+		# across a huge extensionless system file and we don't want to load the whole thing.  Half a meg should
+		# be good enough to encompass giant source files while not bogging things down on system files.
+		if ($readLength > 512 * 1024)
+			{  $readLength = 512 * 1024;  }
+
+		read($filehandle, $rawData, $readLength);
+
+		eval
+			{  $rawData = Encode::decode("UTF-8", $rawData, Encode::FB_CROAK);  };
+
+		if ($::EVAL_ERROR)
+			{  binmode($filehandle, ':crlf');  }
+		else
+			{  
+			# Theoretically, since this is valid UTF-8 data we should be able to split it on line breaks and feed them into
+			# CACHED_LINES instead of setting the encoding to UTF-8 and seeking back to zero just to read it all again.
+			# Alas, this doesn't work for an easily identifiable reason.  I'm sure there is one, but I couldn't figure it out
+			# before my patience ran out so I'm just letting the file cache absorb the hit instead.  If we were ever to do
+			# this in the future you'd have to handle the file length capping code above too.
+			binmode($filehandle, ':crlf:encoding(UTF-8)');  
+			}
+
+		seek($filehandle, 0, 0);
+		}
 
     bless $object, $selfPackage;
     return $object;

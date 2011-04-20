@@ -45,6 +45,7 @@ use integer;
 
 package NaturalDocs::SymbolTable;
 
+use Encode qw(encode_utf8 decode_utf8);
 
 
 ###############################################################################
@@ -171,10 +172,10 @@ my $rebuildIndexes;
 #       >
 #       > [UInt16: number of definitions]
 #       >
-#       >    [AString16: global definition file] [AString16: TopicType]
-#       >       [AString16: prototype] [AString16: summary]
+#       >    [UString16: global definition file] [UString16: TopicType]
+#       >       [UString16: prototype] [UString16: summary]
 #       >
-#       >    [AString16: definition file] ...
+#       >    [UString16: definition file] ...
 #       >
 #       >    ...
 #
@@ -188,7 +189,7 @@ my $rebuildIndexes;
 #       > [ReferenceString (no type, resolving flags): reference or undef to end]
 #       >
 #       > [UInt8: number of definition files]
-#       >    [AString16: definition file] [AString16: definition file] ...
+#       >    [UString16: definition file] [UString16: definition file] ...
 #
 #       These blocks continue until the <ReferenceString> is undef.  Since there can be multiple using <SymbolStrings>, those
 #       continue until the number of identifiers is zero.  Note that all interpretations are rebuilt rather than stored.
@@ -198,6 +199,10 @@ my $rebuildIndexes;
 #       <File Format Conventions>
 #
 #   Revisions:
+#
+#		1.52:
+#
+#			- Changed AString16s to UString16s.
 #
 #       1.3:
 #
@@ -222,7 +227,7 @@ my $rebuildIndexes;
 #
 #       The standard binary file header.
 #
-#       > [AString16: index topic name]
+#       > [UString16: index topic name]
 #       > [uint8: symbols have content (0 or 1)]
 #       > [uint8: numbers have content (0 or 1)]
 #       > [uint8: A has content] [uint8: B has content] ...
@@ -233,6 +238,10 @@ my $rebuildIndexes;
 #       index's state is unknown, it won't appear in this file.
 #
 #   Revisions:
+#
+#		1.52:
+#
+#			- AString16s were changed to UString16s.
 #
 #       1.4:
 #
@@ -283,9 +292,7 @@ sub LoadSymbolTable
             {
             my $version = NaturalDocs::Version->FromBinaryFile(\*SYMBOLTABLE_FILEHANDLE);
 
-            # 1.3 is incompatible with previous versions.
-
-            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.3') ))
+            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.52') ))
                 {  $fileIsOkay = 1;  }
             else
                 {  close(SYMBOLTABLE_FILEHANDLE);  };
@@ -326,39 +333,47 @@ sub LoadSymbolTable
 
         do
             {
-            # [AString16: (global?) definition file]
+            # [UString16: (global?) definition file]
 
             read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
             my $fileLength = unpack('n', $raw);
 
             my $file;
             read(SYMBOLTABLE_FILEHANDLE, $file, $fileLength);
+            $file = decode_utf8($file);
 
-            # [AString16: TopicType]
+            # [UString16: TopicType]
 
             read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
             my $typeLength = unpack('n', $raw);
 
             my $type;
             read(SYMBOLTABLE_FILEHANDLE, $type, $typeLength);
+            $type = decode_utf8($type);
 
-            # [AString16: prototype]
+            # [UString16: prototype]
 
             read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
             my $prototypeLength = unpack('n', $raw);
 
             my $prototype;
             if ($prototypeLength)
-                {  read(SYMBOLTABLE_FILEHANDLE, $prototype, $prototypeLength);  };
+                {
+                read(SYMBOLTABLE_FILEHANDLE, $prototype, $prototypeLength);
+                $prototype = decode_utf8($prototype);
+                };
 
-            # [AString16: summary]
+            # [UString16: summary]
 
             read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
             my $summaryLength = unpack('n', $raw);
 
             my $summary;
             if ($summaryLength)
-                {  read(SYMBOLTABLE_FILEHANDLE, $summary, $summaryLength);  };
+                {
+                read(SYMBOLTABLE_FILEHANDLE, $summary, $summaryLength);
+                $summary = decode_utf8($summary);
+                };
 
             $symbolObject->AddDefinition($file, $type, $prototype, $summary);
 
@@ -398,13 +413,14 @@ sub LoadSymbolTable
         my $definitionCount = unpack('C', $raw);
         do
             {
-            # [AString16: definition file] [AString16: definition file] ...
+            # [UString16: definition file] [UString16: definition file] ...
 
             read(SYMBOLTABLE_FILEHANDLE, $raw, 2);
             my $definitionLength = unpack('n', $raw);
 
             my $definition;
             read(SYMBOLTABLE_FILEHANDLE, $definition, $definitionLength);
+            $definition = decode_utf8($definition);
 
             # Add it.
 
@@ -444,15 +460,14 @@ sub LoadIndexInfo
     if (!defined $version)
         {  return;  }
 
-    # The file format hasn't changed since it was introduced.
-    if (!NaturalDocs::Version->CheckFileFormat($version))
+    if (!NaturalDocs::Version->CheckFileFormat($version, NaturalDocs::Version->FromString('1.52')))
         {
         NaturalDocs::BinaryFile->Close();
         return;
         };
 
     my $topicTypeName;
-    while ($topicTypeName = NaturalDocs::BinaryFile->GetAString16())
+    while ($topicTypeName = NaturalDocs::BinaryFile->GetUString16())
         {
         my $topicType = NaturalDocs::Topics->TypeFromName($topicTypeName);
         my $content = [ ];
@@ -558,28 +573,35 @@ sub SaveSymbolTable
             my @definitions = $symbolObject->Definitions();
             print SYMBOLTABLE_FILEHANDLE pack('n', scalar @definitions);
 
-            # [AString16: global definition file] [AString16: TopicType]
+            # [UString16: global definition file] [UString16: TopicType]
 
-            print SYMBOLTABLE_FILEHANDLE pack('nA*nA*', length $symbolObject->GlobalDefinition(),
-                                                                                   $symbolObject->GlobalDefinition(),
-                                                                                   length $symbolObject->GlobalType(),
-                                                                                   $symbolObject->GlobalType());
+            my $uGlobalDefinition = encode_utf8($symbolObject->GlobalDefinition());
+            my $uGlobalType = encode_utf8($symbolObject->GlobalType());
 
-            # [AString16: prototype]
+            print SYMBOLTABLE_FILEHANDLE pack('na*na*', length $uGlobalDefinition, $uGlobalDefinition,
+                                                                                   length $uGlobalType, $uGlobalType);
+
+            # [UString16: prototype]
 
             my $prototype = $symbolObject->GlobalPrototype();
 
             if (defined $prototype)
-                {  print SYMBOLTABLE_FILEHANDLE pack('nA*', length($prototype), $prototype);  }
+                {
+                my $uPrototype = encode_utf8($prototype);
+                print SYMBOLTABLE_FILEHANDLE pack('na*', length($uPrototype), $uPrototype);
+                }
             else
                 {  print SYMBOLTABLE_FILEHANDLE pack('n', 0);  };
 
-            # [AString16: summary]
+            # [UString16: summary]
 
             my $summary = $symbolObject->GlobalSummary();
 
             if (defined $summary)
-                {  print SYMBOLTABLE_FILEHANDLE pack('nA*', length($summary), $summary);  }
+                {
+                my $uSummary = encode_utf8($summary);
+                print SYMBOLTABLE_FILEHANDLE pack('na*', length($uSummary), $uSummary);
+                }
             else
                 {  print SYMBOLTABLE_FILEHANDLE pack('n', 0);  };
 
@@ -588,27 +610,35 @@ sub SaveSymbolTable
                 {
                 if ($definition ne $symbolObject->GlobalDefinition())
                     {
-                    # [AString16: definition file] [AString16: TopicType]
+                    # [UString16: definition file] [UString16: TopicType]
 
-                    print SYMBOLTABLE_FILEHANDLE pack('nA*nA*', length $definition, $definition,
-                                                                                           length $symbolObject->TypeDefinedIn($definition),
-                                                                                           $symbolObject->TypeDefinedIn($definition));
+                    my $uDefinition = encode_utf8($definition);
+                    my $uTopicType = encode_utf8($symbolObject->TypeDefinedIn($definition));
 
-                    # [AString16: prototype]
+                    print SYMBOLTABLE_FILEHANDLE pack('na*na*', length $uDefinition, $uDefinition,
+                                                                                           length $uTopicType, $uTopicType);
+
+                    # [UString16: prototype]
 
                     my $prototype = $symbolObject->PrototypeDefinedIn($definition);
 
                     if (defined $prototype)
-                        {  print SYMBOLTABLE_FILEHANDLE pack('nA*', length($prototype), $prototype);  }
+                        {
+                        my $uPrototype = encode_utf8($prototype);
+                        print SYMBOLTABLE_FILEHANDLE pack('na*', length($uPrototype), $uPrototype);
+                        }
                     else
                         {  print SYMBOLTABLE_FILEHANDLE pack('n', 0);  };
 
-                    # [AString16: summary]
+                    # [UString16: summary]
 
                     my $summary = $symbolObject->SummaryDefinedIn($definition);
 
                     if (defined $summary)
-                        {  print SYMBOLTABLE_FILEHANDLE pack('nA*', length($summary), $summary);  }
+                        {
+                        my $uSummary = encode_utf8($summary);
+                        print SYMBOLTABLE_FILEHANDLE pack('na*', length($uSummary), $uSummary);
+                        }
                     else
                         {  print SYMBOLTABLE_FILEHANDLE pack('n', 0);  };
                     };
@@ -639,11 +669,12 @@ sub SaveSymbolTable
             my @definitions = $referenceObject->Definitions();
             print SYMBOLTABLE_FILEHANDLE pack('C', scalar @definitions);
 
-            # [AString16: definition file] [AString16: definition file] ...
+            # [UString16: definition file] [UString16: definition file] ...
 
             foreach my $definition (@definitions)
                 {
-                print SYMBOLTABLE_FILEHANDLE pack('nA*', length($definition), $definition);
+                my $uDefinition = encode_utf8($definition);
+                print SYMBOLTABLE_FILEHANDLE pack('na*', length($uDefinition), $uDefinition);
                 };
             };
         };
@@ -670,7 +701,7 @@ sub SaveIndexInfo
 
     while (my ($topicType, $content) = each %indexSectionsWithContent)
         {
-        NaturalDocs::BinaryFile->WriteAString16( NaturalDocs::Topics->NameOfType($topicType) );
+        NaturalDocs::BinaryFile->WriteUString16( NaturalDocs::Topics->NameOfType($topicType) );
 
         for (my $i = 0; $i < 28; $i++)
             {

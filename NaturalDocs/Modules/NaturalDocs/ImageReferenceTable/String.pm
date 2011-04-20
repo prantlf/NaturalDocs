@@ -66,9 +66,9 @@ sub InformationOf #(ImageReferenceString referenceString)
 #
 #   Format:
 #
-#       > [AString16: path] [AString16: reference text] ...
+#       > [UString16: path] [UString16: reference text] ...
 #
-#       Undef is represented by the first AString16 being undef.
+#       Undef is represented by the first UString16 being undef.
 #
 sub ToBinaryFile #(ImageReferenceString referenceString)
     {
@@ -78,12 +78,12 @@ sub ToBinaryFile #(ImageReferenceString referenceString)
         {
         my ($path, $text) = split(/\x1C/, $referenceString);
 
-        NaturalDocs::BinaryFile->WriteAString16($path);
-        NaturalDocs::BinaryFile->WriteAString16($text);
+        NaturalDocs::BinaryFile->WriteUString16($path);
+        NaturalDocs::BinaryFile->WriteUString16($text);
         }
     else
         {
-        NaturalDocs::BinaryFile->WriteAString16(undef);
+        NaturalDocs::BinaryFile->WriteUString16(undef);
         };
     };
 
@@ -97,12 +97,12 @@ sub FromBinaryFile
     {
     my $self = shift;
 
-    my $path = NaturalDocs::BinaryFile->GetAString16();
+    my $path = NaturalDocs::BinaryFile->GetUString16();
 
     if (!defined $path)
         {  return undef;  };
 
-    my $text = NaturalDocs::BinaryFile->GetAString16();
+    my $text = NaturalDocs::BinaryFile->GetUString16();
 
     return $path . "\x1C" . $text;
     };

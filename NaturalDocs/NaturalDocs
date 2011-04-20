@@ -5,7 +5,7 @@
     Script: NaturalDocs
     ___________________________________________________________________________
 
-    Version 1.51
+    Version 1.52
 
     Copyright © 2003-2010 Greg Valure
 
@@ -31,7 +31,7 @@
 
         - All integers appear in big-endian format.  So a UInt16 should be handled with a 'n' in pack and unpack, not with a 'S'.
 
-        - AString16's are a big-endian UInt16 followed by that many ASCII characters.  A null-terminator is not stored.
+        - UString16's are a big-endian UInt16 followed by that many UTF-8 bytes.  A null-terminator is not stored.
 
         - If a higher-level type is described in a file format, that means the loading and saving format is handled by that package.
          For example, if you see <SymbolString> in the format, that means <NaturalDocs::SymbolString->ToBinaryFile()> and

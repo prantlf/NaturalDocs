@@ -281,7 +281,7 @@ my %insensitiveImageFiles;
 #
 #       First is the standard binary file header as defined by <NaturalDocs::BinaryFile>.
 #
-#       > [AString16: file name or undef]
+#       > [UString16: file name or undef]
 #       > [UInt32: last modification time]
 #       > [UInt8: was used]
 #
@@ -289,6 +289,10 @@ my %insensitiveImageFiles;
 #
 #
 #   Revisions:
+#
+#		1.52:
+#
+#			- AString16s were changed to UString16s.
 #
 #       1.4:
 #
@@ -645,9 +649,7 @@ sub LoadImageFileInfo
 
     if (defined $version)
         {
-        # It hasn't changed since being introduced.
-
-        if (NaturalDocs::Version->CheckFileFormat($version))
+        if (NaturalDocs::Version->CheckFileFormat($version, NaturalDocs::Version->FromString('1.52')))
             {  $fileIsOkay = 1;  }
         else
             {  NaturalDocs::BinaryFile->Close();  };
@@ -655,9 +657,9 @@ sub LoadImageFileInfo
 
     if ($fileIsOkay)
         {
-        # [AString16: file name or undef]
+        # [UString16: file name or undef]
 
-        while (my $imageFile = NaturalDocs::BinaryFile->GetAString16())
+        while (my $imageFile = NaturalDocs::BinaryFile->GetUString16())
             {
             # [UInt32: last modified]
             # [UInt8: was used]
@@ -716,17 +718,17 @@ sub SaveImageFileInfo
         {
         if ($imageFileInfo->Status() != ::FILE_DOESNTEXIST())
             {
-            # [AString16: file name or undef]
+            # [UString16: file name or undef]
             # [UInt32: last modification time]
             # [UInt8: was used]
 
-            NaturalDocs::BinaryFile->WriteAString16($imageFile);
+            NaturalDocs::BinaryFile->WriteUString16($imageFile);
             NaturalDocs::BinaryFile->WriteUInt32($imageFileInfo->LastModified());
             NaturalDocs::BinaryFile->WriteUInt8( ($imageFileInfo->ReferenceCount() > 0 ? 1 : 0) );
             };
         };
 
-    NaturalDocs::BinaryFile->WriteAString16(undef);
+    NaturalDocs::BinaryFile->WriteUString16(undef);
     NaturalDocs::BinaryFile->Close();
     };
 

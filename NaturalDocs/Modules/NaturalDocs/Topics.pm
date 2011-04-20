@@ -840,6 +840,7 @@ sub SaveFile #(isMain)
             {  die "Couldn't save " . $file;  };
         };
 
+    binmode(FH_TOPICS, ':encoding(UTF-8)');
     print FH_TOPICS 'Format: ' . NaturalDocs::Settings->TextAppVersion() . "\n\n";
 
     # Remember the 80 character limit.

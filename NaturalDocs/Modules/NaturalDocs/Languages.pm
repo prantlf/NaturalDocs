@@ -994,6 +994,7 @@ sub SaveFile #(isMain)
             {  die "Couldn't save " . $file;  };
         };
 
+    binmode(FH_LANGUAGES, ':encoding(UTF-8)');
     print FH_LANGUAGES 'Format: ' . NaturalDocs::Settings->TextAppVersion() . "\n\n";
 
     # Remember the 80 character limit.
@@ -1403,17 +1404,21 @@ sub LanguageOf #(sourceFile)
                 my $shebangLine;
 
                 if (open(SOURCEFILEHANDLE, '<' . $sourceFile))
-                	{
-                    my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
-                    $shebangLine = $lineReader->Get();
+                   {
+					# Run it through an eval since extensionless files may not be text files at all.
+                    eval
+                        {
+                        my $lineReader = NaturalDocs::LineReader->New(\*SOURCEFILEHANDLE);
+                        $shebangLine = $lineReader->Get();
 
-	                if (substr($shebangLine, 0, 2) ne '#!')
-	                    {  $shebangLine = undef;  };
+                        if (substr($shebangLine, 0, 2) ne '#!')
+                            {  $shebangLine = undef;  };
 
-	                close (SOURCEFILEHANDLE);
-	                }
-	            elsif (defined $extension)
-	            	{  die 'Could not open ' . $sourceFile;  }
+                        close (SOURCEFILEHANDLE);
+                       }
+                   }
+               elsif (defined $extension)
+                   {  die 'Could not open ' . $sourceFile;  }
 	            # Ignore extensionless files that can't be opened.  They may be system files.
 
                 if (!defined $shebangLine)

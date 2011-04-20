@@ -205,17 +205,21 @@ my $highlightAnonymous;
 #		> [UInt8: highlight anonymous (0 or 1)]
 #       >
 #       > [UInt8: number of input directories]
-#       > [AString16: input directory] [AString16: input directory name] ...
+#       > [UString16: input directory] [UString16: input directory name] ...
 #
 #       A count of input directories, then that number of directory/name pairs.
 #
 #       > [UInt8: number of output targets]
-#       > [AString16: output directory] [AString16: output format command line option] ...
+#       > [UString16: output directory] [UString16: output format command line option] ...
 #
 #       A count of output targets, then that number of directory/format pairs.
 #
 #
 #   Revisions:
+#
+#		1.52:
+#
+#			- Changed AString16s to UString16s.
 #
 #		1.51:
 #
@@ -705,7 +709,7 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    return '1.51';
+    return '1.52';
     };
 
 #
@@ -1313,7 +1317,7 @@ sub LoadAndComparePreviousSettings
         my $version;
 
         if (NaturalDocs::BinaryFile->OpenForReading( NaturalDocs::Project->DataFile('PreviousSettings.nd'),
-                                                                           NaturalDocs::Version->FromString('1.51') ))
+                                                                           NaturalDocs::Version->FromString('1.52') ))
             {  $fileIsOkay = 1;  };
         };
 
@@ -1374,10 +1378,10 @@ sub LoadAndComparePreviousSettings
 
         while ($inputDirectoryCount)
             {
-            # [AString16: input directory] [AString16: input directory name] ...
+            # [UString16: input directory] [UString16: input directory name] ...
 
-            my $inputDirectory = NaturalDocs::BinaryFile->GetAString16();
-            my $inputDirectoryName = NaturalDocs::BinaryFile->GetAString16();
+            my $inputDirectory = NaturalDocs::BinaryFile->GetUString16();
+            my $inputDirectoryName = NaturalDocs::BinaryFile->GetUString16();
 
             # Not doing anything with this for now.
 
@@ -1394,10 +1398,10 @@ sub LoadAndComparePreviousSettings
 
         while ($outputTargetCount)
             {
-            # [AString16: output directory] [AString16: output format command line option] ...
+            # [UString16: output directory] [UString16: output format command line option] ...
 
-            my $outputDirectory = NaturalDocs::BinaryFile->GetAString16();
-            my $outputCommand = NaturalDocs::BinaryFile->GetAString16();
+            my $outputDirectory = NaturalDocs::BinaryFile->GetUString16();
+            my $outputCommand = NaturalDocs::BinaryFile->GetUString16();
 
             $previousOutputDirectories{$outputDirectory} = $outputCommand;
 
@@ -1456,9 +1460,9 @@ sub SavePreviousSettings
         {
         my $inputDirectoryName = $self->InputDirectoryNameOf($inputDirectory);
 
-        # [AString16: input directory] [AString16: input directory name] ...
-        NaturalDocs::BinaryFile->WriteAString16($inputDirectory);
-        NaturalDocs::BinaryFile->WriteAString16($inputDirectoryName);
+        # [UString16: input directory] [UString16: input directory name] ...
+        NaturalDocs::BinaryFile->WriteUString16($inputDirectory);
+        NaturalDocs::BinaryFile->WriteUString16($inputDirectoryName);
         };
 
     # [UInt8: number of output targets]
@@ -1468,9 +1472,9 @@ sub SavePreviousSettings
 
     foreach my $buildTarget (@$buildTargets)
         {
-        # [AString16: output directory] [AString16: output format command line option] ...
-        NaturalDocs::BinaryFile->WriteAString16( $buildTarget->Directory() );
-        NaturalDocs::BinaryFile->WriteAString16( $buildTarget->Builder()->CommandLineOption() );
+        # [UString16: output directory] [UString16: output format command line option] ...
+        NaturalDocs::BinaryFile->WriteUString16( $buildTarget->Directory() );
+        NaturalDocs::BinaryFile->WriteUString16( $buildTarget->Builder()->CommandLineOption() );
         };
 
     NaturalDocs::BinaryFile->Close();

@@ -38,6 +38,8 @@ use NaturalDocs::ClassHierarchy::File;
 
 package NaturalDocs::ClassHierarchy;
 
+use Encode qw(encode_utf8 decode_utf8);
+
 
 ###############################################################################
 # Group: Variables
@@ -116,7 +118,7 @@ my $dontRebuildFiles;
 #       included.
 #
 #       > [UInt32: number of files]
-#       > [AString16: file] [AString16: file] ...
+#       > [UString16: file] [UString16: file] ...
 #
 #       Next there is the number of files that define that class.  It's a UInt32, which seems like overkill, but I could imagine every
 #       file in a huge C++ project being under the same namespace, and thus contributing its own definition.  It's theoretically
@@ -142,6 +144,10 @@ my $dontRebuildFiles;
 #       <File Format Conventions>
 #
 #   Revisions:
+#
+#		1.52:
+#
+#			- Changed AString16s to UString16s.
 #
 #       1.22:
 #
@@ -188,9 +194,9 @@ sub Load
             {
             my $version = NaturalDocs::Version->FromBinaryFile(\*CLASS_HIERARCHY_FILEHANDLE);
 
-            # Minor bugs were fixed in 1.33 that may affect the stored data.
+            # Last file format change was 1.52
 
-            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.33') ))
+            if (NaturalDocs::Version->CheckFileFormat( $version, NaturalDocs::Version->FromString('1.52') ))
                 {  $fileIsOkay = 1;  }
             else
                 {  close(CLASS_HIERARCHY_FILEHANDLE);  };
@@ -224,13 +230,14 @@ sub Load
 
             while ($numberOfFiles)
                 {
-                # [AString16: file]
+                # [UString16: file]
 
                 read(CLASS_HIERARCHY_FILEHANDLE, $raw, 2);
                 my $fileLength = unpack('n', $raw);
 
                 my $file;
                 read(CLASS_HIERARCHY_FILEHANDLE, $file, $fileLength);
+                $file = decode_utf8($file);
 
                 push @files, $file;
                 $self->AddClass($file, $class, NaturalDocs::Languages->LanguageOf($file)->Name());
@@ -309,8 +316,9 @@ sub Save
 
             for (my $i = 0; $i < scalar @definitions; $i++)
                 {
-                # [AString16: file]
-                print CLASS_HIERARCHY_FILEHANDLE pack('nA*', length($definitions[$i]), $definitions[$i]);
+                # [UString16: file]
+                my $uDefinition = encode_utf8($definitions[$i]);
+                print CLASS_HIERARCHY_FILEHANDLE pack('na*', length($uDefinition), $uDefinition);
                 $definitionIndexes{$definitions[$i]} = $i + 1;
                 };
 

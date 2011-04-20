@@ -25,6 +25,8 @@ use vars '@ISA', '@EXPORT';
 
                      'RESOLVE_RELATIVE', 'RESOLVE_ABSOLUTE', 'RESOLVE_NOPLURAL', 'RESOLVE_NOUSING' );
 
+use Encode qw(encode_utf8 decode_utf8);
+
 
 #
 #   Constants: Binary Format Flags
@@ -148,7 +150,7 @@ sub MakeFrom #(ReferenceType type, SymbolString symbol, string language, SymbolS
 #   Format:
 #
 #       > [SymbolString: Symbol or undef for an undef reference]
-#       > [AString16: language]
+#       > [UString16: language]
 #       > [SymbolString: Scope or undef for none]
 #       >
 #       > [SymbolString: Using or undef for none]
@@ -173,9 +175,16 @@ sub ToBinaryFile #(FileHandle fileHandle, ReferenceString referenceString, flags
 
     NaturalDocs::SymbolString->ToBinaryFile($fileHandle, $symbol);
 
-    # [AString16: language]
+    # [UString16: language]
 
-    print $fileHandle pack('nA*', length $language, $language);
+    # $language may be undefined because $referenceString may be undefined to end a list of them.
+    if (defined $language)
+    	{
+	    my $uLanguage = encode_utf8($language);
+	    print $fileHandle pack('na*', length $uLanguage, $uLanguage);
+	    }
+	else
+		{  print $fileHandle pack('n', 0);  }
 
     # [SymbolString: scope or undef if none]
 
@@ -236,13 +245,14 @@ sub FromBinaryFile #(FileHandle fileHandle, flags binaryFormatFlags, ReferenceTy
         {  return undef;  };
 
 
-    # [AString16: language]
+    # [UString16: language]
 
     read($fileHandle, $raw, 2);
     my $languageLength = unpack('n', $raw);
 
     my $language;
     read($fileHandle, $language, $languageLength);
+    $language = decode_utf8($language);
 
 
     # [SymbolString: scope or undef if none]

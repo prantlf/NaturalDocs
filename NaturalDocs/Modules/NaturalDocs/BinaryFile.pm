@@ -28,6 +28,8 @@ require Exporter;
 
 @EXPORT = ('BINARY_FORMAT');
 
+use Encode qw(encode_utf8 decode_utf8);
+
 
 ###############################################################################
 # Group: Format
@@ -51,6 +53,9 @@ require Exporter;
 #   All the integer data types are written most significant byte first, aka big endian.
 #
 #   An AString16 is a UInt16 followed by that many 8-bit ASCII characters.  It doesn't include a null character at the end.  Undef
+#   strings are represented by a zero for the UInt16 and nothing following it.
+#
+#   A UString16 is a UInt16 followed by that many UTF-8 encoded bytes.  It doesn't include a null character at the end.  Undef
 #   strings are represented by a zero for the UInt16 and nothing following it.
 #
 
@@ -241,6 +246,26 @@ sub GetAString16 # => string
     return $string;
     };
 
+#
+#   Function: GetUString16
+#   Reads and returns a UString16 from the open file.  Supports undef strings.
+#
+sub GetUString16 # => string
+    {
+    my $rawLength;
+    read(FH_BINARYDATAFILE, $rawLength, 2);
+    my $length = unpack('n', $rawLength);
+
+    if (!$length)
+        {  return undef;  };
+
+    my $string;
+    read(FH_BINARYDATAFILE, $string, $length);
+	$string = decode_utf8($string);
+
+    return $string;
+    };
+
 
 
 ###############################################################################
@@ -287,6 +312,23 @@ sub WriteAString16 #(string value)
 
     if (length($string))
         {  print FH_BINARYDATAFILE pack('nA*', length($string), $string);  }
+    else
+        {  print FH_BINARYDATAFILE pack('n', 0);  };
+    };
+
+#
+#   Function: WriteUString16
+#   Writes an UString16 to the open file.  Supports undef strings.
+#
+sub WriteUString16 #(string value)
+    {
+    my ($self, $string) = @_;
+
+    if (length($string))
+        {
+        $string = encode_utf8($string);
+        print FH_BINARYDATAFILE pack('na*', length($string), $string);
+        }
     else
         {  print FH_BINARYDATAFILE pack('n', 0);  };
     };
