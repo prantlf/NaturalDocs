@@ -169,7 +169,7 @@ sub PreprocessFile
 
     for (my $i = 0; $i < scalar @$lines; $i++)
         {
-        my @tokens = split(/(<[ \t]*\/?[ \t]*mx:Script[^>]*>|<\?|\?>|<\!--|-->|<\!\[CDATA\[|\]\]\>)/, $lines->[$i]);
+        my @tokens = split(/(<[ \t]*\/?[ \t]*[mf]x:Script[^>]*>|<\?|\?>|<\!--|-->|<\!\[CDATA\[|\]\]\>)/, $lines->[$i]);
         my $newLine;
 
         foreach my $token (@tokens)
@@ -185,7 +185,7 @@ sub PreprocessFile
                     $mode = MODE_UNESCAPED_COMMENT;
                     $newLine .= "\x1C\x1D\x1E\x1F";
                     }
-                elsif ($token =~ /^<[ \t]*mx:Script/)
+                elsif ($token =~ /^<[ \t]*[mf]x:Script/)
                     {  $mode = MODE_ESCAPED_UNKNOWN_CDATA;  };
                 }
 
@@ -216,7 +216,7 @@ sub PreprocessFile
                 {
                 if ($token eq '<![CDATA[')
                     {  $mode = MODE_ESCAPED_CDATA;  }
-                elsif ($token =~ /^<[ \t]*\/[ \t]*mx:Script/)
+                elsif ($token =~ /^<[ \t]*\/[ \t]*[mf]x:Script/)
                     {
                     $mode = MODE_UNESCAPED_REGULAR;
                     $newLine .= '; ';
@@ -241,7 +241,7 @@ sub PreprocessFile
 
             else #($mode == MODE_ESCAPED_NO_CDATA)
                 {
-                if ($token =~ /^<[ \t]*\/[ \t]*mx:Script/)
+                if ($token =~ /^<[ \t]*\/[ \t]*[mf]x:Script/)
                     {
                     $mode = MODE_UNESCAPED_REGULAR;
                     $newLine .= '; ';
