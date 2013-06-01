@@ -3,7 +3,7 @@ Extended Natural Docs
 
 This is a fork of Natural Docs adding more functionality, namely:
 
-* Additional text styles: italic, monospaced and strikethrough text
+* Additional text styles: italic, strikethrough and monospaced text
 * The full JavaScript language support
 
 Quoting the author from the [original project pages]
@@ -20,9 +20,9 @@ The [original Formatting and Layout](http://naturaldocs.org/documenting/referenc
 
 ### Italic, Strikethrough and Monotype
 
-You can make a portion of text italic by surrounding it with plus signs.  You can make a portion of text struck-through by surrounding it with hyphens instead.  If you put hyphens instead of *every* space inside the text part too, they will be replaced with spaces.
+You can make a portion of text italic by surrounding it with plus signs.  You can make a portion of text struck-through by surrounding it with tildas instead.  If you put tildas instead of *every* space inside the text part too, they will be replaced with spaces.
 
-> Some +italic text+ and some -struck-through text-
-> and yet -more-struck-through-text-.
+> Some +italic text+ and some ~struck-through text~
+> and yet ~more~struck-through~text~.
 
-Some *italic text* and some ~struck-through text~ and yet ~more struck throughtext~.
+Some *italic text* and some ~struck-through text~ and yet ~more struck through text~.

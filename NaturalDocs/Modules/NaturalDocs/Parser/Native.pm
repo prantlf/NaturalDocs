@@ -749,7 +749,7 @@ sub RichFormatTextBlock #(text)
 
     # Split the text from the potential tags.
 
-    my @tempTextBlocks = split(/([\*_\-\+\`<>\x1E\x1F])/, $text);
+    my @tempTextBlocks = split(/([\*_\~\+\`<>\x1E\x1F])/, $text);
 
     # Since the symbols are considered dividers, empty strings could appear between two in a row or at the beginning/end of the
     # array.  This could seriously screw up TagType(), so we need to get rid of them.
@@ -877,7 +877,7 @@ sub RichFormatTextBlock #(text)
                 };
             }
 
-        elsif ($textBlocks[$index] eq '-')
+        elsif ($textBlocks[$index] eq '~')
             {
             my $tagType = $self->TagType(\@textBlocks, $index);
 
@@ -903,7 +903,7 @@ sub RichFormatTextBlock #(text)
                 }
             else
                 {
-                $output .= '-';
+                $output .= '~';
                 };
             }
 
@@ -984,10 +984,10 @@ sub TagType #(textBlocks, index)
 
     # Possible opening tags
 
-    if ( ( $textBlocks->[$index] =~ /^[\*_\-\+\`<]$/ ) &&
+    if ( ( $textBlocks->[$index] =~ /^[\*_\~\+\`<]$/ ) &&
 
-        # Before it must be whitespace, the beginning of the text, or ({["'-/*_+`.
-        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/\*\_\+\`]$/ ) &&
+        # Before it must be whitespace, the beginning of the text, or ({["'-/*_~+`.
+        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/\*\_\~\+\`]$/ ) &&
 
         # Notes for 2.0: Include Spanish upside down ! and ? as well as opening quotes (66) and apostrophes (6).  Look into
         # Unicode character classes as well.
@@ -999,8 +999,8 @@ sub TagType #(textBlocks, index)
         ( $textBlocks->[$index] ne '<' || $textBlocks->[$index+1] !~ /^[<=-]/ ) &&
         ( $textBlocks->[$index] ne '*' || $textBlocks->[$index+1] !~ /^[\=\*]/ ) &&
 
-        # Make sure we don't accept *, _, -, + or ` before it unless it's <.
-        ( $textBlocks->[$index] eq '<' || $index == 0 || $textBlocks->[$index-1] !~ /[\*\_\-\+\`]$/) )
+        # Make sure we don't accept *, _, ~, + or ` before it unless it's <.
+        ( $textBlocks->[$index] eq '<' || $index == 0 || $textBlocks->[$index-1] !~ /[\*\_\~\+\`]$/) )
         {
         return POSSIBLE_OPENING_TAG;
         }
@@ -1008,10 +1008,10 @@ sub TagType #(textBlocks, index)
 
     # Possible closing tags
 
-    elsif ( ( $textBlocks->[$index] =~ /^[\*_\-\+\`>]$/) &&
+    elsif ( ( $textBlocks->[$index] =~ /^[\*_\~\+\`>]$/) &&
 
-            # After it must be whitespace, the end of the text, or )}].,!?"';:-/*_+`.
-            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/\*\_\+\`]/ ||
+            # After it must be whitespace, the end of the text, or )}].,!?"';:-/*_~+`.
+            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/\*\_\~\+\`]/ ||
               # Links also get plurals, like <link>s, <linx>es, <link>'s, and <links>'.
               ( $textBlocks->[$index] eq '>' && $textBlocks->[$index+1] =~ /^(?:es|s|\')/ ) ) &&
 
@@ -1023,8 +1023,8 @@ sub TagType #(textBlocks, index)
             # Make sure we don't accept >>, ->, or => as closing tags.  >= is already taken care of.
             ( $textBlocks->[$index] ne '>' || $textBlocks->[$index-1] !~ /[>=-]$/ ) &&
 
-            # Make sure we don't accept *, _, -, + or ` after it unless it's >.
-            ( $textBlocks->[$index] eq '>' || $textBlocks->[$index+1] !~ /[\*\_\-\+\`]$/) )
+            # Make sure we don't accept *, _, ~, + or ` after it unless it's >.
+            ( $textBlocks->[$index] eq '>' || $textBlocks->[$index+1] !~ /[\*\_\~\+\`]$/) )
         {
         return POSSIBLE_CLOSING_TAG;
         }
@@ -1067,7 +1067,7 @@ sub ClosingTag #(textBlocks, index, hasWhitespace)
     my $closingTag;
 
     if ($textBlocks->[$index] eq '*' || $textBlocks->[$index] eq '_' ||
-        $textBlocks->[$index] eq '-' || $textBlocks->[$index] eq '+' ||
+        $textBlocks->[$index] eq '~' || $textBlocks->[$index] eq '+' ||
         $textBlocks->[$index] eq '`')
         {  $closingTag = $textBlocks->[$index];  }
     elsif ($textBlocks->[$index] eq '<')
