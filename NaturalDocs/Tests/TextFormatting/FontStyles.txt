@@ -1,0 +1,7 @@
+This tests check formatting of different font styles.
+
+*bold* and *more words bold*
+_underlined_ and _underlined with space_ and _underlined_without_space_
+-struckthrough- and -struck-through with space- and -struck-through-without-space-
++italic+ and +more words italic+
+`monotype` and `more words monotype`

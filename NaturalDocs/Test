@@ -1,0 +1,88 @@
+#!/usr/bin/perl
+
+use strict;
+use integer;
+
+use 5.008;  # When :encoding modifiers were allowed with file access.
+
+use English '-no_match_vars';
+
+use FindBin;
+use lib "$FindBin::RealBin/Modules";
+
+sub INIT
+    {
+    # This function is just here so that when I start the debugger, it doesn't open a new file.  Normally it would jump to an INIT
+    # function in some other file since that's the first piece of code to execute.
+    };
+
+use NaturalDocs::NDMarkup;
+use NaturalDocs::Parser;
+
+my $generate = $ARGV[0] eq '--generate-output';
+
+sub LoadFile { #(file)
+    my ($file) = @_;
+
+    open FH_TEST_FILE, $file || die "Cannot open file $file";
+    my @lines = <FH_TEST_FILE>;
+    close FH_TEST_FILE;
+    return \@lines;
+}
+
+sub SaveFile { #(file, content)
+    my ($file, $content) = @_;
+
+    open FH_TEST_FILE, '>' . $file || die "Cannot create file $file";
+    print FH_TEST_FILE join("\n", @$content);
+    close FH_TEST_FILE;
+}
+
+sub TestFile { #(input, output, subroutine)
+    my ($input, $output, $subroutine) = @_;
+
+    print $input, "\n";
+    my $original = LoadFile($input);
+    #print @$original, "\n";
+    my $expected = LoadFile($output);
+    #print @$expected, "\n";
+    my @actual;
+    &$subroutine($original, \@actual);
+    #print @actual, "\n";
+    if ($generate) {
+        SaveFile($output, \@actual);
+    } else {
+        for (my $i = 0; $i < scalar @$expected; ++$i) {
+            chomp $$expected[$i];
+            ($$expected[$i] eq $actual[$i]) ||
+                die "  Line $i is different.\n    Expected: $$expected[$i]\n    Actual: $actual[$i]";
+        }
+        print "  OK\n";
+    }
+}
+
+sub TestDirectory { #(directory, subroutine)
+    my ($directory, $subroutine) = @_;
+
+    opendir FH_TEST_DIR, $directory || die "Cannot open directory $directory";
+    my @files = readdir FH_TEST_DIR;
+    closedir FH_TEST_DIR;
+
+    for my $file (@files) {
+        my $input = $directory . '/' . $file;
+        next unless -f $input && $file =~ /\.txt$/;
+        my $output = $input;
+        $output =~ s/\.txt$/.html/;
+        TestFile $input, $output, $subroutine;
+    }
+}
+
+sub TestTextFormatting { #(input, output)
+    my ($input, $output) = @_;
+
+    my $converted = NaturalDocs::Parser::Native->FormatBody($input, 0, scalar @$input, $output);
+    push @$output, split(/\r?\n/, $converted);
+    #print $converted;
+}
+
+TestDirectory 'Tests/TextFormatting', \&TestTextFormatting;

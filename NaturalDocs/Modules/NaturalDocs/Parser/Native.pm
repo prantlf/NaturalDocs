@@ -672,10 +672,10 @@ sub RichFormatTextBlock #(text)
     my $output;
 
 
-    # First find bare urls, e-mail addresses, and images.  We have to do this before the split because they may contain underscores
-    # or asterisks.  We have to mark the tags with \x1E and \x1F so they don't get confused with angle brackets from the comment.
-    # We can't convert the amp chars beforehand because we need lookbehinds in the regexps below and they need to be
-    # constant length.  Sucks, huh?
+    # First find bare urls, e-mail addresses, and images.  We have to do this before the split because they may contain underscores,
+    # asterisks, bacquotes, hyphens or tildas.  We have to mark the tags with \x1E and \x1F so they don't get confused with angle
+    # brackets from the comment.  We can't convert the amp chars beforehand because we need lookbehinds in the regexps below
+    # and they need to be constant length.  Sucks, huh?
 
     $text =~ s{
                        # The previous character can't be an alphanumeric or an opening angle bracket.
@@ -749,7 +749,7 @@ sub RichFormatTextBlock #(text)
 
     # Split the text from the potential tags.
 
-    my @tempTextBlocks = split(/([\*_<>\x1E\x1F])/, $text);
+    my @tempTextBlocks = split(/([\*_\-\+\`<>\x1E\x1F])/, $text);
 
     # Since the symbols are considered dividers, empty strings could appear between two in a row or at the beginning/end of the
     # array.  This could seriously screw up TagType(), so we need to get rid of them.
@@ -767,6 +767,10 @@ sub RichFormatTextBlock #(text)
     my $bold;
     my $underline;
     my $underlineHasWhitespace;
+    my $strikethrough;
+    my $strikethroughHasWhitespace;
+    my $italic;
+    my $monotype;
 
     my $index = 0;
 
@@ -873,6 +877,78 @@ sub RichFormatTextBlock #(text)
                 };
             }
 
+        elsif ($textBlocks[$index] eq '-')
+            {
+            my $tagType = $self->TagType(\@textBlocks, $index);
+
+             if ($tagType == POSSIBLE_OPENING_TAG && $self->ClosingTag(\@textBlocks, $index, \$strikethroughHasWhitespace) != -1)
+                {
+                # ClosingTag() makes sure tags aren't opened multiple times in a row.
+                $strikethrough = 1;
+                #strikethroughHasWhitespace is set by ClosingTag().
+                $output .= '<s>';
+                }
+            elsif ($strikethrough && $tagType == POSSIBLE_CLOSING_TAG)
+                {
+                $strikethrough = undef;
+                #strikethroughHasWhitespace will be reset by the next opening strikethrough.
+                $output .= '</s>';
+                }
+            elsif ($strikethrough && !$strikethroughHasWhitespace)
+                {
+                # If there's no whitespace between strikethrough tags, all hyphens are replaced
+                # by spaces so -some-struck-through-text- becomes <s>some struck through text</s>.
+                # The standard -some struck-through text- will work too.
+                $output .= ' ';
+                }
+            else
+                {
+                $output .= '-';
+                };
+            }
+
+        elsif ($textBlocks[$index] eq '+')
+            {
+            my $tagType = $self->TagType(\@textBlocks, $index);
+
+            if ($tagType == POSSIBLE_OPENING_TAG && $self->ClosingTag(\@textBlocks, $index, undef) != -1)
+                {
+                # ClosingTag() makes sure tags aren't opened multiple times in a row.
+                $italic = 1;
+                $output .= '<i>';
+                }
+            elsif ($italic && $tagType == POSSIBLE_CLOSING_TAG)
+                {
+                $italic = undef;
+                $output .= '</i>';
+                }
+            else
+                {
+                $output .= '+';
+                };
+            }
+
+        elsif ($textBlocks[$index] eq '`')
+            {
+            my $tagType = $self->TagType(\@textBlocks, $index);
+
+            if ($tagType == POSSIBLE_OPENING_TAG && $self->ClosingTag(\@textBlocks, $index, undef) != -1)
+                {
+                # ClosingTag() makes sure tags aren't opened multiple times in a row.
+                $monotype = 1;
+                $output .= '<tt>';
+                }
+            elsif ($monotype && $tagType == POSSIBLE_CLOSING_TAG)
+                {
+                $monotype = undef;
+                $output .= '</tt>';
+                }
+            else
+                {
+                $output .= '`';
+                };
+            }
+
         else # plain text or a > that isn't part of a link
             {
             $output .= NaturalDocs::NDMarkup->ConvertAmpChars($textBlocks[$index]);
@@ -908,10 +984,10 @@ sub TagType #(textBlocks, index)
 
     # Possible opening tags
 
-    if ( ( $textBlocks->[$index] =~ /^[\*_<]$/ ) &&
+    if ( ( $textBlocks->[$index] =~ /^[\*_\-\+\`<]$/ ) &&
 
-        # Before it must be whitespace, the beginning of the text, or ({["'-/*_.
-        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/\*\_]$/ ) &&
+        # Before it must be whitespace, the beginning of the text, or ({["'-/*_+`.
+        ( $index == 0 || $textBlocks->[$index-1] =~ /[\ \t\n\(\{\[\"\'\-\/\*\_\+\`]$/ ) &&
 
         # Notes for 2.0: Include Spanish upside down ! and ? as well as opening quotes (66) and apostrophes (6).  Look into
         # Unicode character classes as well.
@@ -923,8 +999,8 @@ sub TagType #(textBlocks, index)
         ( $textBlocks->[$index] ne '<' || $textBlocks->[$index+1] !~ /^[<=-]/ ) &&
         ( $textBlocks->[$index] ne '*' || $textBlocks->[$index+1] !~ /^[\=\*]/ ) &&
 
-        # Make sure we don't accept * or _ before it unless it's <.
-        ( $textBlocks->[$index] eq '<' || $index == 0 || $textBlocks->[$index-1] !~ /[\*\_]$/) )
+        # Make sure we don't accept *, _, -, + or ` before it unless it's <.
+        ( $textBlocks->[$index] eq '<' || $index == 0 || $textBlocks->[$index-1] !~ /[\*\_\-\+\`]$/) )
         {
         return POSSIBLE_OPENING_TAG;
         }
@@ -932,10 +1008,10 @@ sub TagType #(textBlocks, index)
 
     # Possible closing tags
 
-    elsif ( ( $textBlocks->[$index] =~ /^[\*_>]$/) &&
+    elsif ( ( $textBlocks->[$index] =~ /^[\*_\-\+\`>]$/) &&
 
-            # After it must be whitespace, the end of the text, or )}].,!?"';:-/*_.
-            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/\*\_]/ ||
+            # After it must be whitespace, the end of the text, or )}].,!?"';:-/*_+`.
+            ( $index + 1 == scalar @$textBlocks || $textBlocks->[$index+1] =~ /^[ \t\n\)\]\}\.\,\!\?\"\'\;\:\-\/\*\_\+\`]/ ||
               # Links also get plurals, like <link>s, <linx>es, <link>'s, and <links>'.
               ( $textBlocks->[$index] eq '>' && $textBlocks->[$index+1] =~ /^(?:es|s|\')/ ) ) &&
 
@@ -947,8 +1023,8 @@ sub TagType #(textBlocks, index)
             # Make sure we don't accept >>, ->, or => as closing tags.  >= is already taken care of.
             ( $textBlocks->[$index] ne '>' || $textBlocks->[$index-1] !~ /[>=-]$/ ) &&
 
-            # Make sure we don't accept * or _ after it unless it's >.
-            ( $textBlocks->[$index] eq '>' || $textBlocks->[$index+1] !~ /[\*\_]$/) )
+            # Make sure we don't accept *, _, -, + or ` after it unless it's >.
+            ( $textBlocks->[$index] eq '>' || $textBlocks->[$index+1] !~ /[\*\_\-\+\`]$/) )
         {
         return POSSIBLE_CLOSING_TAG;
         }
@@ -990,7 +1066,9 @@ sub ClosingTag #(textBlocks, index, hasWhitespace)
     my $hasWhitespace;
     my $closingTag;
 
-    if ($textBlocks->[$index] eq '*' || $textBlocks->[$index] eq '_')
+    if ($textBlocks->[$index] eq '*' || $textBlocks->[$index] eq '_' ||
+        $textBlocks->[$index] eq '-' || $textBlocks->[$index] eq '+' ||
+        $textBlocks->[$index] eq '`')
         {  $closingTag = $textBlocks->[$index];  }
     elsif ($textBlocks->[$index] eq '<')
         {  $closingTag = '>';  }
