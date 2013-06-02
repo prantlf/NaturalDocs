@@ -90,6 +90,7 @@ Topic Type: Class
       struct, structs
       package, packages
       namespace, namespaces
+      function object, function objects
 
 
 Topic Type: Interface
