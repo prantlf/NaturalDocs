@@ -7,6 +7,8 @@ use 5.008;  # When :encoding modifiers were allowed with file access.
 
 use English '-no_match_vars';
 
+use Tests::Languages::JavaScript;
+
 use FindBin;
 use lib "$FindBin::RealBin/Modules";
 
@@ -82,7 +84,8 @@ sub TestTextFormatting { #(input, output)
 
     my $converted = NaturalDocs::Parser::Native->FormatBody($input, 0, scalar @$input, $output);
     push @$output, split(/\r?\n/, $converted);
-    #print $converted;
+    #print $converted, "\n";
 }
 
 TestDirectory 'Tests/TextFormatting', \&TestTextFormatting;
+Tests::Languages::JavaScript::Test;

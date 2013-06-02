@@ -1,0 +1,7 @@
+Thumbs.db
+*.~
+*.bak
+*.log
+NaturalDocs/Tests/Languages/JavaScript/Project/Data/
+NaturalDocs/Tests/Languages/JavaScript/Project/LastCrash.txt
+NaturalDocs/Tests/Languages/JavaScript/Output/
