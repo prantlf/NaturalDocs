@@ -7,8 +7,6 @@ use 5.008;  # When :encoding modifiers were allowed with file access.
 
 use English '-no_match_vars';
 
-use Tests::Languages::JavaScript;
-
 use FindBin;
 use lib "$FindBin::RealBin/Modules";
 
@@ -88,4 +86,7 @@ sub TestTextFormatting { #(input, output)
 }
 
 TestDirectory 'Tests/TextFormatting', \&TestTextFormatting;
-Tests::Languages::JavaScript::Test;
+
+system('mkdir Tests/Languages/JavaScript/Output') unless -d 'Tests/Languages/JavaScript/Output';
+system('rm -rf Tests/Languages/JavaScript/Project/Data Tests/Languages/JavaScript/Output/*');
+system('./NaturalDocs -p Tests/Languages/JavaScript/Project -o html Tests/Languages/JavaScript/Output -i Tests/Languages/JavaScript/Input -r');

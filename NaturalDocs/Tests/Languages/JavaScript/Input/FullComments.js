@@ -1,10 +1,10 @@
 /**
  * The first variable.
  */
-var FullCommentsVar1;
+var FullVar1;
 
 /**
  * The first function.
  */
-function FullCommentsFunction1() {
+function FullFunction1() {
 }

@@ -1,14 +1,25 @@
-var NoCommentsVar1;
+var NoVar1;
 
-var NoCommentsVar2 = 1;
+var NoVar2 = 2;
 
-var NoCommentsVar3, NoCommentsVar4 = 2, NoCommentsVar5;
+var NoVar3, NoVar4 = 4, NoVar5;
 
-function NoCommentsFunction1() {
+function NoFunction1() {
 }
 
-function NoCommentsFunction2(arg1) {
+function NoFunction2(arg1) {
 }
 
-function NoCommentsFunction3(arg1, arg2) {
+function NoFunction3(arg1, arg2) {
 }
+
+var NoFunction4 = function () {
+};
+
+var NoFunction5 = function () {
+}, NoFunction6 = function () {
+};
+
+var NoVar6, NoFunction7 = function () {
+}, NoFunction8 = function (arg) {
+}, NoVar7 = 7;
