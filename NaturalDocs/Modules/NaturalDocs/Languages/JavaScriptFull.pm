@@ -1,10 +1,24 @@
 ###############################################################################
 #
-#   Class: NaturalDocs::Languages::JavaScript
+#   Class: NaturalDocs::Languages::JavaScriptFull
 #
 ###############################################################################
 #
-#   A subclass to handle the JavaScript language.
+#   A subclass to handle the JavaScript language with full recognition.
+#
+#
+#   Topic: Language Support
+#
+#       Supported:
+#
+#       - Variables
+#       - Functions
+#       - Prototypes declared as object literals
+#
+#       Not supported yet:
+#
+#       - Method prototype declarations by assignment to a function
+#       - Function declarations by assignment
 #
 ###############################################################################
 
@@ -15,7 +29,7 @@
 use strict;
 use integer;
 
-package NaturalDocs::Languages::JavaScript;
+package NaturalDocs::Languages::JavaScriptFull;
 
 use base 'NaturalDocs::Languages::Advanced';
 
@@ -33,11 +47,8 @@ use base 'NaturalDocs::Languages::Advanced';
 #   important because statements don't require a semicolon to end.  The keys
 #   are in all lowercase.
 #
-my %declarationEnders = ( ';' => 1,
-                                        '}' => 1,
-                                        '{' => 1,
-                                        'var' => 1,
-                                        'function' => 1 );
+my %declarationEnders = ( ';' => 1, '}' => 1, '{' => 1,
+                          'var' => 1, 'function' => 1 );
 
 
 
@@ -64,25 +75,30 @@ sub TypeBeforeParameter
 #
 #   Function: ParseFile
 #
-#   Parses the passed source file, sending comments acceptable for documentation to <NaturalDocs::Parser->OnComment()>.
+#   Parses the passed source file, sending comments acceptable for
+#   documentation to <NaturalDocs::Parser->OnComment()>.
 #
 #   Parameters:
 #
 #       sourceFile - The <FileName> to parse.
-#       topicList - A reference to the list of <NaturalDocs::Parser::ParsedTopics> being built by the file.
+#       topicList  - A reference to the list of <NaturalDocs::Parser::ParsedTopics>
+#                    being built by the file.
 #
 #   Returns:
 #
 #       The array ( autoTopics, scopeRecord ).
 #
-#       autoTopics - An arrayref of automatically generated topics from the file, or undef if none.
-#       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>, or undef if none.
+#       autoTopics  - An arrayref of automatically generated topics from the
+#                     file, or undef if none.
+#       scopeRecord - An arrayref of <NaturalDocs::Languages::Advanced::ScopeChanges>,
+#                     or undef if none.
 #
 sub ParseFile #(sourceFile, topicsList)
     {
     my ($self, $sourceFile, $topicsList) = @_;
 
-    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*', '*/' ], [ '///' ], [ '/**', '*/' ]);
+    $self->ParseForCommentsAndTokens($sourceFile, [ '//' ], [ '/*', '*/' ],
+        [ '///' ], [ '/**', '*/' ]);
 
     my $tokens = $self->Tokens();
     my $index = 0;
@@ -135,110 +151,28 @@ sub ParseFile #(sourceFile, topicsList)
 
 ################################################################################
 # Group: Statement Parsing Functions
-# All functions here assume that the current position is at the beginning of a statement.
+# All functions here assume that the current position is at the beginning
+# of a statement.
 #
-# Note for developers: I am well aware that the code in these functions do not check if we're past the end of the tokens as
-# often as it should.  We're making use of the fact that Perl will always return undef in these cases to keep the code simpler.
-
-
-#
-#   Function: TryToGetIdentifier
-#
-#   Determines whether the position is at an identifier, and if so, skips it and returns the complete identifier as a string.  Returns
-#   undef otherwise.
-#
-#   Parameters:
-#
-#       indexRef - A reference to the current token index.
-#       lineNumberRef - A reference to the current line number.
-#       allowStar - If set, allows the last identifier to be a star.
-#
-sub TryToGetIdentifier #(indexRef, lineNumberRef, allowStar)
-    {
-    my ($self, $indexRef, $lineNumberRef, $allowStar) = @_;
-    my $tokens = $self->Tokens();
-
-    my $index = $$indexRef;
-
-    use constant MODE_IDENTIFIER_START => 1;
-    use constant MODE_IN_IDENTIFIER => 2;
-    use constant MODE_AFTER_STAR => 3;
-
-    my $identifier;
-    my $mode = MODE_IDENTIFIER_START;
-
-    while ($index < scalar @$tokens)
-        {
-        if ($mode == MODE_IDENTIFIER_START)
-            {
-            if ($tokens->[$index] =~ /^[a-z\$\_]/i)
-                {
-                $identifier .= $tokens->[$index];
-                $index++;
-
-                $mode = MODE_IN_IDENTIFIER;
-                }
-            elsif ($allowStar && $tokens->[$index] eq '*')
-                {
-                $identifier .= '*';
-                $index++;
-
-                $mode = MODE_AFTER_STAR;
-                }
-            else
-                {  return undef;  };
-            }
-
-        elsif ($mode == MODE_IN_IDENTIFIER)
-            {
-            if ($tokens->[$index] eq '.')
-                {
-                $identifier .= '.';
-                $index++;
-
-                $mode = MODE_IDENTIFIER_START;
-                }
-            elsif ($tokens->[$index] =~ /^[a-z0-9\$\_]/i)
-                {
-                $identifier .= $tokens->[$index];
-                $index++;
-                }
-            else
-                {  last;  };
-            }
-
-        else #($mode == MODE_AFTER_STAR)
-            {
-            if ($tokens->[$index] =~ /^[a-z0-9\$\_\.]/i)
-                {  return undef;  }
-            else
-                {  last;  };
-            };
-        };
-
-    # We need to check again because we may have run out of tokens after a dot.
-    if ($mode != MODE_IDENTIFIER_START)
-        {
-        $$indexRef = $index;
-        return $identifier;
-        }
-    else
-        {  return undef;  };
-    };
+# Note for developers: I am well aware that the code in these functions
+# do not check if we're past the end of the tokens as often as it should.
+# We're making use of the fact that Perl will always return undef in these
+# cases to keep the code simpler.
 
 
 #
 #   Function: TryToGetFunction
 #
-#   Determines if the position is on a function declaration, and if so, generates a topic for it, skips it, and returns true.
+#   Determines if the position is on a function declaration, and if so,
+#   generates a topic for it, skips it, and returns true.
 #
 #   Supported Syntaxes:
 #
-#       - Functions
+#       - Functions: function myFunction(arg1, arg2)
 #
-sub TryToGetFunction #(indexRef, lineNumberRef)
+sub TryToGetFunction #(indexRef, lineNumberRef, name)
     {
-    my ($self, $indexRef, $lineNumberRef) = @_;
+    my ($self, $indexRef, $lineNumberRef, $name) = @_;
     my $tokens = $self->Tokens();
 
     my $index = $$indexRef;
@@ -247,49 +181,54 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
     my $startIndex = $index;
     my $startLine = $lineNumber;
 
-    my $type;
-
-    if ($tokens->[$index] eq 'function')
-        {  $type = ::TOPIC_FUNCTION();  }
-    else
+    # The declaration statement starts with the keyword `function`.
+    if ($tokens->[$index] ne 'function')
         {  return undef;  };
+
     $index++;
-
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
-    my $name = $self->TryToGetIdentifier(\$index, \$lineNumber);
-    if (!$name)
-        {  return undef;  };
+    # This method may be called from a variable declaration assigning
+    # a function to the variable. The name would come before the function.
+    unless ($name)
+      {
+      # The function name follows.
+      $name = $tokens->[$index];
+      if (!$name)
+          {  return undef;  };
 
-    $self->TryToSkipWhitespace(\$index, \$lineNumber);
-
+      $index++;
+      $self->TryToSkipWhitespace(\$index, \$lineNumber);
+    }
+  
+    # The function parameters follow.
     if ($tokens->[$index] ne '(')
         {  return undef;  };
 
-    $index++;
-    $self->GenericSkipUntilAfter(\$index, \$lineNumber, ')');
+    my $type = ::TOPIC_FUNCTION();
 
+    $index++;
+    # Move the current position behind the last function parameter.
+    $self->GenericSkipUntilAfter(\$index, \$lineNumber, ')');
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
+    # Format the function declaration for the documentation.
+    my $prototype = $self->NormalizePrototype(
+        $self->CreateString($startIndex, $index), $type, $name);
 
-    my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
-
-    if ($tokens->[$index] eq '{')
-        {  $self->GenericSkip(\$index, \$lineNumber);  }
-    elsif (!exists $declarationEnders{$tokens->[$index]})
+    # The function implementation follows.
+    if ($tokens->[$index] ne '{')
         {  return undef;  };
 
+    # Move the current position behind the function implementation.
+    $self->GenericSkip(\$index, \$lineNumber);
 
+    # Add the function topic.
     my $scope = $self->CurrentScope();
-
     $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
-                                                                                              $scope, $self->CurrentUsing(),
-                                                                                              $prototype,
-                                                                                              undef, undef, $startLine));
+        $scope, $self->CurrentUsing(), $prototype, undef, undef, $startLine));
 
-
-    # We succeeded if we got this far.
-
+    # Update parsing position on success.
     $$indexRef = $index;
     $$lineNumberRef = $lineNumber;
 
@@ -300,12 +239,15 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 #
 #   Function: TryToGetVariable
 #
-#   Determines if the position is on a variable declaration statement, and if so, generates a topic for each variable, skips the
-#   statement, and returns true.
+#   Determines if the position is on a variable declaration statement,
+#   and if so, generates a topic for each variable, skips the statement,
+#   and returns true.
 #
 #   Supported Syntaxes:
 #
-#       - Variables
+#       - Variables:    var var1 = 1;
+#       - Functions:    var myFunction = function (arg1, arg2)
+#       - Combinations: var var1 = 1, var2, myFunction = function () {};
 #
 sub TryToGetVariable #(indexRef, lineNumberRef)
     {
@@ -318,38 +260,62 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
     my $startIndex = $index;
     my $startLine = $lineNumber;
 
-    my $type;
-
-    if ($tokens->[$index] eq 'var')
-        {  $type = ::TOPIC_VARIABLE();  }
-    else
+    # The declaration statement starts with the keyword `var`.
+    if ($tokens->[$index] ne 'var')
         {  return undef;  };
-    $index++;
 
+    $index++;
     $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
     my $endVarIndex = $index;
     my @names;
 
+    # Variable delarations can be separated by commas.
     for (;;)
         {
-        my $name = $self->TryToGetIdentifier(\$index, \$lineNumber);
+        # The variable name follows.
+        my $name = $tokens->[$index];
         if (!$name)
             {  return undef;  };
 
+        $index++;
         $self->TryToSkipWhitespace(\$index, \$lineNumber);
 
+        # The variable value assignment may follow.
         if ($tokens->[$index] eq '=')
             {
-            do
+            my $functionIndex = $index + 1;
+            my $functionLineNumber = $lineNumber;
+            $self->TryToSkipWhitespace(\$functionIndex, \$functionLineNumber);
+
+            # The variable may be assigned a function;
+            if ($tokens->[$functionIndex] eq 'function')
                 {
-                $self->GenericSkip(\$index, \$lineNumber);
+                $index = $functionIndex;
+                $lineNumber = $functionLineNumber;
+                unless ($self->TryToGetFunction(\$index, \$lineNumber, $name))
+                    {  return undef;  };
                 }
-            while ($tokens->[$index] ne ',' && !exists $declarationEnders{$tokens->[$index]} && $index < scalar @$tokens);
-            };
+            # The variable is assigned a value.
+            else
+                {
+                push @names, $name;
 
-        push @names, $name;
+                do
+                    {
+                    $self->GenericSkip(\$index, \$lineNumber);
+                    }
+                while ($tokens->[$index] ne ',' &&
+                    !exists $declarationEnders{$tokens->[$index]} &&
+                    $index < scalar @$tokens);
+                }
+            }
+        else
+            {
+            push @names, $name;
+            }
 
+        # Another variable declaration may follow.
         if ($tokens->[$index] eq ',')
             {
             $index++;
@@ -361,22 +327,21 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
             {  return undef;  };
         };
 
-
-    # We succeeded if we got this far.
-
+    # Add the variable topics.
+    my $type = ::TOPIC_VARIABLE();
     my $prototypePrefix = $self->CreateString($startIndex, $endVarIndex);
 
     for (my $i = 0; $i < scalar @names; $i++)
         {
-        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $names[$i]);
+        # Format the variable declaration for the documentation.
+        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $names[$i], $type);
         my $scope = $self->CurrentScope();
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $names[$i],
-                                                                                                  $scope, $self->CurrentUsing(),
-                                                                                                  $prototype,
-                                                                                                  undef, undef, $startLine));
+            $scope, $self->CurrentUsing(), $prototype, undef, undef, $startLine));
         };
 
+    # Update parsing position on success.
     $$indexRef = $index;
     $$lineNumberRef = $lineNumber;
 
@@ -390,13 +355,28 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
 
 #
+#   Function: TokenizeLine
+#
+#   Converts the passed line to tokens as described in <ParseForCommentsAndTokens>
+#   and adds them to <Tokens()>.  Also adds a line break token after it.
+#
+sub TokenizeLine #(line)
+    {
+    my ($self, $line) = @_;
+    push @{$self->Tokens()}, $line =~ /([\w\$]+|[ \t]+|.)/g, "\n";
+    };
+
+
+#
 #   Function: GenericSkip
 #
 #   Advances the position one place through general code.
 #
 #   - If the position is on a string, it will skip it completely.
-#   - If the position is on an opening symbol, it will skip until the past the closing symbol.
-#   - If the position is on whitespace (including comments), it will skip it completely.
+#   - If the position is on an opening symbol, it will skip until the past
+#     the closing symbol.
+#   - If the position is on whitespace (including comments), it will skip
+#     it completely.
 #   - Otherwise it skips one token.
 #
 #   Parameters:
@@ -409,7 +389,8 @@ sub GenericSkip #(indexRef, lineNumberRef)
     my ($self, $indexRef, $lineNumberRef) = @_;
     my $tokens = $self->Tokens();
 
-    # We can ignore the scope stack because we're just skipping everything without parsing, and we need recursion anyway.
+    # We can ignore the scope stack because we're just skipping everything
+    # without parsing, and we need recursion anyway.
     if ($tokens->[$$indexRef] eq '{')
         {
         $$indexRef++;
@@ -440,7 +421,8 @@ sub GenericSkip #(indexRef, lineNumberRef)
 #
 #   Function: GenericSkipUntilAfter
 #
-#   Advances the position via <GenericSkip()> until a specific token is reached and passed.
+#   Advances the position via <GenericSkip()> until a specific token is
+#   reached and passed.
 #
 sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token)
     {
@@ -457,39 +439,11 @@ sub GenericSkipUntilAfter #(indexRef, lineNumberRef, token)
 
 
 #
-#   Function: IndiscriminateSkipUntilAfterSequence
-#
-#   Advances the position indiscriminately until a specific token sequence is reached and passed.
-#
-sub IndiscriminateSkipUntilAfterSequence #(indexRef, lineNumberRef, token, token, ...)
-    {
-    my ($self, $indexRef, $lineNumberRef, @sequence) = @_;
-    my $tokens = $self->Tokens();
-
-    while ($$indexRef < scalar @$tokens && !$self->IsAtSequence($$indexRef, @sequence))
-        {
-        if ($tokens->[$$indexRef] eq "\n")
-            {  $$lineNumberRef++;  };
-        $$indexRef++;
-        };
-
-    if ($self->IsAtSequence($$indexRef, @sequence))
-        {
-        $$indexRef += scalar @sequence;
-        foreach my $token (@sequence)
-            {
-            if ($token eq "\n")
-                {  $$lineNumberRef++;  };
-            };
-        };
-    };
-
-
-#
 #   Function: SkipToNextStatement
 #
-#   Advances the position via <GenericSkip()> until the next statement, which is defined as anything in <declarationEnders> not
-#   appearing in brackets or strings.  It will always advance at least one token.
+#   Advances the position via <GenericSkip()> until the next statement,
+#   which is defined as anything in <declarationEnders> not appearing in
+#   brackets or strings.  It will always advance at least one token.
 #
 sub SkipToNextStatement #(indexRef, lineNumberRef)
     {
@@ -513,7 +467,8 @@ sub SkipToNextStatement #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipRegExp
-#   If the current position is on a regular expression, skip past it and return true.
+#   If the current position is on a regular expression, skip past it and
+#   return true.
 #
 sub TryToSkipRegExp #(indexRef, lineNumberRef)
     {
@@ -563,7 +518,8 @@ sub TryToSkipRegExp #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipString
-#   If the current position is on a string delimiter, skip past the string and return true.
+#   If the current position is on a string delimiter, skip past the string
+#   and return true.
 #
 #   Parameters:
 #
@@ -589,8 +545,9 @@ sub TryToSkipString #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipWhitespace
-#   If the current position is on a whitespace token, a line break token, or a comment, it skips them and returns true.  If there are
-#   a number of these in a row, it skips them all.
+#   If the current position is on a whitespace token, a line break token,
+#   or a comment, it skips them and returns true.  If there are a number
+#   of these in a row, it skips them all.
 #
 sub TryToSkipWhitespace #(indexRef, lineNumberRef)
     {
@@ -639,7 +596,8 @@ sub TryToSkipComment #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipLineComment
-#   If the current position is on a line comment symbol, skip past it and return true.
+#   If the current position is on a line comment symbol, skip past it
+#   and return true.
 #
 sub TryToSkipLineComment #(indexRef, lineNumberRef)
     {
@@ -658,7 +616,8 @@ sub TryToSkipLineComment #(indexRef, lineNumberRef)
 
 #
 #   Function: TryToSkipMultilineComment
-#   If the current position is on an opening comment symbol, skip past it and return true.
+#   If the current position is on an opening comment symbol, skip past it
+#   and return true.
 #
 sub TryToSkipMultilineComment #(indexRef, lineNumberRef)
     {
@@ -672,6 +631,36 @@ sub TryToSkipMultilineComment #(indexRef, lineNumberRef)
         }
     else
         {  return undef;  };
+    };
+
+
+#
+#   Function: NormalizePrototype
+#
+#   Normalizes a prototype.  Specifically, condenses spaces, tabs, and line
+#   breaks into single spaces and removes leading and trailing ones.  It may
+#   also unify the syntax depending on the related topic type.
+#
+#   Parameters:
+#
+#       prototype - The original prototype string.
+#       type      - The type of the related topic.
+#       name      - The function name if the prototype lacks it.
+#
+#   Returns:
+#
+#       The normalized prototype.
+#
+sub NormalizePrototype #(prototype, type, name)
+    {
+    my ($self, $prototype, $type, $name) = @_;
+
+    $prototype =~ tr/ \t\r\n/ /s;
+    $prototype =~ s/^ //;
+    $prototype =~ s/ $//;
+    $prototype =~ s/function\s*\(/function $name(/;
+
+    return $prototype;
     };
 
 

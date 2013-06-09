@@ -12,7 +12,7 @@
 #
 ###############################################################################
 
-# This file is part of Natural Docs, which is Copyright © 2003-2010 Greg Valure
+# This file is part of Natural Docs, which is Copyright ï¿½ 2003-2010 Greg Valure
 # Natural Docs is licensed under version 3 of the GNU Affero General Public License (AGPL)
 # Refer to License.txt for the complete details
 
@@ -27,12 +27,13 @@ use NaturalDocs::Languages::Advanced;
 use NaturalDocs::Languages::Perl;
 use NaturalDocs::Languages::CSharp;
 use NaturalDocs::Languages::ActionScript;
-use NaturalDocs::Languages::JavaScript;
+use NaturalDocs::Languages::JavaScriptFull;
 
 use NaturalDocs::Languages::Ada;
 use NaturalDocs::Languages::PLSQL;
 use NaturalDocs::Languages::Pascal;
 use NaturalDocs::Languages::Tcl;
+use NaturalDocs::Languages::JavaScriptSimple;
 
 use strict;
 use integer;
