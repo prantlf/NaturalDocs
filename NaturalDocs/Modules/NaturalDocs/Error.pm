@@ -142,6 +142,7 @@ sub HandleDeath
          . "Natural Docs encountered the following error and was stopped:\n"
          . "\n"
          . "   " . $reason . "\n"
+         . "   Cause: $? - $!\n"
          . "\n"
 
          . "You can get help at the following web site:\n"
