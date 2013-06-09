@@ -807,20 +807,22 @@ sub StripClosingSymbol #(lineRef, symbol)
 #
 #   Function: NormalizePrototype
 #
-#   Normalizes a prototype.  Specifically, condenses spaces, tabs, and line breaks into single spaces and removes leading and
-#   trailing ones.
+#   Normalizes a prototype.  Specifically, condenses spaces, tabs, and line
+#   breaks into single spaces and removes leading and trailing ones.  It may
+#   also unify the syntax depending on the related topic type.
 #
 #   Parameters:
 #
 #       prototype - The original prototype string.
+#       type      - The type of the related topic.
 #
 #   Returns:
 #
 #       The normalized prototype.
 #
-sub NormalizePrototype #(prototype)
+sub NormalizePrototype #(prototype, type)
     {
-    my ($self, $prototype) = @_;
+    my ($self, $prototype, $type) = @_;
 
     $prototype =~ tr/ \t\r\n/ /s;
     $prototype =~ s/^ //;

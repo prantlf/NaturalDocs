@@ -383,7 +383,8 @@ sub OnCode #(codeLines, codeLineNumber, topicList, lastCommentTopicCount)
 
                                 if (index($testPrototype, $titleInPrototype) != -1)
                                     {
-                                    $topicList->[-1]->SetPrototype( $self->NormalizePrototype($testPrototype) );
+                                    my $topic = $topicList->[-1];
+                                    $topic->SetPrototype( $self->NormalizePrototype($testPrototype, $topic->Type()) );
                                     };
 
                                 if ($enderResult == ENDER_ACCEPT())

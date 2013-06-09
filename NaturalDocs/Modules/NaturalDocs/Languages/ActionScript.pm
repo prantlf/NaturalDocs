@@ -732,7 +732,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         };
 
 
-    my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+    my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index), $type );
 
     if ($tokens->[$index] eq '{')
         {  $self->GenericSkip(\$index, \$lineNumber);  }
@@ -885,7 +885,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
     for (my $i = 0; $i < scalar @names; $i++)
         {
-        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $names[$i] . $types[$i]);
+        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $names[$i] . $types[$i], $type );
         my $scope = $self->CurrentScope();
 
         if ($names[$i] =~ s/^_global.//)

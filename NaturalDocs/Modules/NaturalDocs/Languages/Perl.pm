@@ -404,7 +404,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
                 {
                 # Found it!
 
-                my $prototype = $self->NormalizePrototype( $self->CreateString($prototypeStart, $prototypeEnd) );
+                my $prototype = $self->NormalizePrototype( $self->CreateString($prototypeStart, $prototypeEnd), ::TOPIC_FUNCTION() );
 
                 $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FUNCTION(), $name,
                                                                                                           $self->CurrentScope(), undef,
@@ -543,7 +543,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
             foreach $name (@names)
                 {
-                my $prototype = $self->NormalizePrototype( $prototypePrefix . $name . $prototypeSuffix );
+                my $prototype = $self->NormalizePrototype( $prototypePrefix . $name . $prototypeSuffix,::TOPIC_VARIABLE() );
 
                 $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $name,
                                                                                                            $self->CurrentScope(), undef,
@@ -570,7 +570,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
                 $prototypeEnd++;
                 };
 
-            my $prototype = $self->NormalizePrototype( $self->CreateString($prototypeStart, $prototypeEnd) );
+            my $prototype = $self->NormalizePrototype( $self->CreateString($prototypeStart, $prototypeEnd), ::TOPIC_VARIABLE() );
 
             $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_VARIABLE(), $name,
                                                                                                        $self->CurrentScope(), undef,

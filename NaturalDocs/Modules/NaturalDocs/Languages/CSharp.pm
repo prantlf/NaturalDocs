@@ -698,9 +698,9 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         elsif ($hasB)
             {  $prototype .= ' { ' . $bWord . ' }';  };
 
-        $prototype = $self->NormalizePrototype($prototype);
-
         my $topicType = ( $isEvent ? ::TOPIC_EVENT() : ::TOPIC_PROPERTY() );
+
+        $prototype = $self->NormalizePrototype($prototype, $topicType);
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                                   $self->CurrentScope(), $self->CurrentUsing(),
@@ -721,7 +721,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
         	{  $self->TryToSkipWhitespace(\$index, \$lineNumber);  }
 
         my $topicType = ( $isDelegate ? ::TOPIC_DELEGATE() : ::TOPIC_FUNCTION() );
-        my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+        my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index), $topicType );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($topicType, $name,
                                                                                                   $self->CurrentScope(), $self->CurrentUsing(),
@@ -736,7 +736,7 @@ sub TryToGetFunction #(indexRef, lineNumberRef)
 
     elsif ($isEvent && $tokens->[$index] eq ';')
         {
-        my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+        my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index), ::TOPIC_EVENT() );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_EVENT(), $name,
                                                                                                   $self->CurrentScope(), $self->CurrentUsing(),
@@ -852,7 +852,7 @@ sub TryToGetOverloadedOperator #(indexRef, lineNumberRef)
     # This should skip the parenthesis completely.
     $self->GenericSkip(\$index, \$lineNumber);
 
-    my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index) );
+    my $prototype = $self->NormalizePrototype( $self->CreateString($startIndex, $index), ::TOPIC_FUNCTION() );
 
     $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New(::TOPIC_FUNCTION(), 'operator ' . $name,
                                                                                               $self->CurrentScope(), $self->CurrentUsing(),
@@ -972,7 +972,7 @@ sub TryToGetVariable #(indexRef, lineNumberRef)
 
     foreach my $name (@names)
         {
-        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $name );
+        my $prototype = $self->NormalizePrototype( $prototypePrefix . ' ' . $name, $type );
 
         $self->AddAutoTopic(NaturalDocs::Parser::ParsedTopic->New($type, $name,
                                                                                                   $self->CurrentScope(), $self->CurrentUsing(),
@@ -1060,7 +1060,7 @@ sub TryToGetEnum #(indexRef, lineNumberRef)
     # We succeeded if we got this far.
 
     my $prototype = $self->CreateString($startIndex, $index);
-    $prototype = $self->NormalizePrototype( $prototype );
+    $prototype = $self->NormalizePrototype( $prototype, ::TOPIC_ENUMERATION() );
 
     $self->SkipRestOfStatement(\$index, \$lineNumber);
 
