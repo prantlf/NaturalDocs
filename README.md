@@ -26,7 +26,7 @@ You can make a portion of text italic by surrounding it with plus signs.  You ca
     Some +italic text+ and some ~struck-through text~
     and yet ~more~struck-through~text~.
 
-Some *italic text* and some ~struck-through text~ and yet ~more struck through text~.
+Some *italic text* and some ~~struck-through text~~ and yet ~~more struck through text~~.
 
 
 JavaScript Language Support
@@ -38,18 +38,22 @@ The original simple support has been enhanced to normalize variable and function
 
 There is a new pakage `JavaScriptSimple` extending the simple parser.  For example, the following variable declarations will be documented by the prototype `var variable`:
 
-    var variable = 1;
-    Parent.variable = 1.
-    Parent.prototype.variable = 1.
-    { variable: 1 }
+```javascript
+var variable = 1;
+Parent.variable = 1.
+Parent.prototype.variable = 1.
+{ variable: 1 }
+```
 
 Similarly, the following function declarations will be documented by the prototype `function func()`:
 
-    function func() {}
-    var func = function () {};
-    Parent.func = function () {};
-    Parent.prototype.func = function () {};
-    { func: function () {} }
+```javascript
+function func() {}
+var func = function () {};
+Parent.func = function () {};
+Parent.prototype.func = function () {};
+{ func: function () {} }
+```
 
 ### Full Support
 
