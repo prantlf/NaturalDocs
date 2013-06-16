@@ -1,1 +1,1 @@
-@perl %~dp0NaturalDocs %*
+@perl "%~dp0NaturalDocs" %*
