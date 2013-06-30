@@ -1,6 +1,8 @@
 Extended Natural Docs
 =====================
 
+*Latest version*: 06-16-2013 (1.52 base) aka 1.52.1
+
 This is a fork of Natural Docs adding more functionality, namely:
 
 * Additional text styles: italic, strikethrough and monospaced text

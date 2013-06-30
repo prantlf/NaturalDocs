@@ -709,7 +709,7 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    return '1.52';
+    return 'Development Release 06-16-2013 (1.52 base)';
     };
 
 #
@@ -718,7 +718,7 @@ sub TextAppVersion
 #   Returns a string of the project's current web address.
 #
 sub AppURL
-    {  return 'http://www.naturaldocs.org';  };
+    {  return 'https://github.com/prantlf/NaturalDocs';  };
 
 
 
@@ -1186,7 +1186,7 @@ sub PrintSyntax
 
     print
 
-    "Natural Docs, version " . $self->TextAppVersion() . "\n"
+    "Extended Natural Docs, version " . $self->TextAppVersion() . "\n"
     . $self->AppURL() . "\n"
     . "This program is licensed under version 3 of the AGPL\n"
     . "Refer to License.txt for the complete details\n"
