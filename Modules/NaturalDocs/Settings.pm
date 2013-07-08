@@ -713,6 +713,17 @@ sub TextAppVersion
     };
 
 #
+#
+#   Function: PrintableAppVersion
+#
+#   Returns Natural Docs' version number as plain text to be printed on the console only.
+#
+sub PrintableAppVersion
+    {
+    return 'Development Release 07-07-2013 (1.52 base) aka 1.52.2';
+    };
+
+#
 #   Function: AppURL
 #
 #   Returns a string of the project's current web address.
@@ -751,6 +762,7 @@ sub ParseCommandLine
                                   'quiet'    => '-q',
                                   'headersonly' => '-ho',
                                   'help'     => '-h',
+                                  'version'  => '-v',
                                   'autogroup' => '-ag',
                                   'noautogroup' => '-nag',
                                   'onlyfiletitles' => '-oft',
@@ -883,6 +895,11 @@ sub ParseCommandLine
                 elsif ($option eq '-?' || $option eq '-h')
                     {
                     $self->PrintSyntax();
+                    exit;
+                    }
+                elsif ($option eq '-v')
+                    {
+                    $self->PrintVersion();
                     exit;
                     }
                 else
@@ -1186,7 +1203,7 @@ sub PrintSyntax
 
     print
 
-    "Extended Natural Docs, version " . $self->TextAppVersion() . "\n"
+    "Extended Natural Docs, version " . $self->PrintableAppVersion() . "\n"
     . $self->AppURL() . "\n"
     . "This program is licensed under version 3 of the AGPL\n"
     . "Refer to License.txt for the complete details\n"
@@ -1274,7 +1291,27 @@ sub PrintSyntax
     . "    Suppresses all non-error output.\n"
     . "\n"
     . " -?\n -h\n--help\n"
-    . "    Displays this syntax reference.\n";
+    . "    Displays this syntax reference.\n"
+    . "\n"
+    . " -?\n -V\n--version\n"
+    . "    Displays the name and version of this tool.\n";
+    };
+
+
+#
+#   Function: PrintVersion
+#
+#   Prints the tool and  version information.
+#
+sub PrintVersion
+    {
+    my ($self) = @_;
+
+    # Make sure all line lengths are under 80 characters.
+
+    print
+
+    "Extended Natural Docs, version " . $self->PrintableAppVersion() . "\n";
     };
 
 
