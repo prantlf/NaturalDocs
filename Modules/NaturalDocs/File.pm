@@ -110,14 +110,64 @@ sub CanonizePath #(path)
 
 
 #
+#   Function: GetCompatiblePath
+#
+#   Takes a path and returns either the same value if it is valid according
+#   to the current operating system, or it fixes it so that it has a valid
+#   format and returns the fixed value.
+#
+#   Menu.txt can contain paths stored previously on Windows, while you can
+#   run NaturalDocs on a UNIX too.  Methods like SplitDirectories, which
+#   depends on File::Spec->splitdir, work only with file system paths
+#   correctly formatted for the current operationg system.  Before you send
+#   a path to a method of this class, you should make sure that it hs the
+#   right format.  By using this method, for example.
+#
+#   Relative paths can be used on other operating system without limitation
+#   after this correction.  Such corrected absolute paths are obviously not
+#   suitable for the actual file access.  However, they can be used for path
+#   comparisons and relative path computations, like detecting if a file
+#   location is still the same as it was during the last run of NaturalDocs.
+#
+sub GetCompatiblePath #(path)
+    {
+    my ($self, $path) = @_;
+
+    if ($::OSNAME eq 'MSWin32')
+        {
+        # UNIX paths will appear as absolute paths (starting with '\')
+        # on Windows, without the drive letter at the beginning.
+        $path =~ s/\//\\/g;
+        }
+    else
+        {
+        # Windows paths will appear as absolute paths (starting with '/')
+        # on UNIX.  The optional drive letter will be trimmed.
+        $path =~ s/\\/\//g;
+        $path =~ s/^[a-z]://i;
+        }
+    return $path;
+    }
+
+
+#
 #   Function: PathIsAbsolute
 #
 #   Returns whether the passed path is absolute.
 #
+#   Because this metod can be used to test paths stored in Menu.txt, which
+#   may come once from Windows, once from UNIX, the paths would have to be
+#   converted to the platform-specific format at first.  This doesn't happen
+#   and maybe is even not desirable sometimes.  This metod tries to work
+#   with any platform-specific file path format.
+#
 sub PathIsAbsolute #(path)
     {
     my ($self, $path) = @_;
-    return File::Spec->file_name_is_absolute($path);
+    return File::Spec->file_name_is_absolute($path) ||
+        # Perform a check for absolute UNIX and Windows paths, including
+        # Windows paths starting with a drive letter.
+        $path =~ /^\// || $path =~ /^\\/ || $path =~ /^[a-z]:/i;
     };
 
 

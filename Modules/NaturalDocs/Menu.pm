@@ -449,6 +449,21 @@ sub LoadAndUpdate
     else
         {  $self->FlagAutoTitleChanges();  };
 
+    # We try to replace files that apparently don't exist anymore by files
+    # which are apparently new.  If run in a different directory or even on
+    # a different OS, the paths can be totally different and adding "new"
+    # files and removing "dead" ones, which would otherwise happen, would
+    # destroy their relations to groups, where the original files belonged
+    # to, which in turn would make the groups empty and finally deleted.
+    #
+    # Let's try harder to find out if some "new" files were not actually
+    # already present, only from a different path on other operating system.
+    # This might be integrated to ResolveInputDirectories, but from other
+    # point of view, the paths actually *are different*; this may not be
+    # seen as relative path resolution.
+
+    $self->AutoReplaceFilesWithOtherRoot($filesInMenu);
+
     # We add new files before deleting old files so their presence still affects the grouping.  If we deleted old files first, it could
     # throw off where to place the new ones.
 
@@ -1919,7 +1934,13 @@ sub ResolveRelativeInputDirectories
                 {  push @menuGroups, $entry;  }
             elsif ($entry->Type() == ::MENU_FILE())
                 {
-                $entry->SetTarget( NaturalDocs::File->JoinPaths($resolvedInputDirectory, $entry->Target()) );
+                # If the Data section in Menu.txt is deleted but file paths
+                # are still absolute, they will be wrongly considered
+                # relative and joined here.  While it is bad to tamper with
+                # Menu.txt, having this sanity check saves problems when
+                # the file is edited manually.
+                $entry->SetTarget( NaturalDocs::File->JoinPaths($resolvedInputDirectory, $entry->Target()) )
+                    unless NaturalDocs::File->PathIsAbsolute($entry->Target());
                 };
             };
         };
@@ -2034,6 +2055,144 @@ sub FlagAutoTitleChanges
             };
         };
     };
+
+
+#
+#   Function: AutoReplaceFilesWithOtherRoot
+#
+#   Replaces files in the project, which appear not to exist anymore, with
+#   apparently new files, which contain their content, but because the build
+#   is running in other directory or on other operating system, their paths
+#   appear different.  (Relative input paths are stored in Menu.txt only if
+#   just one input directory has been set.)
+#
+#   If this was not done and the usual adding "new" files and removing "dead"
+#   ones would take place, original grouping would be lost and the original
+#   groups deleted.
+#
+#   Only file paths are replaced in the hashtable key and in the Menu::Entry
+#   value to point to the current file.  If the file itself didn;t change,
+#   no other content refreshing should be necessary.
+#
+#   Parameters:
+#
+#       filesInMenu - An existence hash of all the <FileNames> present in the menu.
+#
+sub AutoReplaceFilesWithOtherRoot #(filesInMenu)
+    {
+    my ($self, $filesInMenu) = @_;
+
+    my $files = NaturalDocs::Project->FilesWithContent();
+
+    # Break every file path, which has been loaded from the project's
+    # Menu.txt, to an aray of directories, which its path is made of.
+    # The trailing file name and optinally the heading drive letter
+    # are left there; the former to actually take place in relative
+    # path mathing, the latter because it doesn't disturb there.
+    my %filesInMenuDirectories;
+    foreach my $fileInMenu (keys %$filesInMenu)
+        {
+        # The project might've been processed on other OS where file paths
+        # have a different format.  Convert them to the current one.
+        my $normalizedFileInMenu = NaturalDocs::File->GetCompatiblePath($fileInMenu);
+        my @directories = NaturalDocs::File->SplitDirectories($normalizedFileInMenu);
+        $filesInMenuDirectories{$fileInMenu} = \@directories;
+        }
+
+    foreach my $file (keys %$files)
+        {
+        # Pick files which are not present in the project and appear as new.
+        if (!exists $filesInMenu->{$file})
+            {
+            # Break the new file path to its parts and do the same for both
+            # absolute and relative paths.  The relative path is computed
+            # as the longest sub-path relative to any input directory.
+            my @fileDirectories = NaturalDocs::File->SplitDirectories($file);
+            my $fileDirectoriesLength = scalar(@fileDirectories);
+            my $relativeFile = $self->GetPathRelativeToInputDirectories($file);
+            my @relativeFileDirectories = NaturalDocs::File->SplitDirectories($relativeFile);
+            my $relativeFileDirectoriesLength = scalar(@relativeFileDirectories);
+
+            # Find a fil ein th eproject with the same name and with the
+            # longest and the same relative path as the current new file has.
+            my $maxCount = 1;
+            my $maxFileInMenu = '';
+            foreach my $fileInMenu (keys %$filesInMenu)
+                {
+                # Find the project file path broken to its parts.  If none
+                # can be found it means that this file has been already
+                # processed by a previous loop run and its path was replaced.
+                my $fileInMenuDirectories = $filesInMenuDirectories{$fileInMenu};
+                next unless $fileInMenuDirectories;
+                my $fileInMenuDirectoriesLength = scalar(@$fileInMenuDirectories);
+
+                # Compute the number of equal path parts starting from the
+                # file name and going downwards to the root directory.
+                my $count = 0;
+                while ($count < $fileDirectoriesLength &&
+                       $count < $fileInMenuDirectoriesLength)
+                    {
+                    ++$count;
+                    last if $fileDirectories[$fileDirectoriesLength - $count] ne
+                        $$fileInMenuDirectories[$fileInMenuDirectoriesLength - $count];
+                    }
+
+                # If the current common path part is longer than the previous
+                # one remember it and go to the next project file.
+                if ($count > $maxCount)
+                    {
+                    $maxCount = $count;
+                    $maxFileInMenu = $fileInMenu;
+                    }
+                }
+
+            # At least the file name must be equal (1 is start, reaching the
+            # 2 means, that the name was equal) and at least the relative
+            # path we computed for th project file must be the same as the
+            # current new file has.
+            if ($maxCount > 2 && $maxCount >= $relativeFileDirectoriesLength)
+                {
+                # Find the file entry, remove its current key from the map,
+                # replace is name with the current one and store it with it
+                # as the new key in the map.
+                my $entry = $filesInMenu->{$maxFileInMenu};
+                delete $filesInMenu->{$maxFileInMenu};
+                $entry->SetTarget($file);
+                $filesInMenu->{$file} = $entry;
+                }
+            }
+        }
+    }
+
+
+#
+#   Function: GetPathRelativeToInputDirectories
+#
+#   Tries to find one from input directories at the beginning of the
+#   specified file path.  If found, it returns the rest of the file path
+#   after the input directory without the heading '/'.  Otherwise the
+#   input path is returned.  If the file path starts with multiple
+#   input directories, the shortest input directory is chosen so that
+#   the resulting relativ efile path is the longest possible.
+#
+sub GetPathRelativeToInputDirectories #(path)
+    {
+    my ($self, $path) = @_;
+    my $inputDirs = NaturalDocs::Settings->InputDirectories();
+    my $maxLength = 1000000;
+    foreach my $inputDir (@$inputDirs)
+        {
+        # The file path and the input directory are supposed to have the
+        # valid format for the current platform.
+        if (index($path, $inputDir) == 0)
+            {
+               my $length = length($inputDir);
+               $maxLength = $length if $length < $maxLength;
+            }
+        }
+    $path = substr($path, $maxLength + 1) if $maxLength < 1000000;
+    return $path;
+    }
 
 
 #
