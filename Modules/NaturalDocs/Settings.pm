@@ -709,7 +709,7 @@ sub AppVersion
 #
 sub TextAppVersion
     {
-    return 'Development Release 06-16-2013 (1.52 base)';
+    return 'Development Release 07-07-2013 (1.52 base)';
     };
 
 #
